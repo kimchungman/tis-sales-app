@@ -886,10 +886,7 @@ function getWeekNum(d){const s=new Date(d.getFullYear(),0,1);return Math.ceil(((
 
 document.addEventListener('DOMContentLoaded',()=>{
   // html 파일로 열린 경우 aspx로 이동
-  if(!window.location.href.startsWith('https://')) {
-    window.location.replace('https://tis21-my.sharepoint.com/personal/cmkim_takis_co_kr/Documents/%EB%B0%94%ED%83%95%20%ED%99%94%EB%A9%B4/TIS/TIS%20Sales%20Management/TIS%20Sales%20Management%20System.aspx');
-    return;
-  }
+  
   // html 파일로 열린 경우 즉시 aspx로 이동 (사용자가 로그인 화면 한 번만 보게)
 
   // 세션 복원 + SP 로그인 처리
@@ -3621,7 +3618,7 @@ const _SP_CONFIG = {
   authority:   'https://login.microsoftonline.com/d626830a-2676-4b41-aa6b-80ee7c719351',
   siteUrl:     'https://tis21.sharepoint.com/sites/essales.tis.tm',
   listName:    'WeeklyMeetingData',
-  redirectUri: 'https://tis21-my.sharepoint.com/personal/cmkim_takis_co_kr/Documents/%EB%B0%94%ED%83%95%20%ED%99%94%EB%A9%B4/TIS/TIS%20Sales%20Management/TIS%20Sales%20Management%20System.aspx',
+  redirectUri: 'https://kimchungman.github.io/tis-sales-app/TIS%20Sales%20Management%20System.html',
   loginScopes: ['User.Read'],
   scopes:      ['https://tis21.sharepoint.com/.default']
 };
