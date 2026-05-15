@@ -611,7 +611,7 @@ var st,ct,ut,lt,dt,ht,pt,gt,ft,mt=function(){function t(e,t,r){this.networkInter
           ⚠️ 담당자를 삭제하면 해당 담당자의 <strong>모든 실적 데이터가 삭제</strong>됩니다. 신중히 진행하세요.
         </div>
         <table class="dt">
-          <thead><tr><th style="width:50px;">순번</th><th>이름</th><th>색상</th><th style="width:120px;">연간 계획 (천원)</th><th style="width:90px;">실적 건수</th><th style="width:70px;">상태</th><th style="min-width:180px;">MS 계정</th><th style="width:60px;">숨김</th><th style="width:60px;">관리</th></tr></thead>
+          <thead><tr><th style="width:50px;">순번</th><th>이름</th><th style="width:80px;">직급</th><th>색상</th><th style="width:120px;">연간 계획 (천원)</th><th style="width:90px;">실적 건수</th><th style="width:70px;">상태</th><th style="min-width:180px;">MS 계정</th><th style="width:60px;">숨김</th><th style="width:60px;">관리</th></tr></thead>
           <tbody id="rep-manage-tbody"></tbody>
         </table>
       </div>
@@ -738,7 +738,8 @@ let currentTeam = '솔루션영업팀'; // 현재 선택된 팀
 // AUTH SESSION
 // ══════════════════════════════════════════
 let session = { role: 'locked', rep: null, team: null };
-let authCfg = { adminPw: '13579', repPws: {}, repPerms: {}, repEmails: {}, hiddenReps: [], teamReps: {'솔루션영업팀':['전성현','허인수','김충만','최원진'],'그룹지원팀':[]}, teamColors: {'솔루션영업팀':['#1E5FBE','#00A882','#C05000','#7B2FBE'],'그룹지원팀':[]} };
+let authCfg = { adminPw: '13579', repPws: {}, repPerms: {}, repEmails: {}, repRanks: {}, // 직급: {담당자명: '팀장'|'책임'|'선임'|'주임'}
+  hiddenReps: [], teamReps: {'솔루션영업팀':['전성현','허인수','김충만','최원진'],'그룹지원팀':[]}, teamColors: {'솔루션영업팀':['#1E5FBE','#00A882','#C05000','#7B2FBE'],'그룹지원팀':[]} };
 
 function loadAuthCfg(){
   const saved = localStorage.getItem('weekly_auth');
@@ -790,8 +791,25 @@ function applyCurrentTeam(team){
 }
 
 
+// 이름+직급 표시 헬퍼
+function getRepLabel(rep){
+  var rank=(authCfg.repRanks&&authCfg.repRanks[rep])||'';
+  return rank ? rep+' '+rank : rep;
+}
+
+// 직급 기준 정렬
+const RANK_ORDER = {'팀장':0,'책임':1,'선임':2,'주임':3,'':4};
+function sortRepsByRank(reps){
+  return reps.slice().sort(function(a,b){
+    var ra=(authCfg.repRanks&&authCfg.repRanks[a])||'';
+    var rb=(authCfg.repRanks&&authCfg.repRanks[b])||'';
+    return (RANK_ORDER[ra]||4)-(RANK_ORDER[rb]||4);
+  });
+}
+
 function saveAuthCfg(){
   authCfg.teams = TEAMS.slice();
+  authCfg.repRanks = authCfg.repRanks||{};
   authCfg.teamReps = JSON.parse(JSON.stringify(TEAM_REPS));
   authCfg.teamColors = JSON.parse(JSON.stringify(TEAM_COLORS));
   localStorage.setItem('weekly_auth', JSON.stringify(authCfg));
@@ -1296,62 +1314,62 @@ function renderMonthTable(){
 }
 
 function renderRepSummary(){
-  const el=document.getElementById('rep-summary');
+  var el=document.getElementById('rep-summary');
   if(!el) return;
-  const dr=getDashReps();
-  const teamIcons=['💼','🏢','🏗️','🔹','🔸','⭐'];
-  const teamsToShow=currentDashTeam==='all'?TEAMS:[currentDashTeam];
-  let h='';
+  var dr=getDashReps ? getDashReps() : REPS.slice();
+  var teamsToShow=typeof currentDashTeam!=='undefined'&&currentDashTeam!=='all'?[currentDashTeam]:TEAMS;
+  var icons=['💼','🏢','🏗️','🔹'];
+  var html='';
   teamsToShow.forEach(function(team){
-    const ticon=teamIcons[TEAMS.indexOf(team)]||'▪';
-    const teamReps=(TEAM_REPS[team]||[]).filter(function(r){ return dr.indexOf(r)>=0&&store.reps[r]; });
-    if(!teamReps.length)return;
-    // ── 팀 헤더 (데이터 없는 구분 행)
-    h+=`<div style="padding:8px 16px;background:linear-gradient(135deg,#F1F5F9,#E2E8F0);border-bottom:2px solid #CBD5E1;display:flex;align-items:center;gap:6px;">
-      <span style="font-size:13px;">${ticon}</span>
-      <span style="font-size:13px;font-weight:800;color:#0A1628;">${team}</span>
-      <span style="font-size:11px;color:#94A3B8;margin-left:4px;">${teamReps.length}명</span>
-    </div>`;
-    // ── 담당자 카드 (헤더 다음 행부터)
-    teamReps.forEach(function(name,ci){
-      const r=store.reps[name];
-      const plan=(r.plan||[]).reduce((a,b)=>a+b,0);
-      const actual=(r.actual||[]).reduce((a,b)=>a+b,0);
-      const forecast=(r.forecast||[]).reduce((a,b)=>a+b,0);
-      const rate=plan>0?(actual/plan*100):0;
-      const rateStr=plan>0?rate.toFixed(1)+'%':'-';
-      const rateColor=rate>=100?'#10B981':rate>=70?'#3B82F6':rate>=30?'#F59E0B':'#F43F5E';
-      const color=(TEAM_COLORS[team]||[])[ci]||'#1E5FBE';
-      h+=`<div style="padding:12px 16px;border-bottom:1px solid #F8FAFF;transition:background 0.15s;"
-        onmouseover="this.style.background='#F8FAFF'" onmouseout="this.style.background=''">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <div style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0;"></div>
-            <span style="font-weight:800;font-size:13px;color:#0A1628;">${name}</span>
-          </div>
-          <span style="font-size:13px;font-weight:800;color:${rateColor};">${rateStr}</span>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px;">
-          <div style="background:#F8FAFF;border-radius:7px;padding:7px 10px;">
-            <div style="font-size:10px;color:#94A3B8;margin-bottom:2px;">경영계획</div>
-            <div style="font-size:12px;font-weight:700;color:#0A1628;">${plan.toLocaleString('ko-KR')}</div>
-          </div>
-          <div style="background:#F0FBF8;border-radius:7px;padding:7px 10px;">
-            <div style="font-size:10px;color:#10B981;margin-bottom:2px;">달성 매출</div>
-            <div style="font-size:12px;font-weight:700;color:#065F46;">${actual.toLocaleString('ko-KR')}</div>
-          </div>
-          <div style="background:#FFFBEB;border-radius:7px;padding:7px 10px;">
-            <div style="font-size:10px;color:#F59E0B;margin-bottom:2px;">예상 매출</div>
-            <div style="font-size:12px;font-weight:700;color:#92400E;">${forecast.toLocaleString('ko-KR')}</div>
-          </div>
-        </div>
-        <div style="height:4px;background:#F1F5F9;border-radius:2px;overflow:hidden;">
-          <div style="width:${Math.min(rate,100)}%;height:100%;background:${rateColor};border-radius:2px;transition:width 0.5s;"></div>
-        </div>
-      </div>`;
+    var tReps=(TEAM_REPS[team]||[]).filter(function(r){return dr.indexOf(r)>=0&&store.reps[r];});
+    if(typeof sortRepsByRank==='function') tReps=sortRepsByRank(tReps);
+    if(!tReps.length) return;
+    // 팀명 - 1행 전체
+    html+='<div style="grid-column:1/-1;background:linear-gradient(135deg,#F1F5F9,#E8EEF5);border-radius:10px;padding:10px 16px;display:flex;align-items:center;gap:8px;margin-bottom:4px;">'
+      +(icons[TEAMS.indexOf(team)]||'▪')
+      +'<strong style="font-size:14px;color:#0A1628;">'+team+'</strong>'
+      +'<span style="font-size:11px;color:#94A3B8;margin-left:4px;">'+tReps.length+'명</span>'
+      +'</div>';
+    // 팀원 카드
+    tReps.forEach(function(name,ci){
+      var r=store.reps[name];
+      var plan=(r.plan||[]).reduce(function(a,b){return a+b;},0);
+      var actual=(r.actual||[]).reduce(function(a,b){return a+b;},0);
+      var forecast=(r.forecast||[]).reduce(function(a,b){return a+b;},0);
+      var rate=plan>0?(actual/plan*100):0;
+      var rateStr=plan>0?rate.toFixed(1)+'%':'-';
+      var rateColor=rate>=100?'#10B981':rate>=70?'#3B82F6':rate>=30?'#F59E0B':'#F43F5E';
+      var color=(TEAM_COLORS[team]||[])[ci]||'#1E5FBE';
+      var label=typeof getRepLabel==='function'?getRepLabel(name):name;
+      html+='<div style="padding:12px;border:1px solid #F1F5F9;border-radius:10px;background:white;">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
+          +'<div style="display:flex;align-items:center;gap:6px;">'
+            +'<div style="width:8px;height:8px;border-radius:50%;background:'+color+';flex-shrink:0;"></div>'
+            +'<strong style="font-size:13px;color:#0A1628;">'+label+'</strong>'
+          +'</div>'
+          +'<strong style="font-size:13px;color:'+rateColor+';">'+rateStr+'</strong>'
+        +'</div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:6px;">'
+          +'<div style="background:#F8FAFF;border-radius:6px;padding:5px 8px;">'
+            +'<div style="font-size:9px;color:#94A3B8;">경영계획</div>'
+            +'<div style="font-size:11px;font-weight:700;">'+plan.toLocaleString('ko-KR')+'</div>'
+          +'</div>'
+          +'<div style="background:#F0FBF8;border-radius:6px;padding:5px 8px;">'
+            +'<div style="font-size:9px;color:#10B981;">달성</div>'
+            +'<div style="font-size:11px;font-weight:700;color:#065F46;">'+actual.toLocaleString('ko-KR')+'</div>'
+          +'</div>'
+          +'<div style="background:#FFFBEB;border-radius:6px;padding:5px 8px;">'
+            +'<div style="font-size:9px;color:#F59E0B;">예상</div>'
+            +'<div style="font-size:11px;font-weight:700;color:#92400E;">'+forecast.toLocaleString('ko-KR')+'</div>'
+          +'</div>'
+        +'</div>'
+        +'<div style="height:4px;background:#F1F5F9;border-radius:2px;overflow:hidden;">'
+          +'<div style="width:'+Math.min(rate,100)+'%;height:100%;background:'+rateColor+';border-radius:2px;"></div>'
+        +'</div>'
+      +'</div>';
     });
   });
-  el.innerHTML=h||'<div style="color:#94A3B8;text-align:center;padding:24px;">데이터 없음</div>';
+  el.innerHTML=html||'<div style="grid-column:1/-1;color:#94A3B8;text-align:center;padding:24px;">데이터 없음</div>';
 }
 
 function renderDashIssues(){
@@ -1452,7 +1470,7 @@ function switchInputTeam(team){
 }
 
 function buildRepTabs(){
-  document.getElementById('rep-tabs').innerHTML=REPS.map((r,i)=>`<div class="tab${i===0?' active':''}" data-rep="${r}" onclick="switchTab('${r}',this)">${r}</div>`).join('');
+  document.getElementById('rep-tabs').innerHTML=REPS.map((r,i)=>`<div class="tab${i===0?' active':''}" data-rep="${r}" onclick="switchTab('${r}',this)">${getRepLabel(r)}</div>`).join('');
 }
 let activeRep=REPS[0];
 function switchTab(rep,el){
@@ -1473,7 +1491,7 @@ function buildRepInputs(){
 
     <!-- 매출 현황 -->
     <div class="sec-card">
-      <div class="sec-head"><h3>💰 ${rep} — 매출 현황</h3><span style="font-size:11px;color:var(--muted);">단위: 천원</span></div>
+      <div class="sec-head"><h3>💰 ${getRepLabel(rep)} — 매출 현황</h3><span style="font-size:11px;color:var(--muted);">단위: 천원</span></div>
       <div class="sec-body"><div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="dt" style="border-collapse:collapse;">
         <colgroup><col style="width:88px;">${MONTHS.map(()=>'<col style="width:82px;">').join('')}<col style="width:88px;"></colgroup>
         <thead><tr>
@@ -1508,7 +1526,7 @@ function buildRepInputs(){
 
     <!-- 품목별 매출 현황 -->
     <div class="sec-card">
-      <div class="sec-head"><h3>📦 ${rep} — 품목별 매출 현황</h3><span style="font-size:11px;color:var(--muted);">자동 집계</span></div>
+      <div class="sec-head"><h3>📦 ${getRepLabel(rep)} — 품목별 매출 현황</h3><span style="font-size:11px;color:var(--muted);">자동 집계</span></div>
       <div class="sec-body"><div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="dt" style="border-collapse:collapse;">
         <colgroup><col style="width:88px;">${MONTHS.map(()=>'<col style="width:82px;">').join('')}<col style="width:88px;"></colgroup>
         <thead><tr>
@@ -1538,7 +1556,7 @@ function buildRepInputs(){
 
     <!-- 고객사별 실적 -->
     <div class="sec-card">
-      <div class="sec-head"><h3>🏢 ${rep} — 고객사별 실적</h3><button class="add-btn" onclick="addClient('${rep}')">＋ 추가</button></div>
+      <div class="sec-head"><h3>🏢 ${getRepLabel(rep)} — 고객사별 실적</h3><button class="add-btn" onclick="addClient('${rep}')">＋ 추가</button></div>
       <div class="sec-body"><div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="dt">
         <thead><tr>
           <th style="min-width:140px;white-space:nowrap;">고객사명</th>
@@ -1554,7 +1572,7 @@ function buildRepInputs(){
 
     <!-- 영업활동 및 이슈사항 -->
     <div class="sec-card">
-      <div class="sec-head"><h3>📋 ${rep} — 영업활동 및 이슈사항</h3><button class="add-btn" onclick="addActivity('${rep}')">＋ 추가</button></div>
+      <div class="sec-head"><h3>📋 ${getRepLabel(rep)} — 영업활동 및 이슈사항</h3><button class="add-btn" onclick="addActivity('${rep}')">＋ 추가</button></div>
       <div class="sec-body"><table class="dt">
         <thead><tr>
           <th style="width:var(--col-no);white-space:nowrap;">순번</th>
@@ -2563,6 +2581,9 @@ function loadLabels(){
 let pendingRep = null;
 
 function openAuth(){
+  // 현재 화면 대시보드로 초기화 (이전 화면 노출 방지)
+  if(typeof showPage==='function') showPage('dashboard',null);
+  session={role:'locked',rep:null,team:null};
   buildRepBtns();
   // 팝업 공지 표시
   if(typeof showPopupNotice==='function') showPopupNotice();
@@ -3276,14 +3297,18 @@ function applyTheme(t){
   const logo=document.querySelector('.sidebar-logo .title');
   if(logo) logo.style.color='white';
 }
-function loadTheme(){
-  const saved=localStorage.getItem('app_theme');
-  if(saved) applyTheme(saved);
-}
+
 function autoSave(){
   // 디바운스: 1000ms
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async ()=>{
+    // SP 미연결 시 localStorage에 임시저장
+    if(!window._isSPReady){
+      localStorage.setItem('_tisTempData', JSON.stringify({
+        savedAt: new Date().toISOString(),
+        store: JSON.parse(JSON.stringify(store))
+      }));
+    }
     try{
       const data = {
         date: document.getElementById('mtg-date').value,
@@ -3374,6 +3399,12 @@ function applySettings(){
   autoSave();
 }
 
+function setRepRank(rep, rank){
+  if(!authCfg.repRanks) authCfg.repRanks={};
+  authCfg.repRanks[rep]=rank;
+  saveAuthCfg();
+}
+
 function renderRepManage(){
   const tbody=document.getElementById('rep-manage-tbody');
   if(!tbody)return;
@@ -3405,6 +3436,7 @@ function renderRepManage(){
       rows+=`<tr style="opacity:${isHidden?0.5:1};">
         <td style="text-align:center;color:var(--muted);font-weight:700;white-space:nowrap;min-width:60px;font-size:11px;">${team.slice(0,3)}-${i+1}</td>
         <td><input type="text" value="${rep}" style="font-weight:700;" onchange="renameRepInTeam('${team}',${i},this.value)"></td>
+        <td><select onchange="setRepRank('${rep}',this.value)" style="border:1px solid var(--border);border-radius:6px;padding:3px 6px;font-size:11px;font-family:inherit;"><option value="">-</option><option value="팀장" ${(authCfg.repRanks||{})['${rep}']==="팀장"?"selected":""}>팀장</option><option value="책임" ${(authCfg.repRanks||{})['${rep}']==="책임"?"selected":""}>책임</option><option value="선임" ${(authCfg.repRanks||{})['${rep}']==="선임"?"selected":""}>선임</option><option value="주임" ${(authCfg.repRanks||{})['${rep}']==="주임"?"selected":""}>주임</option></select></td>
         <td><input type="color" value="${color}" style="width:40px;height:30px;border:1px solid var(--border);border-radius:5px;cursor:pointer;padding:2px;" onchange="updateTeamColor('${team}',${i},this.value)"></td>
         <td class="nt" style="font-weight:600;">${Math.round(plan).toLocaleString()}</td>
         <td style="text-align:center;"><span class="badge bg-blue">${actCount}건</span></td>
@@ -3724,6 +3756,20 @@ async function _initSP() {
     window._isSPReady = true;
     _setSPStatus('connected');
     showToast('✅ SharePoint 연결됨');
+    // 임시저장 데이터 자동 업로드
+    const _tmpData = localStorage.getItem('_tisTempData');
+    if(_tmpData){
+      try{
+        const _tmp = JSON.parse(_tmpData);
+        if(_tmp && _tmp.store) {
+          Object.assign(store.reps, _tmp.store.reps||{});
+          await _spSaveSnap();
+          localStorage.removeItem('_tisTempData');
+          showToast('✅ 임시저장 데이터를 SP에 업로드했습니다.');
+          renderDashboard();
+        }
+      }catch(e){ console.warn('임시데이터 업로드 실패', e); }
+    }
 
     // 설정 + 오늘 데이터 자동 로드
     await _spLoadSettings();
