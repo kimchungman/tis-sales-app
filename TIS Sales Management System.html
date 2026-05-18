@@ -1794,6 +1794,7 @@ table.dt thead th { font-size: 13px !important; }
           <div id="access-list" style="padding:6px;"></div>
         </div>
       </div>
+      <button id="sp-conn-btn" onclick="connectToSP()" style="display:none;height:28px;padding:0 12px;border:1.5px solid #0078d4;border-radius:8px;background:#EFF6FF;color:#0078d4;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;align-items:center;gap:5px;flex-shrink:0;"><svg width="12" height="12" viewBox="0 0 23 23" fill="none"><rect x="1" y="1" width="10" height="10" fill="#f25022"/><rect x="12" y="1" width="10" height="10" fill="#7fba00"/><rect x="1" y="12" width="10" height="10" fill="#00a4ef"/><rect x="12" y="12" width="10" height="10" fill="#ffb900"/></svg>SP 연결</button>
       <button onclick="window.print()" class="tb-icon-btn" title="인쇄/PDF" id="print-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></button>
       <button id="refresh-btn" onclick="manualRefresh()" class="tb-icon-btn" title="새로고침"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
     </div>
@@ -5080,32 +5081,28 @@ function doRepLogin(rep){
     if(myTab) myTab.click();
   }, 300);
   if(typeof recordAccess==='function') recordAccess(rep);
-  // 클릭 직후 즉시 SP 연결 (gesture context 유지)
-  if(!window._isSPReady){
-    if(window._msalReady && window._msalApp){
-      // MSAL 준비됨 - 즉시 loginPopup
-      window._msalApp.loginPopup({
-        scopes: (_SP_CONFIG.loginScopes||['User.Read']).concat(_SP_CONFIG.scopes||[]),
-        redirectUri: 'https://login.microsoftonline.com/common/oauth2/nativeclient'
-      }).then(function(result){
-        if(!result) return;
-        return window._msalApp.acquireTokenSilent({
-          scopes: _SP_CONFIG.scopes,
-          account: window._msalApp.getAllAccounts()[0]
-        });
-      }).then(function(sr){
-        if(sr && sr.accessToken){
-          window._spToken = sr.accessToken;
-          if(typeof _initSP==='function') _initSP();
+  // SP: silent 시도만 (팝업 없음 - SP 버튼으로 연결)
+  setTimeout(async function(){
+    try{
+      if(!window._isSPReady && window._msalApp){
+        var accs = window._msalApp.getAllAccounts();
+        if(accs.length > 0){
+          var sr = await window._msalApp.acquireTokenSilent({
+            scopes: _SP_CONFIG.scopes, account: accs[0]
+          });
+          if(sr && sr.accessToken){
+            window._spToken = sr.accessToken;
+            if(typeof _initSP==='function') await _initSP();
+          }
         }
-      }).catch(function(e){ console.warn('login:', e.message); });
-    } else {
-      // MSAL 아직 초기화 중 - 준비되면 silent 시도만
-      setTimeout(async function(){
-        try{ if(!window._isSPReady && typeof _initSP==='function') await _initSP(); }catch(e){}
-      }, 2000);
+      }
+    }catch(e){}
+    // SP 미연결 시 버튼 표시
+    if(!window._isSPReady){
+      var btn=document.getElementById('sp-conn-btn');
+      if(btn) btn.style.display='flex';
     }
-  }
+  }, 1500);
 }function doRepLogin(rep){
   session={role:'rep',rep};
   // 리다이렉트 후 세션 복원을 위해 저장
@@ -6096,6 +6093,10 @@ async function _initSP() {
 
     // 토큰 획득
     window._spToken = await _getToken();
+    if(!window._spToken){
+      _setSPStatus('offline');
+      return;
+    }
 
     // 리스트 ID 조회
     const listsUrl = _SP_CONFIG.siteUrl + '/_api/web/lists?$select=Id,Title';
@@ -10592,6 +10593,38 @@ function _popupLogin(){
     if(typeof showToast==='function') showToast('MS 로그인 실패: '+e.message, 'warn');
   });
 }
+
+</script>
+
+<script>
+
+window.connectToSP = function(){
+  if(window._isSPReady){ showToast('이미 SP 연결됨'); return; }
+  if(!window._msalApp){ showToast('잠시 후 다시 시도해주세요'); return; }
+  var btn = document.getElementById('sp-conn-btn');
+  if(btn) btn.textContent = '연결 중...';
+  // 클릭 컨텍스트에서 바로 loginPopup
+  window._msalApp.loginPopup({
+    scopes: (_SP_CONFIG.loginScopes||['User.Read']).concat(_SP_CONFIG.scopes||[]),
+    redirectUri: 'https://login.microsoftonline.com/common/oauth2/nativeclient'
+  }).then(function(result){
+    return window._msalApp.acquireTokenSilent({
+      scopes: _SP_CONFIG.scopes,
+      account: window._msalApp.getAllAccounts()[0]
+    });
+  }).then(function(sr){
+    if(sr && sr.accessToken){
+      window._spToken = sr.accessToken;
+      var b=document.getElementById('sp-conn-btn');
+      if(b) b.style.display='none';
+      if(typeof _initSP==='function') _initSP();
+    }
+  }).catch(function(e){
+    var b=document.getElementById('sp-conn-btn');
+    if(b){ b.style.display='flex'; b.textContent='SP 연결'; }
+    showToast('MS 로그인 실패: '+e.message, 'warn');
+  });
+};
 
 </script>
 </body>
