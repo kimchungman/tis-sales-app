@@ -5868,23 +5868,24 @@ function _setSPStatus(state) {
 
 // ── MSAL 토큰 획득 (팝업 로그인) ───────────────────────────
 async function _getToken() {
-  // msal 로드 확인
+  // MSAL 로드 확인 및 동적 로드
   if(typeof msal === 'undefined') {
-    try {
-      await new Promise(function(resolve, reject) {
-        var s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/dist/msal-browser.min.js';
-        s.onload = resolve;
-        s.onerror = function() {
-          var s2 = document.createElement('script');
-          s2.src = 'https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js';
-          s2.onload = resolve; s2.onerror = reject;
-          document.head.appendChild(s2);
-        };
-        document.head.appendChild(s);
-      });
-    } catch(e) { throw new Error('MSAL 로드 실패: ' + e.message); }
+    await new Promise(function(resolve, reject) {
+      var s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/dist/msal-browser.min.js';
+      s.onload = resolve;
+      s.onerror = function() {
+        var s2 = document.createElement('script');
+        s2.src = 'https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js';
+        s2.onload = resolve; s2.onerror = reject;
+        document.head.appendChild(s2);
+      };
+      document.head.appendChild(s);
+    });
   }
+
+  if(typeof msal === 'undefined') throw new Error('MSAL 로드 실패');
+
   const msalApp = new msal.PublicClientApplication({
     auth: {
       clientId:    _SP_CONFIG.clientId,
@@ -5897,51 +5898,36 @@ async function _getToken() {
   await msalApp.initialize();
   window._msalApp = msalApp;
 
-  // 1. 리다이렉트 결과 처리 (로그인 후 돌아왔을 때)
-  try {
-    const rr = await msalApp.handleRedirectPromise();
-    if (rr && rr.accessToken) return rr.accessToken;
-  } catch(e) { console.warn('redirect promise error:', e); }
-
-  // 2. 이미 로그인된 계정으로 silent 토큰 획득
+  // 1. 이미 로그인된 계정으로 silent 토큰 획득
   const accounts = msalApp.getAllAccounts();
   if (accounts.length > 0) {
     try {
       const result = await msalApp.acquireTokenSilent({
-        scopes:  _SP_CONFIG.scopes,
+        scopes: _SP_CONFIG.scopes,
         account: accounts[0]
       });
-      return result.accessToken;
-    } catch(e) {
-      // silent 실패 시 popup 시도
-      try {
-        const result = await msalApp.acquireTokenPopup({
-          scopes:  _SP_CONFIG.scopes,
-          account: accounts[0]
-        });
-        return result.accessToken;
-      } catch(e2) { console.warn('token popup error:', e2); }
-    }
+      if(result && result.accessToken) return result.accessToken;
+    } catch(e) {}
   }
 
-  // 3. 로그인 필요 - redirect 방식으로 MS 로그인 팝업
+  // 2. Popup으로 로그인 (페이지 이동 없음)
   try {
-    await msalApp.loginRedirect({
-      scopes: [..._SP_CONFIG.loginScopes, ..._SP_CONFIG.scopes],
+    showToast('Microsoft 로그인 창이 열립니다...', 'info');
+    const result = await msalApp.loginPopup({
+      scopes: [...(_SP_CONFIG.loginScopes||['User.Read']), ..._SP_CONFIG.scopes],
       prompt: 'select_account'
     });
+    if(result && result.accessToken) return result.accessToken;
+    // loginPopup 후 SP 토큰 별도 획득
+    const spResult = await msalApp.acquireTokenSilent({
+      scopes: _SP_CONFIG.scopes,
+      account: msalApp.getAllAccounts()[0]
+    });
+    return spResult ? spResult.accessToken : null;
   } catch(e) {
-    console.warn('loginRedirect error:', e);
-    // redirect 실패 시 popup 방식 시도
-    try {
-      const result = await msalApp.loginPopup({
-        scopes: [..._SP_CONFIG.loginScopes, ..._SP_CONFIG.scopes]
-      });
-      if (result && result.accessToken) return result.accessToken;
-    } catch(e2) { console.warn('loginPopup error:', e2); }
+    console.warn('loginPopup error:', e.message);
+    throw new Error(e.message);
   }
-
-  return null;
 }
 
 
