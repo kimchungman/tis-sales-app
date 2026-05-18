@@ -5080,8 +5080,32 @@ function doRepLogin(rep){
     if(myTab) myTab.click();
   }, 300);
   if(typeof recordAccess==='function') recordAccess(rep);
-  // 클릭 컨텍스트 안에서 즉시 SP 연결 시도
-  _tryConnectSP();
+  // 클릭 직후 즉시 SP 연결 (gesture context 유지)
+  if(!window._isSPReady){
+    if(window._msalReady && window._msalApp){
+      // MSAL 준비됨 - 즉시 loginPopup
+      window._msalApp.loginPopup({
+        scopes: (_SP_CONFIG.loginScopes||['User.Read']).concat(_SP_CONFIG.scopes||[]),
+        redirectUri: 'https://login.microsoftonline.com/common/oauth2/nativeclient'
+      }).then(function(result){
+        if(!result) return;
+        return window._msalApp.acquireTokenSilent({
+          scopes: _SP_CONFIG.scopes,
+          account: window._msalApp.getAllAccounts()[0]
+        });
+      }).then(function(sr){
+        if(sr && sr.accessToken){
+          window._spToken = sr.accessToken;
+          if(typeof _initSP==='function') _initSP();
+        }
+      }).catch(function(e){ console.warn('login:', e.message); });
+    } else {
+      // MSAL 아직 초기화 중 - 준비되면 silent 시도만
+      setTimeout(async function(){
+        try{ if(!window._isSPReady && typeof _initSP==='function') await _initSP(); }catch(e){}
+      }, 2000);
+    }
+  }
 }function doRepLogin(rep){
   session={role:'rep',rep};
   // 리다이렉트 후 세션 복원을 위해 저장
@@ -5962,6 +5986,47 @@ const _SP_CONFIG = {
   loginScopes: ['User.Read'],
   scopes:      ['https://tis21.sharepoint.com/.default']
 };
+
+
+// ── MSAL 즉시 초기화 (스크립트 로드 시 바로) ──
+window._msalApp = null;
+window._msalReady = false;
+(function(){
+  function tryInit(){
+    if(typeof msal === 'undefined'){ 
+      setTimeout(tryInit, 100); 
+      return; 
+    }
+    try{
+      var app = new msal.PublicClientApplication({
+        auth:{
+          clientId: _SP_CONFIG.clientId,
+          authority: _SP_CONFIG.authority,
+          redirectUri: 'https://login.microsoftonline.com/common/oauth2/nativeclient'
+        },
+        cache:{ cacheLocation:'localStorage', storeAuthStateInCookie:true }
+      });
+      app.initialize().then(function(){
+        window._msalApp = app;
+        window._msalReady = true;
+        // silent 자동 연결 시도
+        var accs = app.getAllAccounts();
+        if(accs.length > 0 && !window._isSPReady){
+          app.acquireTokenSilent({
+            scopes: _SP_CONFIG.scopes,
+            account: accs[0]
+          }).then(function(r){
+            if(r && r.accessToken){
+              window._spToken = r.accessToken;
+              if(typeof _initSP === 'function') _initSP();
+            }
+          }).catch(function(){});
+        }
+      }).catch(function(e){ console.warn('MSAL init fail:', e); });
+    }catch(e){ console.warn('MSAL create fail:', e); }
+  }
+  setTimeout(tryInit, 0);
+})();
 
 window._spToken   = null;
 window._spListId  = null;
