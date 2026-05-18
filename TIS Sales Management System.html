@@ -1698,8 +1698,9 @@ table.dt thead th { font-size: 13px !important; }
   <div class="nav-item" onclick="showPage('issues',this)"><svg class="nav-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>이슈 현황</div>
   <div class="nav-item" onclick="showPage('input',this)"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>영업 진행 현황</div>
   <div class="nav-item" id="nav-personal" onclick="showPage('personal',this)" style="display:none;"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>개인설정</div>
+<div class="nav-item" id="nav-accesslog" onclick="showPage('accesslog',this)" style="display:none;"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>접속 이력</div>
   <div class="nav-item" id="nav-settings" onclick="onClickSettingsNav(this)" style="display:none;"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>관리자 설정</div>
-  <div class="nav-item" id="nav-accesslog" onclick="showPage('accesslog',this)" style="display:none;"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>접속 이력</div>
+
   <div class="sb-footer">
     <div class="sb-auth-chip" id="auth-chip" onclick="onClickAuthChip()">
       <div class="sb-auth-avatar" id="auth-icon">🔒</div>
@@ -2270,6 +2271,15 @@ table.dt thead th { font-size: 13px !important; }
               <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">미리보기</div>
               <img id="popup-image-preview-img" style="max-width:100%;border-radius:8px;border:1px solid var(--border);">
             </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+            <label style="font-size:11px;color:var(--muted);font-weight:600;">팝업 너비</label>
+            <select id="cfg-popup-width" style="border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11px;font-family:inherit;background:white;">
+              <option value="400px">좁게 (400px)</option>
+              <option value="560px" selected>기본 (560px)</option>
+              <option value="720px">넓게 (720px)</option>
+              <option value="90vw">화면 90%</option>
+            </select>
           </div>
           <div style="display:flex;gap:8px;">
             <button onclick="deployPopup()" class="btn btn-primary" style="font-size:12px;">공지 배포</button>
@@ -5247,7 +5257,8 @@ function deployPopup(){
   const title=(document.getElementById('cfg-popup-title')||{}).value||'';
   const content=(document.getElementById('cfg-popup-text')||{}).value||'';
   if(!title.trim()&&!content.trim()){showToast('팝업 제목이나 내용을 입력하세요.','warn');return;}
-  authCfg.popup={title,content,active:true,deployedAt:new Date().toISOString()};
+  const pw=(document.getElementById('cfg-popup-width')||{}).value||'560px';
+  authCfg.popup={title,content,width:pw,active:true,deployedAt:new Date().toISOString()};
   saveAuthCfg();
   // 오늘 숨김 키 초기화 (즉시 표시를 위해)
   const _todayKey='popup_hide_'+new Date().toISOString().split('T')[0];
