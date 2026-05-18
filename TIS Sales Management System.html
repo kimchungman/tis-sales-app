@@ -3067,6 +3067,15 @@ function showPage(id,navEl){
         var pageInput = document.getElementById('page-input');
         if(!pageInput || !session.rep) return;
 
+        // 0. store.reps 사전 초기화 (신규팀 담당자가 없으면 TypeError 방지)
+        if(session.team && typeof TEAM_REPS!=='undefined' && TEAM_REPS[session.team]){
+          (TEAM_REPS[session.team]||[]).forEach(function(r){
+            if(!store.reps[r]) store.reps[r]={
+              plan:new Array(12).fill(0),actual:new Array(12).fill(0),
+              forecast:new Array(12).fill(0),clients:[],activities:[],visitLog:[]
+            };
+          });
+        }
         // 1. switchInputTeam 직접 호출 (buildRepTabs + buildRepInputs 실행)
         if(typeof switchInputTeam==='function') switchInputTeam(session.team);
 
@@ -3664,6 +3673,13 @@ function buildRepInputs(){
   const IS='width:74px;height:26px;box-sizing:border-box;padding:0 5px;text-align:right;font-size:12px;display:block;';
   const DB='width:74px;height:26px;line-height:26px;box-sizing:border-box;padding:0 5px;text-align:right;font-size:12px;font-weight:600;border-radius:4px;display:block;overflow:hidden;';
   const TD='padding:2px 3px;vertical-align:middle;';
+  // store.reps 없는 rep 사전 초기화 (신규팀 대응)
+  REPS.forEach(rep=>{
+    if(!store.reps[rep]) store.reps[rep]={
+      plan:new Array(12).fill(0),actual:new Array(12).fill(0),
+      forecast:new Array(12).fill(0),clients:[],activities:[],visitLog:[]
+    };
+  });
   area.innerHTML=REPS.map((rep,ri)=>`
   <div class="rep-sec" id="rs-${rep}" style="display:${ri===0?'block':'none'}">
 
