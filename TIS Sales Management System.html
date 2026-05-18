@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <script>
-if(location.protocol==="file:"){location.replace("https://kimchungman.github.io/tis-sales-app/TIS%20Sales%20Management%20System.html");}
+if(window.location.protocol==="file:"){window.location.replace("https://kimchungman.github.io/tis-sales-app/TIS%20Sales%20Management%20System.html");}
 </script>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzRmN2ZmZiIvPgogIDx0ZXh0IHg9IjE2IiB5PSIyMiIgZm9udC1mYW1pbHk9IkFyaWFsLHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiIGZvbnQtd2VpZ2h0PSI5MDAiCiAgICBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgbGV0dGVyLXNwYWNpbmc9Ii0wLjUiPlRJUzwvdGV4dD4KPC9zdmc+">
 <meta charset="UTF-8">
@@ -1696,7 +1696,6 @@ table.dt thead th { font-size: 13px !important; }
 </aside>
 <div class="main">
   <div class="topbar">
-      <div id="sp-bar" style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:#F1F5F9;color:#94A3B8;border:1.5px solid #E2E8F0;margin-right:8px;white-space:nowrap;">⬤ 미연결</div>
     <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
       <button onclick="toggleSidebar()" class="tb-icon-btn" style="flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
       <div style="min-width:0;">
@@ -2598,7 +2597,29 @@ document.addEventListener('DOMContentLoaded',()=>{
     renderDashIssues();
     // 항상 참가자 선택 화면 표시 (MS 자동 로그인 없음)
     localStorage.removeItem('_tisSavedSession');
-    openAuth();
+    // 리다이렉트 후 세션 복원
+    var _sv = localStorage.getItem('_savedSession');
+    var _isRedir = window.location.search.indexOf('code=')>-1
+                || window.location.hash.indexOf('code=')>-1
+                || localStorage.getItem('_spPending')==='1';
+    if(_sv && _isRedir){
+      try{
+        var _sess = JSON.parse(_sv);
+        session = _sess;
+        if(_sess.team){ currentTeam=_sess.team; if(typeof applyCurrentTeam==='function') applyCurrentTeam(_sess.team); }
+        setTimeout(function(){
+          if(typeof buildRepTabs==='function') buildRepTabs();
+          if(typeof buildRepInputs==='function') buildRepInputs();
+          if(typeof applyPermissions==='function') applyPermissions();
+          if(typeof renderDashboard==='function') renderDashboard();
+          if(_sess.rep){ setTimeout(function(){ var t=document.querySelector('.tab[data-rep="'+_sess.rep+'"]'); if(t)t.click(); },200); }
+        },150);
+        localStorage.removeItem('_savedSession');
+        showToast('👤 '+(_sess.rep||'')+'으로 복원되었습니다.');
+      }catch(ex){ openAuth(); }
+    } else {
+      openAuth();
+    }
   },300);
   // textarea 높이는 충분한 딜레이 후 (DOM 완전 렌더링 보장)
   setTimeout(()=>{ resizeAllTextareas(); }, 600);
@@ -4785,19 +4806,28 @@ function tryRep(){
 }
 function doRepLogin(rep){
   session={role:'rep', rep:rep, team:currentTeam};
-  localStorage.setItem('_tisSavedSession', JSON.stringify({role:'rep',rep:rep,team:currentTeam}));
+  // 리다이렉트 후 복원용 세션 저장
+  localStorage.setItem('_savedSession', JSON.stringify({
+    role:'rep', rep:rep, team:currentTeam
+  }));
   _tabState.input = currentTeam;
   closeAuth();
   _initApp();
   showToast('👤 '+rep+'으로 접속했습니다.');
   setTimeout(function(){
-    // 본인 탭 자동 선택
     var myTab=document.querySelector('.tab[data-rep="'+rep+'"]');
     if(myTab) myTab.click();
   }, 300);
   if(typeof recordAccess==='function') recordAccess(rep);
+  // SP 연결 시도 (MSAL 준비 후)
   setTimeout(async function(){
-    try{ if(!window._isSPReady&&typeof _initSP==='function') await _initSP(); }catch(e){}
+    console.log('[SP] 연결 시도... _msalApp:', window._msalApp ? '준비됨' : '미준비');
+    try{
+      if(!window._isSPReady && typeof _initSP==='function') await _initSP();
+    }catch(e){
+      console.warn('[SP] 실패:', e.message);
+      showToast('SP 연결 실패: ' + e.message, 'warn');
+    }
   }, 800);
 }function doRepLogin(rep){
   session={role:'rep',rep};
@@ -5677,37 +5707,28 @@ function _setSPStatus(state) {
 
 // ── MSAL 토큰 획득 (팝업 로그인) ───────────────────────────
 async function _getToken() {
-  const msalApp = new msal.PublicClientApplication({
-    auth: {
-      clientId:    _SP_CONFIG.clientId,
-      authority:   _SP_CONFIG.authority,
-      redirectUri: _SP_CONFIG.redirectUri
-    },
-    cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: true }
-  });
-
-  await msalApp.initialize();
-  window._msalApp = msalApp;
-
-  // 리다이렉트 결과 처리
+  var app = window._msalApp;
+  if(!app) throw new Error('MSAL 초기화 안됨');
+  // 1. 리다이렉트 결과
   try {
-    const rr = await msalApp.handleRedirectPromise();
-    if (rr && rr.accessToken) return rr.accessToken;
+    var rr = await app.handleRedirectPromise();
+    if(rr && rr.accessToken) return rr.accessToken;
   } catch(e) {}
-
-  // Silent 시도
-  const accounts = msalApp.getAllAccounts();
-  if (accounts.length > 0) {
+  // 2. Silent (자동 로그인)
+  var accounts = app.getAllAccounts();
+  if(accounts.length > 0) {
     try {
-      const result = await msalApp.acquireTokenSilent({
-        scopes:  _SP_CONFIG.scopes,
-        account: accounts[0]
+      var sr = await app.acquireTokenSilent({
+        scopes: _SP_CONFIG.scopes, account: accounts[0]
       });
-      return result.accessToken;
+      if(sr && sr.accessToken) return sr.accessToken;
     } catch(e) {}
   }
-
-  // SP 토큰 없음 - null 반환 (오프라인 모드로 동작)
+  // 3. loginRedirect
+  localStorage.setItem('_spPending','1');
+  await app.loginRedirect({
+    scopes: (_SP_CONFIG.loginScopes||['User.Read']).concat(_SP_CONFIG.scopes||[])
+  });
   return null;
 }
 
@@ -5744,6 +5765,7 @@ async function _initSP() {
 
     // 토큰 획득
     window._spToken = await _getToken();
+    if(!window._spToken){ _setSPStatus('offline'); return; }
 
     // 리스트 ID 조회
     const listsUrl = _SP_CONFIG.siteUrl + '/_api/web/lists?$select=Id,Title';
@@ -5755,7 +5777,8 @@ async function _initSP() {
 
     window._isSPReady = true;
     _setSPStatus('connected');
-    showToast('✅ SharePoint 연결됨');
+    showToast('✅ SharePoint 연결됨', 'success');
+    console.log('[SP] 연결 성공, 토큰:', window._spToken ? '있음' : '없음');
 
     // 설정 + 오늘 데이터 자동 로드 (최초 접속 시 동기화)
     await _spLoadSettings();
@@ -5783,6 +5806,7 @@ async function _initSP() {
       showToast('Azure redirect URI 등록 필요. 현재URL: ' + window.location.href.split('?')[0], 'warn');
     } else {
       showToast('SP 연결 실패: ' + errMsg, 'warn');
+      console.error('[SP] 연결 실패:', errMsg, err);
     }
   }
 }
@@ -9971,68 +9995,71 @@ window.onerror=function(msg){if(msg==='Script error.'||msg==='Script Error.')ret
 
 <script>
 
-function _setBar(state, msg){
-  var bar = document.getElementById('sp-bar');
-  if(!bar) return;
-  var cfg = {
-    connecting:{text:'⬤ 연결 중...',bg:'#FEF9C3',color:'#92400E',border:'#FCD34D'},
-    connected: {text:'⬤ 연결됨',   bg:'#DCFCE7',color:'#166534',border:'#86EFAC'},
-    error:     {text:'⬤ 오류',     bg:'#FEE2E2',color:'#991B1B',border:'#FCA5A5'},
-    offline:   {text:'⬤ 미연결',   bg:'#F1F5F9',color:'#94A3B8',border:'#E2E8F0'}
-  };
-  var c = cfg[state] || cfg.offline;
-  bar.textContent = c.text + (msg ? ' ('+msg.slice(0,30)+')' : '');
-  bar.style.background = c.bg;
-  bar.style.color = c.color;
-  bar.style.borderColor = c.border;
-}
-
-document.addEventListener('DOMContentLoaded', function(){
-  var isPending = localStorage.getItem('_spPending') === '1';
-  var hasCode = location.search.indexOf('code=')>-1 || location.hash.indexOf('code=')>-1 || location.search.indexOf('state=')>-1;
-  if(isPending || hasCode){
-    localStorage.removeItem('_spPending');
-    if(history.replaceState) history.replaceState({}, '', location.pathname);
-    var sv = localStorage.getItem('_savedSession');
-    if(sv){
-      try{
-        var sess = JSON.parse(sv);
-        session = sess;
-        if(sess.team && typeof applyCurrentTeam==='function') applyCurrentTeam(sess.team);
-        localStorage.removeItem('_savedSession');
-        if(typeof _initApp==='function') _initApp();
-        setTimeout(function(){
-          if(typeof applyPermissions==='function') applyPermissions();
-          if(sess.rep){ var t=document.querySelector('.tab[data-rep="'+sess.rep+'"]'); if(t) t.click(); }
-        }, 200);
-        showToast('👤 '+sess.rep+'으로 복원되었습니다.');
-      }catch(ex){}
-    }
-    setTimeout(async function(){
-      try{ if(typeof _initSP==='function') await _initSP(); }
-      catch(e){ _setBar('error', e.message); }
-    }, 600);
-  }
-});
-
+// ── MSAL 초기화 및 리다이렉트 자동 처리 ──
 (function(){
-  var _origRep = typeof doRepLogin==='function' ? doRepLogin : null;
-  var _origAdm = typeof doAdminLogin==='function' ? doAdminLogin : null;
-  function _wrapSP(){
-    setTimeout(async function(){
-      try{
-        if(!window._isSPReady && typeof _initSP==='function') await _initSP();
-      }catch(e){ _setBar('error', e.message); }
-    }, 800);
+  function initMSAL(){
+    if(typeof msal === 'undefined'){ setTimeout(initMSAL, 200); return; }
+    try {
+      var app = new msal.PublicClientApplication({
+        auth: {
+          clientId: _SP_CONFIG.clientId,
+          authority: _SP_CONFIG.authority,
+          redirectUri: _SP_CONFIG.redirectUri
+        },
+        cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: true }
+      });
+      app.initialize().then(function(){
+        window._msalApp = app;
+
+        // 리다이렉트 후 돌아온 경우 처리
+        var isRedirect = window.location.search.indexOf('code=') > -1
+                      || window.location.hash.indexOf('code=') > -1
+                      || window.location.search.indexOf('state=') > -1
+                      || localStorage.getItem('_spPending') === '1';
+
+        if(isRedirect){
+          localStorage.removeItem('_spPending');
+          // URL 정리
+          if(window.history && window.history.replaceState)
+            window.history.replaceState({}, document.title, window.location.pathname);
+          // SP 연결 시도
+          if(typeof _initSP === 'function') _initSP();
+        } else {
+          // 일반 접속: silent 시도 (자동 로그인)
+          var accounts = app.getAllAccounts();
+          if(accounts.length > 0 && !window._isSPReady){
+            app.acquireTokenSilent({
+              scopes: _SP_CONFIG.scopes,
+              account: accounts[0]
+            }).then(function(sr){
+              if(sr && sr.accessToken){
+                window._spToken = sr.accessToken;
+                if(typeof _initSP === 'function') _initSP();
+              }
+            }).catch(function(){});
+          }
+        }
+      }).catch(function(e){ console.warn('MSAL init error:', e); });
+    } catch(e){ console.warn('MSAL create error:', e); }
   }
-  if(_origRep) window.doRepLogin = function(rep){
-    localStorage.setItem('_savedSession', JSON.stringify({role:'rep',rep:rep,team:window.currentTeam}));
-    _origRep(rep); _wrapSP();
-  };
-  if(_origAdm) window.doAdminLogin = function(){
-    _origAdm.apply(this,arguments); _wrapSP();
-  };
+  setTimeout(initMSAL, 0);
 })();
 
 </script>
 </body>
+</html
+/* ── 이슈사항 select: 영업활동과 동일 높이 ── */
+.iss-input-sec .dt select {
+  height: 28px !important;
+  min-height: 28px !important;
+  padding: 0 20px 0 6px !important;
+  box-sizing: border-box !important;
+  vertical-align: middle !important;
+  font-size: 12px !important;
+}
+.iss-input-sec td {
+  padding: 4px 6px !important;
+  vertical-align: middle !important;
+  overflow: visible !important;
+}
+>
