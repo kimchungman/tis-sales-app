@@ -10059,7 +10059,7 @@ async function _startSP() {
     if(inIframe) {
       // iframe/모바일 webview
       var pr = await app.loginPopup({
-        scopes: (_SP_CONFIG.loginScopes||['User.Read']).concat(_SP_CONFIG.scopes||[]),
+        scopes: ['https://tis21.sharepoint.com/.default'],
         redirectUri: 'https://login.microsoftonline.com/common/oauth2/nativeclient'
       });
       if(pr && pr.accessToken) {
