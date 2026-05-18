@@ -1475,8 +1475,13 @@ td.lbl-row-rate {
 
 
 
-<!-- MSAL CDN -->
-<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js" crossorigin="anonymous"></script>
+<!-- MSAL CDN (다중 소스) -->
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/dist/msal-browser.min.js"></script>
+<script>
+if(typeof msal==='undefined'){
+  document.write('<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"><\/script>');
+}
+</script>
 
 /* ── 파이프라인/이슈현황 공통 CSS ── */
 #pipe-table td, #iss-list td { vertical-align:middle !important; }
@@ -5863,6 +5868,23 @@ function _setSPStatus(state) {
 
 // ── MSAL 토큰 획득 (팝업 로그인) ───────────────────────────
 async function _getToken() {
+  // msal 로드 확인
+  if(typeof msal === 'undefined') {
+    try {
+      await new Promise(function(resolve, reject) {
+        var s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/dist/msal-browser.min.js';
+        s.onload = resolve;
+        s.onerror = function() {
+          var s2 = document.createElement('script');
+          s2.src = 'https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js';
+          s2.onload = resolve; s2.onerror = reject;
+          document.head.appendChild(s2);
+        };
+        document.head.appendChild(s);
+      });
+    } catch(e) { throw new Error('MSAL 로드 실패: ' + e.message); }
+  }
   const msalApp = new msal.PublicClientApplication({
     auth: {
       clientId:    _SP_CONFIG.clientId,
