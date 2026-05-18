@@ -2978,9 +2978,19 @@ function showPage(id,navEl){
       setTimeout(function(){
         var pageInput = document.getElementById('page-input');
         if(!pageInput) return;
-        var myTab = pageInput.querySelector('.tab[data-rep="'+session.rep+'"]');
-        if(myTab && !myTab.classList.contains('active')) myTab.click();
-      }, 80);
+        // 팀 탭 먼저 선택
+        if(session.team){
+          var teamBtn = pageInput.querySelector('.tis-tab[data-tab="'+session.team+'"]');
+          if(teamBtn && !teamBtn.classList.contains('active')) teamBtn.click();
+        }
+        // 그 다음 담당자 탭 선택
+        setTimeout(function(){
+          var pageInput2 = document.getElementById('page-input');
+          if(!pageInput2) return;
+          var myTab = pageInput2.querySelector('.tab[data-rep="'+session.rep+'"]');
+          if(myTab && !myTab.classList.contains('active')) myTab.click();
+        }, 100);
+      }, 150);
     }
   } else if(id==='issues'){
     initIssueTabs();
@@ -5926,7 +5936,13 @@ function _applySnap(snap, date) {
   if (snap.labels)    Object.assign(labels, snap.labels);
   const de = document.getElementById('mtg-date');
   if (de) { de.value = date; updateSBWeek(new Date(date)); }
-  buildRepTabs(); buildRepInputs(); populateFilters();
+  // input 페이지 리빌드: 현재 보고 있지 않을 때만 (탭 초기화 방지)
+  var _inputActive = document.getElementById('page-input') && 
+    document.getElementById('page-input').classList.contains('active');
+  if(!_inputActive){
+    buildRepTabs(); buildRepInputs();
+  }
+  populateFilters();
   renderDashboard(); renderIssues(); renderPipeline(); applyLabels();
   setTimeout(()=>{ attachAllNumFormats(); resizeAllTextareas(); }, 100);
 }
