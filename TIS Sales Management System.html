@@ -3061,54 +3061,43 @@ function showPage(id,navEl){
     if(typeof applyPermissions==='function') setTimeout(applyPermissions, 30);
     // 참가자: SP 로드 후 본인 팀+담당자 탭 자동 선택
     if(session && session.role==='rep' && session.rep){
-      var _autoSelectTab = function(){
+      // ── 자동 탭 선택: switchInputTeam → DOM 폴링 → 탭 클릭 ──
+      var _doAutoTab = function(){
         var pageInput = document.getElementById('page-input');
-        if(!pageInput) return;
-        // 1. 팀 탭 선택
-        if(session.team){
-          var _tb = pageInput.querySelector('.tis-tab[data-tab="'+session.team+'"]');
-          if(!_tb){
-            // 팀 탭 없으면 switchInputTeam으로 팀 전환
-            if(typeof switchInputTeam==='function') switchInputTeam(session.team);
-            setTimeout(function(){
-              var _tb2 = pageInput.querySelector('.tab[data-rep="'+session.rep+'"]');
-              if(_tb2) _tb2.click();
-            }, 150);
-            return;
+        if(!pageInput || !session.rep) return;
+
+        // 1. switchInputTeam 직접 호출 (buildRepTabs + buildRepInputs 실행)
+        if(typeof switchInputTeam==='function') switchInputTeam(session.team);
+
+        // 2. 담당자 탭 DOM이 실제 생성될 때까지 폴링 (50ms 간격)
+        var _tries = 0;
+        var _poll = setInterval(function(){
+          _tries++;
+          var _repTab = pageInput.querySelector('.tab[data-rep="'+session.rep+'"]');
+          if(_repTab){
+            clearInterval(_poll);
+            // 탭 클릭 → 섹션 표시
+            _repTab.click();
+            // 권한 재적용 (readonly 보정)
+            if(typeof applyPermissions==='function') setTimeout(applyPermissions, 50);
+          } else if(_tries > 40){ // 2초(40×50ms) 이상 대기 시 포기
+            clearInterval(_poll);
           }
-          if(!_tb.classList.contains('active')) _tb.click();
-        }
-        // 2. 담당자 탭 선택
-        setTimeout(function(){
-          var _rt = pageInput.querySelector('.tab[data-rep="'+session.rep+'"]');
-          if(_rt) _rt.click();
-        }, 150);
+        }, 50);
       };
-      // 탭 DOM 존재 여부를 직접 폴링 (isSPReady는 설정 로드 전에 true)
-      var _waitTab = setInterval(function(){
-        var pageInput2 = document.getElementById('page-input');
-        if(!pageInput2) return;
-        var _myTab = pageInput2.querySelector('.tab[data-rep="'+session.rep+'"]');
-        if(_myTab){
-          // 탭 DOM 생성 완료 → 클릭
-          clearInterval(_waitTab);
-          _autoSelectTab();
-        } else if(window._spSettingsLoaded){
-          // 설정 로드 완료됐는데 탭 없음 → REPS 업데이트 후 재빌드
-          clearInterval(_waitTab);
-          if(typeof switchInputTeam==='function') switchInputTeam(session.team);
-          setTimeout(function(){
-            var _t = pageInput2.querySelector('.tab[data-rep="'+session.rep+'"]');
-            if(_t) _t.click();
-            if(typeof applyPermissions==='function') applyPermissions();
-          }, 200);
+
+      // 설정 로드 완료 대기 후 실행 (_spSettingsLoaded 폴링)
+      var _waitSettings = setInterval(function(){
+        if(window._spSettingsLoaded){
+          clearInterval(_waitSettings);
+          _doAutoTab();
         }
-      }, 200);
-      // 최대 8초 대기 후 포기
+      }, 100);
+      // 최대 10초 대기 후 강제 실행
       setTimeout(function(){
-        clearInterval(_waitTab);
-        if(window._spSettingsLoaded) _autoSelectTab();
-      }, 8000);
+        clearInterval(_waitSettings);
+        _doAutoTab();
+      }, 10000);
     }
   } else if(id==='issues'){
     initIssueTabs();
@@ -6208,25 +6197,21 @@ async function _spLoadSettings() {
       if(typeof applyCurrentTeam==='function') applyCurrentTeam(session.team);
       if(typeof buildRepTabs==='function') buildRepTabs();
     }
-    // 현재 페이지가 input이면 내 담당자 탭 자동 선택
+    // 현재 페이지가 input이면 DOM 폴링으로 담당자 탭 자동 선택
     var _inputPage = document.getElementById('page-input');
     if(_inputPage && _inputPage.classList.contains('active')){
-      // switchInputTeam 후 DOM 생성 대기
-      setTimeout(function(){
-        var _myTab = _inputPage.querySelector('.tab[data-rep="'+session.rep+'"]');
-        if(_myTab){
-          _myTab.click();
+      var _tries2 = 0;
+      var _poll2 = setInterval(function(){
+        _tries2++;
+        var _t = _inputPage.querySelector('.tab[data-rep="'+session.rep+'"]');
+        if(_t){
+          clearInterval(_poll2);
+          _t.click();
           if(typeof applyPermissions==='function') setTimeout(applyPermissions, 50);
-        } else {
-          // 탭 아직 없으면 REPS 재확인 후 rebuild
-          if(typeof buildRepTabs==='function') buildRepTabs();
-          setTimeout(function(){
-            var _t2 = _inputPage.querySelector('.tab[data-rep="'+session.rep+'"]');
-            if(_t2) _t2.click();
-            if(typeof applyPermissions==='function') applyPermissions();
-          }, 150);
+        } else if(_tries2 > 40){
+          clearInterval(_poll2);
         }
-      }, 200);
+      }, 50);
     }
   }
   // 현재 페이지 팀 탭 재빌드
