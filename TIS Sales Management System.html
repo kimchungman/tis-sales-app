@@ -3057,24 +3057,41 @@ function showPage(id,navEl){
     initInputTabs();
     if(typeof buildRepTabs==='function') buildRepTabs();
     if(typeof buildRepInputs==='function') buildRepInputs();
-    // 참가자 접속 시 본인 탭 자동 선택 (page-input 내부만)
+    // 참가자: SP 로드 후 본인 팀+담당자 탭 자동 선택
     if(session && session.role==='rep' && session.rep){
-      setTimeout(function(){
+      var _autoSelectTab = function(){
         var pageInput = document.getElementById('page-input');
         if(!pageInput) return;
-        // 팀 탭 먼저 선택
+        // 1. 팀 탭 선택
         if(session.team){
-          var teamBtn = pageInput.querySelector('.tis-tab[data-tab="'+session.team+'"]');
-          if(teamBtn && !teamBtn.classList.contains('active')) teamBtn.click();
+          var _tb = pageInput.querySelector('.tis-tab[data-tab="'+session.team+'"]');
+          if(!_tb){
+            // 팀 탭 없으면 switchInputTeam으로 팀 전환
+            if(typeof switchInputTeam==='function') switchInputTeam(session.team);
+            setTimeout(function(){
+              var _tb2 = pageInput.querySelector('.tab[data-rep="'+session.rep+'"]');
+              if(_tb2) _tb2.click();
+            }, 150);
+            return;
+          }
+          if(!_tb.classList.contains('active')) _tb.click();
         }
-        // 그 다음 담당자 탭 선택
+        // 2. 담당자 탭 선택
         setTimeout(function(){
-          var pageInput2 = document.getElementById('page-input');
-          if(!pageInput2) return;
-          var myTab = pageInput2.querySelector('.tab[data-rep="'+session.rep+'"]');
-          if(myTab && !myTab.classList.contains('active')) myTab.click();
-        }, 100);
-      }, 150);
+          var _rt = pageInput.querySelector('.tab[data-rep="'+session.rep+'"]');
+          if(_rt) _rt.click();
+        }, 150);
+      };
+      // SP 로드 완료 여부에 따라 즉시 또는 대기 후 실행
+      if(window._isSPReady){
+        setTimeout(_autoSelectTab, 150);
+      } else {
+        // SP 로드 완료까지 최대 5초 대기
+        var _waitSP = setInterval(function(){
+          if(window._isSPReady){ clearInterval(_waitSP); setTimeout(_autoSelectTab, 150); }
+        }, 300);
+        setTimeout(function(){ clearInterval(_waitSP); _autoSelectTab(); }, 5000);
+      }
     }
   } else if(id==='issues'){
     initIssueTabs();
@@ -3274,7 +3291,16 @@ function renderDashboard(){try{
   });
   const ctx2=document.getElementById('rep-chart');
   if(ctx2){
-    if(window._repChart){window._repChart.destroy();window._repChart=null;}
+    try{
+      // 기존 차트 있으면 update() 사용 (destroy/recreate 방지)
+      if(window._repChart && window._repChart.data){
+        window._repChart.data.labels = repNames;
+        window._repChart.data.datasets[0].data = repRates;
+        window._repChart.data.datasets[0].backgroundColor = repColors;
+        window._repChart.update('none');
+        return;
+      }
+    }catch(e){ if(window._repChart){try{window._repChart.destroy();}catch(e2){} window._repChart=null;} }
     try{
       window._repChart=new Chart(ctx2.getContext('2d'),{
         type:'bar',
@@ -3465,7 +3491,14 @@ function renderMainChart(){
   const fD=MONTHS.map((_,i)=>rs.reduce((s,r)=>s+(store.reps[r].forecast[i]||0),0));
   const ctx=document.getElementById('main-chart')||document.getElementById('mainChart');
   if(!ctx)return;
-  if(window._mainChart)window._mainChart.destroy();
+  // 기존 차트 update() 사용
+  if(window._mainChart && window._mainChart.data){
+    var _mc=window._mainChart;
+    _mc.data.datasets[0].data=MONTHS.map((_,i)=>rs.reduce((s,r)=>s+(store.reps[r]?(store.reps[r].plan[i]||0):0),0));
+    _mc.data.datasets[1].data=MONTHS.map((_,i)=>rs.reduce((s,r)=>s+(store.reps[r]?(store.reps[r].actual[i]||0):0),0));
+    _mc.data.datasets[2].data=MONTHS.map((_,i)=>rs.reduce((s,r)=>s+(store.reps[r]?(store.reps[r].forecast[i]||0):0),0));
+    try{ _mc.update('none'); return; }catch(e){ window._mainChart.destroy(); window._mainChart=null; }
+  } else if(window._mainChart){ try{window._mainChart.destroy();}catch(e){} window._mainChart=null; }
   window._mainChart=new Chart(ctx.getContext('2d'),{
     type:'line',
     data:{labels:MONTHS,datasets:[
@@ -5907,11 +5940,14 @@ async function _initSP() {
       if(!window._isSPReady) return;
       try{
         // 변경 전 해시
+        // _applySnap 내부 renderDashboard 막기
+        window._skipApplyRender = true;
         var _before = JSON.stringify(store.reps);
         await _spLoadToday();
         await _spLoadHistList();
+        window._skipApplyRender = false;
         var _after = JSON.stringify(store.reps);
-        // 데이터 실제 변경된 경우에만 재렌더
+        // 실제 데이터 변경 시에만 렌더 (차트 깜빡임 방지)
         if(_before !== _after){
           if(typeof renderDashboard==='function') renderDashboard();
           if(typeof renderIssues==='function') renderIssues();
@@ -6043,7 +6079,9 @@ function _applySnap(snap, date) {
     buildRepTabs(); buildRepInputs();
   }
   populateFilters();
-  renderDashboard(); renderIssues(); renderPipeline(); applyLabels();
+  if(!window._skipApplyRender){
+    renderDashboard(); renderIssues(); renderPipeline(); applyLabels();
+  }
   setTimeout(()=>{ attachAllNumFormats(); resizeAllTextareas(); }, 100);
 }
 
@@ -6137,18 +6175,21 @@ async function _spLoadSettings() {
     _tabState.issues   = session.team;
     _tabState.pipeline = session.team;
     _tabState.visits   = session.team;
-    // ★ 핵심: REPS를 현재 팀으로 업데이트 (buildRepTabs가 REPS 기반)
-    if(typeof applyCurrentTeam==='function') applyCurrentTeam(session.team);
-    // 탭 재빌드 (REPS 업데이트 후)
-    if(typeof buildRepTabs==='function') buildRepTabs();
-    // 현재 페이지가 input이면 내 탭 자동 선택
+    // ★ switchInputTeam 사용: currentTeam, REPS, 팀탭, 담당자탭 전체 갱신
+    if(typeof switchInputTeam==='function'){
+      switchInputTeam(session.team);
+    } else {
+      if(typeof applyCurrentTeam==='function') applyCurrentTeam(session.team);
+      if(typeof buildRepTabs==='function') buildRepTabs();
+    }
+    // 현재 페이지가 input이면 내 담당자 탭 자동 선택
     var _inputPage = document.getElementById('page-input');
     if(_inputPage && _inputPage.classList.contains('active')){
-      if(typeof initInputTabs==='function') initInputTabs();
       setTimeout(function(){
         var _myTab = _inputPage.querySelector('.tab[data-rep="'+session.rep+'"]');
         if(_myTab && !_myTab.classList.contains('active')) _myTab.click();
-      }, 100);
+        else if(_myTab) _myTab.click(); // 이미 active여도 클릭해서 확실히 표시
+      }, 200);
     }
   }
   // 현재 페이지 팀 탭 재빌드
