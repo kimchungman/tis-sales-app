@@ -1547,6 +1547,11 @@ var st,ct,ut,lt,dt,ht,pt,gt,ft,mt=function(){function t(e,t,r){this.networkInter
 
 
 </script>
+<script>
+console.log("[STEP1] typeof msal:", typeof msal);
+console.log("[STEP1] window.msal:", window.msal);
+</script>
+
 
 /* ── 파이프라인/이슈현황 공통 CSS ── */
 #pipe-table td, #iss-list td { vertical-align:middle !important; }
@@ -9944,108 +9949,125 @@ window.onerror=function(msg){if(msg==='Script error.'||msg==='Script Error.')ret
 </script>
 
 <script>
-// ════════════════════════════════
-// SP 연동 + MSAL 인증
-// ════════════════════════════════
+// ════════ SP 연동 (단순 순차 구조) ════════
 
-// MSAL은 이 스크립트보다 먼저 로드된 인라인 스크립트에 있음
-// window.msal이 반드시 정의되어 있어야 함
-console.log('[MSAL] 라이브러리 상태:', typeof msal !== 'undefined' ? '로드됨 ✅' : '없음 ❌');
-
-// SP 상태 표시
 function _setBar(state, msg){
   var bar = document.getElementById('sp-status');
   if(!bar) return;
-  var cfg = {
-    connecting:{text:'⬤ 연결 중...',bg:'#FEF9C3',color:'#92400E',border:'#FCD34D'},
-    connected: {text:'⬤ 연결됨',   bg:'#DCFCE7',color:'#166534',border:'#86EFAC'},
-    error:     {text:'⬤ 오류',     bg:'#FEE2E2',color:'#991B1B',border:'#FCA5A5'},
-    offline:   {text:'⬤ 미연결',   bg:'#F1F5F9',color:'#94A3B8',border:'#E2E8F0'}
+  var styles = {
+    connecting:'background:#FEF9C3;color:#92400E;border-color:#FCD34D',
+    connected:'background:#DCFCE7;color:#166534;border-color:#86EFAC',
+    error:'background:#FEE2E2;color:#991B1B;border-color:#FCA5A5',
+    offline:'background:#F1F5F9;color:#94A3B8;border-color:#E2E8F0'
   };
-  var c = cfg[state] || cfg.offline;
-  bar.textContent = c.text + (msg ? ' ('+msg.slice(0,25)+')' : '');
-  bar.style.cssText += ';background:'+c.bg+';color:'+c.color+';border-color:'+c.border;
+  var texts = {connecting:'⬤ 연결 중...',connected:'⬤ 연결됨',error:'⬤ 오류',offline:'⬤ 미연결'};
+  bar.textContent = (texts[state]||'⬤ 미연결') + (msg?' ('+msg.slice(0,20)+')':'');
+  bar.style.cssText = 'display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;border:1.5px solid;margin-right:8px;' + (styles[state]||styles.offline);
 }
 
-// MSAL 앱 초기화 (Promise 저장)
-var _msalPromise = null;
+// 단 하나의 함수 - 순차 await 구조 - setTimeout/fallback 없음
+async function _startSP() {
+  console.log('[STEP2] _startSP 진입');
+  console.log('[STEP2] typeof msal:', typeof msal);
+  console.log('[STEP2] typeof _SP_CONFIG:', typeof _SP_CONFIG);
 
-function _getMSALApp() {
-  if(_msalPromise) return _msalPromise;
-  if(typeof msal === 'undefined'){
-    _msalPromise = Promise.reject(new Error('MSAL 라이브러리 없음 - 네트워크 확인'));
-    return _msalPromise;
+  _setBar('connecting');
+
+  // STEP2: msal 존재 확인
+  if(typeof msal === 'undefined') {
+    var err = 'MSAL 라이브러리 없음 (typeof msal === undefined)';
+    console.error('[STEP2] FAIL:', err);
+    _setBar('error', err);
+    if(typeof showToast==='function') showToast('SP 오류: '+err,'warn');
+    return;
   }
-  _msalPromise = (function(){
-    var app = new msal.PublicClientApplication({
-      auth:{
+  console.log('[STEP2] msal 로드됨 ✅');
+
+  // STEP3: _SP_CONFIG 확인
+  if(typeof _SP_CONFIG === 'undefined') {
+    var err2 = '_SP_CONFIG 없음';
+    console.error('[STEP3] FAIL:', err2);
+    _setBar('error', err2);
+    return;
+  }
+  console.log('[STEP3] _SP_CONFIG:', _SP_CONFIG.clientId, _SP_CONFIG.redirectUri);
+
+  // STEP4: PublicClientApplication 생성
+  var msalApp;
+  try {
+    msalApp = new msal.PublicClientApplication({
+      auth: {
         clientId: _SP_CONFIG.clientId,
-        authority: _SP_CONFIG.authority,
+        authority: 'https://login.microsoftonline.com/' + _SP_CONFIG.tenantId,
         redirectUri: _SP_CONFIG.redirectUri
       },
-      cache:{ cacheLocation:'localStorage', storeAuthStateInCookie:true }
+      cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: true }
     });
-    return app.initialize().then(function(){
-      window._msalApp = app;
-      console.log('[MSAL] 초기화 완료, 계정:', app.getAllAccounts().length);
-      return app;
-    });
-  })();
-  return _msalPromise;
-}
+    console.log('[STEP4] PublicClientApplication 생성 완료 ✅');
+  } catch(e) {
+    console.error('[STEP4] 생성 실패:', e);
+    _setBar('error', e.message);
+    return;
+  }
 
-// SP 전체 연결 흐름
-async function _startSP() {
+  // STEP5: initialize
   try {
-    _setBar('connecting');
-    var app = await _getMSALApp();
+    await msalApp.initialize();
+    window._msalApp = msalApp;
+    console.log('[STEP5] initialize 완료 ✅');
+  } catch(e) {
+    console.error('[STEP5] initialize 실패:', e);
+    _setBar('error', e.message);
+    return;
+  }
 
-    // 리다이렉트 결과 처리
+  // STEP6: 리다이렉트 결과 처리
+  try {
+    var rr = await msalApp.handleRedirectPromise();
+    if(rr && rr.accessToken) {
+      console.log('[STEP6] 리다이렉트 토큰 획득 ✅');
+      window._spToken = rr.accessToken;
+      if(typeof _initSP==='function') await _initSP();
+      _setBar('connected');
+      return;
+    }
+  } catch(e) { console.warn('[STEP6] redirect 처리 오류:', e.message); }
+
+  // STEP7: 계정 확인
+  var accs = msalApp.getAllAccounts();
+  console.log('[STEP7] 캐시 계정 수:', accs.length);
+
+  // STEP8: Silent 시도
+  if(accs.length > 0) {
     try {
-      var rr = await app.handleRedirectPromise();
-      if(rr && rr.accessToken){
-        console.log('[MSAL] 리다이렉트 토큰 획득');
-        window._spToken = rr.accessToken;
+      var sr = await msalApp.acquireTokenSilent({ scopes: _SP_CONFIG.scopes, account: accs[0] });
+      if(sr && sr.accessToken) {
+        console.log('[STEP8] Silent 토큰 획득 ✅');
+        window._spToken = sr.accessToken;
         if(typeof _initSP==='function') await _initSP();
         _setBar('connected');
         return;
       }
-    } catch(e){}
+    } catch(e) { console.warn('[STEP8] Silent 실패:', e.message); }
+  }
 
-    // Silent 토큰 시도
-    var accs = app.getAllAccounts();
-    console.log('[MSAL] 캐시 계정:', accs.length);
-    if(accs.length > 0){
-      try{
-        var sr = await app.acquireTokenSilent({ scopes:_SP_CONFIG.scopes, account:accs[0] });
-        if(sr && sr.accessToken){
-          console.log('[MSAL] Silent 토큰 성공');
-          window._spToken = sr.accessToken;
-          if(typeof _initSP==='function') await _initSP();
-          _setBar('connected');
-          return;
-        }
-      }catch(e){ console.warn('[MSAL] Silent 실패:', e.message); }
-    }
-
-    // loginRedirect
-    console.log('[MSAL] loginRedirect 시작');
-    localStorage.setItem('_spPending','1');
-    await app.loginRedirect({
-      scopes: (_SP_CONFIG.loginScopes||['User.Read']).concat(_SP_CONFIG.scopes||[])
-    });
-
+  // STEP9: loginRedirect
+  console.log('[STEP9] loginRedirect 시작');
+  localStorage.setItem('_spPending','1');
+  try {
+    await msalApp.loginRedirect({ scopes: ['User.Read'] });
   } catch(e) {
-    console.error('[SP] 연결 실패:', e);
+    console.error('[STEP9] loginRedirect 실패:', e);
     _setBar('error', e.message);
-    if(typeof showToast==='function') showToast('SP 연결 실패: '+e.message,'warn');
+    if(typeof showToast==='function') showToast('MS 로그인 실패: '+e.message,'warn');
   }
 }
 
-// 리다이렉트 후 처리
+// 리다이렉트 후 복귀 처리
 document.addEventListener('DOMContentLoaded', function(){
   var isPending = localStorage.getItem('_spPending')==='1';
-  var hasCode = location.search.indexOf('code=')>-1 || location.hash.indexOf('code=')>-1 || location.search.indexOf('state=')>-1;
+  var hasCode = location.search.indexOf('code=')>-1 || location.hash.indexOf('code=')>-1;
+  console.log('[DOMContentLoaded] isPending:', isPending, 'hasCode:', hasCode);
   if(isPending || hasCode){
     localStorage.removeItem('_spPending');
     if(history.replaceState) history.replaceState({},document.title,location.pathname);
@@ -10061,28 +10083,34 @@ document.addEventListener('DOMContentLoaded', function(){
           if(typeof applyPermissions==='function') applyPermissions();
           if(sess.rep){ var t=document.querySelector('.tab[data-rep="'+sess.rep+'"]'); if(t) t.click(); }
         },200);
-      }catch(ex){}
+      }catch(ex){ console.error('세션 복원 실패:', ex); }
     }
-    setTimeout(function(){ _startSP(); }, 300);
+    _startSP();
   }
 });
 
-// doRepLogin/doAdminLogin 래핑
+// doRepLogin 래핑
 (function(){
-  function _wrapLogin(orig){
-    return function(){
-      var rep = arguments[0];
-      if(rep) localStorage.setItem('_savedSession', JSON.stringify({role:'rep',rep:rep,team:window.currentTeam||''}));
-      var ret = orig.apply(this, arguments);
-      // 클릭 직후 MSAL 초기화 시작 (race condition 방지)
-      _getMSALApp().then(function(){
-        if(!window._isSPReady) return _startSP();
-      }).catch(function(e){ console.warn('[SP]', e.message); });
-      return ret;
-    };
-  }
-  if(typeof doRepLogin==='function') window.doRepLogin = _wrapLogin(doRepLogin);
-  if(typeof doAdminLogin==='function') window.doAdminLogin = _wrapLogin(doAdminLogin);
+  var _orig = window.doRepLogin;
+  if(typeof _orig !== 'function'){ console.warn('doRepLogin 없음'); return; }
+  window.doRepLogin = function(rep){
+    console.log('[doRepLogin] 호출됨, rep:', rep);
+    localStorage.setItem('_savedSession', JSON.stringify({role:'rep',rep:rep,team:window.currentTeam||''}));
+    _orig(rep);
+    console.log('[doRepLogin] _startSP 호출');
+    _startSP();
+  };
+  console.log('[래핑] doRepLogin 래핑 완료 ✅');
+})();
+
+// doAdminLogin 래핑
+(function(){
+  var _orig = window.doAdminLogin;
+  if(typeof _orig !== 'function') return;
+  window.doAdminLogin = function(){
+    _orig.apply(this,arguments);
+    _startSP();
+  };
 })();
 </script>
 </body>
