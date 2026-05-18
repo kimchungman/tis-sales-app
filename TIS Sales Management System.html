@@ -2968,10 +2968,12 @@ function showPage(id,navEl){
     initInputTabs();
     if(typeof buildRepTabs==='function') buildRepTabs();
     if(typeof buildRepInputs==='function') buildRepInputs();
-    // 참가자 접속 시 본인 탭 자동 선택
+    // 참가자 접속 시 본인 탭 자동 선택 (page-input 내부만)
     if(session && session.role==='rep' && session.rep){
       setTimeout(function(){
-        var myTab = document.querySelector('.tab[data-rep="'+session.rep+'"]');
+        var pageInput = document.getElementById('page-input');
+        if(!pageInput) return;
+        var myTab = pageInput.querySelector('.tab[data-rep="'+session.rep+'"]');
         if(myTab && !myTab.classList.contains('active')) myTab.click();
       }, 80);
     }
@@ -9610,7 +9612,7 @@ function _vRow(rep,idx,v){
         +'<div class="sec-body"><div style="overflow-x:auto;">'
         +'<table class="dt" style="min-width:max-content;table-layout:auto;">'
         +'<thead><tr>'
-        +'<th style="'+BG+'width:100px;text-align:center;">방문일자</th>'
+        +'<th style="'+BG+'width:100px;text-align:center;">접점일자</th>'
         +'<th style="'+BG+'width:160px;text-align:center;">고객사명</th>'
         +'<th style="'+BG+'width:110px;text-align:center;">접점 유형</th>'
         +'<th style="'+BG+'width:125px;text-align:center;">접점 목적</th>'
@@ -9935,7 +9937,7 @@ window.renderVisits=function(){
     +'<thead><tr>'
     +'<th style="background:#F8FAFC;color:#64748B;width:62px;">팀</th>'
     +'<th style="background:#F8FAFC;color:#64748B;width:80px;">담당자</th>'
-    +'<th style="background:#F8FAFC;color:#64748B;width:100px;">방문일자</th>'
+    +'<th style="background:#F8FAFC;color:#64748B;width:100px;">접점일자</th>'
     +'<th style="background:#F8FAFC;color:#64748B;width:130px;">고객사명</th>'
     +'<th style="background:#F8FAFC;color:#64748B;width:80px;">접점 유형</th>'
     +'<th style="background:#F8FAFC;color:#64748B;width:90px;">접점 목적</th>'
@@ -10033,16 +10035,14 @@ function _getMSAL() {
   return _msalInitP;
 }
 
+// SP 토큰으로 _initSP 실행
 async function _connectSP(app, account) {
   try {
     var sr = await app.acquireTokenSilent({ scopes: [SP_SCOPE], account: account });
     if(sr && sr.accessToken) {
       window._spToken = sr.accessToken;
       _setBar('connected');
-      if(typeof showToast==='function') showToast('✅ SharePoint 연결됨');
-      if(typeof _initSP==='function') await _initSP();
-      // SP 데이터 로드 후 현재 페이지 재렌더링
-      try{ if(typeof renderDashboard==='function') renderDashboard(); }catch(e){}
+      if(typeof _initSP === 'function') await _initSP();
     }
   } catch(e) {
     console.warn('[SP] 토큰 실패:', e.message);
@@ -10057,7 +10057,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // 1. 항상 handleRedirectPromise 먼저
     var result = null;
     try { result = await app.handleRedirectPromise(); } catch(e) {}
-    console.log('[MSAL] redirect 결과:', result ? result.account.username : '없음');
 
     // 2. account 설정
     if(result && result.account) {
@@ -10066,7 +10065,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 3. account 확인
     var account = app.getActiveAccount() || app.getAllAccounts()[0];
-    console.log('[MSAL] account:', account ? account.username : '없음');
 
     // 4. account 있으면 → 세션 복원 + 앱 진입 + SP 연결
     if(account) {
@@ -10077,29 +10075,33 @@ document.addEventListener('DOMContentLoaded', function() {
           var sess = JSON.parse(sv);
           session = sess;
           localStorage.removeItem('_savedSession');
+          // 팀 적용
           if(sess.team && typeof applyCurrentTeam==='function') applyCurrentTeam(sess.team);
+          // 모든 탭 상태를 본인 팀으로
+          if(sess.role === 'rep' && sess.team) {
+            _tabState.input    = sess.team;
+            _tabState.issues   = sess.team;
+            _tabState.pipeline = sess.team;
+            _tabState.visits   = sess.team;
+          }
+          // 앱 초기화 (대시보드 표시)
           if(typeof _initApp==='function') _initApp();
           setTimeout(function(){
             if(typeof applyPermissions==='function') applyPermissions();
-            // ✅ querySelector 수정
-            if(sess.rep){
-              var t = document.querySelector('.tab[data-rep="' + sess.rep + '"]');
-              if(t) t.click();
-            }
-            if(typeof showToast==='function') showToast('👤 ' + (sess.rep||'관리자') + '으로 복원');
-          }, 300);
+            // ⚠️ t.click() 제거 - 대시보드에서 다른 페이지로 이동하는 원인
+            if(typeof showToast==='function') showToast('👤 ' + (sess.rep||sess.role||'') + '으로 복원');
+          }, 200);
         } catch(ex) { console.error('세션 복원 실패:', ex); }
       }
-      // SP 연결
+      // SP 연결 (데이터 로드 → 대시보드 재렌더링)
       _setBar('connecting');
       await _connectSP(app, account);
 
     } else {
-      // account 없음 → 정상 참가자 선택 화면
+      // account 없음 → 참가자 선택 대기
       localStorage.removeItem('_spPending');
       localStorage.removeItem('_savedSession');
       if(history.replaceState) history.replaceState({}, document.title, location.pathname);
-      console.log('[MSAL] 미로그인 → 참가자 선택 대기');
       _setBar('offline');
     }
 
@@ -10108,22 +10110,18 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
-// ── 참가자/관리자/게스트 선택 시 호출 ──
+// ── 참가자/관리자/게스트 선택 시 ──
 async function _startSP() {
   if(window._isSPReady) return;
-
   var app;
   try { app = await _getMSAL(); } catch(e) { _setBar('error', e.message); return; }
 
   var account = app.getActiveAccount() || app.getAllAccounts()[0];
 
   if(account) {
-    // 이미 로그인 → silent SP 연결
     _setBar('connecting');
     await _connectSP(app, account);
   } else {
-    // 미로그인 → loginRedirect
-    console.log('[SP] loginRedirect 시작');
     if(session && session.role) {
       localStorage.setItem('_savedSession', JSON.stringify(session));
     }
@@ -10139,20 +10137,30 @@ async function _startSP() {
   }
 }
 
-// ── doRepLogin / doAdminLogin / doGuestLogin 래핑 ──
+// ── 로그인 래핑 (doRepLogin, doAdminLogin, doGuestLogin) ──
 (function(){
   function wrapLogin(fnName) {
     var orig = window[fnName];
     if(typeof orig !== 'function') return;
     window[fnName] = function() {
+      // 팀 탭 상태 설정 (rep만)
+      if(fnName === 'doRepLogin' && arguments[0]) {
+        var rep = arguments[0];
+        var team = window.currentTeam || '';
+        _tabState.input    = team;
+        _tabState.issues   = team;
+        _tabState.pipeline = team;
+        _tabState.visits   = team;
+      }
       orig.apply(this, arguments);
+      // SP 연결 (대시보드에 있는 상태에서)
       setTimeout(function(){ _startSP(); }, 100);
     };
-    console.log('[래핑]', fnName, 'OK');
   }
   wrapLogin('doRepLogin');
   wrapLogin('doAdminLogin');
   wrapLogin('doGuestLogin');
+  console.log('[SP] 로그인 래핑 완료');
 })();
 </script>
 </body>
