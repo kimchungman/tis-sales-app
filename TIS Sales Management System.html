@@ -5677,27 +5677,25 @@ function _setSPStatus(state) {
 
 // ── MSAL 토큰 획득 (팝업 로그인) ───────────────────────────
 async function _getToken() {
-  if(!window._msalApp){
-    if(typeof msal==='undefined') throw new Error('MSAL 라이브러리 없음');
-    var _a = new msal.PublicClientApplication({
-      auth:{ clientId:_SP_CONFIG.clientId, authority:_SP_CONFIG.authority, redirectUri:_SP_CONFIG.redirectUri },
-      cache:{ cacheLocation:'localStorage', storeAuthStateInCookie:true }
-    });
-    await _a.initialize();
-    window._msalApp = _a;
-  }
+  // MSAL 초기화 완료까지 대기 (타이밍 보장)
+  if(window._msalInitPromise) await window._msalInitPromise;
+  if(!window._msalApp) throw new Error('MSAL 초기화 실패');
+
   var app = window._msalApp;
+  // 리다이렉트 결과 처리
   try{
     var rr = await app.handleRedirectPromise();
     if(rr && rr.accessToken) return rr.accessToken;
   }catch(e){}
+  // Silent 토큰 (자동 로그인)
   var accs = app.getAllAccounts();
   if(accs.length > 0){
     try{
       var sr = await app.acquireTokenSilent({ scopes:_SP_CONFIG.scopes, account:accs[0] });
       if(sr && sr.accessToken) return sr.accessToken;
-    }catch(e){ console.warn('[MSAL] silent 실패'); }
+    }catch(e){ console.warn('[MSAL] silent 실패, redirect 시도'); }
   }
+  // MS 로그인 페이지로 이동
   localStorage.setItem('_spPending','1');
   await app.loginRedirect({
     scopes: (_SP_CONFIG.loginScopes||['User.Read']).concat(_SP_CONFIG.scopes||[])
@@ -9964,6 +9962,39 @@ window.onerror=function(msg){if(msg==='Script error.'||msg==='Script Error.')ret
 </script>
 
 <script>
+// ── MSAL 즉시 초기화 (앱 로드 시 바로 실행) ──
+window._msalInitPromise = (function(){
+  if(typeof msal === 'undefined'){
+    // MSAL 아직 안로드됨, 폴링으로 대기
+    return new Promise(function(resolve, reject){
+      var count = 0;
+      var t = setInterval(function(){
+        count++;
+        if(typeof msal !== 'undefined'){
+          clearInterval(t);
+          var app = new msal.PublicClientApplication({
+            auth:{ clientId:_SP_CONFIG.clientId, authority:_SP_CONFIG.authority, redirectUri:_SP_CONFIG.redirectUri },
+            cache:{ cacheLocation:'localStorage', storeAuthStateInCookie:true }
+          });
+          app.initialize().then(function(){
+            window._msalApp = app;
+            resolve(app);
+          }).catch(reject);
+        }
+        if(count > 50) { clearInterval(t); reject(new Error('MSAL 로드 타임아웃')); }
+      }, 100);
+    });
+  }
+  var app = new msal.PublicClientApplication({
+    auth:{ clientId:_SP_CONFIG.clientId, authority:_SP_CONFIG.authority, redirectUri:_SP_CONFIG.redirectUri },
+    cache:{ cacheLocation:'localStorage', storeAuthStateInCookie:true }
+  });
+  return app.initialize().then(function(){
+    window._msalApp = app;
+    return app;
+  });
+})();
+
 
 function _setBar(state, msg){
   var bar = document.getElementById('sp-bar');
