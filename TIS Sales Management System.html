@@ -3073,44 +3073,18 @@ function showPage(id,navEl){
     if(typeof applyPermissions==='function') setTimeout(applyPermissions, 30);
     // 참가자: 팀 탭 → 담당자 탭 자동 선택
     if(session && session.role==='rep' && session.rep){
-      var _clickRepTab = function(){
-        var _repTab = document.querySelector('#rep-tabs .tab[data-rep="'+session.rep+'"]');
-        if(_repTab){
-          _repTab.click();
-          if(typeof applyPermissions==='function') setTimeout(applyPermissions, 30);
-        }
-      };
-
-      var _clickTeamTab = function(){
-        var _teamTab = document.querySelector('#input-team-tabs .tis-tab[data-tab="'+session.team+'"]');
-        if(_teamTab){
-          if(!_teamTab.classList.contains('active')) _teamTab.click();
-          setTimeout(_clickRepTab, 150);
-          return true;
-        }
-        return false;
-      };
-
       setTimeout(function(){
-        // 기존팀: 팀 탭 즉시 클릭
-        if(_clickTeamTab()) return;
+        // 1. 내 팀 탭 클릭
+        var teamTab = document.querySelector('#input-team-tabs .tis-tab[data-tab="'+session.team+'"]');
+        if(teamTab && !teamTab.classList.contains('active')) teamTab.click();
 
-        // 신규팀: initInputTabs 재호출 → 팀 탭 생성 → 클릭
-        // SP 설정 로드 완료 대기 후 재시도
-        var _tries = 0;
-        var _teamPoll = setInterval(function(){
-          _tries++;
-          // SP 로드 완료 시 팀 탭 재빌드
-          if(window._spSettingsLoaded && typeof initInputTabs==='function'){
-            initInputTabs(); // TEAMS 업데이트 후 팀 탭 재생성
-          }
-          if(_clickTeamTab()){
-            clearInterval(_teamPoll);
-          } else if(_tries > 40){ // 8초 대기 후 포기
-            clearInterval(_teamPoll);
-          }
+        // 2. 내 이름 탭 클릭 (팀 탭 클릭 후 DOM 반영 대기)
+        setTimeout(function(){
+          var repTab = document.querySelector('#rep-tabs .tab[data-rep="'+session.rep+'"]');
+          if(repTab) repTab.click();
+          if(typeof applyPermissions==='function') applyPermissions();
         }, 200);
-      }, 80);
+      }, 100);
     }
   } else if(id==='issues'){
     initIssueTabs();
