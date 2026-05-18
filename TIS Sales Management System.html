@@ -5672,7 +5672,7 @@ const _SP_CONFIG = {
   siteUrl:     'https://tis21.sharepoint.com/sites/essales.tis.tm',
   listName:    'WeeklyMeetingData',
   redirectUri: 'https://kimchungman.github.io/tis-sales-app/TIS%20Sales%20Management%20System.html',
-  loginScopes: ['User.Read'],
+  loginScopes: ['https://tis21.sharepoint.com/.default'],
   scopes:      ['https://tis21.sharepoint.com/.default']
 };
 
@@ -10081,7 +10081,7 @@ async function _startSP() {
       // 일반 브라우저 (GitHub Pages)
       localStorage.setItem('_spPending', '1');
       await app.loginRedirect({
-        scopes: (_SP_CONFIG.loginScopes||['User.Read']).concat(_SP_CONFIG.scopes||[])
+        scopes: ['https://tis21.sharepoint.com/.default']
       });
     }
   } catch(e) {
