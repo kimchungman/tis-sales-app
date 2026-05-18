@@ -3083,16 +3083,31 @@ function showPage(id,navEl){
           if(_rt) _rt.click();
         }, 150);
       };
-      // SP 로드 완료 여부에 따라 즉시 또는 대기 후 실행
-      if(window._isSPReady){
-        setTimeout(_autoSelectTab, 150);
-      } else {
-        // SP 로드 완료까지 최대 5초 대기
-        var _waitSP = setInterval(function(){
-          if(window._isSPReady){ clearInterval(_waitSP); setTimeout(_autoSelectTab, 150); }
-        }, 300);
-        setTimeout(function(){ clearInterval(_waitSP); _autoSelectTab(); }, 5000);
-      }
+      // 탭 DOM 존재 여부를 직접 폴링 (isSPReady는 설정 로드 전에 true)
+      var _waitTab = setInterval(function(){
+        var pageInput2 = document.getElementById('page-input');
+        if(!pageInput2) return;
+        var _myTab = pageInput2.querySelector('.tab[data-rep="'+session.rep+'"]');
+        if(_myTab){
+          // 탭 DOM 생성 완료 → 클릭
+          clearInterval(_waitTab);
+          _autoSelectTab();
+        } else if(window._spSettingsLoaded){
+          // 설정 로드 완료됐는데 탭 없음 → REPS 업데이트 후 재빌드
+          clearInterval(_waitTab);
+          if(typeof switchInputTeam==='function') switchInputTeam(session.team);
+          setTimeout(function(){
+            var _t = pageInput2.querySelector('.tab[data-rep="'+session.rep+'"]');
+            if(_t) _t.click();
+            if(typeof applyPermissions==='function') applyPermissions();
+          }, 200);
+        }
+      }, 200);
+      // 최대 8초 대기 후 포기
+      setTimeout(function(){
+        clearInterval(_waitTab);
+        if(window._spSettingsLoaded) _autoSelectTab();
+      }, 8000);
     }
   } else if(id==='issues'){
     initIssueTabs();
@@ -6187,10 +6202,21 @@ async function _spLoadSettings() {
     // 현재 페이지가 input이면 내 담당자 탭 자동 선택
     var _inputPage = document.getElementById('page-input');
     if(_inputPage && _inputPage.classList.contains('active')){
+      // switchInputTeam 후 DOM 생성 대기
       setTimeout(function(){
         var _myTab = _inputPage.querySelector('.tab[data-rep="'+session.rep+'"]');
-        if(_myTab && !_myTab.classList.contains('active')) _myTab.click();
-        else if(_myTab) _myTab.click(); // 이미 active여도 클릭해서 확실히 표시
+        if(_myTab){
+          _myTab.click();
+          if(typeof applyPermissions==='function') setTimeout(applyPermissions, 50);
+        } else {
+          // 탭 아직 없으면 REPS 재확인 후 rebuild
+          if(typeof buildRepTabs==='function') buildRepTabs();
+          setTimeout(function(){
+            var _t2 = _inputPage.querySelector('.tab[data-rep="'+session.rep+'"]');
+            if(_t2) _t2.click();
+            if(typeof applyPermissions==='function') applyPermissions();
+          }, 150);
+        }
       }, 200);
     }
   }
@@ -6205,6 +6231,7 @@ async function _spLoadSettings() {
     }
   }catch(e){}
   if(typeof loadBanner==='function') loadBanner();
+  window._spSettingsLoaded = true;
 }
 
 async function spSaveSettings() {
