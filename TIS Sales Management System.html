@@ -4821,9 +4821,13 @@ function doRepLogin(rep){
   if(typeof recordAccess==='function') recordAccess(rep);
   // SP 연결 시도 (MSAL 준비 후)
   setTimeout(async function(){
+    console.log('[SP] 연결 시도... _msalApp:', window._msalApp ? '준비됨' : '미준비');
     try{
       if(!window._isSPReady && typeof _initSP==='function') await _initSP();
-    }catch(e){ console.warn('SP:', e.message); }
+    }catch(e){
+      console.warn('[SP] 실패:', e.message);
+      showToast('SP 연결 실패: ' + e.message, 'warn');
+    }
   }, 800);
 }function doRepLogin(rep){
   session={role:'rep',rep};
@@ -5773,7 +5777,8 @@ async function _initSP() {
 
     window._isSPReady = true;
     _setSPStatus('connected');
-    showToast('✅ SharePoint 연결됨');
+    showToast('✅ SharePoint 연결됨', 'success');
+    console.log('[SP] 연결 성공, 토큰:', window._spToken ? '있음' : '없음');
 
     // 설정 + 오늘 데이터 자동 로드 (최초 접속 시 동기화)
     await _spLoadSettings();
@@ -5801,6 +5806,7 @@ async function _initSP() {
       showToast('Azure redirect URI 등록 필요. 현재URL: ' + window.location.href.split('?')[0], 'warn');
     } else {
       showToast('SP 연결 실패: ' + errMsg, 'warn');
+      console.error('[SP] 연결 실패:', errMsg, err);
     }
   }
 }
