@@ -4963,9 +4963,10 @@ function doRepLogin(rep){
     if(myTab) myTab.click();
   }, 300);
   if(typeof recordAccess==='function') recordAccess(rep);
-  setTimeout(async function(){
-    try{ if(!window._isSPReady&&typeof _initSP==='function') await _initSP(); }catch(e){}
-  }, 800);
+  // 클릭 직후 SP 연결 (팝업 차단 방지)
+  if(!window._isSPReady && typeof _initSP==='function'){
+    _initSP().catch(function(e){ console.warn('SP:', e); });
+  }
 }function doRepLogin(rep){
   session={role:'rep',rep};
   // 리다이렉트 후 세션 복원을 위해 저장
