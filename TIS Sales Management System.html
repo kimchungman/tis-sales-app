@@ -2658,15 +2658,60 @@ document.addEventListener('DOMContentLoaded',()=>{
   buildRepTabs();buildRepInputs();extractIssues();populateFilters();
   renderDashboard();renderIssues();renderPipeline();
   applyLabels();
-  // 앱 시작 시 로그인 모달 자동 표시
-  setTimeout(()=>{
+  // 앱 시작 시 로그인 처리
+  setTimeout(async ()=>{
     attachAllNumFormats();
     extractIssues();
     renderIssues();
     renderDashIssues();
-    // 항상 참가자 선택 화면 표시 (MS 자동 로그인 없음)
-    localStorage.removeItem('_tisSavedSession');
-    openAuth();
+
+    // MS 로그인 리다이렉트 후 돌아온 경우 감지
+    var _hc = window.location.hash.indexOf('code=')>-1
+           || window.location.search.indexOf('code=')>-1
+           || window.location.hash.indexOf('state=')>-1
+           || window.location.search.indexOf('state=')>-1;
+    var _sv2 = localStorage.getItem('_tisSavedSession');
+
+    if(_hc && _sv2){
+      // MS 로그인 후 돌아옴 → 세션 복원 + SP 연결 완료
+      try{
+        var _sess2 = JSON.parse(_sv2);
+        session = _sess2;
+        if(_sess2.team && typeof applyCurrentTeam==='function'){
+          currentTeam = _sess2.team;
+          applyCurrentTeam(_sess2.team);
+          setTimeout(function(){
+            if(typeof buildRepTabs==='function') buildRepTabs();
+            if(typeof buildRepInputs==='function') buildRepInputs();
+            if(typeof renderDashboard==='function') renderDashboard();
+            if(typeof renderIssues==='function') renderIssues();
+            if(typeof renderPipeline==='function') renderPipeline();
+            if(typeof applyPermissions==='function') applyPermissions();
+            if(_sess2.rep){
+              setTimeout(function(){
+                var tab=document.querySelector('.tab[data-rep="'+_sess2.rep+'"]');
+                if(tab) tab.click();
+              },200);
+            }
+          },150);
+        }
+        localStorage.removeItem('_tisSavedSession');
+        // SP 연결 완료 (handleRedirectPromise로 토큰 획득)
+        if(typeof _initSP==='function') await _initSP();
+        // URL 정리 (code= 파라미터 제거)
+        if(window.history && window.history.replaceState){
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      }catch(ex){
+        console.warn('리다이렉트 세션 복원 실패:', ex);
+        localStorage.removeItem('_tisSavedSession');
+        openAuth();
+      }
+    } else {
+      // 일반 접속 → 참가자 선택 화면 표시
+      localStorage.removeItem('_tisSavedSession');
+      openAuth();
+    }
   },300);
   // textarea 높이는 충분한 딜레이 후 (DOM 완전 렌더링 보장)
   setTimeout(()=>{ resizeAllTextareas(); }, 600);
