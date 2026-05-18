@@ -2648,6 +2648,55 @@ document.addEventListener('DOMContentLoaded',()=>{
     autoSave();
   });
   loadAuthCfg();
+
+  // MSAL 미리 초기화 (참가자 선택 전에 준비)
+  setTimeout(async function(){
+    try{
+      if(typeof msal!=='undefined' && !window._msalApp){
+        var app = new msal.PublicClientApplication({
+          auth:{
+            clientId: _SP_CONFIG.clientId,
+            authority: _SP_CONFIG.authority,
+            redirectUri: _SP_CONFIG.redirectUri
+          },
+          cache:{ cacheLocation:'localStorage', storeAuthStateInCookie:true }
+        });
+        await app.initialize();
+        window._msalApp = app;
+
+        // redirect 결과 처리 (MS 로그인 후 돌아온 경우)
+        var _hc = window.location.search.indexOf('code=')>-1
+               || window.location.hash.indexOf('code=')>-1
+               || window.location.search.indexOf('state=')>-1
+               || window.location.hash.indexOf('state=')>-1;
+        if(_hc){
+          try{
+            var rr = await app.handleRedirectPromise();
+            if(rr && rr.accessToken){
+              window._spToken = rr.accessToken;
+              // session 복원
+              var sv = localStorage.getItem('_tisSavedSession2');
+              if(sv){
+                try{
+                  var sess = JSON.parse(sv);
+                  session = sess;
+                  if(sess.team) applyCurrentTeam && applyCurrentTeam(sess.team);
+                  localStorage.removeItem('_tisSavedSession2');
+                  if(typeof applyPermissions==='function') applyPermissions();
+                  showToast('✅ Microsoft 로그인 완료');
+                  // SP 나머지 초기화
+                  if(typeof _initSP==='function') await _initSP();
+                }catch(ex){}
+              }
+              // URL 정리
+              if(window.history && window.history.replaceState)
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+          }catch(e){ console.warn('redirect handle:', e); }
+        }
+      }
+    }catch(e){ console.warn('MSAL init:', e); }
+  }, 500);
   if(typeof loadPersonalSettings==='function') setTimeout(loadPersonalSettings, 100);
   loadTheme();
   setTimeout(function(){ if(typeof loadBanner==='function') loadBanner(); if(typeof updateAccessDisplay==='function') updateAccessDisplay(); },300);
@@ -4952,7 +5001,7 @@ function tryRep(){
 }
 function doRepLogin(rep){
   session={role:'rep', rep:rep, team:currentTeam};
-  localStorage.setItem('_tisSavedSession', JSON.stringify({role:'rep',rep:rep,team:currentTeam}));
+  localStorage.setItem('_tisSavedSession2', JSON.stringify({role:'rep',rep:rep,team:currentTeam}));
   _tabState.input = currentTeam;
   closeAuth();
   _initApp();
@@ -5869,66 +5918,45 @@ function _setSPStatus(state) {
 
 // ── MSAL 토큰 획득 (팝업 로그인) ───────────────────────────
 async function _getToken() {
-  // MSAL 로드 확인 및 동적 로드
-  if(typeof msal === 'undefined') {
-    await new Promise(function(resolve, reject) {
-      var s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/dist/msal-browser.min.js';
-      s.onload = resolve;
-      s.onerror = function() {
-        var s2 = document.createElement('script');
-        s2.src = 'https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js';
-        s2.onload = resolve; s2.onerror = reject;
-        document.head.appendChild(s2);
-      };
-      document.head.appendChild(s);
+  // 미리 초기화된 msalApp 사용
+  var msalApp = window._msalApp;
+  if(!msalApp){
+    if(typeof msal==='undefined') throw new Error('MSAL 라이브러리 로드 실패');
+    msalApp = new msal.PublicClientApplication({
+      auth:{
+        clientId: _SP_CONFIG.clientId,
+        authority: _SP_CONFIG.authority,
+        redirectUri: _SP_CONFIG.redirectUri
+      },
+      cache:{ cacheLocation:'localStorage', storeAuthStateInCookie:true }
     });
+    await msalApp.initialize();
+    window._msalApp = msalApp;
   }
 
-  if(typeof msal === 'undefined') throw new Error('MSAL 로드 실패');
+  // 1. 리다이렉트 결과 처리 (로그인 후 돌아온 경우)
+  try {
+    var rr = await msalApp.handleRedirectPromise();
+    if(rr && rr.accessToken) return rr.accessToken;
+  } catch(e){ console.warn('handleRedirect:', e.message); }
 
-  const msalApp = new msal.PublicClientApplication({
-    auth: {
-      clientId:    _SP_CONFIG.clientId,
-      authority:   _SP_CONFIG.authority,
-      redirectUri: _SP_CONFIG.redirectUri
-    },
-    cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: true }
-  });
-
-  await msalApp.initialize();
-  window._msalApp = msalApp;
-
-  // 1. 이미 로그인된 계정으로 silent 토큰 획득
-  const accounts = msalApp.getAllAccounts();
-  if (accounts.length > 0) {
-    try {
-      const result = await msalApp.acquireTokenSilent({
+  // 2. 기존 계정 silent 토큰
+  var accounts = msalApp.getAllAccounts();
+  if(accounts.length > 0){
+    try{
+      var sr = await msalApp.acquireTokenSilent({
         scopes: _SP_CONFIG.scopes,
         account: accounts[0]
       });
-      if(result && result.accessToken) return result.accessToken;
-    } catch(e) {}
+      if(sr && sr.accessToken) return sr.accessToken;
+    } catch(e){}
   }
 
-  // 2. Popup으로 로그인 (페이지 이동 없음)
-  try {
-    showToast('Microsoft 로그인 창이 열립니다...', 'info');
-    const result = await msalApp.loginPopup({
-      scopes: [...(_SP_CONFIG.loginScopes||['User.Read']), ..._SP_CONFIG.scopes],
-      prompt: 'select_account'
-    });
-    if(result && result.accessToken) return result.accessToken;
-    // loginPopup 후 SP 토큰 별도 획득
-    const spResult = await msalApp.acquireTokenSilent({
-      scopes: _SP_CONFIG.scopes,
-      account: msalApp.getAllAccounts()[0]
-    });
-    return spResult ? spResult.accessToken : null;
-  } catch(e) {
-    console.warn('loginPopup error:', e.message);
-    throw new Error(e.message);
-  }
+  // 3. loginRedirect (페이지 이동 방식 - 팝업 차단 없음)
+  await msalApp.loginRedirect({
+    scopes: (_SP_CONFIG.loginScopes||['User.Read']).concat(_SP_CONFIG.scopes||[])
+  });
+  return null; // redirect 후 이 줄은 실행 안 됨
 }
 
 
