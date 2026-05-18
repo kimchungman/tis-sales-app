@@ -512,6 +512,8 @@ label,th{color:var(--muted);}
   border:1px solid var(--primary-b);font-size:12px;font-weight:700;color:var(--primary);}
 
 /* ── 설정 탭 ── */
+[contenteditable]:empty:before { content: attr(placeholder); color: #94A3B8; pointer-events: none; }
+#popup-toolbar button:hover { background: #EFF6FF !important; border-color: #BFDBFE !important; }
 #settings-tab-nav button{transition:var(--trans);}
 #settings-tab-nav button:hover{color:var(--primary)!important;}
 
@@ -2609,6 +2611,8 @@ document.addEventListener('DOMContentLoaded',()=>{
     autoSave();
   });
   loadAuthCfg();
+  // localStorage에 저장된 팀 데이터로 TEAMS 즉시 업데이트 (SP 연결 전)
+  if(typeof syncTeamData==='function') syncTeamData();
   if(typeof loadPersonalSettings==='function') setTimeout(loadPersonalSettings, 100);
   loadTheme();
   setTimeout(function(){ if(typeof loadBanner==='function') loadBanner(); if(typeof updateAccessDisplay==='function') updateAccessDisplay(); },300);
@@ -2888,10 +2892,13 @@ function _buildTeamTabs(containerId, pageKey, onSelect) {
     });
   });
 
-  // 초기 탭이 없으면 첫 탭으로 (session.team은 SP 로드 후 추가될 수 있어 유지)
+  // 신규팀이 tabs에 없으면 임시로 추가 (SP 로드 전에도 탭 표시)
   if (tabs.indexOf(cur) < 0) {
     if(session && session.team && cur === session.team) {
-      _tabState[pageKey] = 'all'; // 신규팀: 일단 전체, SP 로드 후 재적용
+      // 신규팀: 탭 버튼 임시 추가 (SP 로드 후 실제 데이터 표시)
+      tabs.push(cur);
+      if(typeof TEAMS !== 'undefined' && TEAMS.indexOf(cur) < 0) TEAMS.push(cur);
+      if(typeof TEAM_REPS !== 'undefined' && !TEAM_REPS[cur]) TEAM_REPS[cur] = [];
     } else {
       _tabState[pageKey] = tabs[0];
     }
@@ -2943,6 +2950,17 @@ function initAllTabs() {
 
 // ════ 공통 초기 렌더 (관리자/일반 동일하게 실행) ════
 function _initApp(){
+  // localStorage 캐시에서 데이터 먼저 로드 (SP 연결 전)
+  try{
+    var _lsSnap = localStorage.getItem('_lastSnap');
+    if(_lsSnap && typeof _applySnap==='function'){
+      var _snap = JSON.parse(_lsSnap);
+      // store.reps 복원 (UI 데이터)
+      if(_snap.store && _snap.store.reps){
+        Object.keys(_snap.store.reps).forEach(function(r){ store.reps[r] = _snap.store.reps[r]; });
+      }
+    }
+  }catch(e){}
   // 팀 데이터 확인/초기화
   TEAMS.forEach(function(team){
     (TEAM_REPS[team]||[]).forEach(function(r){
@@ -5823,11 +5841,17 @@ async function _initSP() {
     window._spSyncTimer = setInterval(async function(){
       if(!window._isSPReady) return;
       try{
+        // 변경 전 해시
+        var _before = JSON.stringify(store.reps).length;
         await _spLoadToday();
         await _spLoadHistList();
-        renderDashboard();
-        renderIssues();
-        renderPipeline();
+        var _after = JSON.stringify(store.reps).length;
+        // 데이터 변경된 경우에만 재렌더
+        if(_before !== _after){
+          if(typeof renderDashboard==='function') renderDashboard();
+          if(typeof renderIssues==='function') renderIssues();
+          if(typeof renderPipeline==='function') renderPipeline();
+        }
       }catch(e){}
     }, 10000);
 
