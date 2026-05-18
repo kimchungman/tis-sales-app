@@ -220,7 +220,7 @@ body{font-family:var(--font-family,'Noto Sans KR',sans-serif);background:var(--b
 .issue-item{border:1px solid var(--border);border-left:4px solid var(--blue2);border-radius:0 8px 8px 0;padding:11px 13px;background:white;margin-bottom:8px;}
 .issue-item.high{border-left-color:#E84545;} .issue-item.mid{border-left-color:#F0A500;} .issue-item.low{border-left-color:#00C9A7;}
 .issue-top{display:flex;align-items:center;gap:7px;margin-bottom:4px;flex-wrap:wrap;}
-.rep-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:18px;}
+.rep-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px;}
 .rep-card{background:var(--card);border:1px solid var(--border);border-radius:var(--card-radius,12px);padding:16px;cursor:pointer;transition:all 0.2s;}
 .rep-card:hover{border-color:var(--blue2);box-shadow:0 0 0 2px rgba(46,124,246,0.12);}
 .rep-avatar{width:36px;height:36px;border-radius:50%;color:white;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-bottom:8px;}
@@ -2834,7 +2834,7 @@ function saveBannerCfg(){
 // 상태 관리
 var _tabState = {
   dash: 'all',
-  input: '솔루션영업팀',
+  input: TEAMS[0] || '',
   issues: 'all',
   pipeline: 'all'
 };
@@ -2893,7 +2893,7 @@ function initDashTabs() {
 function initInputTabs() {
   // 초기 탭: 로그인한 사용자 팀 or 첫 번째 팀
   if (!_tabState.input || TEAMS.indexOf(_tabState.input) < 0) {
-    _tabState.input = (session && session.team) || TEAMS[0] || '솔루션영업팀';
+    _tabState.input = (session && session.team) || TEAMS[0] || '';
   }
   _buildTeamTabs('input-team-tabs', 'input', function(team) {
     if (typeof switchInputTeam === 'function') switchInputTeam(team);
@@ -5781,6 +5781,11 @@ async function _initSP() {
     await _spLoadSettings();
     await _spLoadToday();
     await _spLoadHistList();
+
+    // 데이터 로드 후 대시보드 즉시 재렌더링 (모든 사용자)
+    try{ if(typeof renderDashboard==='function') renderDashboard(); }catch(e){}
+    try{ if(typeof renderIssues==='function') renderIssues(); }catch(e){}
+    try{ if(typeof renderPipeline==='function') renderPipeline(); }catch(e){}
 
     // 10초 자동 동기화 시작
     if(window._spSyncTimer) clearInterval(window._spSyncTimer);
@@ -10031,6 +10036,8 @@ async function _connectSP(app, account) {
       _setBar('connected');
       if(typeof showToast==='function') showToast('✅ SharePoint 연결됨');
       if(typeof _initSP==='function') await _initSP();
+      // SP 데이터 로드 후 현재 페이지 재렌더링
+      try{ if(typeof renderDashboard==='function') renderDashboard(); }catch(e){}
     }
   } catch(e) {
     console.warn('[SP] 토큰 실패:', e.message);
