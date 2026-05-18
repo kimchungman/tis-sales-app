@@ -1698,6 +1698,7 @@ table.dt thead th { font-size: 13px !important; }
   <div class="nav-item" onclick="showPage('issues',this)"><svg class="nav-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>이슈 현황</div>
   <div class="nav-item" onclick="showPage('input',this)"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>영업 진행 현황</div>
   <div class="nav-item" id="nav-personal" onclick="showPage('personal',this)" style="display:none;"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>개인설정</div>
+  <div class="nav-item" id="nav-settings" onclick="onClickSettingsNav(this)" style="display:none;"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>관리자 설정</div>
   <div class="nav-item" id="nav-accesslog" onclick="showPage('accesslog',this)" style="display:none;"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>접속 이력</div>
   <div class="sb-footer">
     <div class="sb-auth-chip" id="auth-chip" onclick="onClickAuthChip()">
@@ -5134,12 +5135,14 @@ function applyPermissions(){
     return;
   }
 
-  // 설정/접속이력: 관리자만
-  document.querySelectorAll('.nav-item').forEach(function(n){
-    if(n.textContent.indexOf('설정')>=0||n.id==='nav-accesslog'){
-      n.style.display=isAdmin?'flex':'none';
-    }
-  });
+  // 관리자 설정/접속이력: 관리자만
+  var navSettings = document.getElementById('nav-settings');
+  if(navSettings) navSettings.style.display = isAdmin?'flex':'none';
+  var navAccesslog = document.getElementById('nav-accesslog');
+  if(navAccesslog) navAccesslog.style.display = isAdmin?'flex':'none';
+  // 개인설정: 관리자+담당자 모두 표시
+  var navPersonal = document.getElementById('nav-personal');
+  if(navPersonal) navPersonal.style.display = (isAdmin||isRep)?'flex':'none';
 
   // 입력 요소 복원
   document.querySelectorAll('.rep-sec input,.rep-sec select,.rep-sec textarea').forEach(function(el){
@@ -5900,8 +5903,19 @@ async function _spLoadToday() {
   const teamKey = currentTeam + '_' + today;
   let snap = await _spLoadItem('snapshot', teamKey).catch(()=>null);
   if(!snap) snap = await _spLoadItem('snapshot', today).catch(()=>null);
-  if(!snap) return;
-  _applySnap(snap, today);
+  if(snap){ _applySnap(snap, today); return; }
+
+  // 오늘 데이터 없으면 SP 히스토리에서 가장 최신 스냅샷 로드
+  try{
+    const url = _lUrl() + '?$select=DataKey,Payload&$filter=DataType+eq+%27snapshot%27&$orderby=UpdatedAt+desc&$top=1';
+    const res = await _spFetch(url);
+    if(res && res.value && res.value[0] && res.value[0].Payload){
+      const latest = JSON.parse(res.value[0].Payload);
+      const latestKey = res.value[0].DataKey || today;
+      const latestDate = latestKey.split('_').pop() || today;
+      _applySnap(latest, latestDate);
+    }
+  }catch(e){}
 }
 
 // ── 스냅샷 적용 ────────────────────────────────────────────
@@ -6008,6 +6022,17 @@ async function _spLoadSettings() {
     _tabState.pipeline = session.team;
     _tabState.visits   = session.team;
   }
+  // 현재 페이지 팀 탭 재빌드 (신규팀이 TEAMS에 추가된 후)
+  try{
+    var activePage = document.querySelector('.page.active');
+    if(activePage){
+      var pid = activePage.id.replace('page-','');
+      if(pid==='issues' && typeof initIssueTabs==='function') initIssueTabs();
+      if(pid==='pipeline' && typeof initPipeTabs==='function') initPipeTabs();
+      if(pid==='visits' && typeof initVisitsTabs==='function') initVisitsTabs();
+      if(pid==='input' && typeof initInputTabs==='function') initInputTabs();
+    }
+  }catch(e){}
   if(typeof loadBanner==='function') loadBanner();
 }
 
