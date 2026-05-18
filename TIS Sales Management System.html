@@ -3697,17 +3697,17 @@ function buildRepInputs(){
           <tr>
             <td style="font-weight:700;white-space:nowrap;padding:4px 8px;" class="lbl-row-plan">경영 계획</td>
             ${MONTHS.map((_,i)=>{const v=store.reps[rep].plan[i]||0;return`<td style="${TD}"><input type="text" value="${v?v.toLocaleString('ko-KR'):''}" style="${IS}" onfocus="this.value=this.value.replace(/,/g,'')" onblur="const n=parseFloat(this.value.replace(/,/g,''));this.value=n?n.toLocaleString('ko-KR'):'';" onchange="store.reps['${rep}'].plan[${i}]=parseFloat(String(this.value).replace(/,/g,''))||0;refresh()"></td>`;}).join('')}
-            <td class="nt" id="${rep}-pt" style="padding:4px 8px;">${store.reps[rep].plan.reduce((a,b)=>a+b,0).toLocaleString()}</td>
+            <td class="nt" id="${rep}-pt" style="padding:4px 8px;">${store.reps[rep].plan.slice(0,12).reduce((a,b)=>a+b,0).toLocaleString()}</td>
           </tr>
           <tr>
             <td style="font-weight:700;color:#00C9A7;white-space:nowrap;padding:4px 8px;" class="lbl-row-act">달성 매출</td>
             ${MONTHS.map((_,i)=>{const v=store.reps[rep].actual[i]||0;return`<td style="${TD}"><div style="${DB}background:#F0FBF8;border:1px solid #C6F0E2;color:#198038;" id="${rep}-act-${i}">${v?v.toLocaleString('ko-KR'):''}</div></td>`;}).join('')}
-            <td class="nt" style="color:#00C9A7;font-weight:700;padding:4px 8px;" id="${rep}-at">${store.reps[rep].actual.reduce((a,b)=>a+b,0).toLocaleString()}</td>
+            <td class="nt" style="color:#00C9A7;font-weight:700;padding:4px 8px;" id="${rep}-at">${store.reps[rep].actual.slice(0,12).reduce((a,b)=>a+b,0).toLocaleString()}</td>
           </tr>
           <tr>
             <td style="font-weight:700;color:#F0A500;white-space:nowrap;padding:4px 8px;" class="lbl-row-fore">예상 매출</td>
             ${MONTHS.map((_,i)=>{const v=store.reps[rep].forecast[i]||0;return`<td style="${TD}"><div style="${DB}background:#FFFBF0;border:1px solid #FFE8A0;color:#B45309;" id="${rep}-fore-${i}">${v?v.toLocaleString('ko-KR'):''}</div></td>`;}).join('')}
-            <td class="nt" style="color:#F0A500;font-weight:700;padding:4px 8px;" id="${rep}-ft">${store.reps[rep].forecast.reduce((a,b)=>a+b,0).toLocaleString()}</td>
+            <td class="nt" style="color:#F0A500;font-weight:700;padding:4px 8px;" id="${rep}-ft">${store.reps[rep].forecast.slice(0,12).reduce((a,b)=>a+b,0).toLocaleString()}</td>
           </tr>
           <tr style="background:#F5F8FF;">
             <td style="font-size:11px;color:var(--muted);padding:4px 8px;" class="lbl-row-rate">달성률</td>
@@ -3891,8 +3891,8 @@ function refreshActualForecast(rep){
   });
   const at = document.getElementById(rep+'-at');
   const ft = document.getElementById(rep+'-ft');
-  if(at) at.textContent = store.reps[rep].actual.reduce((a,b)=>a+b,0).toLocaleString('ko-KR');
-  if(ft) ft.textContent = store.reps[rep].forecast.reduce((a,b)=>a+b,0).toLocaleString('ko-KR');
+  if(at) at.textContent = store.reps[rep].actual.slice(0,12).reduce((a,b)=>a+b,0).toLocaleString('ko-KR');
+  if(ft) ft.textContent = store.reps[rep].forecast.slice(0,12).reduce((a,b)=>a+b,0).toLocaleString('ko-KR');
   // 달성률 동적 업데이트
   MONTHS.forEach((_,i)=>{
     const re = document.getElementById(rep+'-rate-'+i);
@@ -4014,9 +4014,9 @@ function renderProductDash(){
 function refresh(){
   REPS.forEach(r=>{
     const pt=document.getElementById(r+'-pt'),at=document.getElementById(r+'-at'),ft=document.getElementById(r+'-ft');
-    if(pt)pt.textContent=store.reps[r].plan.reduce((a,b)=>a+b,0).toLocaleString('ko-KR');
-    if(at)at.textContent=store.reps[r].actual.reduce((a,b)=>a+b,0).toLocaleString('ko-KR');
-    if(ft)ft.textContent=store.reps[r].forecast.reduce((a,b)=>a+b,0).toLocaleString('ko-KR');
+    if(pt)pt.textContent=store.reps[r].plan.slice(0,12).reduce((a,b)=>a+b,0).toLocaleString('ko-KR');
+    if(at)at.textContent=store.reps[r].actual.slice(0,12).reduce((a,b)=>a+b,0).toLocaleString('ko-KR');
+    if(ft)ft.textContent=store.reps[r].forecast.slice(0,12).reduce((a,b)=>a+b,0).toLocaleString('ko-KR');
   });
   renderDashboard();
   autoSave();
@@ -4247,8 +4247,8 @@ function _togglePipeRep(rep){
 
 // EXPORT
 function buildExpPreview(){
-  const tp=REPS.reduce((s,r)=>s+store.reps[r].plan.reduce((a,b)=>a+b,0),0);
-  const ta=REPS.reduce((s,r)=>s+store.reps[r].actual.reduce((a,b)=>a+b,0),0);
+  const tp=REPS.reduce((s,r)=>s+store.reps[r].plan.slice(0,12).reduce((a,b)=>a+b,0),0);
+  const ta=REPS.reduce((s,r)=>s+store.reps[r].actual.slice(0,12).reduce((a,b)=>a+b,0),0);
   const rate=tp>0?(ta/tp*100).toFixed(1):0;
   document.getElementById('exp-preview').innerHTML=`
     <table class="dt"><thead><tr><th>시트명</th><th>내용</th><th>데이터</th></tr></thead><tbody>
@@ -4289,9 +4289,9 @@ function exportFull(){
   rows1.push(['담당자','구분','',...MONTHS,'소계']);
   REPS.forEach(rep=>{
     const r=store.reps[rep];
-    rows1.push([rep,'경영계획','',...r.plan.map(v=>Math.round(v)),Math.round(r.plan.reduce((a,b)=>a+b,0))]);
-    rows1.push(['','실제매출','',...r.actual.map(v=>Math.round(v)),Math.round(r.actual.reduce((a,b)=>a+b,0))]);
-    rows1.push(['','예상매출','',...r.forecast.map(v=>Math.round(v)),Math.round(r.forecast.reduce((a,b)=>a+b,0))]);
+    rows1.push([rep,'경영계획','',...r.plan.map(v=>Math.round(v)),Math.round(r.plan.slice(0,12).reduce((a,b)=>a+b,0))]);
+    rows1.push(['','실제매출','',...r.actual.map(v=>Math.round(v)),Math.round(r.actual.slice(0,12).reduce((a,b)=>a+b,0))]);
+    rows1.push(['','예상매출','',...r.forecast.map(v=>Math.round(v)),Math.round(r.forecast.slice(0,12).reduce((a,b)=>a+b,0))]);
   });
   const ws1=XLSX.utils.aoa_to_sheet(rows1);
   ws1['!cols']=[{wch:10},{wch:14},{wch:28},...Array(13).fill({wch:12})];
@@ -4305,10 +4305,10 @@ function exportFull(){
       ['1. 매출 현황','','','','','','','','','','','','','','','[단위: 천원 / 부가세 별도]'],
       ['구분','','','2026년'],
       ['','','','4월','5월','6월','7월','8월','9월','10월','11월','12월','1월','2월','3월','소계','비고'],
-      ['목표','경영계획(제품)','',...r.plan.map(v=>Math.round(v)),Math.round(r.plan.reduce((a,b)=>a+b,0)),''],
+      ['목표','경영계획(제품)','',...r.plan.map(v=>Math.round(v)),Math.round(r.plan.slice(0,12).reduce((a,b)=>a+b,0)),''],
       ['실적','상품 & 용역','',...new Array(12).fill(0),0,''],
       ['','개발','',...new Array(12).fill(0),0,''],
-      ['','매출 총액','',...r.actual.map(v=>Math.round(v)),Math.round(r.actual.reduce((a,b)=>a+b,0)),''],
+      ['','매출 총액','',...r.actual.map(v=>Math.round(v)),Math.round(r.actual.slice(0,12).reduce((a,b)=>a+b,0)),''],
       [],
       ['(1) 상품 & 용역 (유지보수)'],
       ['고객사 및 서비스명','','계획 및 실행','4월','5월','6월','7월','8월','9월','10월','11월','12월','1월','2월','3월','소계','이슈 사항'],
@@ -4344,8 +4344,8 @@ function exportDash(){
     ['솔루션영업팀 주간회의 대시보드','','','','회의일',d.toLocaleDateString('ko-KR'),'단위: 천원 / 부가세 별도'],
     [],
     ['담당자','경영계획','실제매출','예상매출','달성률(%)','차이(천원)'],
-    ...REPS.map(r=>{const p=store.reps[r].plan.reduce((a,b)=>a+b,0),a=store.reps[r].actual.reduce((a,b)=>a+b,0),f=store.reps[r].forecast.reduce((a,b)=>a+b,0);return[r,Math.round(p),Math.round(a),Math.round(f),p>0?parseFloat((a/p*100).toFixed(1)):0,Math.round(a-p)];}),
-    ['합계',REPS.reduce((s,r)=>s+Math.round(store.reps[r].plan.reduce((a,b)=>a+b,0)),0),REPS.reduce((s,r)=>s+Math.round(store.reps[r].actual.reduce((a,b)=>a+b,0)),0),REPS.reduce((s,r)=>s+Math.round(store.reps[r].forecast.reduce((a,b)=>a+b,0)),0),'',''],
+    ...REPS.map(r=>{const p=store.reps[r].plan.slice(0,12).reduce((a,b)=>a+b,0),a=store.reps[r].actual.slice(0,12).reduce((a,b)=>a+b,0),f=store.reps[r].forecast.slice(0,12).reduce((a,b)=>a+b,0);return[r,Math.round(p),Math.round(a),Math.round(f),p>0?parseFloat((a/p*100).toFixed(1)):0,Math.round(a-p)];}),
+    ['합계',REPS.reduce((s,r)=>s+Math.round(store.reps[r].plan.slice(0,12).reduce((a,b)=>a+b,0)),0),REPS.reduce((s,r)=>s+Math.round(store.reps[r].actual.slice(0,12).reduce((a,b)=>a+b,0)),0),REPS.reduce((s,r)=>s+Math.round(store.reps[r].forecast.slice(0,12).reduce((a,b)=>a+b,0)),0),'',''],
     [],
     ['월별현황','4월','5월','6월','7월','8월','9월','10월','11월','12월','1월','2월','3월'],
     ['경영계획',...MONTHS.map((_,i)=>Math.round(REPS.reduce((s,r)=>s+store.reps[r].plan[i],0)))],
@@ -6099,7 +6099,19 @@ async function _spLoadToday() {
 function _applySnap(snap, date) {
   if (snap.reps)      { REPS.length=0;      snap.reps.forEach(r=>REPS.push(r)); }
   if (snap.repColors) { REP_COLORS.length=0; snap.repColors.forEach(c=>REP_COLORS.push(c)); }
-  if (snap.store)     Object.keys(snap.store.reps||{}).forEach(rep=>{store.reps[rep]=snap.store.reps[rep];});
+  if (snap.store)     Object.keys(snap.store.reps||{}).forEach(rep=>{
+    store.reps[rep]=snap.store.reps[rep];
+    // 배열 오염 방지: plan/actual/forecast 정확히 12개로 정규화
+    var r=store.reps[rep];
+    if(r){
+      if(!Array.isArray(r.plan)||r.plan.length<12) r.plan=(r.plan||[]).concat(new Array(12).fill(0)).slice(0,12);
+      else r.plan=r.plan.slice(0,12);
+      if(!Array.isArray(r.actual)||r.actual.length<12) r.actual=(r.actual||[]).concat(new Array(12).fill(0)).slice(0,12);
+      else r.actual=r.actual.slice(0,12);
+      if(!Array.isArray(r.forecast)||r.forecast.length<12) r.forecast=(r.forecast||[]).concat(new Array(12).fill(0)).slice(0,12);
+      else r.forecast=r.forecast.slice(0,12);
+    }
+  });
   if (snap.labels)    Object.assign(labels, snap.labels);
   const de = document.getElementById('mtg-date');
   if (de) { de.value = date; updateSBWeek(new Date(date)); }
