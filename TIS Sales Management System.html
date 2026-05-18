@@ -3062,37 +3062,43 @@ function showPage(id,navEl){
     if(typeof applyPermissions==='function') setTimeout(applyPermissions, 30);
     // 참가자: 팀 탭 → 담당자 탭 자동 선택
     if(session && session.role==='rep' && session.rep){
-      // 1단계: 팀 탭 클릭 (이미 올바른 팀 탭이 없으면 switchInputTeam)
-      setTimeout(function(){
+      var _clickRepTab = function(){
+        var _repTab = document.querySelector('#rep-tabs .tab[data-rep="'+session.rep+'"]');
+        if(_repTab){
+          _repTab.click();
+          if(typeof applyPermissions==='function') setTimeout(applyPermissions, 30);
+        }
+      };
+
+      var _clickTeamTab = function(){
         var _teamTab = document.querySelector('#input-team-tabs .tis-tab[data-tab="'+session.team+'"]');
         if(_teamTab){
           if(!_teamTab.classList.contains('active')) _teamTab.click();
-        } else if(typeof switchInputTeam==='function' && session.team){
-          // 신규팀: REPS 보장 후 팀 전환
-          if(TEAM_REPS[session.team] && TEAM_REPS[session.team].length){
-            TEAM_REPS[session.team].forEach(function(r){
-              if(!store.reps[r]) store.reps[r]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],visitLog:[]};
-            });
-            switchInputTeam(session.team);
-          } else if(window._spSettingsLoaded){
-            switchInputTeam(session.team);
-          }
+          setTimeout(_clickRepTab, 150);
+          return true;
         }
-        // 2단계: 담당자 탭 클릭 (팀 탭 클릭 후 DOM 반영 대기)
-        setTimeout(function(){
-          var _repTab = document.querySelector('#rep-tabs .tab[data-rep="'+session.rep+'"]');
-          if(_repTab){
-            _repTab.click();
-            if(typeof applyPermissions==='function') setTimeout(applyPermissions, 30);
-          } else {
-            // 신규팀: SP 로드 대기 후 재시도
-            var _retry = setInterval(function(){
-              var _rt2 = document.querySelector('#rep-tabs .tab[data-rep="'+session.rep+'"]');
-              if(_rt2){ clearInterval(_retry); _rt2.click(); if(typeof applyPermissions==='function') setTimeout(applyPermissions,30); }
-            }, 200);
-            setTimeout(function(){ clearInterval(_retry); }, 8000);
+        return false;
+      };
+
+      setTimeout(function(){
+        // 기존팀: 팀 탭 즉시 클릭
+        if(_clickTeamTab()) return;
+
+        // 신규팀: initInputTabs 재호출 → 팀 탭 생성 → 클릭
+        // SP 설정 로드 완료 대기 후 재시도
+        var _tries = 0;
+        var _teamPoll = setInterval(function(){
+          _tries++;
+          // SP 로드 완료 시 팀 탭 재빌드
+          if(window._spSettingsLoaded && typeof initInputTabs==='function'){
+            initInputTabs(); // TEAMS 업데이트 후 팀 탭 재생성
           }
-        }, 150);
+          if(_clickTeamTab()){
+            clearInterval(_teamPoll);
+          } else if(_tries > 40){ // 8초 대기 후 포기
+            clearInterval(_teamPoll);
+          }
+        }, 200);
       }, 80);
     }
   } else if(id==='issues'){
@@ -6229,11 +6235,12 @@ async function _spLoadSettings() {
       }, 50);
     }
   }
-  // 현재 페이지 팀 탭 재빌드
+  // 현재 페이지 팀 탭 재빌드 (SP 로드 후 TEAMS 업데이트됨)
   try{
     var _ap = document.querySelector('.page.active');
     if(_ap){
       var _pid = _ap.id.replace('page-','');
+      if(_pid==='input' && typeof initInputTabs==='function') initInputTabs(); // 신규팀 탭 버튼 생성
       if(_pid==='issues' && typeof initIssueTabs==='function') initIssueTabs();
       if(_pid==='pipeline' && typeof initPipeTabs==='function') initPipeTabs();
       if(_pid==='visits' && typeof initVisitsTabs==='function') initVisitsTabs();
