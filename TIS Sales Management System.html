@@ -5830,13 +5830,13 @@ async function _getToken() {
   await msalApp.initialize();
   window._msalApp = msalApp;
 
-  // 리다이렉트 결과 처리
+  // 1. 리다이렉트 결과 처리 (로그인 후 돌아왔을 때)
   try {
     const rr = await msalApp.handleRedirectPromise();
     if (rr && rr.accessToken) return rr.accessToken;
-  } catch(e) {}
+  } catch(e) { console.warn('redirect promise error:', e); }
 
-  // Silent 시도
+  // 2. 이미 로그인된 계정으로 silent 토큰 획득
   const accounts = msalApp.getAllAccounts();
   if (accounts.length > 0) {
     try {
@@ -5845,10 +5845,35 @@ async function _getToken() {
         account: accounts[0]
       });
       return result.accessToken;
-    } catch(e) {}
+    } catch(e) {
+      // silent 실패 시 popup 시도
+      try {
+        const result = await msalApp.acquireTokenPopup({
+          scopes:  _SP_CONFIG.scopes,
+          account: accounts[0]
+        });
+        return result.accessToken;
+      } catch(e2) { console.warn('token popup error:', e2); }
+    }
   }
 
-  // SP 토큰 없음 - null 반환 (오프라인 모드로 동작)
+  // 3. 로그인 필요 - redirect 방식으로 MS 로그인 팝업
+  try {
+    await msalApp.loginRedirect({
+      scopes: [..._SP_CONFIG.loginScopes, ..._SP_CONFIG.scopes],
+      prompt: 'select_account'
+    });
+  } catch(e) {
+    console.warn('loginRedirect error:', e);
+    // redirect 실패 시 popup 방식 시도
+    try {
+      const result = await msalApp.loginPopup({
+        scopes: [..._SP_CONFIG.loginScopes, ..._SP_CONFIG.scopes]
+      });
+      if (result && result.accessToken) return result.accessToken;
+    } catch(e2) { console.warn('loginPopup error:', e2); }
+  }
+
   return null;
 }
 
