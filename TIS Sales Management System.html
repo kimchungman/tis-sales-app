@@ -1751,7 +1751,7 @@ table.dt thead th { font-size: 13px !important; }
         </button>
         <div id="access-popup" class="tb-dropdown" style="display:none;">
           <div class="tb-dropdown-head">오늘 접속 현황</div>
-          <div id="access-list" style="padding:6px;"></div>
+          <div id="access-list" style="padding:6px;max-height:400px;overflow-y:auto;"></div>
         </div>
       </div>
       <button onclick="window.print()" class="tb-icon-btn" title="인쇄/PDF" id="print-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></button>
@@ -2927,6 +2927,18 @@ function _buildTeamTabs(containerId, pageKey, onSelect) {
     tabs = ['all'].concat(TEAMS.slice());
   }
 
+  // ★ HTML 생성 전에 신규팀 탭 추가 (이전 코드는 HTML 생성 후라 버튼 미생성 버그)
+  if (tabs.indexOf(cur) < 0) {
+    if(session && session.team && cur === session.team) {
+      tabs.push(cur);
+      if(typeof TEAMS !== 'undefined' && TEAMS.indexOf(cur) < 0) TEAMS.push(cur);
+      if(typeof TEAM_REPS !== 'undefined' && !TEAM_REPS[cur]) TEAM_REPS[cur] = [];
+    } else {
+      cur = tabs[0] || 'all';
+      _tabState[pageKey] = cur;
+    }
+  }
+
   var html = '<div class="tis-tabs">';
   tabs.forEach(function(t) {
     var label = t === 'all' ? '사업개발부 전체' : t;
@@ -2937,7 +2949,6 @@ function _buildTeamTabs(containerId, pageKey, onSelect) {
 
   el.innerHTML = html;
 
-  // 탭 클릭 이벤트
   el.querySelectorAll('.tis-tab').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var t = this.dataset.tab;
@@ -2947,18 +2958,6 @@ function _buildTeamTabs(containerId, pageKey, onSelect) {
       if (typeof onSelect === 'function') onSelect(t);
     });
   });
-
-  // 신규팀이 tabs에 없으면 임시로 추가 (SP 로드 전에도 탭 표시)
-  if (tabs.indexOf(cur) < 0) {
-    if(session && session.team && cur === session.team) {
-      // 신규팀: 탭 버튼 임시 추가 (SP 로드 후 실제 데이터 표시)
-      tabs.push(cur);
-      if(typeof TEAMS !== 'undefined' && TEAMS.indexOf(cur) < 0) TEAMS.push(cur);
-      if(typeof TEAM_REPS !== 'undefined' && !TEAM_REPS[cur]) TEAM_REPS[cur] = [];
-    } else {
-      _tabState[pageKey] = tabs[0];
-    }
-  }
 }
 
 // 페이지별 탭 초기화 함수 (showPage에서 호출)
@@ -3293,11 +3292,11 @@ function renderDashboard(){try{
   if(ctx2){
     try{
       // 기존 차트 있으면 update() 사용 (destroy/recreate 방지)
-      if(window._repChart && window._repChart.data){
+      if(window._repChart && window._repChart.data && window._repChart.data.datasets){
         window._repChart.data.labels = repNames;
         window._repChart.data.datasets[0].data = repRates;
         window._repChart.data.datasets[0].backgroundColor = repColors;
-        window._repChart.update('none');
+        window._repChart.update();
         return;
       }
     }catch(e){ if(window._repChart){try{window._repChart.destroy();}catch(e2){} window._repChart=null;} }
@@ -3497,7 +3496,7 @@ function renderMainChart(){
     _mc.data.datasets[0].data=MONTHS.map((_,i)=>rs.reduce((s,r)=>s+(store.reps[r]?(store.reps[r].plan[i]||0):0),0));
     _mc.data.datasets[1].data=MONTHS.map((_,i)=>rs.reduce((s,r)=>s+(store.reps[r]?(store.reps[r].actual[i]||0):0),0));
     _mc.data.datasets[2].data=MONTHS.map((_,i)=>rs.reduce((s,r)=>s+(store.reps[r]?(store.reps[r].forecast[i]||0):0),0));
-    try{ _mc.update('none'); return; }catch(e){ window._mainChart.destroy(); window._mainChart=null; }
+    try{ _mc.update(); return; }catch(e){ try{window._mainChart.destroy();}catch(e2){} window._mainChart=null; }
   } else if(window._mainChart){ try{window._mainChart.destroy();}catch(e){} window._mainChart=null; }
   window._mainChart=new Chart(ctx.getContext('2d'),{
     type:'line',
@@ -5428,7 +5427,7 @@ function updateAccessDisplay(){
   const key='access_'+today;
   let log={};
   try{ log=JSON.parse(localStorage.getItem(key)||'{}'); }catch(e){}
-  const names=Object.keys(log);
+  const names=Object.keys(log).slice(0, 20); // 최대 20명
   const countEl=document.getElementById('access-count-num');
   if(countEl) countEl.textContent=names.length;
   const listEl=document.getElementById('access-list');
@@ -6072,14 +6071,11 @@ function _applySnap(snap, date) {
   if (snap.labels)    Object.assign(labels, snap.labels);
   const de = document.getElementById('mtg-date');
   if (de) { de.value = date; updateSBWeek(new Date(date)); }
-  // input 페이지 리빌드: 현재 보고 있지 않을 때만 (탭 초기화 방지)
-  var _inputActive = document.getElementById('page-input') && 
-    document.getElementById('page-input').classList.contains('active');
-  if(!_inputActive){
-    buildRepTabs(); buildRepInputs();
-  }
-  populateFilters();
   if(!window._skipApplyRender){
+    var _inputActive = document.getElementById('page-input') &&
+      document.getElementById('page-input').classList.contains('active');
+    if(!_inputActive){ buildRepTabs(); buildRepInputs(); }
+    populateFilters();
     renderDashboard(); renderIssues(); renderPipeline(); applyLabels();
   }
   setTimeout(()=>{ attachAllNumFormats(); resizeAllTextareas(); }, 100);
