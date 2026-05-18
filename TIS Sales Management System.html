@@ -2877,9 +2877,13 @@ function _buildTeamTabs(containerId, pageKey, onSelect) {
     });
   });
 
-  // 초기 탭이 없으면 첫 탭으로
+  // 초기 탭이 없으면 첫 탭으로 (session.team은 SP 로드 후 추가될 수 있어 유지)
   if (tabs.indexOf(cur) < 0) {
-    _tabState[pageKey] = tabs[0];
+    if(session && session.team && cur === session.team) {
+      _tabState[pageKey] = 'all'; // 신규팀: 일단 전체, SP 로드 후 재적용
+    } else {
+      _tabState[pageKey] = tabs[0];
+    }
   }
 }
 
@@ -4849,6 +4853,9 @@ function doRepLogin(rep){
   showToast('👤 '+rep+'으로 접속했습니다.');
   // 영업진행현황 진입 시 자동 선택 (showPage에서 처리)
   if(typeof recordAccess==='function') recordAccess(rep);
+  setTimeout(async function(){
+    try{ if(!window._isSPReady&&typeof _initSP==='function') await _initSP(); }catch(e){}
+  }, 800);
 }function doRepLogin(rep){
   session={role:'rep',rep};
   // 리다이렉트 후 세션 복원을 위해 저장
@@ -5994,6 +6001,13 @@ async function _spLoadSettings() {
   if (typeof loadNotifCfg === 'function') loadNotifCfg();
 
   syncTeamData();
+  // SP 로드 후 session.team으로 _tabState 재적용 (신규팀 포함)
+  if(session && session.role==='rep' && session.team){
+    _tabState.input    = session.team;
+    _tabState.issues   = session.team;
+    _tabState.pipeline = session.team;
+    _tabState.visits   = session.team;
+  }
   if(typeof loadBanner==='function') loadBanner();
 }
 
@@ -9885,7 +9899,7 @@ window.renderVisits=function(){
 
   // ── 전체 조립 ──
   container.innerHTML=
-    '<div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:18px;">'
+    '<div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px;">'
     +kpi('blue','이번달 접점 ('+calMonthStr+')',thisMonthAll.length,'건')
     +kpi('cyan','이번주 접점',thisWeek.length,'건')
     +kpi('gold','이번달 접점',thisMonthAll.length,'건')
@@ -9999,7 +10013,7 @@ window.onerror=function(msg){if(msg==='Script error.'||msg==='Script Error.')ret
 </script>
 
 <script>
-// ════ SP / MSAL 인증 v2 ════
+// ════ SP / MSAL ════
 var SP_SCOPE = 'https://tis21.sharepoint.com/.default';
 
 function _setBar(state, msg){
@@ -10021,21 +10035,30 @@ function _getMSAL(){
   if(_msalP) return _msalP;
   if(typeof msal==='undefined') return Promise.reject(new Error('MSAL 없음'));
   var app = new msal.PublicClientApplication({
-    auth:{clientId:_SP_CONFIG.clientId, authority:'https://login.microsoftonline.com/'+_SP_CONFIG.tenantId, redirectUri:_SP_CONFIG.redirectUri},
-    cache:{cacheLocation:'localStorage', storeAuthStateInCookie:true}
+    auth:{clientId:_SP_CONFIG.clientId,authority:'https://login.microsoftonline.com/'+_SP_CONFIG.tenantId,redirectUri:_SP_CONFIG.redirectUri},
+    cache:{cacheLocation:'localStorage',storeAuthStateInCookie:true}
   });
   _msalP = app.initialize().then(function(){ window._msalApp=app; return app; });
   return _msalP;
 }
 
+function _reRenderAll(){
+  // SP 로드 후 전체 재렌더링
+  try{ if(typeof renderDashboard==='function') renderDashboard(); }catch(e){}
+  try{ if(typeof renderIssues==='function') renderIssues(); }catch(e){}
+  try{ if(typeof renderPipeline==='function') renderPipeline(); }catch(e){}
+  try{ if(typeof renderRepSummary==='function') renderRepSummary(); }catch(e){}
+  try{ if(typeof renderVisits==='function') renderVisits(); }catch(e){}
+}
+
 async function _connectSP(app, account){
   try{
-    var sr = await app.acquireTokenSilent({scopes:[SP_SCOPE], account:account});
+    var sr = await app.acquireTokenSilent({scopes:[SP_SCOPE],account:account});
     if(sr && sr.accessToken){
       window._spToken = sr.accessToken;
       _setBar('connected');
       if(typeof _initSP==='function') await _initSP();
-      try{ if(typeof renderDashboard==='function') renderDashboard(); }catch(e){}
+      _reRenderAll();
     }
   }catch(e){
     console.warn('[SP]', e.message);
@@ -10087,7 +10110,7 @@ async function _startSP(){
   var account=app.getActiveAccount()||app.getAllAccounts()[0];
   if(account){
     _setBar('connecting');
-    await _connectSP(app, account);
+    await _connectSP(app,account);
   }else{
     if(session && session.role) localStorage.setItem('_savedSession',JSON.stringify(session));
     localStorage.setItem('_spPending','1');
