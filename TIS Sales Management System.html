@@ -10287,7 +10287,7 @@ document.addEventListener('DOMContentLoaded', function(){
     }else{
       localStorage.removeItem('_spPending');
       localStorage.removeItem('_savedSession');
-      if(history.replaceState) history.replaceState({},document.title,location.pathname);
+      try{ if(history.replaceState) history.replaceState({},document.title,location.pathname); }catch(e){}
       _setBar('offline');
     }
   }).catch(function(e){ console.error('[MSAL]',e.message); });
