@@ -2231,9 +2231,29 @@ table.dt thead th { font-size: 13px !important; }
         <div style="margin-bottom:20px;">
           <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px;">상단 배너</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-            <div>
-              <label style="font-size:11px;color:var(--muted);">배너 문구</label>
-              <input id="cfg-banner-text" type="text" oninput="autoResizeTA(this)" placeholder="공지 내용" style="width:100%;border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px;font-family:inherit;margin-top:4px;">
+            <div style="grid-column:1/-1;">
+              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px;">배너 문구 <span style="color:#94A3B8;">(서식 지원)</span></label>
+              <div style="display:flex;flex-wrap:wrap;gap:3px;padding:5px 7px;background:#F8FAFC;border:1px solid var(--border);border-bottom:none;border-radius:7px 7px 0 0;">
+                <button type="button" onclick="document.getElementById('cfg-banner-editor').focus();document.execCommand('bold')" style="width:26px;height:26px;border:1px solid var(--border);border-radius:4px;background:white;cursor:pointer;font-weight:800;font-size:12px;font-family:inherit;">B</button>
+                <button type="button" onclick="document.getElementById('cfg-banner-editor').focus();document.execCommand('italic')" style="width:26px;height:26px;border:1px solid var(--border);border-radius:4px;background:white;cursor:pointer;font-style:italic;font-size:12px;font-family:inherit;">I</button>
+                <button type="button" onclick="document.getElementById('cfg-banner-editor').focus();document.execCommand('underline')" style="width:26px;height:26px;border:1px solid var(--border);border-radius:4px;background:white;cursor:pointer;text-decoration:underline;font-size:12px;font-family:inherit;">U</button>
+                <div style="width:1px;background:var(--border);margin:2px 1px;"></div>
+                <select onchange="document.getElementById('cfg-banner-editor').focus();document.execCommand('fontSize',false,this.value);this.value='3'" style="height:26px;border:1px solid var(--border);border-radius:4px;padding:0 3px;font-size:11px;font-family:inherit;background:white;">
+                  <option value="3" disabled selected>크기</option>
+                  <option value="1">소</option><option value="2">중소</option><option value="3">중</option>
+                  <option value="4">중대</option><option value="5">대</option><option value="6">특대</option>
+                </select>
+                <div style="display:flex;align-items:center;gap:2px;height:26px;border:1px solid var(--border);border-radius:4px;padding:0 5px;background:white;">
+                  <span style="font-size:10px;color:#64748B;">색</span>
+                  <input type="color" value="#000000" onchange="document.getElementById('cfg-banner-editor').focus();document.execCommand('foreColor',false,this.value)" style="width:18px;height:18px;border:none;padding:0;cursor:pointer;">
+                </div>
+                <button type="button" onclick="document.getElementById('cfg-banner-editor').focus();document.execCommand('removeFormat')" style="width:26px;height:26px;border:1px solid var(--border);border-radius:4px;background:white;cursor:pointer;font-size:11px;color:#EF4444;">✕</button>
+              </div>
+              <div id="cfg-banner-editor" contenteditable="true"
+                oninput="document.getElementById('cfg-banner-text').value=this.innerHTML;"
+                onfocus="this.style.borderColor='#4f7fff';" onblur="this.style.borderColor='var(--border)';"
+                style="min-height:36px;border:1px solid var(--border);border-radius:0 0 7px 7px;padding:7px 10px;font-size:12px;font-family:inherit;background:white;outline:none;line-height:1.5;"></div>
+              <input type="hidden" id="cfg-banner-text">
             </div>
             <div>
               <label style="font-size:11px;color:var(--muted);">배경색</label>
@@ -2856,8 +2876,9 @@ function previewPopup(){
   var overlay=document.createElement('div');
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;';
   var box=document.createElement('div');
-  box.style.cssText='background:white;border-radius:14px;padding:24px;max-width:480px;width:90%;max-height:80vh;overflow-y:auto;';
-  box.innerHTML='<div style="font-size:16px;font-weight:800;margin-bottom:10px;">'+t+'</div>'+imgHtml+'<div style="font-size:13px;color:#374151;line-height:1.6;white-space:pre-line;">'+c+'</div>';
+  var _pw=(document.getElementById('cfg-popup-width')||{}).value||authCfg.popup&&authCfg.popup.width||'560px';
+  box.style.cssText='background:white;border-radius:14px;padding:24px;max-width:'+_pw+';width:90%;max-height:80vh;overflow-y:auto;';
+  box.innerHTML='<div style="font-size:16px;font-weight:800;margin-bottom:10px;">'+t+'</div>'+imgHtml+'<div style="font-size:13px;color:#374151;line-height:1.6;">'+c+'</div>';
   var closeBtn=document.createElement('button');
   closeBtn.textContent='닫기';
   closeBtn.style.cssText='margin-top:16px;padding:8px 20px;background:#0A1628;color:white;border:none;border-radius:8px;cursor:pointer;font-family:inherit;';
@@ -5270,7 +5291,9 @@ let saveTimer = null;
 
 // ══ 배너 공지 ══
 function deployBanner(){
-  const text=(document.getElementById('cfg-banner-text')||{}).value||'';
+  var _be=document.getElementById('cfg-banner-editor');
+  var _bt=document.getElementById('cfg-banner-text');
+  const text=(_be?_be.innerHTML:'')||(_bt?_bt.value:'')||'';
   if(!text.trim()){showToast('공지 내용을 입력하세요.','warn');return;}
   const font=(document.getElementById('cfg-banner-font')||{}).value||'맑은 고딕';
   const size=(document.getElementById('cfg-banner-size')||{}).value||'12px';
@@ -5336,10 +5359,14 @@ function showPopupNotice(){
   const modal=document.getElementById('popup-notice-modal');
   if(!modal)return;
   document.getElementById('popup-notice-title').textContent=p.title||'';
-  document.getElementById('popup-notice-content').textContent=p.content||'';
+  var pnc=document.getElementById('popup-notice-content');
+  if(pnc) pnc.innerHTML=p.content||''; // HTML 서식 지원
   const meta=document.getElementById('popup-notice-meta');
   if(meta&&p.deployedAt) meta.textContent='배포일시: '+(new Date(p.deployedAt)).toLocaleString('ko-KR');
   document.getElementById('popup-today-hide').checked=false;
+  // 팝업 너비 적용
+  var pcard=modal.querySelector('.popup-card');
+  if(pcard && p.width) pcard.style.maxWidth=p.width;
   modal.style.display='flex';
 }
 function closePopupNotice(){
@@ -5880,11 +5907,11 @@ async function _initSP() {
       if(!window._isSPReady) return;
       try{
         // 변경 전 해시
-        var _before = JSON.stringify(store.reps).length;
+        var _before = JSON.stringify(store.reps);
         await _spLoadToday();
         await _spLoadHistList();
-        var _after = JSON.stringify(store.reps).length;
-        // 데이터 변경된 경우에만 재렌더
+        var _after = JSON.stringify(store.reps);
+        // 데이터 실제 변경된 경우에만 재렌더
         if(_before !== _after){
           if(typeof renderDashboard==='function') renderDashboard();
           if(typeof renderIssues==='function') renderIssues();
@@ -6104,22 +6131,34 @@ async function _spLoadSettings() {
   if (typeof loadNotifCfg === 'function') loadNotifCfg();
 
   syncTeamData();
-  // SP 로드 후 session.team으로 _tabState 재적용 (신규팀 포함)
+  // SP 로드 후: REPS 업데이트 + 탭 재빌드 (신규팀 포함)
   if(session && session.role==='rep' && session.team){
     _tabState.input    = session.team;
     _tabState.issues   = session.team;
     _tabState.pipeline = session.team;
     _tabState.visits   = session.team;
+    // ★ 핵심: REPS를 현재 팀으로 업데이트 (buildRepTabs가 REPS 기반)
+    if(typeof applyCurrentTeam==='function') applyCurrentTeam(session.team);
+    // 탭 재빌드 (REPS 업데이트 후)
+    if(typeof buildRepTabs==='function') buildRepTabs();
+    // 현재 페이지가 input이면 내 탭 자동 선택
+    var _inputPage = document.getElementById('page-input');
+    if(_inputPage && _inputPage.classList.contains('active')){
+      if(typeof initInputTabs==='function') initInputTabs();
+      setTimeout(function(){
+        var _myTab = _inputPage.querySelector('.tab[data-rep="'+session.rep+'"]');
+        if(_myTab && !_myTab.classList.contains('active')) _myTab.click();
+      }, 100);
+    }
   }
-  // 현재 페이지 팀 탭 재빌드 (신규팀이 TEAMS에 추가된 후)
+  // 현재 페이지 팀 탭 재빌드
   try{
-    var activePage = document.querySelector('.page.active');
-    if(activePage){
-      var pid = activePage.id.replace('page-','');
-      if(pid==='issues' && typeof initIssueTabs==='function') initIssueTabs();
-      if(pid==='pipeline' && typeof initPipeTabs==='function') initPipeTabs();
-      if(pid==='visits' && typeof initVisitsTabs==='function') initVisitsTabs();
-      if(pid==='input' && typeof initInputTabs==='function') initInputTabs();
+    var _ap = document.querySelector('.page.active');
+    if(_ap){
+      var _pid = _ap.id.replace('page-','');
+      if(_pid==='issues' && typeof initIssueTabs==='function') initIssueTabs();
+      if(_pid==='pipeline' && typeof initPipeTabs==='function') initPipeTabs();
+      if(_pid==='visits' && typeof initVisitsTabs==='function') initVisitsTabs();
     }
   }catch(e){}
   if(typeof loadBanner==='function') loadBanner();
