@@ -9962,7 +9962,7 @@ window.onerror=function(msg){if(msg==='Script error.'||msg==='Script Error.')ret
 </script>
 
 <script>
-// ════ SP 연동 ════
+// ════ SP / MSAL 인증 ════
 var SP_SCOPE = 'https://tis21.sharepoint.com/.default';
 
 function _setBar(state, msg){
@@ -9979,9 +9979,10 @@ function _setBar(state, msg){
   el.style.cssText = 'display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;border:1.5px solid;' + c.s;
 }
 
-// MSAL 앱 생성 (한 번만)
+// MSAL 앱 초기화 (한 번만)
+var _msalInitP = null;
 function _getMSAL() {
-  if(window._msalApp) return Promise.resolve(window._msalApp);
+  if(_msalInitP) return _msalInitP;
   if(typeof msal === 'undefined') return Promise.reject(new Error('MSAL 없음'));
   var app = new msal.PublicClientApplication({
     auth: {
@@ -9991,102 +9992,116 @@ function _getMSAL() {
     },
     cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: true }
   });
-  return app.initialize().then(function() {
-    window._msalApp = app;
-    return app;
-  });
+  _msalInitP = app.initialize().then(function(){ window._msalApp = app; return app; });
+  return _msalInitP;
 }
 
-// 참가자/관리자 선택 시 호출 - MS 로그인 후 SP 연결
+// SP 토큰으로 _initSP 실행
+async function _connectSP(app, account) {
+  try {
+    var sr = await app.acquireTokenSilent({ scopes: [SP_SCOPE], account: account });
+    if(sr && sr.accessToken) {
+      console.log('[SP] 토큰 획득 성공');
+      window._spToken = sr.accessToken;
+      _setBar('connected');
+      if(typeof _initSP === 'function') await _initSP();
+    }
+  } catch(e) {
+    console.warn('[SP] 토큰 획득 실패:', e.message);
+    _setBar('error', e.message);
+  }
+}
+
+// ── 페이지 로드 시 가장 먼저 실행 ──
+// handleRedirectPromise 처리 + 로그인 상태 확인
+document.addEventListener('DOMContentLoaded', function() {
+  _getMSAL().then(async function(app) {
+
+    // 1. 항상 handleRedirectPromise 먼저 실행
+    var result = null;
+    try { result = await app.handleRedirectPromise(); } catch(e) { console.warn('[MSAL]', e.message); }
+    console.log('[MSAL] handleRedirectPromise 결과:', result ? '토큰있음' : '없음');
+
+    // 2. redirect 결과로 account 설정
+    if(result && result.account) {
+      app.setActiveAccount(result.account);
+      console.log('[MSAL] activeAccount 설정:', result.account.username);
+
+      // redirect 복귀 시 세션 복원
+      var sv = localStorage.getItem('_savedSession');
+      if(sv) {
+        try {
+          var sess = JSON.parse(sv);
+          session = sess;
+          localStorage.removeItem('_savedSession');
+          if(sess.team && typeof applyCurrentTeam==='function') applyCurrentTeam(sess.team);
+          if(typeof _initApp==='function') _initApp();
+          setTimeout(function(){
+            if(typeof applyPermissions==='function') applyPermissions();
+            if(sess.rep){ var t=document.querySelector('.tab[data-rep="'+sess.rep+'"]'); if(t) t.click(); }
+            if(typeof showToast==='function') showToast('👤 ' + (sess.rep||'') + '으로 복원');
+          }, 300);
+        } catch(ex) { console.error('세션 복원 실패:', ex); }
+      }
+    }
+
+    // 3. account 확인
+    var account = app.getActiveAccount() || app.getAllAccounts()[0];
+    console.log('[MSAL] 현재 account:', account ? account.username : '없음');
+
+    // 4. account 있으면 즉시 SP 연결 (loginRedirect 없음!)
+    if(account) {
+      console.log('[SP] 로그인 상태 확인됨 → SP 연결');
+      _setBar('connecting');
+      await _connectSP(app, account);
+    } else {
+      console.log('[SP] 미로그인 → 참가자 선택 대기');
+      _setBar('offline');
+      // URL에 code/state가 있어도 account 없으면 참가자 선택창으로
+      if(history.replaceState) history.replaceState({}, document.title, location.pathname);
+      localStorage.removeItem('_spPending');
+    }
+
+  }).catch(function(e) {
+    console.error('[MSAL] 초기화 실패:', e.message);
+    _setBar('error', e.message);
+  });
+});
+
+// ── 참가자/관리자 선택 시 호출 ──
 async function _startSP() {
-  if(window._isSPReady) return;
-  console.log('[SP] 시작');
-  _setBar('connecting');
+  console.log('[SP] _startSP 호출');
+  if(window._isSPReady) { console.log('[SP] 이미 연결됨'); return; }
 
   var app;
   try { app = await _getMSAL(); }
   catch(e) { _setBar('error', e.message); return; }
 
-  // 1. 이미 로그인된 계정 확인 (silent)
-  var accs = app.getAllAccounts();
-  console.log('[SP] 캐시 계정:', accs.length);
-  if(accs.length > 0) {
-    try {
-      var sr = await app.acquireTokenSilent({ scopes: [SP_SCOPE], account: accs[0] });
-      if(sr && sr.accessToken) {
-        console.log('[SP] Silent 성공 → SP 연결');
-        window._spToken = sr.accessToken;
-        _setBar('connected');
-        if(typeof _initSP === 'function') await _initSP();
-        return;
-      }
-    } catch(e) { console.warn('[SP] Silent 실패:', e.message); }
-  }
+  // account 확인 (account 있으면 loginRedirect 절대 안함)
+  var account = app.getActiveAccount() || app.getAllAccounts()[0];
+  console.log('[SP] account:', account ? account.username : '없음');
 
-  // 2. loginRedirect (MS 로그인 페이지로 이동)
-  // 세션 저장 (복귀 후 복원용)
-  if(session && session.rep) {
-    localStorage.setItem('_savedSession', JSON.stringify(session));
-  }
-  localStorage.setItem('_spPending', '1');
-  console.log('[SP] loginRedirect →');
-  try {
-    await app.loginRedirect({ scopes: [SP_SCOPE] });
-  } catch(e) {
-    localStorage.removeItem('_spPending');
-    _setBar('error', e.message);
-    if(typeof showToast==='function') showToast('MS 로그인 실패: ' + e.message, 'warn');
+  if(account) {
+    // 이미 로그인 → silent 토큰으로 SP 연결
+    _setBar('connecting');
+    await _connectSP(app, account);
+  } else {
+    // 미로그인 → loginRedirect (한 번만)
+    console.log('[SP] loginRedirect 시작');
+    if(session && session.role) {
+      localStorage.setItem('_savedSession', JSON.stringify(session));
+    }
+    localStorage.setItem('_spPending', '1');
+    _setBar('connecting');
+    try {
+      await app.loginRedirect({ scopes: [SP_SCOPE] });
+    } catch(e) {
+      localStorage.removeItem('_spPending');
+      _setBar('error', e.message);
+      if(typeof showToast==='function') showToast('MS 로그인 실패: ' + e.message, 'warn');
+    }
   }
 }
-
-// MS 로그인 복귀 처리 (페이지 로드 시 - _startSP 호출 안함!)
-document.addEventListener('DOMContentLoaded', function() {
-  var isPending = localStorage.getItem('_spPending') === '1';
-  var hasCode = location.search.indexOf('code=') > -1
-             || location.hash.indexOf('code=') > -1
-             || location.search.indexOf('state=') > -1;
-
-  if(!isPending && !hasCode) return; // 일반 접속 - 아무것도 안함
-
-  console.log('[SP] 로그인 복귀 처리');
-  localStorage.removeItem('_spPending');
-  if(history.replaceState) history.replaceState({}, document.title, location.pathname);
-
-  // 세션 복원
-  var sv = localStorage.getItem('_savedSession');
-  if(sv) {
-    try {
-      var sess = JSON.parse(sv);
-      session = sess;
-      if(sess.team && typeof applyCurrentTeam==='function') applyCurrentTeam(sess.team);
-      localStorage.removeItem('_savedSession');
-      if(typeof _initApp==='function') _initApp();
-      setTimeout(function(){
-        if(typeof applyPermissions==='function') applyPermissions();
-        if(sess.rep){ var t=document.querySelector('.tab[data-rep=+sess.rep+]'); if(t) t.click(); }
-      }, 200);
-      if(typeof showToast==='function') showToast('👤 ' + (sess.rep||'') + '으로 복원됨');
-    } catch(ex) { console.error('세션 복원 실패:', ex); }
-  }
-
-  // 토큰만 처리 (loginRedirect 절대 호출 안함)
-  _getMSAL().then(function(app) {
-    return app.handleRedirectPromise();
-  }).then(function(rr) {
-    if(rr && rr.accessToken) {
-      console.log('[SP] 토큰 획득 성공 → SP 연결');
-      window._spToken = rr.accessToken;
-      _setBar('connected');
-      if(typeof _initSP==='function') _initSP();
-    } else {
-      console.warn('[SP] 토큰 없음');
-      _setBar('offline');
-    }
-  }).catch(function(e) {
-    console.error('[SP] 토큰 처리 실패:', e.message);
-    _setBar('error', e.message);
-  });
-});
 
 // doRepLogin 래핑
 (function(){
