@@ -3014,7 +3014,18 @@ function _initApp(){
       var _snap = JSON.parse(_lsSnap);
       // store.reps 복원 (UI 데이터)
       if(_snap.store && _snap.store.reps){
-        Object.keys(_snap.store.reps).forEach(function(r){ store.reps[r] = _snap.store.reps[r]; });
+        Object.keys(_snap.store.reps).forEach(function(r){
+          var d = _snap.store.reps[r];
+          if(!d) return;
+          // plan/actual/forecast 정확히 12개로 정규화 (누적 방지)
+          if(!Array.isArray(d.plan)) d.plan = new Array(12).fill(0);
+          else d.plan = d.plan.slice(0,12).concat(new Array(12).fill(0)).slice(0,12);
+          if(!Array.isArray(d.actual)) d.actual = new Array(12).fill(0);
+          else d.actual = d.actual.slice(0,12).concat(new Array(12).fill(0)).slice(0,12);
+          if(!Array.isArray(d.forecast)) d.forecast = new Array(12).fill(0);
+          else d.forecast = d.forecast.slice(0,12).concat(new Array(12).fill(0)).slice(0,12);
+          store.reps[r] = d;
+        });
       }
     }
   }catch(e){}
@@ -4005,10 +4016,19 @@ function renderProductDash(){
 
 function refresh(){
   REPS.forEach(r=>{
+    if(!store.reps[r]) return;
+    var d=store.reps[r];
+    // 계산 전 배열 정규화 (누적/오염 방지)
+    if(!Array.isArray(d.plan)||d.plan.length!==12)
+      d.plan=(Array.isArray(d.plan)?d.plan:[]).slice(0,12).concat(new Array(12).fill(0)).slice(0,12);
+    if(!Array.isArray(d.actual)||d.actual.length!==12)
+      d.actual=(Array.isArray(d.actual)?d.actual:[]).slice(0,12).concat(new Array(12).fill(0)).slice(0,12);
+    if(!Array.isArray(d.forecast)||d.forecast.length!==12)
+      d.forecast=(Array.isArray(d.forecast)?d.forecast:[]).slice(0,12).concat(new Array(12).fill(0)).slice(0,12);
     const pt=document.getElementById(r+'-pt'),at=document.getElementById(r+'-at'),ft=document.getElementById(r+'-ft');
-    if(pt)pt.textContent=store.reps[r].plan.slice(0,12).reduce((a,b)=>a+b,0).toLocaleString('ko-KR');
-    if(at)at.textContent=store.reps[r].actual.slice(0,12).reduce((a,b)=>a+b,0).toLocaleString('ko-KR');
-    if(ft)ft.textContent=store.reps[r].forecast.slice(0,12).reduce((a,b)=>a+b,0).toLocaleString('ko-KR');
+    if(pt)pt.textContent=d.plan.reduce((a,b)=>a+b,0).toLocaleString('ko-KR');
+    if(at)at.textContent=d.actual.reduce((a,b)=>a+b,0).toLocaleString('ko-KR');
+    if(ft)ft.textContent=d.forecast.reduce((a,b)=>a+b,0).toLocaleString('ko-KR');
   });
   renderDashboard();
   autoSave();
@@ -5549,7 +5569,17 @@ function autoSave(){
         team: document.getElementById('cfg-team')?.value || document.querySelector('.sidebar-logo .title')?.textContent || '솔루션영업팀',
         reps: [...REPS],
         repColors: [...REP_COLORS],
-        store: JSON.parse(JSON.stringify(store)),
+        store: (function(){
+        var s=JSON.parse(JSON.stringify(store));
+        // 저장 전 plan/actual/forecast 정확히 12개로 정규화
+        Object.keys(s.reps||{}).forEach(function(r){
+          var d=s.reps[r]; if(!d) return;
+          if(Array.isArray(d.plan)) d.plan=d.plan.slice(0,12).concat(new Array(12).fill(0)).slice(0,12);
+          if(Array.isArray(d.actual)) d.actual=d.actual.slice(0,12).concat(new Array(12).fill(0)).slice(0,12);
+          if(Array.isArray(d.forecast)) d.forecast=d.forecast.slice(0,12).concat(new Array(12).fill(0)).slice(0,12);
+        });
+        return s;
+      })(),
         labels: {...labels},
         savedAt: new Date().toISOString()
       };
@@ -6110,10 +6140,14 @@ function _applySnap(snap, date) {
   if(!window._skipApplyRender){
     var _inputActive = document.getElementById('page-input') &&
       document.getElementById('page-input').classList.contains('active');
-    if(!_inputActive){ buildRepTabs(); buildRepInputs(); }
+    if(!_inputActive){
+      buildRepTabs(); buildRepInputs();
+    } else {
+      // input 페이지 활성 시에도 소계 업데이트 (합계 오류 방지)
+      if(typeof refresh==='function') refresh();
+    }
     populateFilters();
     renderDashboard(); renderIssues(); renderPipeline(); applyLabels();
-    // buildRepInputs 후 권한 재적용 (readonly 상태 보정)
     if(typeof applyPermissions==='function') setTimeout(applyPermissions, 30);
   }
   setTimeout(()=>{ attachAllNumFormats(); resizeAllTextareas(); }, 100);
