@@ -2967,6 +2967,13 @@ function showPage(id,navEl){
     initInputTabs();
     if(typeof buildRepTabs==='function') buildRepTabs();
     if(typeof buildRepInputs==='function') buildRepInputs();
+    // 참가자 접속 시 본인 탭 자동 선택
+    if(session && session.role==='rep' && session.rep){
+      setTimeout(function(){
+        var myTab = document.querySelector('.tab[data-rep="'+session.rep+'"]');
+        if(myTab && !myTab.classList.contains('active')) myTab.click();
+      }, 80);
+    }
   } else if(id==='issues'){
     initIssueTabs();
     if(typeof extractIssues==='function') extractIssues();
@@ -4820,11 +4827,7 @@ function doRepLogin(rep){
   closeAuth();
   _initApp();
   showToast('👤 '+rep+'으로 접속했습니다.');
-  setTimeout(function(){
-    // 본인 탭 자동 선택
-    var myTab=document.querySelector('.tab[data-rep="'+rep+'"]');
-    if(myTab) myTab.click();
-  }, 300);
+  // 영업진행현황 진입 시 자동 선택 (showPage에서 처리)
   if(typeof recordAccess==='function') recordAccess(rep);
   setTimeout(async function(){
     try{ if(!window._isSPReady&&typeof _initSP==='function') await _initSP(); }catch(e){}
