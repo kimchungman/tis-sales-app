@@ -10118,15 +10118,6 @@ function _getMSAL(){
   return _msalP;
 }
 
-function _reRenderAll(){
-  // SP 로드 후 전체 재렌더링
-  try{ if(typeof renderDashboard==='function') renderDashboard(); }catch(e){}
-  try{ if(typeof renderIssues==='function') renderIssues(); }catch(e){}
-  try{ if(typeof renderPipeline==='function') renderPipeline(); }catch(e){}
-  try{ if(typeof renderRepSummary==='function') renderRepSummary(); }catch(e){}
-  try{ if(typeof renderVisits==='function') renderVisits(); }catch(e){}
-}
-
 async function _connectSP(app, account){
   try{
     var sr = await app.acquireTokenSilent({scopes:[SP_SCOPE],account:account});
@@ -10134,14 +10125,17 @@ async function _connectSP(app, account){
       window._spToken = sr.accessToken;
       _setBar('connected');
       if(typeof _initSP==='function') await _initSP();
-      _reRenderAll();
+      // 대시보드 강제 재렌더
+      try{ if(typeof renderDashboard==='function') renderDashboard(); }catch(e){}
+      try{ if(typeof renderRepSummary==='function') renderRepSummary(); }catch(e){}
     }
   }catch(e){
-    console.warn('[SP]', e.message);
-    _setBar('error', e.message);
+    console.warn('[SP]',e.message);
+    _setBar('error',e.message);
   }
 }
 
+// 페이지 로드 시 (redirect 복귀 처리)
 document.addEventListener('DOMContentLoaded', function(){
   _getMSAL().then(async function(app){
     var rr=null;
@@ -10154,29 +10148,31 @@ document.addEventListener('DOMContentLoaded', function(){
       if(sv){
         try{
           var sess=JSON.parse(sv);
+          // session + team 복원
           session=sess;
-          localStorage.removeItem('_savedSession');
-          if(sess.team && typeof applyCurrentTeam==='function') applyCurrentTeam(sess.team);
-          if(sess.role==='rep' && sess.team){
+          if(sess.team){
+            if(typeof applyCurrentTeam==='function') applyCurrentTeam(sess.team);
             _tabState.input=sess.team; _tabState.issues=sess.team;
             _tabState.pipeline=sess.team; _tabState.visits=sess.team;
           }
+          localStorage.removeItem('_savedSession');
+          // _initApp 호출 (대시보드 표시)
           if(typeof _initApp==='function') _initApp();
           setTimeout(function(){
             if(typeof applyPermissions==='function') applyPermissions();
             if(typeof showToast==='function') showToast('👤 '+(sess.rep||sess.role||'')+'으로 복원');
-          }, 200);
-        }catch(ex){ console.error('세션복원:', ex); }
+          },200);
+        }catch(ex){ console.error('세션복원:',ex); }
       }
       _setBar('connecting');
-      await _connectSP(app, account);
+      await _connectSP(app,account);
     }else{
       localStorage.removeItem('_spPending');
       localStorage.removeItem('_savedSession');
       if(history.replaceState) history.replaceState({},document.title,location.pathname);
       _setBar('offline');
     }
-  }).catch(function(e){ console.error('[MSAL]', e.message); });
+  }).catch(function(e){ console.error('[MSAL]',e.message); });
 });
 
 async function _startSP(){
@@ -10194,26 +10190,72 @@ async function _startSP(){
     try{ await app.loginRedirect({scopes:[SP_SCOPE]}); }
     catch(e){
       localStorage.removeItem('_spPending');
-      _setBar('error', e.message);
+      _setBar('error',e.message);
       if(typeof showToast==='function') showToast('MS 로그인 실패: '+e.message,'warn');
     }
   }
 }
 
+// ── doRepLogin 래핑 (실제 실행 함수 - 줄 4898 버전) ──
+// 원본은 _initApp() 호출 없음 → 여기서 추가
 (function(){
-  function wrap(name){
-    var orig=window[name];
-    if(typeof orig!=='function') return;
-    window[name]=function(){
-      if(name==='doRepLogin' && window.currentTeam){
-        var t=window.currentTeam;
-        _tabState.input=t; _tabState.issues=t; _tabState.pipeline=t; _tabState.visits=t;
-      }
-      orig.apply(this,arguments);
-      setTimeout(function(){ if(!window._isSPReady) _startSP(); },150);
-    };
+  var orig=window.doRepLogin;
+  if(typeof orig!=='function') return;
+  window.doRepLogin=function(rep){
+    var team=window.currentTeam||'';
+    // session에 team 저장 (원본이 team 저장 안 함)
+    session.team=team;
+    // localStorage 저장 (redirect 복귀 시 복원용)
+    localStorage.setItem('_savedSession',JSON.stringify({role:'rep',rep:rep,team:team}));
+    // 탭 상태 설정
+    _tabState.input=team; _tabState.issues=team;
+    _tabState.pipeline=team; _tabState.visits=team;
+    // 원본 실행 (closeAuth, applyPermissions, showToast, 300ms SP)
+    orig(rep);
+    // 원본이 _initApp 안 함 → 여기서 호출 (대시보드 표시)
+    if(typeof _initApp==='function') _initApp();
+    // SP 연결
+    setTimeout(function(){ if(!window._isSPReady) _startSP(); },200);
+  };
+})();
+
+// ── doAdminLogin 래핑 ──
+(function(){
+  var orig=window.doAdminLogin;
+  if(typeof orig!=='function'){
+    // tryAdmin의 doAdminLogin 없으면 tryAdmin 자체를 래핑
+    return;
   }
-  wrap('doRepLogin'); wrap('doAdminLogin'); wrap('doGuestLogin');
+  window.doAdminLogin=function(){
+    orig.apply(this,arguments);
+    setTimeout(function(){ if(!window._isSPReady) _startSP(); },200);
+  };
+})();
+
+// ── doGuestLogin 래핑 ──
+(function(){
+  var orig=window.doGuestLogin;
+  if(typeof orig!=='function') return;
+  window.doGuestLogin=function(){
+    var team=window.currentTeam||'';
+    session.team=team;
+    _tabState.input=team; _tabState.issues=team;
+    _tabState.pipeline=team; _tabState.visits=team;
+    orig.apply(this,arguments);
+    if(typeof _initApp==='function') _initApp();
+    setTimeout(function(){ if(!window._isSPReady) _startSP(); },200);
+  };
+})();
+
+// ── tryAdmin 래핑 (admin 로그인 실제 경로) ──
+(function(){
+  var origTA=window.tryAdmin;
+  if(typeof origTA!=='function') return;
+  window.tryAdmin=function(){
+    origTA();
+    // tryAdmin이 _initApp 호출 → 이미 대시보드 표시됨
+    setTimeout(function(){ if(!window._isSPReady) _startSP(); },200);
+  };
 })();
 </script>
 </body>
