@@ -1472,6 +1472,16 @@ td.lbl-row-rate {
 
 
 <script>
+/* MSAL UMD 격리: CDN이 exports를 설정했을 경우 방지 */
+(function(){
+  console.log('[PRE-MSAL] typeof exports:', typeof exports, '/ typeof module:', typeof module);
+  // exports/module이 이미 있으면 MSAL UMD가 CommonJS 경로를 탈 수 있음
+  // window 스코프에서 임시 제거
+  if(typeof exports !== 'undefined') { try{ delete exports; }catch(e){} }
+  if(typeof module !== 'undefined') { try{ delete module; }catch(e){} }
+})();
+</script>
+<script>
 /* MSAL 2.38.3 인라인 */
 /* MSAL 2.38.3 인라인 */
 /*! @azure/msal-browser v2.38.3 2023-10-27 */
@@ -1548,9 +1558,25 @@ var st,ct,ut,lt,dt,ht,pt,gt,ft,mt=function(){function t(e,t,r){this.networkInter
 
 </script>
 <script>
-console.log("[STEP1] typeof msal:", typeof msal);
-console.log("[STEP1] window.msal:", window.msal);
+/* MSAL rescue: UMD가 exports에 설정된 경우 window.msal로 이전 */
+(function(){
+  console.log('[STEP1] typeof msal:', typeof msal);
+  if(typeof msal !== 'undefined'){
+    console.log('[STEP1] ✅ MSAL 정상 로드됨');
+    return;
+  }
+  console.warn('[STEP1] ⚠️ window.msal undefined - exports 확인 중');
+  // MSAL이 exports에 설정됐을 경우 복구
+  if(typeof exports === 'object' && exports && exports.PublicClientApplication){
+    window.msal = exports;
+    console.log('[STEP1] ✅ exports에서 msal 복구됨');
+    return;
+  }
+  console.error('[STEP1] ❌ MSAL 로드 완전 실패');
+})();
 </script>
+
+
 
 
 /* ── 파이프라인/이슈현황 공통 CSS ── */
@@ -4838,9 +4864,7 @@ function tryAdmin(){
     closeAuth();
     _initApp();
     showToast('🛡️ 관리자 모드로 접속했습니다.');
-    setTimeout(async function(){
-      try{ if(!window._isSPReady&&typeof _initSP==='function') await _initSP(); }catch(e){}
-    }, 500);
+    // SP 연결은 _startSP가 담당
   } else {
     var err=document.getElementById('adm-err');
     if(err) err.textContent='❌ 비밀번호가 틀렸습니다.';
@@ -5723,6 +5747,7 @@ async function _initSP() {
 
     // 토큰 획득
     window._spToken = await _getToken();
+    if(!window._spToken){ _setSPStatus&&_setSPStatus('offline'); return; }
 
     // 리스트 ID 조회
     const listsUrl = _SP_CONFIG.siteUrl + '/_api/web/lists?$select=Id,Title';
