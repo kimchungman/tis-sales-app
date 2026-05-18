@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260518-0515 -->
 <script>
 if(location.protocol==="file:"){location.replace("https://kimchungman.github.io/tis-sales-app/TIS%20Sales%20Management%20System.html");}
 </script>
@@ -6373,10 +6374,12 @@ window.renderIssues = function() {
   if (pillEl) {
     var selRep = F.rep;
     var ps = 'height:26px;padding:0 12px;border-radius:13px;font-size:12px;font-family:inherit;cursor:pointer;border:1.5px solid;transition:all 0.15s;';
-    var h = '<button onclick="_issRep(\'all\')" style="'+ps+'background:'+(!selRep?'#4f7fff':'white')+';color:'+(!selRep?'white':'#64748B')+';border-color:'+(!selRep?'#4f7fff':'#E2E8F0')+';font-weight:'+(!selRep?'700':'400')+';">전체</button>';
+    var PH2 = 'height:28px;padding:0 14px;border-radius:14px;font-size:13px;font-family:inherit;cursor:pointer;border:1.5px solid;transition:all 0.15s;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;';
+    var h = '<button onclick="_issRep(\'all\')" style="'+PH2+'min-width:60px;justify-content:center;font-weight:'+(!selRep?'700':'500')+';background:'+(!selRep?'#4f7fff':'white')+';color:'+(!selRep?'white':'#4f7fff')+';border-color:'+(!selRep?'#4f7fff':'rgba(79,127,255,0.4)')+';">전체</button>';
     allReps.forEach(function(r){
       var act = selRep===r, rc=RC[r]||'#4f7fff';
-      h += '<button onclick="_issRep(\''+r+'\')" style="'+ps+'background:'+(act?rc:'white')+';color:'+(act?'white':'#64748B')+';border-color:'+(act?rc:'#E2E8F0')+';font-weight:'+(act?'700':'400')+';">'+r+'</button>';
+      var cnt = (issues||[]).filter(function(iss){ return iss.rep===r; }).length;
+      h += '<button onclick="_issRep(\''+r+'\')" style="'+PH2+'font-weight:'+(act?'700':'500')+';background:'+(act?rc:'white')+';color:'+(act?'white':'#475569')+';border-color:'+(act?rc:'#E2E8F0')+';">'+r+' <strong style="font-size:11px;opacity:0.8;">'+cnt+'</strong></button>';
     });
     pillEl.innerHTML = h;
   }
@@ -8108,10 +8111,12 @@ window.renderIssues = function() {
   if (pillEl) {
     var selRep = F.rep;
     var ps = 'height:26px;padding:0 12px;border-radius:13px;font-size:12px;font-family:inherit;cursor:pointer;border:1.5px solid;transition:all 0.15s;';
-    var h = '<button onclick="_issRep(\'all\')" style="'+ps+'background:'+(!selRep?'#4f7fff':'white')+';color:'+(!selRep?'white':'#64748B')+';border-color:'+(!selRep?'#4f7fff':'#E2E8F0')+';font-weight:'+(!selRep?'700':'400')+';">전체</button>';
+    var PH2 = 'height:28px;padding:0 14px;border-radius:14px;font-size:13px;font-family:inherit;cursor:pointer;border:1.5px solid;transition:all 0.15s;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;';
+    var h = '<button onclick="_issRep(\'all\')" style="'+PH2+'min-width:60px;justify-content:center;font-weight:'+(!selRep?'700':'500')+';background:'+(!selRep?'#4f7fff':'white')+';color:'+(!selRep?'white':'#4f7fff')+';border-color:'+(!selRep?'#4f7fff':'rgba(79,127,255,0.4)')+';">전체</button>';
     allReps.forEach(function(r){
       var act = selRep===r, rc=RC[r]||'#4f7fff';
-      h += '<button onclick="_issRep(\''+r+'\')" style="'+ps+'background:'+(act?rc:'white')+';color:'+(act?'white':'#64748B')+';border-color:'+(act?rc:'#E2E8F0')+';font-weight:'+(act?'700':'400')+';">'+r+'</button>';
+      var cnt = (issues||[]).filter(function(iss){ return iss.rep===r; }).length;
+      h += '<button onclick="_issRep(\''+r+'\')" style="'+PH2+'font-weight:'+(act?'700':'500')+';background:'+(act?rc:'white')+';color:'+(act?'white':'#475569')+';border-color:'+(act?rc:'#E2E8F0')+';">'+r+' <strong style="font-size:11px;opacity:0.8;">'+cnt+'</strong></button>';
     });
     pillEl.innerHTML = h;
   }
@@ -9742,7 +9747,7 @@ window.renderVisits=function(){
   allReps.forEach(function(r){
     var act=_visitRepFilter.indexOf(r)>=0, rc=RC[r]||'#4f7fff';
     var cnt=filtered.filter(function(v){return v.rep===r;}).length;
-    repPills+='<button onclick="var _a=window._visitRepFilter,_i=_a.indexOf(\''+r+'\');_i>=0?_a.splice(_i,1):_a.push(\''+r+'\');window._visitPage=1;renderVisits();" style="'+PH+'background:'+(act?rc:'white')+';color:'+(act?'white':rc)+';border-color:'+(act?rc:rc+'60')+';">'+r+' <strong style="font-size:12px;opacity:0.85;">'+cnt+'</strong></button>';
+    repPills+='<button onclick="var _a=window._visitRepFilter,_i=_a.indexOf(\''+r+'\');_i>=0?_a.splice(_i,1):_a.push(\''+r+'\');window._visitPage=1;renderVisits();" style="'+PH+'background:'+(act?rc:'white')+';color:'+(act?'white':'#475569')+';border-color:'+(act?rc:'#E2E8F0')+';">'+r+' <strong style="font-size:12px;opacity:0.85;">'+cnt+'</strong></button>';
   });
 
   // ─ 캘린더 (옵션A: 파란 테두리, 숫자 센터, 배지 없음) ─
