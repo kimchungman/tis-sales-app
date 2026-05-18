@@ -5080,12 +5080,8 @@ function doRepLogin(rep){
     if(myTab) myTab.click();
   }, 300);
   if(typeof recordAccess==='function') recordAccess(rep);
-  // SP 연동: 백그라운드 silent 시도 (실패해도 앱 정상 동작)
-  setTimeout(async function(){
-    try{
-      if(!window._isSPReady && typeof _initSP==='function') await _initSP();
-    }catch(e){ console.warn('SP 백그라운드 연동 실패:', e); }
-  }, 1000);
+  // 클릭 컨텍스트 안에서 즉시 SP 연결 시도
+  _tryConnectSP();
 }function doRepLogin(rep){
   session={role:'rep',rep};
   // 리다이렉트 후 세션 복원을 위해 저장
@@ -5989,33 +5985,17 @@ function _setSPStatus(state) {
 // ── MSAL 토큰 획득 (팝업 로그인) ───────────────────────────
 async function _getToken() {
   var msalApp = window._msalApp;
-  if(!msalApp) throw new Error('MSAL 초기화 안됨');
-
-  // 1. 기존 계정 silent 시도
+  if(!msalApp) return null;
   var accounts = msalApp.getAllAccounts();
   if(accounts.length > 0){
     try{
       var sr = await msalApp.acquireTokenSilent({
-        scopes: _SP_CONFIG.scopes,
-        account: accounts[0]
+        scopes: _SP_CONFIG.scopes, account: accounts[0]
       });
       if(sr && sr.accessToken) return sr.accessToken;
     }catch(e){}
   }
-
-  // 2. loginPopup (nativeclient URI - 팝업이 자동으로 닫힘)
-  var result = await msalApp.loginPopup({
-    scopes: (_SP_CONFIG.loginScopes||['User.Read']).concat(_SP_CONFIG.scopes||[]),
-    redirectUri: 'https://login.microsoftonline.com/common/oauth2/nativeclient'
-  });
-  if(result && result.accessToken) return result.accessToken;
-
-  // 3. loginPopup 후 SP 토큰 별도 획득
-  var spResult = await msalApp.acquireTokenSilent({
-    scopes: _SP_CONFIG.scopes,
-    account: msalApp.getAllAccounts()[0]
-  });
-  return spResult ? spResult.accessToken : null;
+  return null;
 }
 
 
@@ -10491,6 +10471,62 @@ setTimeout(function(){
     btn.style.display='flex';
   }
 }, 2000);
+
+</script>
+
+<script>
+
+// SP 연결 시도 - 클릭 컨텍스트에서 호출되어야 팝업이 허용됨
+window._tryConnectSP = function(){
+  if(window._isSPReady) return;
+  if(!window._msalApp){
+    // MSAL 미초기화 시 1초 후 재시도
+    setTimeout(function(){ if(!window._isSPReady && window._msalApp) _tryConnectSP(); }, 1000);
+    return;
+  }
+  // 1. silent 먼저 시도
+  var accounts = window._msalApp.getAllAccounts();
+  if(accounts.length > 0){
+    window._msalApp.acquireTokenSilent({
+      scopes: _SP_CONFIG.scopes,
+      account: accounts[0]
+    }).then(function(sr){
+      if(sr && sr.accessToken){
+        window._spToken = sr.accessToken;
+        if(typeof _initSP==='function') _initSP();
+      }
+    }).catch(function(){
+      // silent 실패 → popup
+      _popupLogin();
+    });
+  } else {
+    // 계정 없음 → popup
+    _popupLogin();
+  }
+};
+
+function _popupLogin(){
+  if(!window._msalApp) return;
+  window._msalApp.loginPopup({
+    scopes: (_SP_CONFIG.loginScopes||['User.Read']).concat(_SP_CONFIG.scopes||[]),
+    redirectUri: 'https://login.microsoftonline.com/common/oauth2/nativeclient'
+  }).then(function(result){
+    if(!result) return;
+    // SP 토큰 획득
+    return window._msalApp.acquireTokenSilent({
+      scopes: _SP_CONFIG.scopes,
+      account: window._msalApp.getAllAccounts()[0]
+    });
+  }).then(function(spResult){
+    if(spResult && spResult.accessToken){
+      window._spToken = spResult.accessToken;
+      if(typeof _initSP==='function') _initSP();
+    }
+  }).catch(function(e){
+    console.warn('MS login:', e.message);
+    if(typeof showToast==='function') showToast('MS 로그인 실패: '+e.message, 'warn');
+  });
+}
 
 </script>
 </body>
