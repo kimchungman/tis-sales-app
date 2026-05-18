@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260518-0515 -->
+<!-- TIS-VERSION: 20260518-052306 -->
 <script>
 if(location.protocol==="file:"){location.replace("https://kimchungman.github.io/tis-sales-app/TIS%20Sales%20Management%20System.html");}
 </script>
@@ -9367,7 +9367,7 @@ window.renderIssues = function(){
     allReps.forEach(function(r){
       var act=reps.indexOf(r)>=0,rc=RC[r]||'#4f7fff',cnt=0;
       (store.reps[r]&&store.reps[r].issuesList||[]).forEach(function(iss){if(iss.content||iss.client)cnt++;});
-      var s=BTN+'background:'+(act?rc:'white')+';color:'+(act?'white':rc)+';border-color:'+(act?rc:rc+'60')+';';
+      var s=BTN+'background:'+(act?rc:'white')+';color:'+(act?'white':'#475569')+';border-color:'+(act?rc:'#E2E8F0')+';';
       h+='<button onclick="_issRep(\''+r+'\')" style="'+s+'">'+r+' <strong style="font-size:12px;opacity:0.85;">'+cnt+'</strong></button>';
     });
     pillEl.innerHTML=h;
