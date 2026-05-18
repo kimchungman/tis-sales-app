@@ -2976,22 +2976,35 @@ function showPage(id,navEl){
     }
   } else if(id==='issues'){
     initIssueTabs();
+    // 참가자: 본인 팀으로 필터
+    if(session && session.role==='rep' && session.team){
+      if(typeof _currentIssueTeam !== 'undefined') _currentIssueTeam = session.team;
+    }
     if(typeof extractIssues==='function') extractIssues();
     if(typeof renderIssues==='function') renderIssues();
   } else if(id==='pipeline'){
     initPipeTabs();
+    // 참가자: 본인 팀으로 필터
+    if(session && session.role==='rep' && session.team){
+      if(typeof _currentPipeTeam !== 'undefined') _currentPipeTeam = session.team;
+    }
     if(typeof renderPipeline==='function') renderPipeline();
   } else if(id==='visits'){
     if(typeof initVisitsTabs==='function') initVisitsTabs();
+    // 참가자: 본인 팀으로 필터
+    if(session && session.role==='rep' && session.team){
+      if(typeof _currentVisitsTeam !== 'undefined') _currentVisitsTeam = session.team;
+    }
     if(typeof renderVisits==='function') renderVisits();
   } else if(id==='dashboard'){
     try{ initDashTabs(); }catch(e){}
     try{ if(typeof renderDashboard==='function') renderDashboard(); }catch(e){}
     setTimeout(function(){ try{ renderRepChart(); }catch(e){} }, 100);
   }
-  if(id==='issues'){renderIssueTeamTabs();
-    extractIssues();
-    renderIssues();
+  if(id==='issues'){
+    if(typeof renderIssueTeamTabs==='function') renderIssueTeamTabs();
+    if(typeof extractIssues==='function') extractIssues();
+    if(typeof renderIssues==='function') renderIssues();
   }
   if(id==='accesslog'){
     if(session.role!=='admin'){ showPage('dashboard'); return; }
@@ -4823,7 +4836,11 @@ function tryRep(){
 function doRepLogin(rep){
   session={role:'rep', rep:rep, team:currentTeam};
   localStorage.setItem('_tisSavedSession', JSON.stringify({role:'rep',rep:rep,team:currentTeam}));
-  _tabState.input = currentTeam;
+  // 모든 탭을 본인 팀으로 초기화
+  _tabState.input    = currentTeam;
+  _tabState.issues   = currentTeam;
+  _tabState.pipeline = currentTeam;
+  _tabState.visits   = currentTeam;
   closeAuth();
   _initApp();
   showToast('👤 '+rep+'으로 접속했습니다.');
