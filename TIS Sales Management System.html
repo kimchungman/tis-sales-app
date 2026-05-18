@@ -6256,6 +6256,22 @@ async function _spLoadSettings() {
   }catch(e){}
   if(typeof loadBanner==='function') loadBanner();
   window._spSettingsLoaded = true;
+
+  // 신규팀 탭 대기 중이면 실행
+  if(window._pendingTabSelect){
+    var _pts = window._pendingTabSelect;
+    window._pendingTabSelect = null;
+    if(typeof initInputTabs==='function') initInputTabs();
+    setTimeout(function(){
+      var _tt = document.querySelector('#input-team-tabs .tis-tab[data-tab="'+_pts.team+'"]');
+      if(_tt && !_tt.classList.contains('active')) _tt.click();
+      setTimeout(function(){
+        var _rt = document.querySelector('#rep-tabs .tab[data-rep="'+_pts.rep+'"]');
+        if(_rt) _rt.click();
+        if(typeof applyPermissions==='function') applyPermissions();
+      }, 200);
+    }, 100);
+  }
 }
 
 async function spSaveSettings() {
