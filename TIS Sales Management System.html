@@ -3056,6 +3056,8 @@ function showPage(id,navEl){
     initInputTabs();
     if(typeof buildRepTabs==='function') buildRepTabs();
     if(typeof buildRepInputs==='function') buildRepInputs();
+    // buildRepInputs 후 권한 재적용 (readonly 보정)
+    if(typeof applyPermissions==='function') setTimeout(applyPermissions, 30);
     // 참가자: SP 로드 후 본인 팀+담당자 탭 자동 선택
     if(session && session.role==='rep' && session.rep){
       var _autoSelectTab = function(){
@@ -6077,6 +6079,8 @@ function _applySnap(snap, date) {
     if(!_inputActive){ buildRepTabs(); buildRepInputs(); }
     populateFilters();
     renderDashboard(); renderIssues(); renderPipeline(); applyLabels();
+    // buildRepInputs 후 권한 재적용 (readonly 상태 보정)
+    if(typeof applyPermissions==='function') setTimeout(applyPermissions, 30);
   }
   setTimeout(()=>{ attachAllNumFormats(); resizeAllTextareas(); }, 100);
 }
@@ -6174,6 +6178,8 @@ async function _spLoadSettings() {
     // ★ switchInputTeam 사용: currentTeam, REPS, 팀탭, 담당자탭 전체 갱신
     if(typeof switchInputTeam==='function'){
       switchInputTeam(session.team);
+      // buildRepInputs 후 권한 재적용
+      if(typeof applyPermissions==='function') setTimeout(applyPermissions, 50);
     } else {
       if(typeof applyCurrentTeam==='function') applyCurrentTeam(session.team);
       if(typeof buildRepTabs==='function') buildRepTabs();
@@ -10272,10 +10278,11 @@ document.addEventListener('DOMContentLoaded', function(){
           localStorage.removeItem('_savedSession');
           // _initApp 호출 (대시보드 표시)
           if(typeof _initApp==='function') _initApp();
+          // _initApp → buildRepInputs 완료 후 권한 적용 (타이밍 여유 줌)
           setTimeout(function(){
             if(typeof applyPermissions==='function') applyPermissions();
             if(typeof showToast==='function') showToast('👤 '+(sess.rep||sess.role||'')+'으로 복원');
-          },200);
+          }, 300);
         }catch(ex){ console.error('세션복원:',ex); }
       }
       _setBar('connecting');
@@ -10326,8 +10333,12 @@ async function _startSP(){
     _tabState.pipeline=team; _tabState.visits=team;
     // 원본 실행 (closeAuth, applyPermissions, showToast, 300ms SP)
     orig(rep);
+    // orig가 session={role:'rep',rep}로 덮어씌움 → team 재설정
+    session.team = team;
     // 원본이 _initApp 안 함 → 여기서 호출 (대시보드 표시)
     if(typeof _initApp==='function') _initApp();
+    // buildRepInputs 후 권한 재적용
+    if(typeof applyPermissions==='function') setTimeout(applyPermissions, 50);
     // SP 연결
     setTimeout(function(){ if(!window._isSPReady) _startSP(); },200);
   };
