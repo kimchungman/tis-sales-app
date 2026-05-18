@@ -2316,11 +2316,11 @@ table.dt thead th { font-size: 13px !important; }
                 📁 이미지 선택
                 <input type="file" accept="image/*" id="popup-image-input" style="display:none;" onchange="previewPopupImage(this)">
               </label>
-              <select id="popup-image-size" style="border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11px;font-family:inherit;">
-                <option value="100%">전체 너비</option>
-                <option value="75%">75%</option>
-                <option value="50%">50%</option>
-                <option value="300px">300px</option>
+              <select id="popup-image-size" style="border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11px;font-family:inherit;" title="이미지 크기">
+                <option value="100%">이미지: 전체</option>
+                <option value="75%">이미지: 75%</option>
+                <option value="50%">이미지: 50%</option>
+                <option value="300px">이미지: 300px</option>
               </select>
               <button onclick="clearPopupImage()" style="padding:6px 10px;border:1px solid #FCA5A5;border-radius:6px;background:#FEF2F2;color:#DC2626;font-size:11px;cursor:pointer;">🗑️ 제거</button>
             </div>
@@ -2889,10 +2889,11 @@ function previewPopup(){
 }
 
 function saveBannerCfg(){
-  var t=document.getElementById('cfg-banner-text');
+  var _be2=document.getElementById('cfg-banner-editor');
+  var _bt2=document.getElementById('cfg-banner-text');
   var bg=document.getElementById('cfg-banner-bg');
   if(!authCfg.banner) authCfg.banner={};
-  if(t) authCfg.banner.text=t.value;
+  authCfg.banner.text=(_be2?_be2.innerHTML:'')||(_bt2?_bt2.value:'')||'';
   if(bg) authCfg.banner.bg=bg.value;
   if(typeof _spSaveAuthCfg==='function') _spSaveAuthCfg();
   else if(typeof saveAuthCfg==='function') saveAuthCfg();
@@ -5371,11 +5372,10 @@ function loadBanner(){
   el.style.gap='6px';
   el.style.padding='0 12px';
   el.style.borderRadius='6px';
-  el.style.maxWidth='360px';
-  el.style.overflow='hidden';
+  el.style.overflow='visible';
   el.style.background=b.bg||'#FEF9C3';
   el.style.border='1px solid '+((b.bg||'#FEF9C3').replace('#','')>'aaaaaa'?'#E5E7EB':'#D1D5DB');
-  el.innerHTML=`<span style="font-size:13px;">📢</span><span style="font-family:${b.font||'맑은 고딕'};font-size:${b.size||'12px'};font-weight:${b.weight||'400'};color:${b.color||'#1E293B'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${b.text}</span>`;
+  el.innerHTML='<span style="font-size:13px;">📢</span><span style="font-family:inherit;font-size:13px;font-weight:500;color:#1E293B;white-space:normal;word-break:keep-all;line-height:1.5;">'+b.text+'</span>';
 }
 
 // ══ 팝업 공지 ══
@@ -5413,9 +5413,18 @@ function showPopupNotice(){
   const meta=document.getElementById('popup-notice-meta');
   if(meta&&p.deployedAt) meta.textContent='배포일시: '+(new Date(p.deployedAt)).toLocaleString('ko-KR');
   document.getElementById('popup-today-hide').checked=false;
-  // 팝업 너비 적용
+  // 팝업 너비 적용 (inline style로 CSS maxWidth 덮어쓰기)
   var pcard=modal.querySelector('.popup-card');
-  if(pcard && p.width) pcard.style.maxWidth=p.width;
+  if(pcard){
+    pcard.style.maxWidth = (p.width && p.width!=='undefined') ? p.width : '560px';
+    pcard.style.width = '90%';
+  }
+  // 팝업 박스 너비 적용
+  var _pbox = modal.querySelector('div');
+  if(_pbox && p && p.width && p.width !== 'undefined'){
+    _pbox.style.width = p.width;
+    _pbox.style.maxWidth = '95vw';
+  }
   modal.style.display='flex';
 }
 function closePopupNotice(){
