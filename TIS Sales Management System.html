@@ -2250,9 +2250,44 @@ table.dt thead th { font-size: 13px !important; }
             <label style="font-size:11px;color:var(--muted);">팝업 제목</label>
             <input id="cfg-popup-title" type="text" placeholder="팝업 제목" style="width:100%;border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px;font-family:inherit;margin-top:4px;">
           </div>
-          <div style="margin-bottom:10px;">
-            <label style="font-size:11px;color:var(--muted);">팝업 내용</label>
-            <textarea id="cfg-popup-text" rows="3" oninput="autoResizeTA(this)" placeholder="공지 내용" style="width:100%;border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px;font-family:inherit;margin-top:4px;resize:vertical;"></textarea>
+          <div style="margin-bottom:12px;">
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px;">팝업 내용 <span style="color:#94A3B8;font-weight:400;">(서식 편집 지원)</span></label>
+            <div id="popup-toolbar" style="display:flex;flex-wrap:wrap;gap:4px;padding:6px 8px;background:#F8FAFC;border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;">
+              <button type="button" onclick="document.getElementById('cfg-popup-editor').focus();document.execCommand('bold')" title="굵게" style="width:28px;height:28px;border:1px solid var(--border);border-radius:5px;background:white;cursor:pointer;font-weight:800;font-size:13px;font-family:inherit;">B</button>
+              <button type="button" onclick="document.getElementById('cfg-popup-editor').focus();document.execCommand('italic')" title="기울임" style="width:28px;height:28px;border:1px solid var(--border);border-radius:5px;background:white;cursor:pointer;font-style:italic;font-size:13px;font-family:inherit;">I</button>
+              <button type="button" onclick="document.getElementById('cfg-popup-editor').focus();document.execCommand('underline')" title="밑줄" style="width:28px;height:28px;border:1px solid var(--border);border-radius:5px;background:white;cursor:pointer;text-decoration:underline;font-size:13px;font-family:inherit;">U</button>
+              <div style="width:1px;background:var(--border);margin:2px 2px;"></div>
+              <select onchange="document.getElementById('cfg-popup-editor').focus();document.execCommand('fontSize',false,this.value);this.value='3'" style="height:28px;border:1px solid var(--border);border-radius:5px;padding:0 4px;font-size:11px;font-family:inherit;background:white;cursor:pointer;">
+                <option value="3" disabled selected>크기</option>
+                <option value="1">소</option>
+                <option value="2">중소</option>
+                <option value="3">중</option>
+                <option value="4">중대</option>
+                <option value="5">대</option>
+                <option value="6">특대</option>
+                <option value="7">최대</option>
+              </select>
+              <div style="display:flex;align-items:center;gap:2px;height:28px;border:1px solid var(--border);border-radius:5px;padding:0 6px;background:white;">
+                <span style="font-size:10px;color:#64748B;">글자색</span>
+                <input type="color" value="#000000" onchange="document.getElementById('cfg-popup-editor').focus();document.execCommand('foreColor',false,this.value)" style="width:22px;height:22px;border:none;padding:0;cursor:pointer;background:none;">
+              </div>
+              <div style="display:flex;align-items:center;gap:2px;height:28px;border:1px solid var(--border);border-radius:5px;padding:0 6px;background:white;">
+                <span style="font-size:10px;color:#64748B;">배경색</span>
+                <input type="color" value="#FFFFFF" onchange="document.getElementById('cfg-popup-editor').focus();document.execCommand('hiliteColor',false,this.value)" style="width:22px;height:22px;border:none;padding:0;cursor:pointer;background:none;">
+              </div>
+              <div style="width:1px;background:var(--border);margin:2px 2px;"></div>
+              <button type="button" onclick="document.getElementById('cfg-popup-editor').focus();document.execCommand('justifyLeft')" title="좌측" style="width:28px;height:28px;border:1px solid var(--border);border-radius:5px;background:white;cursor:pointer;font-size:14px;line-height:1;">⇐</button>
+              <button type="button" onclick="document.getElementById('cfg-popup-editor').focus();document.execCommand('justifyCenter')" title="가운데" style="width:28px;height:28px;border:1px solid var(--border);border-radius:5px;background:white;cursor:pointer;font-size:14px;line-height:1;">↔</button>
+              <button type="button" onclick="document.getElementById('cfg-popup-editor').focus();document.execCommand('justifyRight')" title="우측" style="width:28px;height:28px;border:1px solid var(--border);border-radius:5px;background:white;cursor:pointer;font-size:14px;line-height:1;">⇒</button>
+              <div style="width:1px;background:var(--border);margin:2px 2px;"></div>
+              <button type="button" onclick="document.getElementById('cfg-popup-editor').focus();document.execCommand('removeFormat')" title="서식 초기화" style="width:28px;height:28px;border:1px solid var(--border);border-radius:5px;background:white;cursor:pointer;font-size:11px;color:#EF4444;font-family:inherit;">✕</button>
+            </div>
+            <div id="cfg-popup-editor" contenteditable="true"
+              oninput="document.getElementById('cfg-popup-text').value=this.innerHTML;"
+              onfocus="this.style.borderColor='#4f7fff';"
+              onblur="this.style.borderColor='var(--border)';"
+              style="min-height:90px;max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:0 0 8px 8px;padding:10px 12px;font-size:13px;font-family:inherit;line-height:1.7;background:white;outline:none;"></div>
+            <input type="hidden" id="cfg-popup-text">
           </div>
           <div style="margin-bottom:12px;">
             <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px;">이미지 첨부</label>
@@ -3070,7 +3105,8 @@ function showPage(id,navEl){
       if(typeof renderColClientGrid==='function') renderColClientGrid();
       if(typeof renderColActivityGrid==='function') renderColActivityGrid();
       if(authCfg.banner){var b=authCfg.banner;var bt=document.getElementById('cfg-banner-text');if(bt)bt.value=b.text||'';}
-      if(authCfg.popup){var p=authCfg.popup;var pt=document.getElementById('cfg-popup-title');if(pt)pt.value=p.title||'';var pc=document.getElementById('cfg-popup-text');if(pc)pc.value=p.content||'';}
+      if(authCfg.popup){var p=authCfg.popup;var pt=document.getElementById('cfg-popup-title');if(pt)pt.value=p.title||'';var pc=document.getElementById('cfg-popup-text');if(pc)pc.value=p.content||'';
+        var pe=document.getElementById('cfg-popup-editor');if(pe)pe.innerHTML=p.content||'';}
       var cfg=document.getElementById('cfg-date');if(cfg&&!cfg.value){var md=document.getElementById('mtg-date');if(md)cfg.value=md.value;}
     },50);
   }
@@ -5273,7 +5309,9 @@ function loadBanner(){
 // ══ 팝업 공지 ══
 function deployPopup(){
   const title=(document.getElementById('cfg-popup-title')||{}).value||'';
-  const content=(document.getElementById('cfg-popup-text')||{}).value||'';
+  var _pe=document.getElementById('cfg-popup-editor');
+  var _pt=document.getElementById('cfg-popup-text');
+  const content=(_pe?_pe.innerHTML:'')||(_pt?_pt.value:'')||'';
   if(!title.trim()&&!content.trim()){showToast('팝업 제목이나 내용을 입력하세요.','warn');return;}
   const pw=(document.getElementById('cfg-popup-width')||{}).value||'560px';
   authCfg.popup={title,content,width:pw,active:true,deployedAt:new Date().toISOString()};
