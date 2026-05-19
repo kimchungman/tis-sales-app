@@ -1895,7 +1895,7 @@ table.dt thead th { font-size: 13px !important; }
                 <th style="background:#F8FAFC;color:#64748B;width:110px;text-align:right;padding-right:12px;">금액(M)</th>
                 <th style="background:#F8FAFC;color:#64748B;width:60px;text-align:center;">확도</th>
                 <th style="background:#F8FAFC;color:#64748B;width:120px;text-align:center;">시기</th>
-                <th style="background:#F8FAFC;color:#64748B;min-width:200px;text-align:left;padding-left:12px;">내용</th>
+                <th style="background:#F8FAFC;color:#64748B;min-width:200px;text-align:left;padding-left:12px;white-space:pre-wrap;">내용</th>
                 <th style="background:#F8FAFC;color:#64748B;width:90px;text-align:center;">진행사항</th>
               </tr>
             </thead>
@@ -3620,7 +3620,7 @@ function renderMainChart(){
     _mc.data.datasets[0].data=MONTHS.map((_,i)=>rs.reduce((s,r)=>s+(store.reps[r]?(store.reps[r].plan[i]||0):0),0));
     _mc.data.datasets[1].data=MONTHS.map((_,i)=>rs.reduce((s,r)=>s+(store.reps[r]?(store.reps[r].actual[i]||0):0),0));
     _mc.data.datasets[2].data=MONTHS.map((_,i)=>rs.reduce((s,r)=>s+(store.reps[r]?(store.reps[r].forecast[i]||0):0),0));
-    try{ _mc.update(); return; }catch(e){ try{window._mainChart.destroy();}catch(e2){} window._mainChart=null; }
+    try{ _mc.update('none'); return; }catch(e){ try{window._mainChart.destroy();}catch(e2){} window._mainChart=null; }
   } else if(window._mainChart){ try{window._mainChart.destroy();}catch(e){} window._mainChart=null; }
   window._mainChart=new Chart(ctx.getContext('2d'),{
     type:'line',
@@ -3859,10 +3859,10 @@ function buildRepInputs(){
     <div class="sec-card">
       <div class="sec-head"><h3>${rep} — 고객사별 실적</h3><button class="add-btn" onclick="addClient('${rep}')">＋ 추가</button></div>
       <div class="sec-body"><div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="dt">
-        <thead><tr>
-          <th style="min-width:140px;white-space:nowrap;">고객사명</th>
+        <thead style="position:sticky;top:0;z-index:5;"><tr>
+          <th style="min-width:140px;white-space:nowrap;background:#F8FAFC;">고객사명</th>
           <th style="white-space:nowrap;min-width:62px;">상태</th>
-          <th style="white-space:nowrap;min-width:130px;">제품</th>
+          <th style="white-space:nowrap;width:110px;text-align:center;">제품</th>
           <th style="white-space:nowrap;min-width:62px;">유형</th>
           ${MONTHS.map(m=>`<th style="min-width:72px;white-space:nowrap;">${m}</th>`).join('')}
           <th style="min-width:240px;">이슈사항</th>
@@ -3876,8 +3876,8 @@ function buildRepInputs(){
     <div class="sec-card">
       <div class="sec-head"><h3>${rep} — 영업활동</h3><button class="add-btn" onclick="addActivity('${rep}')">＋ 추가</button></div>
       <div class="sec-body"><div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="dt" style="min-width:max-content;table-layout:auto;">
-        <thead><tr>
-          <th style="width:40px;white-space:nowrap;">순번</th>
+        <thead style="position:sticky;top:0;z-index:5;"><tr>
+          <th style="width:40px;white-space:nowrap;background:#F8FAFC;">순번</th>
           <th style="width:90px;white-space:nowrap;">구분</th>
           <th style="width:175px;white-space:nowrap;">고객사</th>
           <th style="width:160px;white-space:nowrap;">제품</th>
@@ -3915,8 +3915,8 @@ function cRow(rep,ci,c){
     <td style="vertical-align:middle;padding:3px 4px;text-align:center;white-space:nowrap;">
       <select style="width:60px;font-size:12px;text-align:center;" onchange="store.reps['${rep}'].clients[${ci}].status=this.value;refreshActualForecast('${rep}');autoSave()">${sOpts}</select>
     </td>
-    <td style="vertical-align:middle;padding:3px 4px;text-align:center;white-space:nowrap;">
-      <select style="width:130px;font-size:11px;text-align:center;" onchange="store.reps['${rep}'].clients[${ci}].product=this.value;autoSave()">
+    <td style="vertical-align:middle;padding:3px 2px;text-align:center;white-space:nowrap;">
+      <select style="width:108px;font-size:11px;text-align:center;" onchange="store.reps['${rep}'].clients[${ci}].product=this.value;autoSave()">
         <option value="">-</option>
         ${['그룹웨어','웹메일','ERP','MES','PIMS','스포츠','VOA','기타'].map(p=>`<option value="${p}"${(c.product||'')===p?' selected':''}>${p}</option>`).join('')}
       </select>
@@ -5616,9 +5616,27 @@ function recordAccess(repName, isGuest){
 function updateAccessDisplay(){
   const today=new Date().toISOString().split('T')[0];
   const key='access_'+today;
+  // localStorage 접속자 (내 브라우저)
   let log={};
   try{ log=JSON.parse(localStorage.getItem(key)||'{}'); }catch(e){}
-  const names=Object.keys(log).slice(0, 20); // 최대 20명
+  // SP 접속 로그 병합 (다른 PC 사용자 포함)
+  if(window._accessLogData && Array.isArray(window._accessLogData)){
+    window._accessLogData.forEach(function(entry){
+      if(!entry) return;
+      var ts=entry.timestamp||entry.ts||'';
+      if(ts && ts.startsWith(today)){
+        var repName=entry.selectedRep||entry.rep||'';
+        var msAcc=entry.msAccount||entry.account||'';
+        var displayName=repName||(msAcc?msAcc.split('@')[0]:'');
+        if(displayName && !log[displayName]){
+          var t=ts.length>=16?ts.substring(11,16):'';
+          var isG=(!repName||repName==='게스트');
+          log[displayName]={time:t, guest:isG, fromSP:true};
+        }
+      }
+    });
+  }
+  const names=Object.keys(log).slice(0,30);
   const countEl=document.getElementById('access-count-num');
   if(countEl) countEl.textContent=names.length;
   const listEl=document.getElementById('access-list');
@@ -5627,12 +5645,15 @@ function updateAccessDisplay(){
       listEl.innerHTML='<div style="padding:10px 14px;font-size:12px;color:#94A3B8;">오늘 접속 없음</div>';
     } else {
       listEl.innerHTML=names.map(n=>{
-        var isGuest=log[n]&&log[n].guest;
-        var time=isGuest?(log[n].time||log[n]):(log[n]);
-        var role=isGuest?'<span style="font-size:10px;color:#94A3B8;border:1px solid #E2E8F0;border-radius:4px;padding:1px 5px;margin-left:4px;">게스트</span>':'';
-        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 14px;font-size:12px;">'
-          +'<span style="font-weight:600;">'+n+role+'</span>'
-          +'<span style="color:#94A3B8;">'+time+'</span>'
+        var entry=log[n];
+        var isGuest=entry&&entry.guest;
+        var time=(entry&&entry.time)||(typeof entry==='string'?entry:'');
+        var roleTag=isGuest
+          ?'<span style="font-size:10px;color:#94A3B8;border:1px solid #E2E8F0;border-radius:4px;padding:1px 5px;margin-left:4px;">게스트</span>'
+          :'';
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 14px;font-size:12px;border-bottom:1px solid var(--border);">'
+          +'<span style="font-weight:600;">'+n+roleTag+'</span>'
+          +'<span style="color:#94A3B8;font-size:11px;">'+time+'</span>'
           +'</div>';
       }).join('');
     }
@@ -8390,21 +8411,7 @@ window.deleteIssueRow = function(rep, idx){
   };
 })();
 
-// ════ 품목별 라벨 셀에 클래스 추가 (buildRepInputs 후) ════
-(function(){
-  var _origBRI = typeof buildRepInputs==='function'?buildRepInputs:null;
-  if(!_origBRI) return;
-  window.buildRepInputs = function(){
-    _origBRI();
-    // 품목별 라벨 td에 클래스 추가
-    document.querySelectorAll('.dt td').forEach(function(td){
-      var t = (td.textContent||'').trim();
-      if(t==='MA') td.classList.add('lbl-prod-ma');
-      else if(t==='개발') td.classList.add('lbl-prod-dev');
-      else if(t.indexOf('상품')>=0||t.indexOf('기타')>=0) td.classList.add('lbl-prod-goods');
-    });
-  };
-})();
+
 
 // ════ 이슈현황 배지 세련화 override ════
 (function(){
@@ -10153,7 +10160,7 @@ function _vRow(rep,idx,v){
         +'<th style="'+BG+'width:125px;text-align:center;">접점 목적</th>'
         +'<th style="'+BG+'width:150px;text-align:center;">접점 담당자</th>'
         +'<th style="'+BG+'width:150px;text-align:center;">고객 담당자</th>'
-        +'<th style="'+BG+'min-width:200px;text-align:left;padding-left:12px;">접점 내용</th>'
+        +'<th style="'+BG+'min-width:200px;text-align:left;padding-left:12px;white-space:pre-wrap;">접점 내용</th>'
         +'<th style="'+BG+'width:34px;"></th>'
         +'</tr></thead>'
         +'<tbody id="vt-'+rep+'">'
