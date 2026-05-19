@@ -3873,9 +3873,9 @@ function switchInputTeam(team){
       if(activeTab && typeof switchTab==='function'){
         switchTab(activeTab.dataset.rep || activeTab.textContent.trim(), activeTab);
       } else if(REPS && REPS[0] && typeof switchTab==='function'){
-        // 탭 없으면 첫 번째 담당자 직접 표시
         var firstSec = document.getElementById('rs-'+REPS[0]);
         if(firstSec) firstSec.style.display='block';
+        if(typeof window._switchVTab==='function') window._switchVTab(REPS[0],'main');
       }
     }, 80);
     // 숨김 select 강제 투명 처리 (CSS specificity 충돌 방어)
@@ -3903,6 +3903,9 @@ function switchTab(rep,el){
   document.querySelectorAll('.rep-sec').forEach(s=>s.style.display='none');
   const _rsel=document.getElementById('rs-'+rep);
   if(_rsel)_rsel.style.display='block';
+  // 탭 전환 시 항상 '매출 및 프로젝트 현황' 탭으로 초기화
+  // (이전에 '고객 접점 기록' 탭이 열려 있었어도 메인 탭을 보여줌)
+  if(typeof window._switchVTab==='function') window._switchVTab(rep,'main');
 }
 function buildRepInputs(){
   const area=document.getElementById('rep-input-area');
@@ -4660,7 +4663,11 @@ function autoResizeTA(el){
 }
 
 function resizeAllTextareas(){
-  document.querySelectorAll('textarea').forEach(ta => autoResizeTA(ta));
+  document.querySelectorAll('textarea').forEach(ta => {
+    // vpanel(고객접점기록) 내 textarea는 스킵 - 임시 display:block으로 인한 탭 상태 오염 방지
+    if(ta.closest('[id^="vpanel-"]')) return;
+    autoResizeTA(ta);
+  });
 }
 
 // ══════════════════════════════════════════
