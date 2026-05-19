@@ -3912,7 +3912,7 @@ function buildRepInputs(){
     <!-- 매출 현황 -->
     <div class="sec-card">
       <div class="sec-head"><h3>${rep} — 매출 현황</h3><span style="font-size:11px;color:var(--muted);">단위: 천원</span></div>
-      <div class="sec-body"><div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="dt" style="border-collapse:collapse;">
+      <div class="sec-body"><div style="overflow-x:auto;overflow-y:auto;max-height:380px;-webkit-overflow-scrolling:touch;"><table class="dt" style="border-collapse:collapse;">
         <colgroup><col style="width:88px;">${MONTHS.map(()=>'<col style="width:82px;">').join('')}<col style="width:88px;"></colgroup>
         <thead><tr>
           <th style="width:88px;white-space:nowrap;">구분</th>
@@ -3947,7 +3947,7 @@ function buildRepInputs(){
     <!-- 품목별 매출 현황 -->
     <div class="sec-card">
       <div class="sec-head"><h3>${rep} — 품목별 매출 현황</h3><span style="font-size:11px;color:var(--muted);">자동 집계</span></div>
-      <div class="sec-body"><div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="dt" style="border-collapse:collapse;">
+      <div class="sec-body"><div style="overflow-x:auto;overflow-y:auto;max-height:380px;-webkit-overflow-scrolling:touch;"><table class="dt" style="border-collapse:collapse;">
         <colgroup><col style="width:88px;">${MONTHS.map(()=>'<col style="width:82px;">').join('')}<col style="width:88px;"></colgroup>
         <thead><tr>
           <th style="width:88px;white-space:nowrap;">구분</th>
@@ -3977,7 +3977,7 @@ function buildRepInputs(){
     <!-- 고객사별 실적 -->
     <div class="sec-card">
       <div class="sec-head"><h3>${rep} — 고객사별 실적</h3><button class="add-btn" onclick="addClient('${rep}')">＋ 추가</button></div>
-      <div class="sec-body"><div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="dt">
+      <div class="sec-body"><div style="overflow-x:auto;overflow-y:auto;max-height:380px;-webkit-overflow-scrolling:touch;"><table class="dt">
         <thead style="position:sticky;top:0;z-index:5;"><tr>
           <th style="min-width:140px;white-space:nowrap;background:#F8FAFC;">고객사명</th>
           <th style="white-space:nowrap;min-width:62px;">상태</th>
@@ -3994,7 +3994,7 @@ function buildRepInputs(){
     <!-- 영업활동 및 이슈사항 -->
     <div class="sec-card">
       <div class="sec-head"><h3>${rep} — 영업활동</h3><button class="add-btn" onclick="addActivity('${rep}')">＋ 추가</button></div>
-      <div class="sec-body"><div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="dt" style="min-width:max-content;table-layout:auto;">
+      <div class="sec-body"><div style="overflow-x:auto;overflow-y:auto;max-height:380px;-webkit-overflow-scrolling:touch;"><table class="dt" style="min-width:max-content;table-layout:auto;">
         <thead style="position:sticky;top:0;z-index:5;"><tr>
           <th style="width:40px;white-space:nowrap;background:#F8FAFC;">순번</th>
           <th style="width:90px;white-space:nowrap;background:#F8FAFC;">구분</th>
@@ -4264,6 +4264,8 @@ function refresh(){
     if(at)at.textContent=d.actual.reduce((a,b)=>a+b,0).toLocaleString('ko-KR');
     if(ft)ft.textContent=d.forecast.reduce((a,b)=>a+b,0).toLocaleString('ko-KR');
   });
+  // 실적/예상 재계산 (SP 동기화 후 데이터 반영)
+  REPS.forEach(r=>{ if(store.reps[r]) refreshActualForecast(r); });
   renderDashboard();
   autoSave();
 }
@@ -8222,7 +8224,7 @@ function _iRow(rep, idx, iss){
       var issHTML = '<div class="iss-input-sec sec-card" style="margin-top:14px;">'
         +'<div class="sec-head"><h3>'+rep+' — 이슈사항</h3>'
         +'<button class="add-btn" onclick="addIssueRow(\''+rep+'\')">&#xFF0B; 추가</button></div>'
-        +'<div class="sec-body"><div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">'
+        +'<div class="sec-body"><div style="overflow-x:auto;overflow-y:auto;max-height:320px;-webkit-overflow-scrolling:touch;">'
         +'<table class="dt" style="min-width:max-content;table-layout:auto;">'
         +'<thead style="position:sticky;top:0;z-index:5;background:#F8FAFC;"><tr>'
         +'<th style="width:40px;background:#F8FAFC;">순번</th>'
@@ -10251,7 +10253,7 @@ function _vRow(rep,idx,v){
         +'<h3>'+rep+' &mdash; 고객 접점 기록</h3>'
         +(canAdd?'<button class="add-btn" onclick="addVisit(\''+rep+'\')">&#xFF0B; 접점 추가</button>':'')
         +'</div>'
-        +'<div class="sec-body"><div style="overflow-x:auto;">'
+        +'<div class="sec-body"><div style="overflow-x:auto;overflow-y:auto;max-height:360px;-webkit-overflow-scrolling:touch;">'
         +'<table class="dt" style="min-width:max-content;table-layout:auto;">'
         +'<thead style="position:sticky;top:0;z-index:5;"><tr>'
         +'<th style="'+BG+'width:100px;text-align:center;">접점일자</th>'
@@ -10498,7 +10500,7 @@ window.renderVisits=function(){
           +'<td style="text-align:center;padding:10px 10px;font-size:13px;font-weight:500;color:#374151;border-right:1px solid #F1F5F9;">'+(v.company||'─')+'</td>'
           +'<td style="text-align:center;padding:10px 8px;border-right:1px solid #F1F5F9;"><span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;color:'+tpc+';background:white;border:1.5px solid '+tpc+'50;">'+ct+'</span></td>'
           +'<td style="text-align:center;padding:10px 8px;border-right:1px solid #F1F5F9;">'+(cp?'<span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;color:'+ppc+';background:white;border:1.5px solid '+ppc+'50;">'+cp+'</span>':'─')+'</td>'
-          +'<td style="padding:10px 12px;font-size:13px;color:#374151;line-height:1.5;word-break:keep-all;">'+(v.content||'─')+'</td>'
+          +'<td style="padding:10px 12px;font-size:13px;color:#374151;line-height:1.5;white-space:pre-wrap;word-break:break-word;text-align:left;vertical-align:top;">'+(v.content||'─')+'</td>'
           +'</tr>';
       });
     });
@@ -10850,20 +10852,31 @@ function renderAccessStat(range){
     b.style.borderColor=on?'#1E5FBE':'#CBD5E1';
   });
   var now=new Date();
-  // localStorage에서 접속 기록 수집
+  // SP _accessLogData 우선 사용, 없으면 localStorage
   var logs=[];
-  var now2=new Date();
-  // 최근 90일 데이터 수집
-  for(var di=0;di<90;di++){
-    var d2=new Date(now2); d2.setDate(now2.getDate()-di);
-    var dk='access_'+d2.toISOString().split('T')[0];
-    try{
-      var dayLog=JSON.parse(localStorage.getItem(dk)||'{}');
-      Object.keys(dayLog).forEach(function(name){
-        var cnt=dayLog[name]; if(typeof cnt!=='number') cnt=1;
-        for(var k=0;k<cnt;k++) logs.push({name:name,ts:d2.toISOString()});
-      });
-    }catch(e){}
+  if(window._accessLogData && window._accessLogData.length>0){
+    window._accessLogData.forEach(function(entry){
+      if(!entry) return;
+      var ts=entry.timestamp||entry.ts||entry.time||'';
+      var name=entry.selectedRep||entry.rep||entry.msAccount||'';
+      if(name==='게스트'||!name) name=entry.guestName||'게스트';
+      if(ts) logs.push({name:name, ts:ts});
+    });
+  } else {
+    // localStorage fallback
+    var now2=new Date();
+    for(var di=0;di<90;di++){
+      var d2=new Date(now2); d2.setDate(now2.getDate()-di);
+      var dk='access_'+d2.toISOString().split('T')[0];
+      try{
+        var dayLog=JSON.parse(localStorage.getItem(dk)||'{}');
+        Object.keys(dayLog).forEach(function(name){
+          var entry=dayLog[name];
+          var t=typeof entry==='object'&&entry.time?entry.time:'00:00';
+          logs.push({name:name,ts:d2.toISOString().split('T')[0]+'T'+t+':00'});
+        });
+      }catch(e){}
+    }
   }
   // 범위 필터
   var filtered=logs.filter(function(l){
@@ -10912,8 +10925,8 @@ function renderAccessStat(range){
     var sorted=Object.entries(repMap).sort(function(a,b){return b[1].count-a[1].count;});
     var maxC=sorted.length?sorted[0][1].count:1;
     repEl.innerHTML=sorted.map(function(e){
-      var pct=Math.round(e[1].count/maxC*100);
-      var last=e[1].last?e[1].last.toLocaleDateString('ko-KR'):'';
+      var pct=maxC>0?Math.round(e[1].count/maxC*100):0;
+      var last=e[1].last?new Date(e[1].last).toLocaleDateString('ko-KR'):'';
       return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);">'
         +'<div style="width:72px;font-size:12px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;">'+e[0]+'</div>'
         +'<div style="flex:1;background:#F1F5F9;border-radius:20px;height:8px;overflow:hidden;">'
