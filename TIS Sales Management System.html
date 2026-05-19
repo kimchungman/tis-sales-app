@@ -4403,14 +4403,14 @@ function renderIssues(){
     var sc=sevColor[i.sev]||'#CBD5E1';
     var tc=(stColor[i.status||'open']||'#CBD5E1');
     return '<tr style="'+(isOpen?'':'opacity:0.6;')+'">'
-      +'<td style="text-align:center;font-size:11px;color:#64748B;vertical-align:middle;">'+(i.team||i.rep||'')+'</td>'
+      +'<td style="text-align:center;font-size:11px;color:#64748B;vertical-align:middle;">'+(i.team||'')+'</td>'
       +'<td style="text-align:center;font-size:12px;font-weight:600;vertical-align:middle;">'+(i.rep||'')+'</td>'
       +'<td style="text-align:center;font-size:12px;vertical-align:middle;">'+(i.client||'')+'</td>'
       +'<td style="padding:8px 14px;font-size:12px;color:#374151;line-height:1.5;white-space:pre-wrap;word-break:break-word;text-align:left;vertical-align:middle;">'+(i.content||'')+'</td>'
       +'<td style="text-align:center;vertical-align:middle;"><span style="display:inline-flex;align-items:center;justify-content:center;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;color:'+sc+';border:1.5px solid '+sc+'60;">'+(sevLabel[i.sev]||i.sev||'')+'</span></td>'
       +'<td style="text-align:center;vertical-align:middle;"><span style="display:inline-flex;align-items:center;justify-content:center;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;color:'+tc+';border:1.5px solid '+tc+'60;">'+(isOpen?'Open':'Closed')+'</span></td>'
-      +'<td style="text-align:center;font-size:11px;color:#64748B;vertical-align:middle;">'+(i.regDate||'─')+'</td>'
-      +'<td style="text-align:center;font-size:11px;color:#64748B;vertical-align:middle;">'+(i.dueDate||'─')+'</td>'
+      +'<td style="text-align:center;font-size:11px;color:'+(i.regDate?'#374151':'#CBD5E1')+';vertical-align:middle;">'+(i.regDate||'─')+'</td>'
+      +'<td style="text-align:center;font-size:11px;color:'+(i.dueDate?'#374151':'#CBD5E1')+';vertical-align:middle;">'+(i.dueDate||'─')+'</td>'
       +ddayCell
       +'</tr>';
   }).join(''):'<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--muted);">⬜ 조건에 맞는 이슈가 없습니다</td></tr>';
@@ -8418,19 +8418,31 @@ window.deleteIssueRow = function(rep, idx){
 // ── buildRepInputs override: 이슈사항 섹션 추가 ──
 
 
-// ── extractIssues override: issuesList도 포함 ──
+// ── extractIssues override: issuesList도 포함 (전체 팀) ──
 (function(){
   var _ei = typeof extractIssues==='function'?extractIssues:null;
   if(!_ei) return;
   window.extractIssues = function(){
     _ei(); // 기존 (고객사이슈 + 영업활동이슈)
-    // 새 이슈사항 섹션 데이터 추가
-    (typeof REPS!=='undefined'?REPS:[]).forEach(function(rep){
-      var iList = (store.reps[rep]&&store.reps[rep].issuesList)||[];
+    // issuesList: 전체 팀 모든 담당자 포함
+    var allReps = [];
+    if(typeof TEAMS!=='undefined'&&typeof TEAM_REPS!=='undefined'){
+      TEAMS.forEach(function(t){ (TEAM_REPS[t]||[]).forEach(function(r){ if(allReps.indexOf(r)<0) allReps.push(r); }); });
+    } else if(typeof REPS!=='undefined'){ allReps=REPS; }
+    allReps.forEach(function(rep){
+      if(!store.reps[rep]) return;
+      // 소속 팀 찾기
+      var repTeam='';
+      if(typeof TEAMS!=='undefined'&&typeof TEAM_REPS!=='undefined'){
+        TEAMS.forEach(function(t){ if((TEAM_REPS[t]||[]).indexOf(rep)>=0) repTeam=t; });
+      }
+      var iList = store.reps[rep].issuesList||[];
       iList.forEach(function(iss){
         if(!iss.content&&!iss.client) return;
+        if(!iss.sev||iss.sev==='none') return; // 중요도 없으면 제외
         store.issues.push({
           rep: rep,
+          team: repTeam,
           client: iss.client||'미지정',
           regDate: iss.regDate||'',
           dueDate: iss.dueDate||'',
@@ -8444,8 +8456,8 @@ window.deleteIssueRow = function(rep, idx){
     });
     // 배지 카운트 갱신
     var highCnt = store.issues.filter(function(i){ return i.sev==='high'; }).length;
-    var el = (function(){var _ic=document.getElementById('issue-count');if(_ic){_ic.style.display='none';_ic.textContent='';}})();
-    if(el){ el.textContent = highCnt||''; el.style.display = highCnt?'inline-flex':'none'; }
+    var _ic=document.getElementById('issue-count');
+    if(_ic){ _ic.textContent=highCnt||''; _ic.style.display=highCnt?'inline-flex':'none'; }
   };
 })();
 
