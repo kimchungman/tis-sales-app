@@ -8333,20 +8333,7 @@ window.deleteIssueRow = function(rep, idx){
 
 
 // ════ SaaS v3: 월별실적 차트 색상 + 레이블 ════
-(function(){
-  var _rmc = typeof renderMainChart==='function'?renderMainChart:null;
-  if(!_rmc) return;
-  window.renderMainChart = function(){
-    _rmc();
-    var mc = window._mc || window.mc;
-    if(!mc||!mc.data||!mc.data.datasets) return;
-    var ds = mc.data.datasets;
-    if(ds[0]){ds[0].borderColor='#4f7fff';ds[0].backgroundColor='rgba(79,127,255,0.06)';ds[0].borderWidth=2;}
-    if(ds[1]){ds[1].borderColor='#0EA5A0';ds[1].backgroundColor='rgba(14,165,160,0.07)';ds[1].borderWidth=2;}
-    if(ds[2]){ds[2].borderColor='#7C3AED';ds[2].backgroundColor='rgba(124,58,237,0.06)';ds[2].borderWidth=2;ds[2].borderDash=[4,4];}
-    mc.update('none');
-  };
-})();
+
 
 // ════ SaaS v3: 품목별 라벨 클래스 (입력셀 제외) ════
 
@@ -8522,25 +8509,7 @@ window.deleteIssueRow = function(rep, idx){
 })();
 
 
-// ════ 월별실적 차트 색상 override ════
-(function(){
-  var _origRMC = typeof renderMainChart==='function'?renderMainChart:null;
-  if(!_origRMC) return;
-  window.renderMainChart = function(){
-    _origRMC();
-    var mc = window._mc || window.mc;
-    if(!mc||!mc.data) return;
-    var ds = mc.data.datasets;
-    if(!ds||ds.length<3) return;
-    // 경영계획 → blue
-    if(ds[0]){ds[0].borderColor='#4f7fff';ds[0].backgroundColor='rgba(79,127,255,0.08)';}
-    // 달성 → teal
-    if(ds[1]){ds[1].borderColor='#0EA5A0';ds[1].backgroundColor='rgba(14,165,160,0.1)';}
-    // 예상 → purple
-    if(ds[2]){ds[2].borderColor='#7C3AED';ds[2].backgroundColor='rgba(124,58,237,0.08)';}
-    mc.update('none');
-  };
-})();
+
 
 
 
