@@ -2835,7 +2835,12 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(typeof loadColWidths2==='function')loadColWidths2();
   loadColWidths();
   loadLabels();
-  buildRepTabs();buildRepInputs();extractIssues();populateFilters();
+  buildRepTabs();
+  // _initApp: input 페이지 활성 시에만 buildRepInputs (SP 로드 시점 충돌 방지)
+  if(document.getElementById('page-input')&&document.getElementById('page-input').classList.contains('active')){
+    buildRepInputs();
+  }
+  extractIssues();populateFilters();
   renderDashboard();renderIssues();renderPipeline();
   applyLabels();
   // 앱 시작 시 로그인 모달 자동 표시
@@ -3857,11 +3862,13 @@ function switchInputTeam(team){
   window._briTimer = setTimeout(function(){
     window._briTimer = null;
     buildRepInputs();
-    // buildRepInputs 완료 후 현재 활성 담당자 탭 적용
-    var activeTab = document.querySelector('#rep-tabs .tab.active') || document.querySelector('#rep-tabs .tab');
-    if(activeTab && typeof switchTab==='function'){
-      switchTab(activeTab.dataset.rep || activeTab.textContent.trim(), activeTab);
-    }
+    // buildRepInputs 완료 후 현재 활성 담당자 탭 적용 (rAF로 DOM 안정화 후)
+    requestAnimationFrame(function(){
+      var activeTab = document.querySelector('#rep-tabs .tab.active') || document.querySelector('#rep-tabs .tab');
+      if(activeTab && typeof switchTab==='function'){
+        switchTab(activeTab.dataset.rep || activeTab.textContent.trim(), activeTab);
+      }
+    });
     // 숨김 select 강제 투명 처리 (CSS specificity 충돌 방어)
     setTimeout(function(){
       document.querySelectorAll('._bsl-sel').forEach(function(el){
@@ -6385,12 +6392,16 @@ async function _initSP() {
         var _changed = await _spSyncOtherReps();
         await _spLoadHistList();
         if(_changed){
-          // 입력 페이지가 아닌 경우만 전체 재렌더 (입력 페이지는 내 데이터 건드리지 않음)
-          var _ipOn=document.getElementById('page-input')&&document.getElementById('page-input').classList.contains('active');
-          if(typeof renderDashboard==='function') renderDashboard();
-          if(typeof renderIssues==='function') renderIssues();
-          if(typeof renderPipeline==='function') renderPipeline();
-          if(!_ipOn && typeof buildRepInputs==='function') buildRepInputs();
+          var _activePage=document.querySelector('.page.active');
+          var _pid2=_activePage?_activePage.id.replace('page-',''):'';
+          var _ipOn=(_pid2==='input');
+          // 현재 활성 페이지에만 렌더 실행 (다른 페이지 DOM 건드리지 않음)
+          if(_pid2==='dashboard'&&typeof renderDashboard==='function') renderDashboard();
+          if(_pid2==='issues'&&typeof renderIssues==='function') renderIssues();
+          if(_pid2==='pipeline'&&typeof renderPipeline==='function') renderPipeline();
+          if(_pid2==='visits'&&typeof renderVisits==='function') renderVisits();
+          // 입력 페이지: DOM 재빌드 대신 데이터만 갱신
+          if(!_ipOn&&typeof buildRepInputs==='function') buildRepInputs();
         }
       }catch(e){}
     }, 10000);
@@ -6666,6 +6677,10 @@ async function _spLoadSettings() {
       var _tries2 = 0;
       var _poll2 = setInterval(function(){
         _tries2++;
+        // 페이지 이탈 시 즉시 중단
+        if(!_inputPage||!_inputPage.classList.contains('active')){
+          clearInterval(_poll2); return;
+        }
         var _t = _inputPage.querySelector('.tab[data-rep="'+session.rep+'"]');
         if(_t){
           clearInterval(_poll2);
@@ -6682,7 +6697,9 @@ async function _spLoadSettings() {
     var _ap = document.querySelector('.page.active');
     if(_ap){
       var _pid = _ap.id.replace('page-','');
-      if(_pid==='input' && typeof initInputTabs==='function') initInputTabs(); // 신규팀 탭 버튼 생성
+      // initInputTabs 재호출 제거 - SP 로드 후 전체 재빌드는 화면 깨짐 유발
+      // 팀 탭 버튼만 안전하게 재생성
+      if(_pid==='input' && typeof renderInputTeamTabs==='function') renderInputTeamTabs();
       if(_pid==='issues' && typeof initIssueTabs==='function') initIssueTabs();
       if(_pid==='pipeline' && typeof initPipeTabs==='function') initPipeTabs();
       if(_pid==='visits' && typeof initVisitsTabs==='function') initVisitsTabs();
