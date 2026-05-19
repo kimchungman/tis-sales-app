@@ -3202,15 +3202,11 @@ function showPage(id,navEl){
   if(typeof closeMobileMenu==="function") closeMobileMenu();
   // ── 페이지별 탭 초기화 (매번 호출 보장) ──
   if(id==='input'){
-    // 오토탭 플래그 리셋 (페이지 재진입 시)
-    window._autoTabDone = false;
-    // initInputTabs이 내부에서 switchInputTeam→buildRepTabs→buildRepInputs 모두 처리
-    initInputTabs();
-    if(typeof applyPermissions==='function') setTimeout(applyPermissions, 30);
-    // 렌더 완료 후 오토탭 시도
-    if(session && session.role==='rep' && session.rep){
-      requestAnimationFrame(function(){ _tryAutoTab(); });
-    }
+    window._ATdone = false;          // 페이지 진입 시에만 리셋
+    initInputTabs();                 // 팀탭+담당자탭+콘텐츠 빌드
+    if(typeof applyPermissions==='function') applyPermissions();
+    // 렌더 완료 → 오토탭 이벤트 발화 (1회)
+    document.dispatchEvent(new Event('tis:inputReady'));
   } else if(id==='issues'){
     initIssueTabs();
     // 참가자: 본인 팀으로 필터
@@ -6445,25 +6441,13 @@ async function _spLoadSettings() {
   }
   window._spSettingsLoaded = true;
 
-  // 오토탭 미완료 시에만 재시도 (done=true면 절대 재실행 안함)
-  if(!window._autoTabDone && session && session.role==='rep'){
-    setTimeout(_tryAutoTab, 100);
-  }
-
-  // 신규팀 탭 대기 중이면 실행
-  if(window._pendingTabSelect){
-    var _pts = window._pendingTabSelect;
-    window._pendingTabSelect = null;
-    if(typeof initInputTabs==='function') initInputTabs();
-    setTimeout(function(){
-      var _tt = document.querySelector('#input-team-tabs .tis-tab[data-tab="'+_pts.team+'"]');
-      if(_tt && !_tt.classList.contains('active')) _tt.click();
-      setTimeout(function(){
-        var _rt = document.querySelector('#rep-tabs .tab[data-rep="'+_pts.rep+'"]');
-        if(_rt) _rt.click();
-        if(typeof applyPermissions==='function') applyPermissions();
-      }, 200);
-    }, 100);
+  // 오토탭 미완료 + input 활성 → 이벤트 재발화
+  if(!window._ATdone && session && session.role==='rep'){
+    var _ip=document.getElementById('page-input');
+    if(_ip && _ip.classList.contains('active')){
+      if(typeof initInputTabs==='function') initInputTabs();
+      document.dispatchEvent(new Event('tis:inputReady'));
+    }
   }
 }
 
@@ -10480,37 +10464,36 @@ window.onerror=function(msg){if(msg==='Script error.'||msg==='Script Error.')ret
 
 <script>
 // ── 접속이력 탭 전환 ──
-// ── 오토탭: 페이지 진입 시 1회만 실행, 이후 절대 재실행 안됨 ──
-window._autoTabDone = false;
-function _tryAutoTab(){
-  // 이미 실행됐으면 즉시 종료 (SP/render 재호출에서도 절대 재실행 안됨)
-  if(window._autoTabDone) return;
+// ════════════════════════════════════════
+// 오토탭 엔진 - 이벤트 기반, 페이지 진입 1회만 실행
+// ════════════════════════════════════════
+window._ATdone = false;
+
+document.addEventListener('tis:inputReady', function(){
+  if(window._ATdone) return;                          // 이미 실행됨 → 차단
   if(!session || session.role!=='rep' || !session.rep) return;
   var pageInput=document.getElementById('page-input');
   if(!pageInput || !pageInput.classList.contains('active')) return;
 
+  // REP_TEAM_MAP 우선 (SP 로드 후 정확한 팀 확보)
   var myTeam=(typeof REP_TEAM_MAP!=='undefined' && REP_TEAM_MAP[session.rep])
-    ? REP_TEAM_MAP[session.rep] : session.team;
+    ? REP_TEAM_MAP[session.rep] : (session.team||'');
   var myRep=session.rep;
 
   var teamTab=document.querySelector('#input-team-tabs .tis-tab[data-tab="'+myTeam+'"]');
-  if(!teamTab) return; // 팀 탭 없음 → SP 로드 후 재호출 대기
+  if(!teamTab) return; // 팀 탭 없음 → SP 로드 후 재발화 대기
 
-  // 팀 탭 활성화 (담당자 탭 빌드됨)
+  // 팀 탭 클릭 (동기) → buildRepTabs 즉시 실행
   if(!teamTab.classList.contains('active')) teamTab.click();
 
-  // 한 프레임 후 담당자 탭 확인
-  requestAnimationFrame(function(){
-    if(window._autoTabDone) return;
-    var repTab=document.querySelector('#rep-tabs .tab[data-rep="'+myRep+'"]');
-    if(!repTab) return; // 담당자 탭 없음 → SP 로드 후 재호출 대기
+  var repTab=document.querySelector('#rep-tabs .tab[data-rep="'+myRep+'"]');
+  if(!repTab) return; // 담당자 탭 없음 → SP 로드 후 재발화 대기
 
-    // 실행 확정 → done 먼저 true (이후 어떤 재호출도 차단)
-    window._autoTabDone = true;
-    repTab.click();
-    if(typeof applyPermissions==='function') setTimeout(applyPermissions, 30);
-  });
-}
+  // ✅ 완료: done 먼저 잠금 → 클릭
+  window._ATdone = true;
+  repTab.click();
+  if(typeof applyPermissions==='function') applyPermissions();
+});
 
 function showStatDatePicker(){
   // 날짜 지정 탭 활성화 + 패널 표시
