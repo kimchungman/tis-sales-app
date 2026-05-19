@@ -1533,8 +1533,6 @@ td.lbl-row-rate {
 
 
 /* ── select 높이 확정 (테두리 짤림 방지) ── */
-.dt select,
-
 /* ── 포커스 시 흰 배경 유지 ── */
 
 
@@ -3864,6 +3862,13 @@ function switchInputTeam(team){
     if(activeTab && typeof switchTab==='function'){
       switchTab(activeTab.dataset.rep || activeTab.textContent.trim(), activeTab);
     }
+    // 숨김 select 강제 투명 처리 (CSS specificity 충돌 방어)
+    setTimeout(function(){
+      document.querySelectorAll('._bsl-sel').forEach(function(el){
+        el.style.setProperty('opacity','0','important');
+        el.style.setProperty('z-index','2','');
+      });
+    }, 50);
     extractIssues();
     renderIssues();
     renderPipeline();
@@ -4081,7 +4086,7 @@ function aRow(rep,ai,a){
     <td style="width:100px;vertical-align:middle;padding:2px 4px;">
       <div style="position:relative;display:block;width:100%;height:28px;">
         <span class="_bsl" style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:28px;box-sizing:border-box;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;pointer-events:none;background:white;color:${({'제안':'#4f7fff','견적':'#0EA5A0','입찰':'#7C3AED','수주':'#059669','계약':'#16A34A','보류':'#D97706','Drop':'#DC2626'}[a.progress]||'#CBD5E1')};border:1.5px solid ${({'제안':'#4f7fff','견적':'#0EA5A0','입찰':'#7C3AED','수주':'#059669','계약':'#16A34A','보류':'#D97706','Drop':'#DC2626'}[a.progress]||'#CBD5E1')}60;">${a.progress||'선택'}</span>
-        <select class="_bsl-sel" onchange="var cm={'제안':'#4f7fff','견적':'#0EA5A0','입찰':'#7C3AED','수주':'#059669','계약':'#16A34A','보류':'#D97706','Drop':'#DC2626'};var pc=cm[this.value]||'#CBD5E1';var sp=this.parentNode.querySelector('._bsl');if(sp){sp.textContent=this.value||'선택';sp.style.color=pc;sp.style.borderColor=pc+'60';}store.reps['${rep}'].activities[${ai}].progress=this.value;autoSave();" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-family:inherit;">${progOpts}</select>
+        <select class="_bsl-sel" onchange="var cm={'제안':'#4f7fff','견적':'#0EA5A0','입찰':'#7C3AED','수주':'#059669','계약':'#16A34A','보류':'#D97706','Drop':'#DC2626'};var pc=cm[this.value]||'#CBD5E1';var sp=this.parentNode.querySelector('._bsl');if(sp){sp.textContent=this.value||'선택';sp.style.color=pc;sp.style.borderColor=pc+'60';}store.reps['${rep}'].activities[${ai}].progress=this.value;autoSave();" style="position:absolute;inset:0;width:100%;height:100%;opacity:0 !important;z-index:2;cursor:pointer;font-family:inherit;;opacity:0 !important;">${progOpts}</select>
       </div>
     </td>
     <td style="width:34px;vertical-align:middle;text-align:center;">
@@ -8210,13 +8215,13 @@ function _iRow(rep, idx, iss){
     +'<td style="width:100px;vertical-align:middle;padding:2px 4px;">'
     +'<div style="position:relative;display:block;width:100%;height:28px;">'
     +'<span class="_bsl" style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:28px;box-sizing:border-box;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;pointer-events:none;background:white;color:'+({'high':'#DC2626','mid':'#D97706','low':'#0EA5A0'}[sev]||'#CBD5E1')+';'+'border:1.5px solid '+({'high':'#DC2626','mid':'#D97706','low':'#0EA5A0'}[sev]||'#CBD5E1')+'60;">'+({'high':'↑ 높음','mid':'● 중간','low':'↓ 낮음'}[sev]||(sev||'선택'))+'</span>'
-    +'<select class="_bsl-sel" id="isev-'+rep+'-'+idx+'" onchange="var cm={\'high\':\'#DC2626\',\'mid\':\'#D97706\',\'low\':\'#0EA5A0\'};var lm={\'high\':\'↑ 높음\',\'mid\':\'● 중간\',\'low\':\'↓ 낮음\'};var pc=cm[this.value]||\'#CBD5E1\';var sp=this.parentNode.querySelector(\'._bsl\');if(sp){sp.textContent=this.value?lm[this.value]:\'선택\';sp.style.color=pc;sp.style.borderColor=pc+\'60\';}iApplySev(this,this.value);store.reps[\''+r+'\'].issuesList['+idx+'].sev=this.value;if(typeof extractIssues===\'function\'){extractIssues();renderIssues&&renderIssues();}autoSave&&autoSave();" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-family:inherit;">'+sevOpts+'</select>'
+    +'<select class="_bsl-sel" id="isev-'+rep+'-'+idx+'" onchange="var cm={\'high\':\'#DC2626\',\'mid\':\'#D97706\',\'low\':\'#0EA5A0\'};var lm={\'high\':\'↑ 높음\',\'mid\':\'● 중간\',\'low\':\'↓ 낮음\'};var pc=cm[this.value]||\'#CBD5E1\';var sp=this.parentNode.querySelector(\'._bsl\');if(sp){sp.textContent=this.value?lm[this.value]:\'선택\';sp.style.color=pc;sp.style.borderColor=pc+\'60\';}iApplySev(this,this.value);store.reps[\''+r+'\'].issuesList['+idx+'].sev=this.value;if(typeof extractIssues===\'function\'){extractIssues();renderIssues&&renderIssues();}autoSave&&autoSave();" style="position:absolute;inset:0;width:100%;height:100%;opacity:0 !important;z-index:2;cursor:pointer;font-family:inherit;">'+sevOpts+'</select>'
     +'</div>'
     +'</td>'
     +'<td style="width:100px;vertical-align:middle;padding:2px 4px;">'
     +'<div style="position:relative;display:block;width:100%;height:28px;">'
     +'<span class="_bsl" style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:28px;box-sizing:border-box;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;pointer-events:none;background:white;color:'+({'open':'#DC2626','closed':'#0EA5A0'}[st]||'#CBD5E1')+';'+'border:1.5px solid '+({'open':'#DC2626','closed':'#0EA5A0'}[st]||'#CBD5E1')+'60;">'+({'open':'Open','closed':'Closed'}[st]||(st||'선택'))+'</span>'
-    +'<select class="_bsl-sel" id="ist-'+rep+'-'+idx+'" onchange="var cm={\'open\':\'#DC2626\',\'closed\':\'#0EA5A0\'};var lm={\'open\':\'Open\',\'closed\':\'Closed\'};var pc=cm[this.value]||\'#CBD5E1\';var sp=this.parentNode.querySelector(\'._bsl\');if(sp){sp.textContent=this.value?lm[this.value]:\'선택\';sp.style.color=pc;sp.style.borderColor=pc+\'60\';}iApplySt(this,this.value);store.reps[\''+r+'\'].issuesList['+idx+'].status=this.value;if(typeof extractIssues===\'function\'){extractIssues();renderIssues&&renderIssues();}autoSave&&autoSave();" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-family:inherit;">'+stOpts+'</select>'
+    +'<select class="_bsl-sel" id="ist-'+rep+'-'+idx+'" onchange="var cm={\'open\':\'#DC2626\',\'closed\':\'#0EA5A0\'};var lm={\'open\':\'Open\',\'closed\':\'Closed\'};var pc=cm[this.value]||\'#CBD5E1\';var sp=this.parentNode.querySelector(\'._bsl\');if(sp){sp.textContent=this.value?lm[this.value]:\'선택\';sp.style.color=pc;sp.style.borderColor=pc+\'60\';}iApplySt(this,this.value);store.reps[\''+r+'\'].issuesList['+idx+'].status=this.value;if(typeof extractIssues===\'function\'){extractIssues();renderIssues&&renderIssues();}autoSave&&autoSave();" style="position:absolute;inset:0;width:100%;height:100%;opacity:0 !important;z-index:2;cursor:pointer;font-family:inherit;">'+stOpts+'</select>'
     +'</div>'
     +'</td>'
     +'<td style="width:34px;vertical-align:middle;text-align:center;">'
@@ -10184,6 +10189,15 @@ window.deleteVisit = function(rep,idx){
 };
 
 // ─── 테이블 재렌더 ───
+function addIssueRow(rep){
+  if(!store.reps[rep].issuesList) store.reps[rep].issuesList=[];
+  var idx=store.reps[rep].issuesList.length;
+  store.reps[rep].issuesList.push({client:'',content:'',sev:'mid',status:'open'});
+  var tbody=document.getElementById('it-'+rep);
+  if(tbody) tbody.insertAdjacentHTML('beforeend',_iRow(rep,idx,store.reps[rep].issuesList[idx]));
+  autoSave&&autoSave();
+}
+
 function _rebuildVisitTable(rep){
   var tbody=document.getElementById('vt-'+rep);
   if(!tbody) return;
@@ -10240,7 +10254,7 @@ function _vRow(rep,idx,v){
       +"autoSave&&autoSave();";
     return '<div style="position:relative;display:inline-block;width:100%;cursor:pointer;">'
       +'<span class="_vbsl" style="'+bStyle+'width:100%;box-sizing:border-box;pointer-events:none;">'+(currVal||'선택')+'</span>'
-      +'<select onchange="'+onChange+'" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-family:inherit;">'
+      +'<select onchange="'+onChange+'" style="position:absolute;inset:0;width:100%;height:100%;opacity:0 !important;cursor:pointer;font-family:inherit;z-index:2;">'
       +optHtml+'</select></div>';
   }
 
