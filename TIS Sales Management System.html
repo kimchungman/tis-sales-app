@@ -6130,6 +6130,26 @@ async function _spFetch(url, opts) {
   });
 
   if (res.status === 204 || res.status === 201) return null;
+  if (res.status === 401) {
+    // 401: 토큰 만료 → 재발급 시도
+    try {
+      const acct = window._msalApp && window._msalApp.getAllAccounts()[0];
+      if (acct) {
+        const tr = await window._msalApp.acquireTokenSilent({
+          scopes: ['https://tis21.sharepoint.com/.default'], account: acct
+        });
+        window._spToken = tr.accessToken;
+        // 재발급 후 1회 재시도
+        const headers2 = Object.assign({}, headers, {'Authorization':'Bearer '+tr.accessToken});
+        const res2 = await fetch(url, {method:(opts&&opts.method)||'GET', headers:headers2, body:(opts&&opts.body)||undefined});
+        if (res2.status === 204 || res2.status === 201) return null;
+        if (!res2.ok) throw new Error('HTTP ' + res2.status + ' ' + url);
+        const ct2 = res2.headers.get('content-type') || '';
+        return ct2.includes('json') ? res2.json() : null;
+      }
+    } catch(e) { /* 재발급 실패 시 원래 오류 throw */ }
+    throw new Error('HTTP 401 ' + url);
+  }
   if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + url);
   const ct = res.headers.get('content-type') || '';
   return ct.includes('json') ? res.json() : null;
@@ -6240,8 +6260,14 @@ async function _spSaveItem(dtype, dkey, payload, _retry) {
       }
       // 3회 실패 시 조용히 무시 (다음 autoSave에서 재시도됨)
       console.warn('[SP] 409 충돌 저장 실패, 다음 저장 시 재시도:', dtype, dkey);
+    } else if (err.message && err.message.indexOf('401') >= 0) {
+      // 401: 토큰 만료 → 조용히 무시 (다음 요청 시 토큰 갱신됨)
+      console.warn('[SP] 401 인증 만료:', dtype, dkey);
     } else {
-      showToast('저장 실패: ' + err.message, 'warn');
+      // accessLog 저장 실패는 토스트 미표시 (중요하지 않은 데이터)
+      if(dtype !== 'accessLog'){
+        showToast('저장 실패: ' + err.message, 'warn');
+      }
     }
   }
 }
