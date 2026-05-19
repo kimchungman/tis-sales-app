@@ -3859,6 +3859,11 @@ function switchInputTeam(team){
   window._briTimer = setTimeout(function(){
     window._briTimer = null;
     buildRepInputs();
+    // buildRepInputs 완료 후 현재 활성 담당자 탭 적용
+    var activeTab = document.querySelector('#rep-tabs .tab.active') || document.querySelector('#rep-tabs .tab');
+    if(activeTab && typeof switchTab==='function'){
+      switchTab(activeTab.dataset.rep || activeTab.textContent.trim(), activeTab);
+    }
     extractIssues();
     renderIssues();
     renderPipeline();
