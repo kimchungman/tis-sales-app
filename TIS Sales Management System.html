@@ -3636,137 +3636,108 @@ function setChartType(type){
 }
 
 function renderMainChart(){
-  const cfEl=document.getElementById('ch-filter');
-  const f=cfEl?cfEl.value:'all';
-  const allDR=getDashReps().filter(r=>store.reps[r]);
-  const rs=f==='all'?allDR:allDR.filter(r=>r===f);
+  var cfEl=document.getElementById('ch-filter');
+  var f=cfEl?cfEl.value:'all';
+  var allDR=getDashReps().filter(function(r){return store.reps[r];});
+  var rs=f==='all'?allDR:allDR.filter(function(r){return r===f;});
   if(cfEl){
-    const cv=cfEl.value;
+    var cv=cfEl.value;
     cfEl.innerHTML='<option value="all">전체 담당자</option>';
-    allDR.forEach(r=>{cfEl.innerHTML+=`<option value="${r}">${r}</option>`;});
+    allDR.forEach(function(r){cfEl.innerHTML+='<option value="'+r+'">'+r+'</option>';});
     cfEl.value=allDR.includes(cv)?cv:'all';
   }
-  const pD=MONTHS.map((_,i)=>rs.reduce((s,r)=>s+(store.reps[r].plan[i]||0),0));
-  const aD=MONTHS.map((_,i)=>rs.reduce((s,r)=>s+(store.reps[r].actual[i]||0),0));
-  const fD=MONTHS.map((_,i)=>rs.reduce((s,r)=>s+(store.reps[r].forecast[i]||0),0));
-  const ctx=document.getElementById('main-chart')||document.getElementById('mainChart');
+
+  // 데이터 계산
+  var pD=MONTHS.map(function(_,i){return rs.reduce(function(s,r){return s+(store.reps[r].plan[i]||0);},0);});
+  var aD=MONTHS.map(function(_,i){return rs.reduce(function(s,r){return s+(store.reps[r].actual[i]||0);},0);});
+  var fD=MONTHS.map(function(_,i){return rs.reduce(function(s,r){return s+(store.reps[r].forecast[i]||0);},0);});
+
+  var ctx=document.getElementById('main-chart')||document.getElementById('mainChart');
   if(!ctx) return;
 
   var chartType=(authCfg&&authCfg.chartType)||'combo';
 
-  // 데이터만 업데이트 (애니메이션 없음)
-  if(window._mainChart && window._mainChart.data){
-    var _mc=window._mainChart;
+  // ── 동일 타입: 데이터만 update (애니메이션 없음) ──
+  if(window._mainChart && window._mainChart.data && window._mainChartType===chartType){
     try{
-      _mc.data.datasets[0].data=pD;
-      _mc.data.datasets[1].data=aD;
-      _mc.data.datasets[2].data=fD;
-      _mc.update('none');
+      var mc=window._mainChart;
+      var ds=mc.data.datasets;
+      if(chartType==='combo'){
+        // [달성(bar), 계획(line), 예상(line)]
+        ds[0].data=aD; ds[1].data=pD; ds[2].data=fD;
+      } else if(chartType==='stacked'){
+        // [달성(bar), 예상(bar), 계획(line)]
+        ds[0].data=aD; ds[1].data=fD; ds[2].data=pD;
+      } else if(chartType==='achievement'){
+        // [달성(bar), 달성률(line)]
+        ds[0].data=aD;
+        ds[1].data=MONTHS.map(function(_,i){return pD[i]>0?Math.min(Math.round(aD[i]/pD[i]*100),150):0;});
+      } else if(chartType==='area'){
+        // [계획(area), 달성(area), 예상(area)]
+        ds[0].data=pD; ds[1].data=aD; ds[2].data=fD;
+      }
+      mc.update('none');
       return;
     }catch(e){ try{window._mainChart.destroy();}catch(e2){} window._mainChart=null; }
-  } else if(window._mainChart){ try{window._mainChart.destroy();}catch(e){} window._mainChart=null; }
+  }
 
-  var COMMON_OPTS={
-    responsive:true, maintainAspectRatio:false, animation:false,
-    plugins:{
-      legend:{position:'top',labels:{font:{size:11},usePointStyle:true,padding:16}},
-      tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+c.parsed.y.toLocaleString('ko-KR')+'천원';}}}
-    },
-    scales:{
-      y:{ticks:{callback:function(v){return v.toLocaleString('ko-KR');}},grid:{color:'rgba(0,0,0,0.04)'},beginAtZero:true},
-      x:{grid:{display:false}}
-    }
-  };
+  // ── 타입 변경 or 초기 생성: 차트 재생성 ──
+  if(window._mainChart){ try{window._mainChart.destroy();}catch(e){} window._mainChart=null; }
+  window._mainChartType = chartType;
+
+  var TOOLTIP={callbacks:{label:function(c){
+    if(c.dataset.yAxisID==='y1') return c.dataset.label+': '+c.parsed.y+'%';
+    return c.dataset.label+': '+c.parsed.y.toLocaleString('ko-KR')+'천원';
+  }}};
+  var LEGEND={position:'top',labels:{font:{size:11},usePointStyle:true,padding:16}};
+  var YSCALE={ticks:{callback:function(v){return v.toLocaleString('ko-KR');}},grid:{color:'rgba(0,0,0,0.04)'},beginAtZero:true};
 
   var cfg;
 
   if(chartType==='stacked'){
-    // 누적 막대 차트
-    cfg={
-      type:'bar',
-      data:{labels:MONTHS,datasets:[
-        {label:'달성매출',data:aD,backgroundColor:'rgba(16,185,129,0.8)',borderRadius:4,stack:'s'},
-        {label:'예상매출',data:fD,backgroundColor:'rgba(245,158,11,0.6)',borderRadius:4,stack:'s'},
-        {label:'경영계획',data:pD,type:'line',borderColor:'#4f7fff',backgroundColor:'transparent',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#4f7fff',tension:0.3}
-      ]},
-      options:Object.assign({},COMMON_OPTS,{
-        scales:Object.assign({},COMMON_OPTS.scales,{
-          y:Object.assign({},COMMON_OPTS.scales.y,{stacked:true}),
-          x:Object.assign({},COMMON_OPTS.scales.x,{stacked:true})
-        })
-      })
-    };
+    cfg={type:'bar',data:{labels:MONTHS,datasets:[
+      {label:'달성매출',data:aD,backgroundColor:'rgba(16,185,129,0.8)',borderRadius:4,stack:'s'},
+      {label:'예상매출',data:fD,backgroundColor:'rgba(245,158,11,0.6)',borderRadius:4,stack:'s'},
+      {label:'경영계획',data:pD,type:'line',borderColor:'#4f7fff',backgroundColor:'transparent',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#4f7fff',tension:0.3}
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:LEGEND,tooltip:TOOLTIP},
+      scales:{y:Object.assign({stacked:true},YSCALE),x:{stacked:true,grid:{display:false}}}}};
+
   } else if(chartType==='achievement'){
-    // 달성률 + 월별 막대
-    var totalPlan=pD.reduce(function(a,b){return a+b;},0);
-    var totalAct=aD.reduce(function(a,b){return a+b;},0);
-    var rate=totalPlan>0?Math.min(Math.round(totalAct/totalPlan*100),100):0;
-    var remain=Math.max(0,100-rate);
-    // 달성률은 도넛으로 별도 처리, 메인 차트는 달성률 막대로
-    var rateD=MONTHS.map(function(_,i){
-      return pD[i]>0?Math.min(Math.round(aD[i]/pD[i]*100),150):0;
-    });
-    cfg={
-      type:'bar',
-      data:{labels:MONTHS,datasets:[
-        {label:'달성매출(천원)',data:aD,backgroundColor:'rgba(16,185,129,0.75)',borderRadius:6,yAxisID:'y'},
-        {label:'달성률(%)',data:rateD,type:'line',borderColor:'#4f7fff',backgroundColor:'rgba(79,127,255,0.08)',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#4f7fff',tension:0.3,fill:true,yAxisID:'y1'}
-      ]},
-      options:{
-        responsive:true,maintainAspectRatio:false,animation:false,
-        plugins:{
-          legend:{position:'top',labels:{font:{size:11},usePointStyle:true,padding:16}},
-          tooltip:{callbacks:{label:function(c){
-            if(c.dataset.yAxisID==='y1') return c.dataset.label+': '+c.parsed.y+'%';
-            return c.dataset.label+': '+c.parsed.y.toLocaleString('ko-KR');
-          }}}
-        },
-        scales:{
-          y:{position:'left',ticks:{callback:function(v){return v.toLocaleString('ko-KR');}},grid:{color:'rgba(0,0,0,0.04)'},beginAtZero:true},
-          y1:{position:'right',min:0,max:150,ticks:{callback:function(v){return v+'%';}},grid:{display:false}},
-          x:{grid:{display:false}}
-        }
-      }
-    };
+    var rateD=MONTHS.map(function(_,i){return pD[i]>0?Math.min(Math.round(aD[i]/pD[i]*100),150):0;});
+    cfg={type:'bar',data:{labels:MONTHS,datasets:[
+      {label:'달성매출',data:aD,backgroundColor:'rgba(16,185,129,0.75)',borderRadius:6,yAxisID:'y'},
+      {label:'달성률(%)',data:rateD,type:'line',borderColor:'#4f7fff',backgroundColor:'rgba(79,127,255,0.08)',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#4f7fff',tension:0.3,fill:true,yAxisID:'y1'}
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:LEGEND,tooltip:TOOLTIP},
+      scales:{y:{position:'left',...YSCALE},y1:{position:'right',min:0,max:150,ticks:{callback:function(v){return v+'%';}},grid:{display:false}},x:{grid:{display:false}}}}};
+
   } else if(chartType==='area'){
-    // 영역 차트
-    cfg={
-      type:'line',
-      data:{labels:MONTHS,datasets:[
-        {label:'경영계획',data:pD,borderColor:'#4f7fff',backgroundColor:'rgba(79,127,255,0.12)',tension:0.4,borderWidth:2.5,pointRadius:3,fill:true},
-        {label:'달성매출',data:aD,borderColor:'#10B981',backgroundColor:'rgba(16,185,129,0.15)',tension:0.4,borderWidth:2.5,pointRadius:3,fill:true},
-        {label:'예상매출',data:fD,borderColor:'#F59E0B',backgroundColor:'rgba(245,158,11,0.10)',tension:0.4,borderWidth:2,pointRadius:3,borderDash:[5,4],fill:true}
-      ]},
-      options:COMMON_OPTS
-    };
+    cfg={type:'line',data:{labels:MONTHS,datasets:[
+      {label:'경영계획',data:pD,borderColor:'#4f7fff',backgroundColor:'rgba(79,127,255,0.12)',tension:0.4,borderWidth:2.5,pointRadius:3,fill:true},
+      {label:'달성매출',data:aD,borderColor:'#10B981',backgroundColor:'rgba(16,185,129,0.15)',tension:0.4,borderWidth:2.5,pointRadius:3,fill:true},
+      {label:'예상매출',data:fD,borderColor:'#F59E0B',backgroundColor:'rgba(245,158,11,0.10)',tension:0.4,borderWidth:2,pointRadius:3,borderDash:[5,4],fill:true}
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:LEGEND,tooltip:TOOLTIP},scales:{y:YSCALE,x:{grid:{display:false}}}}};
+
   } else {
-    // 콤보 차트 (기본) - 막대(실적) + 선(계획/예상)
-    cfg={
-      type:'bar',
-      data:{labels:MONTHS,datasets:[
-        {label:'달성매출',data:aD,backgroundColor:'rgba(16,185,129,0.75)',borderRadius:5,order:2},
-        {label:'경영계획',data:pD,type:'line',borderColor:'#4f7fff',backgroundColor:'transparent',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#4f7fff',tension:0.3,order:1},
-        {label:'예상매출',data:fD,type:'line',borderColor:'#F59E0B',backgroundColor:'transparent',borderWidth:2,pointRadius:3,pointBackgroundColor:'#F59E0B',tension:0.3,borderDash:[5,4],order:1}
-      ]},
-      options:COMMON_OPTS
-    };
+    // 콤보 차트 (기본): 달성=bar, 계획/예상=line
+    cfg={type:'bar',data:{labels:MONTHS,datasets:[
+      {label:'달성매출',data:aD,backgroundColor:'rgba(16,185,129,0.75)',borderRadius:5,order:2},
+      {label:'경영계획',data:pD,type:'line',borderColor:'#4f7fff',backgroundColor:'transparent',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#4f7fff',tension:0.3,order:1},
+      {label:'예상매출',data:fD,type:'line',borderColor:'#F59E0B',backgroundColor:'transparent',borderWidth:2,pointRadius:3,pointBackgroundColor:'#F59E0B',tension:0.3,borderDash:[5,4],order:1}
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:LEGEND,tooltip:TOOLTIP},scales:{y:YSCALE,x:{grid:{display:false}}}}};
   }
 
   window._mainChart=new Chart(ctx.getContext('2d'),cfg);
 }
 function renderRepChart(){
   try{
-    if(rc){try{rc.destroy();}catch(e){} rc=null;}
     var canvas=document.getElementById('repChart')||document.getElementById('rep-chart');
     if(!canvas) return;
     var ctx=canvas.getContext('2d');
     var isAll=(typeof currentDashTeam==='undefined'||currentDashTeam==='all');
 
     if(isAll){
-      // 사업부 탭: 팀별 매출 비중
-      var labels=[];
-      var data=[];
-      var colors=[];
+      // 팀별 매출 비중 도넛
+      var labels=[],data=[],colors=[];
       var teamPalette=['#1E5FBE','#00A882','#C05000','#7B2FBE','#C0392B','#8E44AD','#16A085','#D35400'];
       TEAMS.forEach(function(team,ti){
         var reps=(TEAM_REPS[team]||[]).filter(function(r){return store.reps[r];});
@@ -3778,68 +3749,88 @@ function renderRepChart(){
             return s+(store.reps[r].plan||[]).reduce(function(a,b){return a+(b||0);},0);
           },0);
         }
-        labels.push(team);
-        data.push(total);
-        var c=(TEAM_COLORS[team]&&TEAM_COLORS[team][0])||teamPalette[ti%teamPalette.length];
-        colors.push(c);
+        labels.push(team); data.push(total);
+        colors.push((TEAM_COLORS[team]&&TEAM_COLORS[team][0])||teamPalette[ti%teamPalette.length]);
       });
       var grandTotal=data.reduce(function(a,b){return a+b;},0);
       var pcts=data.map(function(v){return grandTotal>0?Math.round(v/grandTotal*1000)/10:0;});
-      rc=new Chart(ctx,{
+
+      // 기존 차트 update (destroy 방지 → 깜빡임 없음)
+      if(window._rcChart&&window._rcChart.data&&window._rcChart.config.type==='doughnut'){
+        var mc=window._rcChart;
+        // 데이터 변경 확인
+        var newDataStr=JSON.stringify(data);
+        if(window._rcLastData===newDataStr){ return; } // 변경없으면 skip
+        window._rcLastData=newDataStr;
+        mc.data.labels=labels.map(function(l,i){return l+' '+pcts[i]+'%';});
+        mc.data.datasets[0].data=data;
+        mc.data.datasets[0].backgroundColor=colors;
+        mc.update('none');
+        return;
+      }
+      if(window._rcChart){try{window._rcChart.destroy();}catch(e){} window._rcChart=null;}
+      window._rcLastData=JSON.stringify(data);
+      window._rcChart=new Chart(ctx,{
         type:'doughnut',
         data:{
           labels:labels.map(function(l,i){return l+' '+pcts[i]+'%';}),
-          datasets:[{data:data,backgroundColor:colors,borderWidth:2,borderColor:'white',hoverOffset:8}]
+          datasets:[{data:data,backgroundColor:colors,borderWidth:2,borderColor:'#fff',hoverOffset:8}]
         },
         options:{
-          responsive:true,maintainAspectRatio:false,cutout:'62%',
+          responsive:true,maintainAspectRatio:false,
           plugins:{
-            legend:{position:'right',labels:{font:{size:13,weight:'600'},padding:10,boxWidth:14,color:'#1E293B'}},
+            legend:{position:'right',labels:{font:{size:11},padding:10,usePointStyle:true}},
             tooltip:{callbacks:{label:function(c){
-              return labels[c.dataIndex]+': '+data[c.dataIndex].toLocaleString('ko-KR')+'천원 ('+pcts[c.dataIndex]+'%)';
+              var val=c.parsed||0;
+              var pct=grandTotal>0?Math.round(val/grandTotal*1000)/10:0;
+              return c.label+': '+val.toLocaleString('ko-KR')+'천원 ('+pct+'%)';
             }}}
           }
         }
       });
-      // 제목 동적 변경
-      var titleEl=document.getElementById('rep-chart-title');
-      if(titleEl) titleEl.textContent='팀별 매출 비중';
     } else {
-      // 팀 탭: 담당자별 매출 비중
-      var reps=(TEAM_REPS[currentDashTeam]||[]).filter(function(r){return store.reps[r];});
-      if(!reps.length) return;
-      var actuals=reps.map(function(r){
-        var v=(store.reps[r].actual||[]).reduce(function(a,b){return a+(b||0);},0);
-        if(v===0) v=(store.reps[r].plan||[]).reduce(function(a,b){return a+(b||0);},0);
-        return v;
-      });
-      var total2=actuals.reduce(function(a,b){return a+b;},0);
-      var pcts2=actuals.map(function(v){return total2>0?Math.round(v/total2*1000)/10:0;});
-      var colors2=reps.map(function(r,i){
-        var palette=(TEAM_COLORS[currentDashTeam]&&TEAM_COLORS[currentDashTeam].length)?TEAM_COLORS[currentDashTeam]:['#1E5FBE','#00A882','#C05000','#7B2FBE','#C0392B','#8E44AD'];
-        return palette[i%palette.length];
-      });
-      rc=new Chart(ctx,{
-        type:'doughnut',
+      // 담당자별 막대
+      var team=currentDashTeam;
+      var reps=(TEAM_REPS[team]||[]).filter(function(r){return store.reps[r];});
+      var repLabels=reps;
+      var planData=reps.map(function(r){return (store.reps[r].plan||[]).reduce(function(a,b){return a+(b||0);},0);});
+      var actData=reps.map(function(r){return (store.reps[r].actual||[]).reduce(function(a,b){return a+(b||0);},0);});
+
+      var dataStr=JSON.stringify({reps:reps,plan:planData,act:actData});
+      if(window._rcChart&&window._rcChart.data&&window._rcChart.config.type==='bar'){
+        if(window._rcLastData===dataStr) return; // 변경없으면 skip
+        window._rcLastData=dataStr;
+        window._rcChart.data.labels=repLabels;
+        window._rcChart.data.datasets[0].data=actData;
+        window._rcChart.data.datasets[1].data=planData;
+        window._rcChart.update('none');
+        return;
+      }
+      if(window._rcChart){try{window._rcChart.destroy();}catch(e){} window._rcChart=null;}
+      window._rcLastData=dataStr;
+      window._rcChart=new Chart(ctx,{
+        type:'bar',
         data:{
-          labels:reps.map(function(r,i){return r+' '+pcts2[i]+'%';}),
-          datasets:[{data:actuals,backgroundColor:colors2,borderWidth:2,borderColor:'white',hoverOffset:8}]
+          labels:repLabels,
+          datasets:[
+            {label:'달성매출',data:actData,backgroundColor:'rgba(16,185,129,0.75)',borderRadius:5},
+            {label:'경영계획',data:planData,type:'line',borderColor:'#4f7fff',backgroundColor:'transparent',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#4f7fff',tension:0.3}
+          ]
         },
         options:{
-          responsive:true,maintainAspectRatio:false,cutout:'62%',
+          responsive:true,maintainAspectRatio:false,
           plugins:{
-            legend:{position:'right',labels:{font:{size:13,weight:'600'},padding:10,boxWidth:14,color:'#1E293B'}},
-            tooltip:{callbacks:{label:function(c){
-              return reps[c.dataIndex]+': '+actuals[c.dataIndex].toLocaleString('ko-KR')+'천원 ('+pcts2[c.dataIndex]+'%)';
-            }}}
+            legend:{position:'top',labels:{font:{size:11},usePointStyle:true}},
+            tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+c.parsed.y.toLocaleString('ko-KR')+'천원';}}}
+          },
+          scales:{
+            y:{ticks:{callback:function(v){return v.toLocaleString('ko-KR');}},grid:{color:'rgba(0,0,0,0.04)'},beginAtZero:true},
+            x:{grid:{display:false}}
           }
         }
       });
-      // 제목 동적 변경
-      var titleEl2=document.getElementById('rep-chart-title');
-      if(titleEl2) titleEl2.textContent='담당자별 매출 비중';
     }
-  }catch(e){console.warn('repChart오류:',e);}
+  }catch(e){console.error('renderRepChart 오류:',e);}
 }
 
 // INPUT
