@@ -2355,8 +2355,9 @@ table.dt thead th { font-size: 13px !important; }
           <div style="display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap;padding:10px 12px;background:#F8FAFC;border-radius:8px;border:1px solid var(--border);">
             <label style="font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap;">📅 배너 예약</label>
             <input type="datetime-local" id="cfg-banner-schedule"
-              style="flex:1;min-width:160px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11px;font-family:inherit;"
-              title="이 날짜/시간 이후 배너 표시 (미설정 시 즉시)">
+              style="flex:1;min-width:160px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11px;font-family:inherit;cursor:pointer;"
+              onclick="this.showPicker&&this.showPicker()"
+              title="클릭하여 날짜 선택">
             <span style="font-size:10px;color:#94A3B8;">미설정 시 즉시 표시</span>
           </div>
           <button onclick="saveBannerCfg()" class="btn btn-primary" style="margin-top:10px;font-size:12px;">배너 배포</button>
@@ -2546,7 +2547,11 @@ function syncTeamData(){
   if(authCfg.teamReps){
     Object.keys(authCfg.teamReps).forEach(function(team){
       TEAM_REPS[team] = authCfg.teamReps[team] || [];
-      if(TEAMS.indexOf(team)<0) TEAMS.push(team); // 새 팀 자동 추가
+      if(TEAMS.indexOf(team)<0) TEAMS.push(team);
+      // REP_TEAM_MAP 업데이트 (담당자→팀 역매핑)
+      (authCfg.teamReps[team]||[]).forEach(function(rep){
+        if(typeof REP_TEAM_MAP !== 'undefined') REP_TEAM_MAP[rep] = team;
+      });
     });
   }
   if(authCfg.teamColors){
@@ -3204,7 +3209,13 @@ function showPage(id,navEl){
     // 참가자: 팀 탭 → 담당자 탭 자동 선택
     if(session && session.role==='rep' && session.rep){
       setTimeout(function(){
-        var _tt = document.querySelector('#input-team-tabs .tis-tab[data-tab="'+session.team+'"]');
+        // REP_TEAM_MAP으로 실제 팀 확인 (session.team이 틀릴 수 있음)
+        var _myTeam = (typeof REP_TEAM_MAP !== 'undefined' && REP_TEAM_MAP[session.rep])
+          ? REP_TEAM_MAP[session.rep]
+          : session.team;
+        console.log('[AutoTab] rep='+session.rep+' session.team='+session.team+' REP_TEAM_MAP='+_myTeam);
+
+        var _tt = document.querySelector('#input-team-tabs .tis-tab[data-tab="'+_myTeam+'"]');
         if(_tt){
           if(!_tt.classList.contains('active')) _tt.click();
           setTimeout(function(){
@@ -3213,13 +3224,11 @@ function showPage(id,navEl){
               _rt.click();
               if(typeof applyPermissions==='function') applyPermissions();
             } else {
-              // 팀 탭은 있으나 담당자 탭 없음 = TEAM_REPS 미로드 상태
-              window._pendingTabSelect = {team: session.team, rep: session.rep};
+              window._pendingTabSelect = {team: _myTeam, rep: session.rep};
             }
           }, 200);
         } else {
-          // 팀 탭 자체 없음
-          window._pendingTabSelect = {team: session.team, rep: session.rep};
+          window._pendingTabSelect = {team: _myTeam, rep: session.rep};
         }
       }, 100);
     }
@@ -6443,6 +6452,18 @@ async function _spLoadSettings() {
     }
   }catch(e){}
   if(typeof loadBanner==='function') loadBanner();
+  // session.team 보정: REP_TEAM_MAP 기준으로 재확인
+  if(session && session.rep && typeof REP_TEAM_MAP !== 'undefined'){
+    var _mappedTeam = REP_TEAM_MAP[session.rep];
+    if(_mappedTeam && _mappedTeam !== session.team){
+      console.log('[AutoTab] session.team 보정:', session.team, '→', _mappedTeam);
+      session.team = _mappedTeam;
+      _tabState.input = _mappedTeam;
+      _tabState.issues = _mappedTeam;
+      _tabState.pipeline = _mappedTeam;
+      _tabState.visits = _mappedTeam;
+    }
+  }
   window._spSettingsLoaded = true;
 
   // 신규팀 탭 대기 중이면 실행
@@ -10596,14 +10617,13 @@ function renderAccessStat(range){
     repEl.innerHTML=sorted.map(function(e){
       var pct=Math.round(e[1].count/maxC*100);
       var last=e[1].last?e[1].last.toLocaleDateString('ko-KR'):'';
-      return '<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);">'
-        +'<div style="width:80px;font-size:12px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+e[0]+'</div>'
-        +'<div style="flex:1;background:var(--light);border-radius:8px;height:24px;overflow:hidden;">'
-        +'<div style="height:100%;background:var(--blue2);border-radius:8px;width:'+pct+'%;display:flex;align-items:center;padding:0 10px;transition:width 0.3s;">'
-        +(pct>20?'<span style="font-size:11px;color:white;font-weight:700;">'+e[1].count+'회</span>':'')
-        +'</div></div>'
-        +(pct<=20?'<span style="font-size:11px;color:var(--navy);font-weight:700;width:30px;">'+e[1].count+'회</span>':'<span style="width:30px;"></span>')
-        +'<div style="font-size:11px;color:var(--muted);white-space:nowrap;min-width:80px;">'+last+'</div>'
+      return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);">'
+        +'<div style="width:72px;font-size:12px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;">'+e[0]+'</div>'
+        +'<div style="flex:1;background:#F1F5F9;border-radius:20px;height:8px;overflow:hidden;">'
+        +'<div style="height:100%;background:var(--blue2);border-radius:20px;width:'+pct+'%;transition:width 0.4s ease;"></div>'
+        +'</div>'
+        +'<div style="font-size:12px;font-weight:700;color:var(--navy);width:32px;text-align:right;flex-shrink:0;">'+e[1].count+'</div>'
+        +'<div style="font-size:11px;color:var(--muted);white-space:nowrap;min-width:70px;text-align:right;flex-shrink:0;">'+last+'</div>'
         +'</div>';
     }).join('')||'<p style="color:var(--muted);font-size:12px;padding:16px 0;">접속 기록 없음</p>';
   }
