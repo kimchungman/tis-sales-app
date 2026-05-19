@@ -5760,8 +5760,12 @@ function autoSave(){
       if(typeof saveToHistory==='function')saveToHistory();
       if(typeof updateHistBtn==='function')updateHistBtn();
       // 2. SP 저장 (연결된 경우 바로 실행)
-      if(window._isSPReady && typeof _spSaveSnap==='function'){
-        await _spSaveSnap();
+      if(window._isSPReady){
+        if(session && session.role==='rep' && session.rep){
+          if(typeof _spSaveMyRep==='function') await _spSaveMyRep();
+        } else {
+          if(typeof _spSaveSnap==='function') await _spSaveSnap();
+        }
       }
     } catch(e){
       console.error('자동저장 실패:', e);
@@ -6157,7 +6161,8 @@ async function _initSP() {
 
     // 설정 + 오늘 데이터 자동 로드 (최초 접속 시 동기화)
     await _spLoadSettings();
-    await _spLoadToday();
+    await _spLoadToday();      // 기존 스냅샷 로드 (하위 호환)
+    await _spLoadAllReps();    // 담당자별 개별 데이터 로드 (최신 데이터 우선 적용)
     await _spLoadHistList();
 
     // 데이터 로드 후 대시보드 즉시 재렌더링 (모든 사용자)
@@ -6172,17 +6177,16 @@ async function _initSP() {
       try{
         // 변경 전 해시
         // _applySnap 내부 renderDashboard 막기
-        window._skipApplyRender = true;
-        var _before = JSON.stringify(store.reps);
-        await _spLoadToday();
+        // 공동편집: 다른 담당자 데이터만 동기화
+        var _changed = await _spSyncOtherReps();
         await _spLoadHistList();
-        window._skipApplyRender = false;
-        var _after = JSON.stringify(store.reps);
-        // 실제 데이터 변경 시에만 렌더 (차트 깜빡임 방지)
-        if(_before !== _after){
+        if(_changed){
+          // 입력 페이지가 아닌 경우만 전체 재렌더 (입력 페이지는 내 데이터 건드리지 않음)
+          var _ipOn=document.getElementById('page-input')&&document.getElementById('page-input').classList.contains('active');
           if(typeof renderDashboard==='function') renderDashboard();
           if(typeof renderIssues==='function') renderIssues();
           if(typeof renderPipeline==='function') renderPipeline();
+          if(!_ipOn && typeof buildRepInputs==='function') buildRepInputs();
         }
       }catch(e){}
     }, 10000);
@@ -6300,7 +6304,13 @@ function _applySnap(snap, date) {
   if (snap.reps)      { REPS.length=0;      snap.reps.forEach(r=>REPS.push(r)); }
   if (snap.repColors) { REP_COLORS.length=0; snap.repColors.forEach(c=>REP_COLORS.push(c)); }
   if (snap.store)     Object.keys(snap.store.reps||{}).forEach(rep=>{
-    store.reps[rep]=snap.store.reps[rep];
+    // 공동편집: 내 담당자 데이터는 스냅샷으로 덮어쓰지 않음
+    var _myRep3=(typeof session!=='undefined')&&session&&session.rep?session.rep:'';
+    if(rep===_myRep3 && (typeof session!=='undefined') && session && session.role==='rep'){
+      // 내 것: 건드리지 않음
+    } else {
+      store.reps[rep]=snap.store.reps[rep];
+    }
     // 배열 오염 방지: plan/actual/forecast 정확히 12개로 정규화
     var r=store.reps[rep];
     if(r){
@@ -10559,6 +10569,86 @@ function renderOverdueIssues(el){
     }).join('');
 }
 window.renderOverdueIssues=renderOverdueIssues;
+
+// ════════════════════════════════════════════════════════
+// 공동편집 저장/동기화 엔진
+// - 내 데이터만 저장: store.reps[session.rep]
+// - 남의 데이터만 동기화: session.rep 제외한 나머지
+// ════════════════════════════════════════════════════════
+
+// 내 담당자 데이터 SP 저장
+async function _spSaveMyRep(){
+  if(!window._isSPReady || !session || !session.rep) return;
+  var date=document.getElementById('mtg-date')?document.getElementById('mtg-date').value:'';
+  if(!date) date=new Date().toISOString().split('T')[0];
+  var myData=store.reps[session.rep];
+  if(!myData) return;
+  // plan/actual/forecast 정규화
+  var _d=JSON.parse(JSON.stringify(myData));
+  ['plan','actual','forecast'].forEach(function(k){
+    if(!Array.isArray(_d[k])) _d[k]=new Array(12).fill(0);
+    else _d[k]=_d[k].slice(0,12).concat(new Array(12).fill(0)).slice(0,12);
+  });
+  _d.savedAt=new Date().toISOString();
+  _d.date=date;
+  await _spSaveItem('rep_data', session.rep+':'+date, _d);
+}
+
+// 다른 담당자 데이터 SP 동기화 (내 것 제외)
+async function _spSyncOtherReps(){
+  if(!window._isSPReady) return false;
+  var date=document.getElementById('mtg-date')?document.getElementById('mtg-date').value:'';
+  if(!date) date=new Date().toISOString().split('T')[0];
+  var myRep=session&&session.rep?session.rep:'';
+  var changed=false;
+  try{
+    // 오늘의 모든 담당자 rep_data 로드
+    var qUrl=_lUrl()+'?$select=DataKey,Payload&$filter=DataType+eq+%27rep_data%27';
+    var res=await _spFetch(qUrl);
+    var items=(res&&res.value)||[];
+    items.forEach(function(item){
+      try{
+        // 키 형식: 담당자명:날짜
+        var parts=item.DataKey.split(':');
+        var repName=parts.slice(0,-1).join(':'); // 담당자명 (콜론 포함 가능)
+        var itemDate=parts[parts.length-1];
+        if(repName===myRep) return;            // 내 것은 건드리지 않음
+        if(itemDate!==date) return;            // 오늘 데이터만
+        if(!REPS.includes(repName)) return;    // 현재 팀 담당자만
+        var repData=JSON.parse(item.Payload);
+        var before=JSON.stringify(store.reps[repName]);
+        store.reps[repName]=repData;
+        var after=JSON.stringify(store.reps[repName]);
+        if(before!==after) changed=true;
+      }catch(e){}
+    });
+  }catch(e){}
+  return changed;
+}
+
+// 오늘의 모든 담당자 데이터 로드 (첫 접속 시)
+async function _spLoadAllReps(){
+  if(!window._isSPReady) return;
+  var date=document.getElementById('mtg-date')?document.getElementById('mtg-date').value:'';
+  if(!date) date=new Date().toISOString().split('T')[0];
+  try{
+    var qUrl=_lUrl()+'?$select=DataKey,Payload&$filter=DataType+eq+%27rep_data%27';
+    var res=await _spFetch(qUrl);
+    var items=(res&&res.value)||[];
+    items.forEach(function(item){
+      try{
+        var parts=item.DataKey.split(':');
+        var repName=parts.slice(0,-1).join(':');
+        var itemDate=parts[parts.length-1];
+        if(itemDate!==date) return;
+        var repData=JSON.parse(item.Payload);
+        if(!store.reps[repName]) store.reps[repName]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[]};
+        Object.assign(store.reps[repName], repData);
+      }catch(e){}
+    });
+  }catch(e){}
+}
+
 function showStatDatePicker(){
   // 날짜 지정 탭 활성화 + 패널 표시
   ['week','month','all','custom'].forEach(function(r){
