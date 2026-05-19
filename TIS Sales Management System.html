@@ -6204,10 +6204,9 @@ async function _initSP() {
 }
 
 // ── 아이템 저장 ─────────────────────────────────────────────
-async function _spSaveItem(dtype, dkey, payload) {
+async function _spSaveItem(dtype, dkey, payload, _retry) {
   if (!window._isSPReady) return;
   try {
-    // 기존 항목 조회
     const qUrl = _lUrl() + '?$select=Id&$filter=DataType+eq+%27'
                + encodeURIComponent(dtype) + '%27+and+DataKey+eq+%27'
                + encodeURIComponent(dkey)  + '%27';
@@ -6232,7 +6231,18 @@ async function _spSaveItem(dtype, dkey, payload) {
       await _spFetch(_lUrl(), { method: 'POST', body: body });
     }
   } catch (err) {
-    showToast('저장 실패: ' + err.message, 'warn');
+    // 409 Conflict: 동시 수정 충돌 → 자동 재시도 (최대 3회)
+    if (err.message && err.message.indexOf('409') >= 0) {
+      var retryCount = _retry || 0;
+      if (retryCount < 3) {
+        await new Promise(function(r){ setTimeout(r, 500 * (retryCount + 1)); });
+        return _spSaveItem(dtype, dkey, payload, retryCount + 1);
+      }
+      // 3회 실패 시 조용히 무시 (다음 autoSave에서 재시도됨)
+      console.warn('[SP] 409 충돌 저장 실패, 다음 저장 시 재시도:', dtype, dkey);
+    } else {
+      showToast('저장 실패: ' + err.message, 'warn');
+    }
   }
 }
 
