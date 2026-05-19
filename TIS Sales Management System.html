@@ -3862,6 +3862,7 @@ function buildRepInputs(){
         <thead><tr>
           <th style="min-width:140px;white-space:nowrap;">고객사명</th>
           <th style="white-space:nowrap;min-width:62px;">상태</th>
+          <th style="white-space:nowrap;min-width:130px;">제품</th>
           <th style="white-space:nowrap;min-width:62px;">유형</th>
           ${MONTHS.map(m=>`<th style="min-width:72px;white-space:nowrap;">${m}</th>`).join('')}
           <th style="min-width:240px;">이슈사항</th>
@@ -3910,9 +3911,15 @@ function cRow(rep,ci,c){
   const tOpts=['MA','개발','상품','기타'].map(t=>`<option${(c.type||'MA')===t?' selected':''}>${t}</option>`).join('');
   const sOpts=['달성','예상'].map(st=>`<option${(c.status||'달성')===st?' selected':''}>${st}</option>`).join('');
   return`<tr id="cr-${rep}-${ci}">
-    <td style="vertical-align:middle;padding:3px 4px;white-space:nowrap;"><input type="text" value="${c.name||''}" style="width:100%;min-width:140px;" onchange="store.reps['${rep}'].clients[${ci}].name=this.value;autoSave()"></td>
+    <td style="vertical-align:middle;padding:3px 4px;white-space:nowrap;"><input type="text" value="${c.name||''}" style="width:100%;min-width:140px;text-align:center;" onchange="store.reps['${rep}'].clients[${ci}].name=this.value;autoSave()"></td>
     <td style="vertical-align:middle;padding:3px 4px;text-align:center;white-space:nowrap;">
-      <select style="width:60px;font-size:12px;" onchange="store.reps['${rep}'].clients[${ci}].status=this.value;refreshActualForecast('${rep}');autoSave()">${sOpts}</select>
+      <select style="width:60px;font-size:12px;text-align:center;" onchange="store.reps['${rep}'].clients[${ci}].status=this.value;refreshActualForecast('${rep}');autoSave()">${sOpts}</select>
+    </td>
+    <td style="vertical-align:middle;padding:3px 4px;text-align:center;white-space:nowrap;">
+      <select style="width:130px;font-size:11px;text-align:center;" onchange="store.reps['${rep}'].clients[${ci}].product=this.value;autoSave()">
+        <option value="">-</option>
+        ${['그룹웨어','웹메일','ERP','MES','PIMS','스포츠','VOA','기타'].map(p=>`<option value="${p}"${(c.product||'')===p?' selected':''}>${p}</option>`).join('')}
+      </select>
     </td>
     <td style="vertical-align:middle;padding:3px 4px;text-align:center;white-space:nowrap;">
       <select style="width:60px;font-size:12px;" onchange="store.reps['${rep}'].clients[${ci}].type=this.value;updateProductSummary('${rep}');autoSave();refreshActualForecast('${rep}');updateProductSummary('${rep}');renderDashboard();autoSave();\">${tOpts}</select>
@@ -5699,8 +5706,32 @@ function loadTheme(){
   const saved=localStorage.getItem('app_theme');
   if(saved) applyTheme(saved);
 }
+function syncInputToStore(){
+  // DOM에서 현재 입력값을 store에 동기화 (저장 전 호출)
+  try{
+    var pg=document.getElementById('page-input');
+    if(!pg) return;
+    // clients 동기화
+    pg.querySelectorAll('[data-sync-clients]').forEach(function(el){
+      var rep=el.dataset.rep; var idx=parseInt(el.dataset.idx); var field=el.dataset.field;
+      if(store.reps[rep]&&store.reps[rep].clients[idx])
+        store.reps[rep].clients[idx][field]=el.value||el.textContent||'';
+    });
+    // activities 동기화
+    pg.querySelectorAll('[data-sync-activities]').forEach(function(el){
+      var rep=el.dataset.rep; var idx=parseInt(el.dataset.idx); var field=el.dataset.field;
+      if(store.reps[rep]&&store.reps[rep].activities[idx])
+        store.reps[rep].activities[idx][field]=el.value||el.textContent||'';
+    });
+  }catch(e){}
+}
 function autoSave(){
-  // 디바운스: 1000ms
+  // 즉시 localStorage 저장 (데이터 유실 방지)
+  try{
+    const _quickData={date:document.getElementById('mtg-date')?.value||'',store:JSON.parse(JSON.stringify(store)),reps:[...REPS]};
+    localStorage.setItem('weekly_meeting_data_quick',JSON.stringify(_quickData));
+  }catch(e){}
+  // 디바운스: 1000ms (SP 저장용)
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async ()=>{
     try{
@@ -6302,8 +6333,8 @@ function _applySnap(snap, date) {
 
 // ── 스냅샷 저장 ────────────────────────────────────────────
 async function _spSaveSnap() {
-  const date = document.getElementById('mtg-date') ? document.getElementById('mtg-date').value : '';
-  if (!date) return;
+  var _dateEl = document.getElementById('mtg-date');
+  const date = (_dateEl && _dateEl.value) ? _dateEl.value : new Date().toISOString().split('T')[0];
   const payload = {
     date, savedAt: new Date().toISOString(),
     team: currentTeam,
