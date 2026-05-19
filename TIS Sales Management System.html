@@ -1838,11 +1838,11 @@ table.dt thead th { font-size: 13px !important; }
                 <th style="background:#F8FAFC;color:#64748B;width:82px;text-align:center;">담당자</th>
                 <th style="background:#F8FAFC;color:#64748B;width:130px;text-align:center;">고객사</th>
                 <th style="background:#F8FAFC;color:#64748B;text-align:left;padding-left:14px;">이슈 내용</th>
-                <th style="background:#F8FAFC;color:#64748B;width:100px;text-align:center;">등록날짜</th>
-                <th style="background:#F8FAFC;color:#64748B;width:100px;text-align:center;">기한날짜</th>
-                <th style="background:#F8FAFC;color:#64748B;width:70px;text-align:center;">D-day</th>
                 <th style="background:#F8FAFC;color:#64748B;width:90px;text-align:center;">중요도</th>
                 <th style="background:#F8FAFC;color:#64748B;width:90px;text-align:center;">처리상태</th>
+                <th style="background:#F8FAFC;color:#64748B;width:100px;text-align:center;">등록날짜</th>
+                <th style="background:#F8FAFC;color:#64748B;width:100px;text-align:center;">기한날짜</th>
+                <th style="background:#F8FAFC;color:#64748B;width:70px;text-align:center;">D-DAY</th>
               </tr>
             </thead>
             <tbody id="iss-list"></tbody>
@@ -4402,7 +4402,17 @@ function renderIssues(){
     }
     var sc=sevColor[i.sev]||'#CBD5E1';
     var tc=(stColor[i.status||'open']||'#CBD5E1');
-    return '<tr style="'+(isOpen?'':'opacity:0.6;')+'">'      +'<td style="text-align:center;font-size:11px;color:#64748B;">'+(i.team||i.rep.split(' ')[0]||'')+'</td>'      +'<td style="text-align:center;font-size:12px;font-weight:600;">'+(i.rep||'')+'</td>'      +'<td style="text-align:center;font-size:12px;">'+(i.client||'')+'</td>'      +'<td style="padding:8px 14px;font-size:12px;color:#374151;line-height:1.5;white-space:pre-wrap;word-break:break-word;text-align:left;vertical-align:top;">'+(i.content||'')+'</td>'      +'<td style="text-align:center;font-size:11px;color:#64748B;">'+(i.regDate||'─')+'</td>'      +'<td style="text-align:center;font-size:11px;color:#64748B;">'+(i.dueDate||'─')+'</td>'      +ddayCell      +'<td style="text-align:center;"><span style="display:inline-flex;align-items:center;justify-content:center;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;color:'+sc+';border:1.5px solid '+sc+'60;">'+(sevLabel[i.sev]||i.sev||'')+'</span></td>'      +'<td style="text-align:center;"><span style="display:inline-flex;align-items:center;justify-content:center;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;color:'+tc+';border:1.5px solid '+tc+'60;">'+(isOpen?'🔴 Open':'✅ Closed')+'</span></td>'      +'</tr>';
+    return '<tr style="'+(isOpen?'':'opacity:0.6;')+'">'
+      +'<td style="text-align:center;font-size:11px;color:#64748B;vertical-align:middle;">'+(i.team||i.rep||'')+'</td>'
+      +'<td style="text-align:center;font-size:12px;font-weight:600;vertical-align:middle;">'+(i.rep||'')+'</td>'
+      +'<td style="text-align:center;font-size:12px;vertical-align:middle;">'+(i.client||'')+'</td>'
+      +'<td style="padding:8px 14px;font-size:12px;color:#374151;line-height:1.5;white-space:pre-wrap;word-break:break-word;text-align:left;vertical-align:middle;">'+(i.content||'')+'</td>'
+      +'<td style="text-align:center;vertical-align:middle;"><span style="display:inline-flex;align-items:center;justify-content:center;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;color:'+sc+';border:1.5px solid '+sc+'60;">'+(sevLabel[i.sev]||i.sev||'')+'</span></td>'
+      +'<td style="text-align:center;vertical-align:middle;"><span style="display:inline-flex;align-items:center;justify-content:center;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;color:'+tc+';border:1.5px solid '+tc+'60;">'+(isOpen?'Open':'Closed')+'</span></td>'
+      +'<td style="text-align:center;font-size:11px;color:#64748B;vertical-align:middle;">'+(i.regDate||'─')+'</td>'
+      +'<td style="text-align:center;font-size:11px;color:#64748B;vertical-align:middle;">'+(i.dueDate||'─')+'</td>'
+      +ddayCell
+      +'</tr>';
   }).join(''):'<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--muted);">⬜ 조건에 맞는 이슈가 없습니다</td></tr>';
   renderDashIssues();
 }
@@ -6564,7 +6574,14 @@ function _applySnap(snap, date) {
     if(rep===_myRep3 && (typeof session!=='undefined') && session && session.role==='rep'){
       // 내 것: 건드리지 않음
     } else {
+      // visitLog/issuesList 보존: 스냅샷에 없으면 기존 것 유지
+      var _existVL=(store.reps[rep]&&store.reps[rep].visitLog)||[];
+      var _existIL=(store.reps[rep]&&store.reps[rep].issuesList)||[];
       store.reps[rep]=snap.store.reps[rep];
+      if(!store.reps[rep].visitLog||store.reps[rep].visitLog.length<_existVL.length)
+        store.reps[rep].visitLog=_existVL;
+      if(!store.reps[rep].issuesList||store.reps[rep].issuesList.length<_existIL.length)
+        store.reps[rep].issuesList=_existIL;
     }
     // 배열 오염 방지: plan/actual/forecast 정확히 12개로 정규화
     var r=store.reps[rep];
@@ -10871,7 +10888,19 @@ async function _spSyncOtherReps(){
         if(!REPS.includes(repName)) return;    // 현재 팀 담당자만
         var repData=JSON.parse(item.Payload);
         var before=JSON.stringify(store.reps[repName]);
+        // visitLog 보존: 새 데이터에 없거나 더 적으면 기존 것 유지
+        var existingLog=(store.reps[repName]&&store.reps[repName].visitLog)||[];
+        var newLog=repData.visitLog||[];
         store.reps[repName]=repData;
+        if(newLog.length<existingLog.length){
+          store.reps[repName].visitLog=existingLog;
+        }
+        // issuesList 보존
+        var existingIss=(store.reps[repName]&&store.reps[repName].issuesList)||[];
+        var newIss=repData.issuesList||[];
+        if(newIss.length<existingIss.length){
+          store.reps[repName].issuesList=existingIss;
+        }
         var after=JSON.stringify(store.reps[repName]);
         if(before!==after) changed=true;
       }catch(e){}
