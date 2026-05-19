@@ -1763,7 +1763,7 @@ table.dt thead th { font-size: 13px !important; }
       <div class="chart-card">
         <div class="card-hdr">
           <div><div class="card-title">월별 경영계획 vs 실적 vs 예상</div><div class="card-sub">단위: 천원 / 회계연도 4월~3월</div></div>
-          <select id="ch-filter" style="border:1px solid var(--border);border-radius:6px;padding:4px 9px;font-size:11px;font-family:inherit;outline:none;" onchange="renderMainChart()"><option value="all">전체 담당자</option></select>
+          <select id="ch-filter" style="border:1px solid var(--border);border-radius:6px;padding:4px 9px;font-size:11px;font-family:inherit;outline:none;" onchange="renderMainChart();if(window.renderRepChart)renderRepChart();"><option value="all">전체 담당자</option></select>
         </div>
         <canvas id="mainChart" height="190"></canvas>
       </div>
@@ -3733,7 +3733,11 @@ function renderRepChart(){
     var canvas=document.getElementById('repChart')||document.getElementById('rep-chart');
     if(!canvas) return;
     var ctx=canvas.getContext('2d');
-    var isAll=(typeof currentDashTeam==='undefined'||currentDashTeam==='all');
+    var cfEl=document.getElementById('ch-filter');
+    var cfVal=cfEl?cfEl.value:'all';
+    var isAll=(cfVal==='all')&&(typeof currentDashTeam==='undefined'||currentDashTeam==='all');
+    // 특정 담당자 선택 시 해당 담당자 데이터만
+    var filterRep=(cfVal&&cfVal!=='all')?cfVal:null;
 
     if(isAll){
       // 팀별 매출 비중 도넛
@@ -3843,11 +3847,16 @@ function switchInputTeam(team){
   });
   renderInputTeamTabs();
   buildRepTabs();
-  buildRepInputs();
-  extractIssues();
-  renderIssues();
-  renderPipeline();
-  populateFilters();
+  // buildRepInputs 중복 호출 방지 (app:ready 동기 이벤트로 인한 이중 호출 차단)
+  if(window._briTimer) clearTimeout(window._briTimer);
+  window._briTimer = setTimeout(function(){
+    window._briTimer = null;
+    buildRepInputs();
+    extractIssues();
+    renderIssues();
+    renderPipeline();
+    populateFilters();
+  }, 0);
 }function switchInputTeam(team){
   currentTeam = team;
   applyCurrentTeam(team);
@@ -4371,7 +4380,7 @@ function renderIssues(){
         <span style="font-size:11px;color:var(--muted);">│ ${i.rep}</span>
         <span class="badge bg-gray" style="font-size:10px;">${srcLabel[i.source]||i.type}</span>
       </div>
-      <div style="font-size:12px;color:#444;line-height:1.6;margin-top:4px;white-space:pre-wrap;text-align:left;">${i.content}</div>
+      <div class="content-cell" style="font-size:12px;color:#444;line-height:1.6;margin-top:4px;">${i.content}</div>
     </div>`;
   }).join(''):'<div style="text-align:center;padding:24px;color:var(--muted);">⬜ 조건에 맞는 이슈가 없습니다</div>';
   renderDashIssues();
@@ -4470,7 +4479,7 @@ function renderPipeline(){
       +'<td><span class="badge '+pc(r.prob)+'">'+(r.prob?(r.prob*100).toFixed(0)+'%':'-')+'</span></td>'
       +'<td style="white-space:nowrap;color:var(--muted);">'+(r.timing||'-')+'</td>'
       +'<td><span style="padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;background:'+stBg+';color:'+stCol+';">'+stLbl+'</span></td>'
-      +'<td style="max-width:240px;font-size:11px;color:var(--text-2);text-align:left;white-space:pre-wrap;word-break:break-word;">'+(r.content||'')+'</td>'
+      +'<td class="content-cell" style="max-width:240px;font-size:11px;color:var(--text-2);">'+(r.content||'')+'</td>'
       +'</tr>';
   }).join('');
 }
@@ -4606,7 +4615,16 @@ function exportDash(){
 function autoResizeTA(el){
   if(!el) return;
 
-  // display:none 부모 임시 노출 (scrollHeight 측정을 위해)
+  // display:none 조상 모두 임시 노출 (scrollHeight 측정을 위해)
+  var hiddenAncestors=[];
+  var node=el.parentNode;
+  while(node&&node!==document.body){
+    if(node.style&&node.style.display==='none'){
+      hiddenAncestors.push(node);
+      node.style.display='block';
+    }
+    node=node.parentNode;
+  }
   const sec = el.closest('.rep-sec');
   const wasHidden = sec && sec.style.display === 'none';
   if(wasHidden){
@@ -5731,28 +5749,55 @@ function recordAccess(repName, isGuest){
 }
 function updateAccessDisplay(){
   const today=new Date().toISOString().split('T')[0];
-  const key='access_'+today;
-  // localStorage 접속자 (내 브라우저)
-  let log={};
-  try{ log=JSON.parse(localStorage.getItem(key)||'{}'); }catch(e){}
-  // SP 접속 로그 병합 (다른 PC 사용자 포함)
+  // 최신 timestamp 기준 map 구조 (same user → 최신 1건만 유지)
+  let userMap={}; // {displayName: {time, ts, guest}}
+
+  // localStorage (내 브라우저)
+  try{
+    const local=JSON.parse(localStorage.getItem('access_'+today)||'{}');
+    Object.keys(local).forEach(function(name){
+      var e=local[name];
+      var t=typeof e==='object'?e.time||'':''+e;
+      var ts=today+'T'+(t||'00:00')+':00';
+      if(!userMap[name]||ts>userMap[name].ts)
+        userMap[name]={time:t,ts:ts,guest:!!(e&&e.guest)};
+    });
+  }catch(e){}
+
+  // SP 접속 로그 병합 (최신 timestamp 우선)
   if(window._accessLogData && Array.isArray(window._accessLogData)){
-    window._accessLogData.forEach(function(entry){
+    // timestamp 내림차순 정렬 → 최신 먼저
+    var sorted=[].concat(window._accessLogData).sort(function(a,b){
+      return (b.timestamp||b.ts||'').localeCompare(a.timestamp||a.ts||'');
+    });
+    sorted.forEach(function(entry){
       if(!entry) return;
       var ts=entry.timestamp||entry.ts||'';
-      if(ts && ts.startsWith(today)){
-        var repName=entry.selectedRep||entry.rep||'';
-        var msAcc=entry.msAccount||entry.account||'';
-        var displayName=repName||(msAcc?msAcc.split('@')[0]:'');
-        if(displayName && !log[displayName]){
-          var t=ts.length>=16?ts.substring(11,16):'';
-          var isG=(!repName||repName==='게스트');
-          log[displayName]={time:t, guest:isG, fromSP:true};
-        }
-      }
+      if(!ts.startsWith(today)) return;
+      var repName=entry.selectedRep||entry.rep||'';
+      var msAcc=entry.msAccount||entry.account||'';
+      var isGuest=(!repName||repName==='게스트');
+      // 게스트: guestName으로 구분, 담당자: repName으로 구분
+      var displayName=isGuest
+        ?(entry.guestName||repName||'게스트_'+(ts.substring(11,16)))
+        :repName;
+      if(!displayName) displayName=msAcc?msAcc.split('@')[0]:'알수없음';
+      var t=ts.length>=16?ts.substring(11,16):'';
+      // 최신 timestamp만 유지
+      if(!userMap[displayName]||ts>userMap[displayName].ts)
+        userMap[displayName]={time:t,ts:ts,guest:isGuest};
     });
   }
-  const names=Object.keys(log).slice(0,30);
+
+  // 최신순 정렬
+  var names=Object.keys(userMap).sort(function(a,b){
+    return (userMap[b].ts||'').localeCompare(userMap[a].ts||'');
+  }).slice(0,30);
+
+  // 변경 없으면 render skip
+  var newHash=JSON.stringify(names.map(function(n){return n+userMap[n].time;}));
+  if(window._accessDisplayHash===newHash) return;
+  window._accessDisplayHash=newHash;
   const countEl=document.getElementById('access-count-num');
   if(countEl) countEl.textContent=names.length;
   const listEl=document.getElementById('access-list');
@@ -5761,9 +5806,9 @@ function updateAccessDisplay(){
       listEl.innerHTML='<div style="padding:10px 14px;font-size:12px;color:#94A3B8;">오늘 접속 없음</div>';
     } else {
       listEl.innerHTML=names.map(n=>{
-        var entry=log[n];
+        var entry=userMap[n];
         var isGuest=entry&&entry.guest;
-        var time=(entry&&entry.time)||(typeof entry==='string'?entry:'');
+        var time=entry&&entry.time?entry.time:'';
         var roleTag=isGuest
           ?'<span style="font-size:10px;color:#94A3B8;border:1px solid #E2E8F0;border-radius:4px;padding:1px 5px;margin-left:4px;">게스트</span>'
           :'';
@@ -10491,7 +10536,7 @@ window.renderVisits=function(){
           +'<td style="text-align:center;padding:10px 10px;font-size:13px;font-weight:500;color:#374151;border-right:1px solid #F1F5F9;">'+(v.company||'─')+'</td>'
           +'<td style="text-align:center;padding:10px 8px;border-right:1px solid #F1F5F9;"><span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;color:'+tpc+';background:white;border:1.5px solid '+tpc+'50;">'+ct+'</span></td>'
           +'<td style="text-align:center;padding:10px 8px;border-right:1px solid #F1F5F9;">'+(cp?'<span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;color:'+ppc+';background:white;border:1.5px solid '+ppc+'50;">'+cp+'</span>':'─')+'</td>'
-          +'<td style="padding:10px 12px;font-size:13px;color:#374151;line-height:1.5;white-space:pre-wrap;word-break:break-word;text-align:left;vertical-align:top;">'+(v.content||'─')+'</td>'
+          +'<td class="content-cell" style="padding:10px 12px;font-size:13px;color:#374151;line-height:1.5;">'+(v.content||'─')+'</td>'
           +'</tr>';
       });
     });
@@ -11130,5 +11175,12 @@ async function _startSP(){
   opacity: 0 !important;
   height: 100% !important;
   width: 100% !important;
+}
+/* 텍스트 줄바꿈 강제 적용 */
+.content-cell {
+  white-space: pre-wrap !important;
+  text-align: left !important;
+  vertical-align: top !important;
+  word-break: break-word !important;
 }
 >
