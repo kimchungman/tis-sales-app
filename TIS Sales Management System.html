@@ -3226,7 +3226,9 @@ function showPage(id,navEl){
   // ── 페이지별 탭 초기화 (매번 호출 보장) ──
   if(id==='input'){
     APP.domReady=false; APP.autoDone=false;  // 페이지 진입 초기화
+    window._inputPageDirty=false; // 진입 시 dirty 초기화
     initInputTabs();
+    // 데이터가 변경됐으면 즉시 빌드 (dirty 마킹 무시하고 항상 빌드)
     if(typeof applyPermissions==='function') applyPermissions();
     APP.domReady=true;
     checkReady();
@@ -3861,14 +3863,21 @@ function switchInputTeam(team){
   if(window._briTimer) clearTimeout(window._briTimer);
   window._briTimer = setTimeout(function(){
     window._briTimer = null;
+    // 빌드 전 기존 섹션 모두 숨기기 (flash 방지)
+    document.querySelectorAll('.rep-sec').forEach(function(s){s.style.display='none';});
     buildRepInputs();
     // buildRepInputs 완료 후 현재 활성 담당자 탭 적용 (rAF로 DOM 안정화 후)
-    requestAnimationFrame(function(){
+    // DOM 완전 안정화 후 switchTab (모든 래퍼 rAF 완료 보장)
+    setTimeout(function(){
       var activeTab = document.querySelector('#rep-tabs .tab.active') || document.querySelector('#rep-tabs .tab');
       if(activeTab && typeof switchTab==='function'){
         switchTab(activeTab.dataset.rep || activeTab.textContent.trim(), activeTab);
+      } else if(REPS && REPS[0] && typeof switchTab==='function'){
+        // 탭 없으면 첫 번째 담당자 직접 표시
+        var firstSec = document.getElementById('rs-'+REPS[0]);
+        if(firstSec) firstSec.style.display='block';
       }
-    });
+    }, 80);
     // 숨김 select 강제 투명 처리 (CSS specificity 충돌 방어)
     setTimeout(function(){
       document.querySelectorAll('._bsl-sel').forEach(function(el){
@@ -3908,7 +3917,7 @@ function buildRepInputs(){
     };
   });
   area.innerHTML=REPS.map((rep,ri)=>`
-  <div class="rep-sec" id="rs-${rep}" style="display:${ri===0?'block':'none'}">
+  <div class="rep-sec" id="rs-${rep}" style="display:none">
 
     <!-- 매출 현황 -->
     <div class="sec-card">
@@ -6400,8 +6409,8 @@ async function _initSP() {
           if(_pid2==='issues'&&typeof renderIssues==='function') renderIssues();
           if(_pid2==='pipeline'&&typeof renderPipeline==='function') renderPipeline();
           if(_pid2==='visits'&&typeof renderVisits==='function') renderVisits();
-          // 입력 페이지: DOM 재빌드 대신 데이터만 갱신
-          if(!_ipOn&&typeof buildRepInputs==='function') buildRepInputs();
+          // 입력 페이지 DOM은 건드리지 않음 - dirty 마킹만
+          if(!_ipOn) window._inputPageDirty = true;
         }
       }catch(e){}
     }, 10000);
@@ -6560,7 +6569,8 @@ function _applySnap(snap, date) {
     var _inputActive = document.getElementById('page-input') &&
       document.getElementById('page-input').classList.contains('active');
     if(!_inputActive){
-      buildRepTabs(); buildRepInputs();
+      buildRepTabs();
+      window._inputPageDirty=true; // _applySnap 후 dirty 마킹
     } else {
       // input 페이지 활성 시에도 소계 업데이트 (합계 오류 방지)
       if(typeof refresh==='function') refresh();
