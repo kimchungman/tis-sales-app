@@ -1520,16 +1520,6 @@ td.lbl-row-rate {
   overflow-y: hidden !important;
 }
 
-
-
-
-
-/* ── select 높이 30px 통일 ── */
-.dt select {
-  height: 32px !important;
-  box-sizing: border-box !important;
-  vertical-align: middle !important;
-}
 /* ── 이슈사항 textarea 높이 통일 ── */
 .iss-input-sec td textarea {
   vertical-align: middle !important;
@@ -1541,13 +1531,6 @@ td.lbl-row-rate {
   text-align: center !important;
 }
 
-
-
-/* dt select 높이도 32px로 통일 (짤림 방지) */
-.dt select {
-  height: 32px !important;
-  box-sizing: border-box !important;
-}
 
 /* ── select 높이 확정 (테두리 짤림 방지) ── */
 .dt select,
@@ -3878,9 +3861,9 @@ function buildRepInputs(){
       <div class="sec-body"><div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="dt" style="min-width:max-content;table-layout:auto;">
         <thead style="position:sticky;top:0;z-index:5;"><tr>
           <th style="width:40px;white-space:nowrap;background:#F8FAFC;">순번</th>
-          <th style="width:90px;white-space:nowrap;">구분</th>
-          <th style="width:175px;white-space:nowrap;">고객사</th>
-          <th style="width:160px;white-space:nowrap;">제품</th>
+          <th style="width:90px;white-space:nowrap;background:#F8FAFC;">구분</th>
+          <th style="width:175px;white-space:nowrap;background:#F8FAFC;">고객사</th>
+          <th style="width:160px;white-space:nowrap;background:#F8FAFC;">제품</th>
           <th style="width:115px;white-space:nowrap;">금액(M)</th>
           <th style="width:80px;white-space:nowrap;">확도</th>
           <th style="width:150px;white-space:nowrap;">시기</th>
@@ -3895,6 +3878,10 @@ function buildRepInputs(){
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     applyPermissions();
     resizeAllTextareas();
+    // 이슈사항 textarea 초기 높이 조절 (각 담당자 섹션)
+    document.querySelectorAll('[id^="ct-"] textarea, [id^="at-"] textarea, [id^="it-"] textarea').forEach(function(ta){
+      if(typeof autoResizeTA==='function') autoResizeTA(ta);
+    });
     // 기존 데이터 type/status 기본값 보정
     REPS.forEach(rep=>{
       (store.reps[rep].clients||[]).forEach(c=>{
@@ -3960,7 +3947,7 @@ function aRow(rep,ai,a){
     </td>
     <td style="min-width:240px;vertical-align:top;">
       <textarea rows="1"
-        style="width:100%;min-height:30px;height:30px;resize:none;line-height:1.5;display:block;box-sizing:border-box;overflow-y:hidden;"
+        style="width:100%;min-height:30px;height:30px;resize:none;line-height:1.5;display:block;box-sizing:border-box;overflow-y:hidden;text-align:left;"
         onchange="store.reps['${rep}'].activities[${ai}].content=this.value;autoSave();"
         oninput="this.style.setProperty('height','1px','important');this.style.setProperty('height',Math.max(30,this.scrollHeight)+'px','important');"
         onfocus="this.style.setProperty('height',Math.max(this.scrollHeight,30)+'px','important');"
@@ -3969,7 +3956,7 @@ function aRow(rep,ai,a){
     <td style="width:100px;vertical-align:middle;padding:2px 4px;">
       <div style="position:relative;display:block;width:100%;height:28px;">
         <span class="_bsl" style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:28px;box-sizing:border-box;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;pointer-events:none;background:white;color:${({'제안':'#4f7fff','견적':'#0EA5A0','입찰':'#7C3AED','수주':'#059669','계약':'#16A34A','보류':'#D97706','Drop':'#DC2626'}[a.progress]||'#CBD5E1')};border:1.5px solid ${({'제안':'#4f7fff','견적':'#0EA5A0','입찰':'#7C3AED','수주':'#059669','계약':'#16A34A','보류':'#D97706','Drop':'#DC2626'}[a.progress]||'#CBD5E1')}60;">${a.progress||'선택'}</span>
-        <select onchange="var cm={'제안':'#4f7fff','견적':'#0EA5A0','입찰':'#7C3AED','수주':'#059669','계약':'#16A34A','보류':'#D97706','Drop':'#DC2626'};var pc=cm[this.value]||'#CBD5E1';var sp=this.parentNode.querySelector('._bsl');if(sp){sp.textContent=this.value||'선택';sp.style.color=pc;sp.style.borderColor=pc+'60';}store.reps['${rep}'].activities[${ai}].progress=this.value;autoSave();" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-family:inherit;">${progOpts}</select>
+        <select class="_bsl-sel" onchange="var cm={'제안':'#4f7fff','견적':'#0EA5A0','입찰':'#7C3AED','수주':'#059669','계약':'#16A34A','보류':'#D97706','Drop':'#DC2626'};var pc=cm[this.value]||'#CBD5E1';var sp=this.parentNode.querySelector('._bsl');if(sp){sp.textContent=this.value||'선택';sp.style.color=pc;sp.style.borderColor=pc+'60';}store.reps['${rep}'].activities[${ai}].progress=this.value;autoSave();" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-family:inherit;">${progOpts}</select>
       </div>
     </td>
     <td style="width:34px;vertical-align:middle;text-align:center;">
@@ -4255,7 +4242,7 @@ function renderIssues(){
         <span style="font-size:11px;color:var(--muted);">│ ${i.rep}</span>
         <span class="badge bg-gray" style="font-size:10px;">${srcLabel[i.source]||i.type}</span>
       </div>
-      <div style="font-size:12px;color:#444;line-height:1.6;margin-top:4px;">${i.content}</div>
+      <div style="font-size:12px;color:#444;line-height:1.6;margin-top:4px;white-space:pre-wrap;text-align:left;">${i.content}</div>
     </div>`;
   }).join(''):'<div style="text-align:center;padding:24px;color:var(--muted);">⬜ 조건에 맞는 이슈가 없습니다</div>';
   renderDashIssues();
@@ -4354,7 +4341,7 @@ function renderPipeline(){
       +'<td><span class="badge '+pc(r.prob)+'">'+(r.prob?(r.prob*100).toFixed(0)+'%':'-')+'</span></td>'
       +'<td style="white-space:nowrap;color:var(--muted);">'+(r.timing||'-')+'</td>'
       +'<td><span style="padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;background:'+stBg+';color:'+stCol+';">'+stLbl+'</span></td>'
-      +'<td style="max-width:240px;font-size:11px;color:var(--text-2);text-align:left;">'+(r.content||'').substring(0,100)+((r.content||'').length>100?'...':'')+'</td>'
+      +'<td style="max-width:240px;font-size:11px;color:var(--text-2);text-align:left;white-space:pre-wrap;word-break:break-word;">'+(r.content||'')+'</td>'
       +'</tr>';
   }).join('');
 }
@@ -8093,8 +8080,8 @@ function _iRow(rep, idx, iss){
         +'<button class="add-btn" onclick="addIssueRow(\''+rep+'\')">&#xFF0B; 추가</button></div>'
         +'<div class="sec-body"><div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">'
         +'<table class="dt" style="min-width:max-content;table-layout:auto;">'
-        +'<thead><tr>'
-        +'<th style="width:40px;">순번</th>'
+        +'<thead style="position:sticky;top:0;z-index:5;background:#F8FAFC;"><tr>'
+        +'<th style="width:40px;background:#F8FAFC;">순번</th>'
         +'<th style="width:175px;">고객사</th>'
         +'<th style="min-width:240px;">이슈 내용</th>'
         +'<th style="width:100px;">중요도</th>'
@@ -10089,8 +10076,8 @@ function _vRow(rep,idx,v){
     return '<input type="date" value="'+(val||'')+'" style="'+style+'" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" onchange="store.reps[\''+r+'\'].visitLog['+idx+'].'+field+'=this.value;autoSave&&autoSave();typeof renderVisits===\'function\'&&renderVisits();">';
   }
   function ta(field,val){
-    var style='width:100%;min-height:30px;box-sizing:border-box;font-size:12px;font-family:inherit;border:1px solid #E2E8F0;border-radius:6px;padding:4px 8px;outline:none;resize:none;overflow-y:hidden;transition:border-color 0.15s;line-height:1.5;';
-    if(!canEdit) return '<span style="font-size:12px;color:#374151;padding:2px 4px;display:block;line-height:1.5;">'+( val||'─')+'</span>';
+    var style='width:100%;min-height:30px;box-sizing:border-box;font-size:12px;font-family:inherit;border:1px solid #E2E8F0;border-radius:6px;padding:4px 8px;outline:none;resize:none;overflow-y:hidden;transition:border-color 0.15s;line-height:1.5;text-align:left;';
+    if(!canEdit) return '<span style="font-size:12px;color:#374151;padding:2px 4px;display:block;line-height:1.5;white-space:pre-wrap;text-align:left;">'+( val||'─')+'</span>';
     return '<textarea rows="1" style="'+style+'" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" oninput="this.style.setProperty(\'height\',\'1px\',\'important\');this.style.setProperty(\'height\',Math.max(30,this.scrollHeight)+\'px\',\'important\');" onchange="store.reps[\''+r+'\'].visitLog['+idx+'].'+field+'=this.value;autoSave&&autoSave();">'+(val||'')+'</textarea>';
   }
   function sel(field, val, opts, colorMap){
@@ -10153,7 +10140,7 @@ function _vRow(rep,idx,v){
         +'</div>'
         +'<div class="sec-body"><div style="overflow-x:auto;">'
         +'<table class="dt" style="min-width:max-content;table-layout:auto;">'
-        +'<thead><tr>'
+        +'<thead style="position:sticky;top:0;z-index:5;"><tr>'
         +'<th style="'+BG+'width:100px;text-align:center;">접점일자</th>'
         +'<th style="'+BG+'width:160px;text-align:center;">고객사명</th>'
         +'<th style="'+BG+'width:110px;text-align:center;">접점 유형</th>'
@@ -11020,4 +11007,11 @@ async function _startSP(){
   };
 })();
 </script>
-</body>
+</body
+/* 진행사항 숨김 select - CSS height override 방지 */
+._bsl-sel {
+  opacity: 0 !important;
+  height: 100% !important;
+  width: 100% !important;
+}
+>
