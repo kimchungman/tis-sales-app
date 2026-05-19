@@ -92,6 +92,7 @@ if(typeof msal === 'undefined'){
   throw new Error('MSAL 로드 실패 - 앱 중단');
 }
 console.log('[MSAL] ✅ 정상 로드됨. PublicClientApplication:', typeof msal.PublicClientApplication);
+console.log('[MSAL] ✅ 정상 로드됨. PublicClientApplication:', typeof msal.PublicClientApplication);
 </script>
 
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzRmN2ZmZiIvPgogIDx0ZXh0IHg9IjE2IiB5PSIyMiIgZm9udC1mYW1pbHk9IkFyaWFsLHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiIGZvbnQtd2VpZ2h0PSI5MDAiCiAgICBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgbGV0dGVyLXNwYWNpbmc9Ii0wLjUiPlRJUzwvdGV4dD4KPC9zdmc+">
@@ -3202,11 +3203,11 @@ function showPage(id,navEl){
   if(typeof closeMobileMenu==="function") closeMobileMenu();
   // ── 페이지별 탭 초기화 (매번 호출 보장) ──
   if(id==='input'){
-    window._ATdone = false;          // 페이지 진입 시에만 리셋
-    initInputTabs();                 // 팀탭+담당자탭+콘텐츠 빌드
+    APP.domReady=false; APP.autoDone=false;  // 페이지 진입 초기화
+    initInputTabs();
     if(typeof applyPermissions==='function') applyPermissions();
-    // 렌더 완료 → 오토탭 이벤트 발화 (1회)
-    document.dispatchEvent(new Event('tis:inputReady'));
+    APP.domReady=true;
+    checkReady();
   } else if(id==='issues'){
     initIssueTabs();
     // 참가자: 본인 팀으로 필터
@@ -6440,15 +6441,11 @@ async function _spLoadSettings() {
     }
   }
   window._spSettingsLoaded = true;
+  // SP 완료 → spReady 설정 (이후 유지)
+  APP.spReady = true;
+  checkReady();  // domReady 이미 true면 즉시 발화
 
-  // 오토탭 미완료 + input 활성 → 이벤트 재발화
-  if(!window._ATdone && session && session.role==='rep'){
-    var _ip=document.getElementById('page-input');
-    if(_ip && _ip.classList.contains('active')){
-      if(typeof initInputTabs==='function') initInputTabs();
-      document.dispatchEvent(new Event('tis:inputReady'));
-    }
-  }
+
 }
 
 async function spSaveSettings() {
@@ -10467,34 +10464,70 @@ window.onerror=function(msg){if(msg==='Script error.'||msg==='Script Error.')ret
 // ════════════════════════════════════════
 // 오토탭 엔진 - 이벤트 기반, 페이지 진입 1회만 실행
 // ════════════════════════════════════════
-window._ATdone = false;
 
-document.addEventListener('tis:inputReady', function(){
-  if(window._ATdone) return;                          // 이미 실행됨 → 차단
-  if(!session || session.role!=='rep' || !session.rep) return;
-  var pageInput=document.getElementById('page-input');
-  if(!pageInput || !pageInput.classList.contains('active')) return;
 
-  // REP_TEAM_MAP 우선 (SP 로드 후 정확한 팀 확보)
-  var myTeam=(typeof REP_TEAM_MAP!=='undefined' && REP_TEAM_MAP[session.rep])
-    ? REP_TEAM_MAP[session.rep] : (session.team||'');
+// ════════════════════════════════════════════════
+// AUTO-TAB ENGINE - app:ready 단일 이벤트 기반
+// SP 로딩 / DOM 렌더 / 자동탭 완전 분리
+// ════════════════════════════════════════════════
+var APP={domReady:false, spReady:false, autoDone:false};
+
+function checkReady(){
+  if(APP.autoDone) return;
+  if(APP.domReady && APP.spReady)
+    document.dispatchEvent(new CustomEvent('app:ready'));
+}
+
+document.addEventListener('app:ready', function(){
+  if(APP.autoDone) return;
+  if(!session||session.role!=='rep'||!session.rep) return;
+  var pg=document.getElementById('page-input');
+  if(!pg||!pg.classList.contains('active')) return;
+
+  var myTeam=(typeof REP_TEAM_MAP!=='undefined'&&REP_TEAM_MAP[session.rep])
+    ?REP_TEAM_MAP[session.rep]:(session.team||'');
   var myRep=session.rep;
 
   var teamTab=document.querySelector('#input-team-tabs .tis-tab[data-tab="'+myTeam+'"]');
-  if(!teamTab) return; // 팀 탭 없음 → SP 로드 후 재발화 대기
+  if(!teamTab){APP.domReady=false;APP.spReady=false;return;}
 
-  // 팀 탭 클릭 (동기) → buildRepTabs 즉시 실행
   if(!teamTab.classList.contains('active')) teamTab.click();
 
   var repTab=document.querySelector('#rep-tabs .tab[data-rep="'+myRep+'"]');
-  if(!repTab) return; // 담당자 탭 없음 → SP 로드 후 재발화 대기
+  if(!repTab){APP.domReady=false;return;}
 
-  // ✅ 완료: done 먼저 잠금 → 클릭
-  window._ATdone = true;
+  APP.autoDone=true;
   repTab.click();
   if(typeof applyPermissions==='function') applyPermissions();
 });
 
+
+function renderOverdueIssues(el){
+  if(!el) return;
+  var today=new Date();today.setHours(0,0,0,0);
+  var ov=[];
+  Object.keys(store.reps||{}).forEach(function(rep){
+    (store.reps[rep].issuesList||[]).forEach(function(iss){
+      if(!iss.dueDate||iss.status==='closed') return;
+      var d=new Date(iss.dueDate);d.setHours(0,0,0,0);
+      var df=Math.round((d-today)/86400000);
+      if(df<0) ov.push({rep:rep,iss:iss,df:df});
+    });
+  });
+  if(!ov.length){el.style.display='none';return;}
+  el.style.display='block';
+  el.innerHTML='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">'
+    +'<span style="font-size:13px;font-weight:700;color:#DC2626;">⚠️ 기한초과 이슈 '+ov.length+'건</span></div>'
+    +ov.map(function(o){
+      return '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #FEE2E2;">'
+        +'<span style="font-size:11px;font-weight:700;color:#DC2626;background:#FEF2F2;border:1px solid #FCA5A5;border-radius:10px;padding:1px 8px;">D+'+Math.abs(o.df)+'</span>'
+        +'<span style="font-size:12px;font-weight:600;color:#374151;">'+o.rep+'</span>'
+        +'<span style="font-size:12px;color:#64748B;">'+o.iss.client+'</span>'
+        +'<span style="font-size:12px;color:#374151;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+o.iss.content+'</span>'
+        +'</div>';
+    }).join('');
+}
+window.renderOverdueIssues=renderOverdueIssues;
 function showStatDatePicker(){
   // 날짜 지정 탭 활성화 + 패널 표시
   ['week','month','all','custom'].forEach(function(r){
