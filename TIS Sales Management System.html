@@ -2090,6 +2090,39 @@ table.dt thead th { font-size: 13px !important; }
       </div>
     </div>
       <div class="sec-card">
+        <div class="sec-head"><h3>📊 대시보드 그래프 타입</h3></div>
+        <div class="sec-body">
+          <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">통합 대시보드의 월별 경영계획 vs 실적 vs 예상 그래프 스타일을 선택합니다.</p>
+          <div id="chart-type-selector" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;">
+            <button onclick="setChartType('combo')" id="ct-btn-combo"
+              style="padding:14px 12px;border-radius:12px;border:2px solid var(--primary);background:#EFF6FF;cursor:pointer;font-family:inherit;text-align:left;transition:all 0.2s;">
+              <div style="font-size:16px;margin-bottom:6px;">📊</div>
+              <div style="font-size:12px;font-weight:700;color:var(--navy);">콤보 차트</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:3px;">막대(실적)+선(계획/예상)</div>
+            </button>
+            <button onclick="setChartType('stacked')" id="ct-btn-stacked"
+              style="padding:14px 12px;border-radius:12px;border:2px solid var(--border);background:white;cursor:pointer;font-family:inherit;text-align:left;transition:all 0.2s;">
+              <div style="font-size:16px;margin-bottom:6px;">📈</div>
+              <div style="font-size:12px;font-weight:700;color:var(--navy);">누적 매출</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:3px;">월별 누적 합계 막대</div>
+            </button>
+            <button onclick="setChartType('achievement')" id="ct-btn-achievement"
+              style="padding:14px 12px;border-radius:12px;border:2px solid var(--border);background:white;cursor:pointer;font-family:inherit;text-align:left;transition:all 0.2s;">
+              <div style="font-size:16px;margin-bottom:6px;">🎯</div>
+              <div style="font-size:12px;font-weight:700;color:var(--navy);">달성률 도넛</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:3px;">도넛+월별 달성률</div>
+            </button>
+            <button onclick="setChartType('area')" id="ct-btn-area"
+              style="padding:14px 12px;border-radius:12px;border:2px solid var(--border);background:white;cursor:pointer;font-family:inherit;text-align:left;transition:all 0.2s;">
+              <div style="font-size:16px;margin-bottom:6px;">🌊</div>
+              <div style="font-size:12px;font-weight:700;color:var(--navy);">영역 차트</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:3px;">면적으로 추세 비교</div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec-card">
       <div class="sec-head">
         <h3>문구 설정</h3>
         <button class="btn btn-outline" onclick="resetLabels()" style="font-size:11px;padding:5px 10px;">↺ 기본값 복원</button>
@@ -2514,7 +2547,8 @@ let currentTeam = '솔루션영업팀'; // 현재 선택된 팀
 // AUTH SESSION
 // ══════════════════════════════════════════
 let session = { role: 'locked', rep: null, team: null };
-let authCfg = { adminPw: '13579', guestPw: '', repPws: {}, repPerms: {}, repEmails: {}, hiddenReps: [], teamReps: {'솔루션영업팀':['전성현','허인수','김충만','최원진'],'그룹지원팀':[]}, teamColors: {'솔루션영업팀':['#1E5FBE','#00A882','#C05000','#7B2FBE'],'그룹지원팀':[]} };
+let authCfg = { adminPw: '13579',
+  chartType: 'combo', guestPw: '', repPws: {}, repPerms: {}, repEmails: {}, hiddenReps: [], teamReps: {'솔루션영업팀':['전성현','허인수','김충만','최원진'],'그룹지원팀':[]}, teamColors: {'솔루션영업팀':['#1E5FBE','#00A882','#C05000','#7B2FBE'],'그룹지원팀':[]} };
 
 function loadAuthCfg(){
   const saved = localStorage.getItem('weekly_auth');
@@ -3244,6 +3278,8 @@ function showPage(id,navEl){
       if(authCfg.popup){var p=authCfg.popup;var pt=document.getElementById('cfg-popup-title');if(pt)pt.value=p.title||'';
       // 권한관리 초기값
       var gpw=document.getElementById('cfg-guest-pw');if(gpw)gpw.value=authCfg.guestPw||'';
+      // 그래프 타입 버튼 초기화
+      if(typeof setChartType==='function') setChartType(authCfg.chartType||'combo');
       // 배너 스케줄 초기값
       var bsEl=document.getElementById('cfg-banner-schedule');
       if(bsEl&&authCfg.banner&&authCfg.banner.scheduledAt){
@@ -3580,12 +3616,30 @@ function renderDashIssues(){
 }
 
 let mc=null,rc=null;
+// ── 그래프 타입 변경 ──
+function setChartType(type){
+  if(!authCfg) return;
+  authCfg.chartType = type;
+  // 버튼 스타일 업데이트
+  ['combo','stacked','achievement','area'].forEach(function(t){
+    var btn=document.getElementById('ct-btn-'+t);
+    if(!btn) return;
+    var on=(t===type);
+    btn.style.border='2px solid '+(on?'var(--primary)':'var(--border)');
+    btn.style.background=on?'#EFF6FF':'white';
+  });
+  // 차트 재렌더
+  if(window._mainChart){try{window._mainChart.destroy();}catch(e){} window._mainChart=null;}
+  renderMainChart();
+  // SP 저장
+  if(typeof saveAuthCfg==='function') saveAuthCfg();
+}
+
 function renderMainChart(){
   const cfEl=document.getElementById('ch-filter');
   const f=cfEl?cfEl.value:'all';
   const allDR=getDashReps().filter(r=>store.reps[r]);
   const rs=f==='all'?allDR:allDR.filter(r=>r===f);
-  // ch-filter 옵션 동적 업데이트
   if(cfEl){
     const cv=cfEl.value;
     cfEl.innerHTML='<option value="all">전체 담당자</option>';
@@ -3596,27 +3650,109 @@ function renderMainChart(){
   const aD=MONTHS.map((_,i)=>rs.reduce((s,r)=>s+(store.reps[r].actual[i]||0),0));
   const fD=MONTHS.map((_,i)=>rs.reduce((s,r)=>s+(store.reps[r].forecast[i]||0),0));
   const ctx=document.getElementById('main-chart')||document.getElementById('mainChart');
-  if(!ctx)return;
-  // 기존 차트 update() 사용
+  if(!ctx) return;
+
+  var chartType=(authCfg&&authCfg.chartType)||'combo';
+
+  // 데이터만 업데이트 (애니메이션 없음)
   if(window._mainChart && window._mainChart.data){
     var _mc=window._mainChart;
-    _mc.data.datasets[0].data=MONTHS.map((_,i)=>rs.reduce((s,r)=>s+(store.reps[r]?(store.reps[r].plan[i]||0):0),0));
-    _mc.data.datasets[1].data=MONTHS.map((_,i)=>rs.reduce((s,r)=>s+(store.reps[r]?(store.reps[r].actual[i]||0):0),0));
-    _mc.data.datasets[2].data=MONTHS.map((_,i)=>rs.reduce((s,r)=>s+(store.reps[r]?(store.reps[r].forecast[i]||0):0),0));
-    try{ _mc.update('none'); return; }catch(e){ try{window._mainChart.destroy();}catch(e2){} window._mainChart=null; }
+    try{
+      _mc.data.datasets[0].data=pD;
+      _mc.data.datasets[1].data=aD;
+      _mc.data.datasets[2].data=fD;
+      _mc.update('none');
+      return;
+    }catch(e){ try{window._mainChart.destroy();}catch(e2){} window._mainChart=null; }
   } else if(window._mainChart){ try{window._mainChart.destroy();}catch(e){} window._mainChart=null; }
-  window._mainChart=new Chart(ctx.getContext('2d'),{
-    type:'line',
-    data:{labels:MONTHS,datasets:[
-      {label:'경영계획',data:pD,borderColor:'#94A3B8',backgroundColor:'rgba(148,163,184,0.1)',tension:0.4,borderWidth:2,pointRadius:3},
-      {label:'달성매출',data:aD,borderColor:'#10B981',backgroundColor:'rgba(16,185,129,0.1)',tension:0.4,borderWidth:2,pointRadius:3,fill:true},
-      {label:'예상매출',data:fD,borderColor:'#F59E0B',backgroundColor:'rgba(245,158,11,0.1)',tension:0.4,borderWidth:2,pointRadius:3}
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{position:'top',labels:{font:{size:11},usePointStyle:true}},
-        tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.parsed.y.toLocaleString('ko-KR')+'천원'}}},
-      scales:{y:{ticks:{callback:v=>v.toLocaleString('ko-KR')},grid:{color:'rgba(0,0,0,0.05)'}},x:{grid:{display:false}}}}
-  });
+
+  var COMMON_OPTS={
+    responsive:true, maintainAspectRatio:false, animation:false,
+    plugins:{
+      legend:{position:'top',labels:{font:{size:11},usePointStyle:true,padding:16}},
+      tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+c.parsed.y.toLocaleString('ko-KR')+'천원';}}}
+    },
+    scales:{
+      y:{ticks:{callback:function(v){return v.toLocaleString('ko-KR');}},grid:{color:'rgba(0,0,0,0.04)'},beginAtZero:true},
+      x:{grid:{display:false}}
+    }
+  };
+
+  var cfg;
+
+  if(chartType==='stacked'){
+    // 누적 막대 차트
+    cfg={
+      type:'bar',
+      data:{labels:MONTHS,datasets:[
+        {label:'달성매출',data:aD,backgroundColor:'rgba(16,185,129,0.8)',borderRadius:4,stack:'s'},
+        {label:'예상매출',data:fD,backgroundColor:'rgba(245,158,11,0.6)',borderRadius:4,stack:'s'},
+        {label:'경영계획',data:pD,type:'line',borderColor:'#4f7fff',backgroundColor:'transparent',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#4f7fff',tension:0.3}
+      ]},
+      options:Object.assign({},COMMON_OPTS,{
+        scales:Object.assign({},COMMON_OPTS.scales,{
+          y:Object.assign({},COMMON_OPTS.scales.y,{stacked:true}),
+          x:Object.assign({},COMMON_OPTS.scales.x,{stacked:true})
+        })
+      })
+    };
+  } else if(chartType==='achievement'){
+    // 달성률 + 월별 막대
+    var totalPlan=pD.reduce(function(a,b){return a+b;},0);
+    var totalAct=aD.reduce(function(a,b){return a+b;},0);
+    var rate=totalPlan>0?Math.min(Math.round(totalAct/totalPlan*100),100):0;
+    var remain=Math.max(0,100-rate);
+    // 달성률은 도넛으로 별도 처리, 메인 차트는 달성률 막대로
+    var rateD=MONTHS.map(function(_,i){
+      return pD[i]>0?Math.min(Math.round(aD[i]/pD[i]*100),150):0;
+    });
+    cfg={
+      type:'bar',
+      data:{labels:MONTHS,datasets:[
+        {label:'달성매출(천원)',data:aD,backgroundColor:'rgba(16,185,129,0.75)',borderRadius:6,yAxisID:'y'},
+        {label:'달성률(%)',data:rateD,type:'line',borderColor:'#4f7fff',backgroundColor:'rgba(79,127,255,0.08)',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#4f7fff',tension:0.3,fill:true,yAxisID:'y1'}
+      ]},
+      options:{
+        responsive:true,maintainAspectRatio:false,animation:false,
+        plugins:{
+          legend:{position:'top',labels:{font:{size:11},usePointStyle:true,padding:16}},
+          tooltip:{callbacks:{label:function(c){
+            if(c.dataset.yAxisID==='y1') return c.dataset.label+': '+c.parsed.y+'%';
+            return c.dataset.label+': '+c.parsed.y.toLocaleString('ko-KR');
+          }}}
+        },
+        scales:{
+          y:{position:'left',ticks:{callback:function(v){return v.toLocaleString('ko-KR');}},grid:{color:'rgba(0,0,0,0.04)'},beginAtZero:true},
+          y1:{position:'right',min:0,max:150,ticks:{callback:function(v){return v+'%';}},grid:{display:false}},
+          x:{grid:{display:false}}
+        }
+      }
+    };
+  } else if(chartType==='area'){
+    // 영역 차트
+    cfg={
+      type:'line',
+      data:{labels:MONTHS,datasets:[
+        {label:'경영계획',data:pD,borderColor:'#4f7fff',backgroundColor:'rgba(79,127,255,0.12)',tension:0.4,borderWidth:2.5,pointRadius:3,fill:true},
+        {label:'달성매출',data:aD,borderColor:'#10B981',backgroundColor:'rgba(16,185,129,0.15)',tension:0.4,borderWidth:2.5,pointRadius:3,fill:true},
+        {label:'예상매출',data:fD,borderColor:'#F59E0B',backgroundColor:'rgba(245,158,11,0.10)',tension:0.4,borderWidth:2,pointRadius:3,borderDash:[5,4],fill:true}
+      ]},
+      options:COMMON_OPTS
+    };
+  } else {
+    // 콤보 차트 (기본) - 막대(실적) + 선(계획/예상)
+    cfg={
+      type:'bar',
+      data:{labels:MONTHS,datasets:[
+        {label:'달성매출',data:aD,backgroundColor:'rgba(16,185,129,0.75)',borderRadius:5,order:2},
+        {label:'경영계획',data:pD,type:'line',borderColor:'#4f7fff',backgroundColor:'transparent',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#4f7fff',tension:0.3,order:1},
+        {label:'예상매출',data:fD,type:'line',borderColor:'#F59E0B',backgroundColor:'transparent',borderWidth:2,pointRadius:3,pointBackgroundColor:'#F59E0B',tension:0.3,borderDash:[5,4],order:1}
+      ]},
+      options:COMMON_OPTS
+    };
+  }
+
+  window._mainChart=new Chart(ctx.getContext('2d'),cfg);
 }
 function renderRepChart(){
   try{
@@ -6200,6 +6336,14 @@ async function _initSP() {
 
     // 10초 자동 동기화 시작
     if(window._spSyncTimer) clearInterval(window._spSyncTimer);
+    window._spSyncAccessTimer = setInterval(async function(){
+      if(!window._isSPReady) return;
+      try{
+        // 60초마다 접속로그 로드 → 상단 접속현황 업데이트
+        await _loadAccessLog();
+      }catch(e){}
+    }, 60000);
+
     window._spSyncTimer = setInterval(async function(){
       if(!window._isSPReady) return;
       try{
