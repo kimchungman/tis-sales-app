@@ -1763,7 +1763,7 @@ table.dt thead th { font-size: 13px !important; }
       <div class="chart-card">
         <div class="card-hdr">
           <div><div class="card-title">월별 경영계획 vs 실적 vs 예상</div><div class="card-sub">단위: 천원 / 회계연도 4월~3월</div></div>
-          <select id="ch-filter" style="border:1px solid var(--border);border-radius:6px;padding:4px 9px;font-size:11px;font-family:inherit;outline:none;" onchange="renderMainChart();if(window.renderRepChart)renderRepChart();"><option value="all">전체 담당자</option></select>
+          <select id="ch-filter" style="border:1px solid var(--border);border-radius:6px;padding:4px 9px;font-size:11px;font-family:inherit;outline:none;" onchange="renderMainChart();renderMonthTable();"><option value="all">전체 담당자</option></select>
         </div>
         <canvas id="mainChart" height="190"></canvas>
       </div>
@@ -3493,9 +3493,14 @@ function renderDashboard(){try{
 
 function renderMonthTable(){
   const tbody=document.getElementById('mo-tbody');tbody.innerHTML='';
-  const planD=MONTHS.map((_,i)=>getDashReps().filter(r=>store.reps[r]).reduce((s,r)=>s+(store.reps[r].plan[i]||0),0));
-  const actD=MONTHS.map((_,i)=>getDashReps().filter(r=>store.reps[r]).reduce((s,r)=>s+store.reps[r].actual[i],0));
-  const foreD=MONTHS.map((_,i)=>getDashReps().filter(r=>store.reps[r]).reduce((s,r)=>s+store.reps[r].forecast[i],0));
+  // ch-filter와 동일한 담당자 필터 적용
+  const cfEl=document.getElementById('ch-filter');
+  const cfVal=cfEl?cfEl.value:'all';
+  const allDR=getDashReps().filter(r=>store.reps[r]);
+  const filteredReps=cfVal==='all'?allDR:allDR.filter(r=>r===cfVal);
+  const planD=MONTHS.map((_,i)=>filteredReps.reduce((s,r)=>s+(store.reps[r].plan[i]||0),0));
+  const actD=MONTHS.map((_,i)=>filteredReps.reduce((s,r)=>s+(store.reps[r].actual[i]||0),0));
+  const foreD=MONTHS.map((_,i)=>filteredReps.reduce((s,r)=>s+(store.reps[r].forecast[i]||0),0));
   const rows=[
     {label:labels.rowPlan,d:planD,color:'var(--navy)'},
     {label:labels.rowAct,d:actD,color:'#00C9A7'},
@@ -3737,7 +3742,7 @@ function renderRepChart(){
     var cfVal=cfEl?cfEl.value:'all';
     var isAll=(cfVal==='all')&&(typeof currentDashTeam==='undefined'||currentDashTeam==='all');
     // 특정 담당자 선택 시 해당 담당자 데이터만
-    var filterRep=(cfVal&&cfVal!=='all')?cfVal:null;
+    // filterRep 제거 (팀별 비중은 ch-filter 무시)
 
     if(isAll){
       // 팀별 매출 비중 도넛
