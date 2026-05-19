@@ -6445,9 +6445,8 @@ async function _spLoadSettings() {
   }
   window._spSettingsLoaded = true;
 
-  // 오토탭 재시도 (SP 로드로 데이터 갱신됨)
-  if(session && session.role==='rep'){
-    window._autoTabDone = false; // 재시도 허용
+  // 오토탭 미완료 시에만 재시도 (done=true면 절대 재실행 안함)
+  if(!window._autoTabDone && session && session.role==='rep'){
     setTimeout(_tryAutoTab, 100);
   }
 
@@ -10252,7 +10251,7 @@ window.renderVisits=function(){
     var hasVisit=visits.length>0;
 
     // 항상 테두리 박스, 방문있으면 파란 테두리
-    var border=hasVisit?'2px solid #4f7fff':(isToday?'2px solid #4f7fff':'2px solid #F1F5F9');
+    var border=hasVisit?'2px solid #4f7fff':'2px solid #F1F5F9';
     var bg=isToday&&!hasVisit?'#EEF2FF':'white';
     var numColor=hasVisit?'#4f7fff':(isToday?'#4f7fff':'#374151');
     var numWeight=hasVisit||isToday?'700':'500';
@@ -10481,45 +10480,35 @@ window.onerror=function(msg){if(msg==='Script error.'||msg==='Script Error.')ret
 
 <script>
 // ── 접속이력 탭 전환 ──
-// ── 오토탭: 렌더 완료 후 1회만 실행 ──
+// ── 오토탭: 페이지 진입 시 1회만 실행, 이후 절대 재실행 안됨 ──
 window._autoTabDone = false;
 function _tryAutoTab(){
+  // 이미 실행됐으면 즉시 종료 (SP/render 재호출에서도 절대 재실행 안됨)
   if(window._autoTabDone) return;
   if(!session || session.role!=='rep' || !session.rep) return;
   var pageInput=document.getElementById('page-input');
   if(!pageInput || !pageInput.classList.contains('active')) return;
 
-  // REP_TEAM_MAP 우선, 없으면 session.team
   var myTeam=(typeof REP_TEAM_MAP!=='undefined' && REP_TEAM_MAP[session.rep])
     ? REP_TEAM_MAP[session.rep] : session.team;
   var myRep=session.rep;
 
   var teamTab=document.querySelector('#input-team-tabs .tis-tab[data-tab="'+myTeam+'"]');
-  var repTab=document.querySelector('#rep-tabs .tab[data-rep="'+myRep+'"]');
+  if(!teamTab) return; // 팀 탭 없음 → SP 로드 후 재호출 대기
 
-  if(!teamTab){
-    // 팀 탭 없음 → SP 로드 대기 (_pendingTabSelect)
-    window._pendingTabSelect={team:myTeam, rep:myRep};
-    return;
-  }
+  // 팀 탭 활성화 (담당자 탭 빌드됨)
+  if(!teamTab.classList.contains('active')) teamTab.click();
 
-  if(!repTab){
-    // 팀 탭은 있으나 담당자 탭 없음 → 팀 탭 클릭으로 담당자 생성 후 재시도
-    if(!teamTab.classList.contains('active')) teamTab.click();
-    window._pendingTabSelect={team:myTeam, rep:myRep};
-    return;
-  }
-
-  // 팀 탭 + 담당자 탭 모두 존재 → 실행
-  window._autoTabDone = true;
+  // 한 프레임 후 담당자 탭 확인
   requestAnimationFrame(function(){
-    if(!teamTab.classList.contains('active')) teamTab.click();
-    // 팀탭 클릭 후 DOM 안정화 대기
-    setTimeout(function(){
-      var repTab2=document.querySelector('#rep-tabs .tab[data-rep="'+myRep+'"]');
-      if(repTab2){ repTab2.click(); }
-      if(typeof applyPermissions==='function') setTimeout(applyPermissions,30);
-    }, 150);
+    if(window._autoTabDone) return;
+    var repTab=document.querySelector('#rep-tabs .tab[data-rep="'+myRep+'"]');
+    if(!repTab) return; // 담당자 탭 없음 → SP 로드 후 재호출 대기
+
+    // 실행 확정 → done 먼저 true (이후 어떤 재호출도 차단)
+    window._autoTabDone = true;
+    repTab.click();
+    if(typeof applyPermissions==='function') setTimeout(applyPermissions, 30);
   });
 }
 
