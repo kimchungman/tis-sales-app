@@ -6425,6 +6425,8 @@ async function _initSP() {
         // 공동편집: 다른 담당자 데이터만 동기화
         var _changed = await _spSyncOtherReps();
         await _spLoadHistList();
+        // visitLog는 항상 최신으로 로드 (별도 키)
+        await _spLoadAllVisitLogs();
         if(_changed){
           var _activePage=document.querySelector('.page.active');
           var _pid2=_activePage?_activePage.id.replace('page-',''):'';
@@ -6436,6 +6438,10 @@ async function _initSP() {
           if(_pid2==='visits'&&typeof renderVisits==='function') renderVisits();
           // 입력 페이지 DOM은 건드리지 않음 - dirty 마킹만
           if(!_ipOn) window._inputPageDirty = true;
+        } else {
+          // 데이터 변경 없어도 visits 페이지면 visitLog 갱신
+          var _ap2=document.querySelector('.page.active');
+          if(_ap2&&_ap2.id==='page-visits'&&typeof renderVisits==='function') renderVisits();
         }
       }catch(e){}
     }, 10000);
@@ -10274,6 +10280,10 @@ window.addVisit = function(rep){
   });
   _rebuildVisitTable(rep);
   autoSave&&autoSave();
+  // visitLog 즉시 별도 저장 (debounce 없이)
+  if(window._isSPReady&&session&&(session.role==='admin'||(session.role==='rep'&&session.rep===rep))){
+    setTimeout(function(){ _spSaveVisitLog(rep); }, 300);
+  }
 };
 
 // ─── 접점 삭제 ───
@@ -10283,6 +10293,7 @@ window.deleteVisit = function(rep,idx){
   store.reps[rep].visitLog.splice(idx,1);
   _rebuildVisitTable(rep);
   autoSave&&autoSave();
+  if(window._isSPReady) setTimeout(function(){ _spSaveVisitLog(rep); }, 300);
   typeof renderVisits==='function'&&renderVisits();
 };
 
@@ -10350,7 +10361,8 @@ function _vRow(rep,idx,v){
       +"var sp=this.parentNode.querySelector('span');"
       +"if(sp){sp.textContent=this.value||'선택';sp.style.color=pc;sp.style.borderColor=pc+'60';}"
       +"store.reps['"+r+"'].visitLog["+idx+"]."+field+"=this.value;"
-      +"autoSave&&autoSave();";
+      +"autoSave&&autoSave();"
+      +"if(window._isSPReady) setTimeout(function(){_spSaveVisitLog('"+r+"');},500);";
     return '<div style="position:relative;display:inline-block;width:100%;cursor:pointer;">'
       +'<span class="_vbsl" style="'+bStyle+'width:100%;box-sizing:border-box;pointer-events:none;">'+(currVal||'선택')+'</span>'
       +'<select onchange="'+onChange+'" style="position:absolute;inset:0;width:100%;height:100%;opacity:0 !important;cursor:pointer;font-family:inherit;z-index:2;">'
@@ -10860,6 +10872,58 @@ window.renderOverdueIssues=renderOverdueIssues;
 // ════════════════════════════════════════════════════════
 
 // 내 담당자 데이터 SP 저장
+// ════ visitLog 전용 SP 저장/로드 ════
+// visitLog는 날짜 무관한 별도 키로 저장 (visit_log:{rep})
+async function _spSaveVisitLog(rep){
+  if(!window._isSPReady) return;
+  var r=rep||(session&&session.rep);
+  if(!r||!store.reps[r]) return;
+  var vl=store.reps[r].visitLog||[];
+  try{
+    await _spSaveItem('visit_log', r, {visitLog:vl, savedAt:new Date().toISOString()});
+  }catch(e){ console.warn('visitLog SP 저장 실패:',e); }
+}
+
+async function _spLoadVisitLog(rep){
+  if(!window._isSPReady) return;
+  try{
+    var qUrl=_lUrl()+'?$select=Payload&$filter=DataType+eq+%27visit_log%27+and+DataKey+eq+%27'+encodeURIComponent(rep)+'%27';
+    var res=await _spFetch(qUrl);
+    var items=(res&&res.value)||[];
+    if(items.length>0){
+      var d=JSON.parse(items[0].Payload);
+      if(d&&Array.isArray(d.visitLog)){
+        var existing=store.reps[rep]&&store.reps[rep].visitLog||[];
+        // 더 많은 쪽 유지
+        if(d.visitLog.length>=existing.length){
+          if(store.reps[rep]) store.reps[rep].visitLog=d.visitLog;
+        }
+      }
+    }
+  }catch(e){}
+}
+
+async function _spLoadAllVisitLogs(){
+  if(!window._isSPReady) return;
+  try{
+    var qUrl=_lUrl()+'?$select=DataKey,Payload&$filter=DataType+eq+%27visit_log%27';
+    var res=await _spFetch(qUrl);
+    var items=(res&&res.value)||[];
+    items.forEach(function(item){
+      try{
+        var rep=item.DataKey;
+        var d=JSON.parse(item.Payload);
+        if(d&&Array.isArray(d.visitLog)&&store.reps[rep]){
+          var existing=store.reps[rep].visitLog||[];
+          if(d.visitLog.length>=existing.length){
+            store.reps[rep].visitLog=d.visitLog;
+          }
+        }
+      }catch(e){}
+    });
+  }catch(e){}
+}
+
 async function _spSaveMyRep(){
   if(!window._isSPReady || !session || !session.rep) return;
   var date=document.getElementById('mtg-date')?document.getElementById('mtg-date').value:'';
@@ -10880,39 +10944,48 @@ async function _spSaveMyRep(){
 // 다른 담당자 데이터 SP 동기화 (내 것 제외)
 async function _spSyncOtherReps(){
   if(!window._isSPReady) return false;
-  var date=document.getElementById('mtg-date')?document.getElementById('mtg-date').value:'';
-  if(!date) date=new Date().toISOString().split('T')[0];
   var myRep=session&&session.rep?session.rep:'';
   var changed=false;
   try{
-    // 오늘의 모든 담당자 rep_data 로드
-    var qUrl=_lUrl()+'?$select=DataKey,Payload&$filter=DataType+eq+%27rep_data%27';
+    // 모든 rep_data 로드 (날짜/팀 필터 없음 - 전체 담당자 최신 데이터)
+    var qUrl=_lUrl()+'?$select=DataKey,Payload,UpdatedAt&$filter=DataType+eq+%27rep_data%27&$orderby=UpdatedAt+desc';
     var res=await _spFetch(qUrl);
     var items=(res&&res.value)||[];
+
+    // 담당자별 최신 데이터만 유지 (UpdatedAt 내림차순이므로 첫 번째가 최신)
+    var latestByRep={};
     items.forEach(function(item){
       try{
-        // 키 형식: 담당자명:날짜
         var parts=item.DataKey.split(':');
-        var repName=parts.slice(0,-1).join(':'); // 담당자명 (콜론 포함 가능)
-        var itemDate=parts[parts.length-1];
-        if(repName===myRep) return;            // 내 것은 건드리지 않음
-        if(itemDate!==date) return;            // 오늘 데이터만
-        if(!REPS.includes(repName)) return;    // 현재 팀 담당자만
+        var repName=parts.slice(0,-1).join(':');
+        if(!latestByRep[repName]) latestByRep[repName]=item; // 최신 1건만
+      }catch(e){}
+    });
+
+    // 전체 팀 담당자 목록
+    var allReps=[];
+    if(typeof TEAMS!=='undefined'&&typeof TEAM_REPS!=='undefined'){
+      TEAMS.forEach(function(t){ (TEAM_REPS[t]||[]).forEach(function(r){ if(allReps.indexOf(r)<0) allReps.push(r); }); });
+    }
+
+    Object.keys(latestByRep).forEach(function(repName){
+      try{
+        if(repName===myRep) return; // 내 것은 건드리지 않음
+        var item=latestByRep[repName];
         var repData=JSON.parse(item.Payload);
+        if(!store.reps[repName]) store.reps[repName]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[]};
         var before=JSON.stringify(store.reps[repName]);
-        // visitLog 보존: 새 데이터에 없거나 더 적으면 기존 것 유지
-        var existingLog=(store.reps[repName]&&store.reps[repName].visitLog)||[];
-        var newLog=repData.visitLog||[];
-        store.reps[repName]=repData;
-        if(newLog.length<existingLog.length){
-          store.reps[repName].visitLog=existingLog;
-        }
-        // issuesList 보존
-        var existingIss=(store.reps[repName]&&store.reps[repName].issuesList)||[];
+
+        // 핵심 데이터(plan/actual/clients/activities)는 항상 최신 SP 데이터 사용
+        ['plan','actual','forecast','clients','activities'].forEach(function(k){
+          if(repData[k]!==undefined) store.reps[repName][k]=repData[k];
+        });
+        // issuesList: 더 많은 쪽
+        var existingIss=store.reps[repName].issuesList||[];
         var newIss=repData.issuesList||[];
-        if(newIss.length<existingIss.length){
-          store.reps[repName].issuesList=existingIss;
-        }
+        if(newIss.length>=existingIss.length) store.reps[repName].issuesList=newIss;
+        // visitLog: rep_data에서는 제외 (visit_log 전용 키로 별도 관리)
+
         var after=JSON.stringify(store.reps[repName]);
         if(before!==after) changed=true;
       }catch(e){}
@@ -10924,18 +10997,21 @@ async function _spSyncOtherReps(){
 // 오늘의 모든 담당자 데이터 로드 (첫 접속 시)
 async function _spLoadAllReps(){
   if(!window._isSPReady) return;
-  var date=document.getElementById('mtg-date')?document.getElementById('mtg-date').value:'';
-  if(!date) date=new Date().toISOString().split('T')[0];
   try{
-    var qUrl=_lUrl()+'?$select=DataKey,Payload&$filter=DataType+eq+%27rep_data%27';
+    // 날짜 필터 없이 전체 로드 후 담당자별 최신 데이터 선택
+    var qUrl=_lUrl()+'?$select=DataKey,Payload,UpdatedAt&$filter=DataType+eq+%27rep_data%27&$orderby=UpdatedAt+desc';
     var res=await _spFetch(qUrl);
     var items=(res&&res.value)||[];
+    // 담당자별 최신 1건만 처리
+    var seen={};
     items.forEach(function(item){
       try{
         var parts=item.DataKey.split(':');
         var repName=parts.slice(0,-1).join(':');
-        var itemDate=parts[parts.length-1];
-        if(itemDate!==date) return;
+        var itemDate=parts[parts.length-1]; // 하위 호환용
+        if(seen[repName]) return; // 이미 최신 데이터 처리함
+        seen[repName]=true;
+        if(false) return; // 날짜 필터 제거
         var repData=JSON.parse(item.Payload);
         if(!store.reps[repName]) store.reps[repName]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[]};
         Object.assign(store.reps[repName], repData);
