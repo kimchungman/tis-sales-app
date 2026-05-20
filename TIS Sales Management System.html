@@ -3967,10 +3967,16 @@ function switchTab(rep,el){
   // 탭 전환 시 항상 '매출 및 프로젝트 현황' 탭으로 초기화
   // (이전에 '고객 접점 기록' 탭이 열려 있었어도 메인 탭을 보여줌)
   if(typeof window._switchVTab==='function') window._switchVTab(rep,'main');
-  // textarea 자동 높이
-  if(_rsel) _rsel.querySelectorAll('textarea').forEach(function(ta){
-    if(!ta.closest('[id^="vpanel-"]')&&typeof autoResizeTA==='function') autoResizeTA(ta);
-  });
+  // textarea 자동 높이 - 레이아웃 완료 후 실행
+  if(_rsel){
+    requestAnimationFrame(function(){
+      _rsel.querySelectorAll('textarea').forEach(function(ta){
+        if(ta.closest('[id^="vpanel-"]')) return;
+        ta.style.height='1px';
+        ta.style.height=Math.max(32,ta.scrollHeight)+'px';
+      });
+    });
+  }
 }
 function buildRepInputs(){
   const area=document.getElementById('rep-input-area');
@@ -8384,13 +8390,15 @@ window.renderIssues = function(){
   var allReps = getIssueReps();
   _buildMultiFilter('iss-rep-filter', allReps, '_issSelReps', 'renderIssues();');
 
-  var COLSPAN = 5;
-  var teamColors = {'솔루션영업팀':'#4f7fff','그룹지원팀':'#0EA5A0'};
+  var COLSPAN = 9; // 팀|담당자|고객사|이슈내용|등록날짜|기한날짜|D-DAY|중요도|처리상태
   var repColorMap = {};
+  var teamColorsMap = {};
   if(typeof TEAM_REPS!=='undefined'){
     Object.keys(TEAM_REPS).forEach(function(t){
+      var tc = (typeof TEAM_COLORS!=='undefined'&&TEAM_COLORS[t]&&TEAM_COLORS[t][0])||'#4f7fff';
+      teamColorsMap[t] = tc;
       (TEAM_REPS[t]||[]).forEach(function(r,ri){
-        repColorMap[r] = (typeof TEAM_COLORS!=='undefined'&&TEAM_COLORS[t]&&TEAM_COLORS[t][ri])||teamColors[t]||'#4f7fff';
+        repColorMap[r] = (typeof TEAM_COLORS!=='undefined'&&TEAM_COLORS[t]&&TEAM_COLORS[t][ri])||tc;
       });
     });
   }
@@ -8401,8 +8409,8 @@ window.renderIssues = function(){
     low: {label:'↓ 낮음',color:'#0EA5A0',bg:'rgba(14,165,160,0.08)',bd:'rgba(14,165,160,0.3)'}
   };
   var stMeta = {
-    open:  {label:'Open',color:'#DC2626',bg:'rgba(220,38,38,0.08)',bd:'rgba(220,38,38,0.3)'},
-    closed:{label:'Closed',  color:'#0EA5A0',bg:'rgba(14,165,160,0.08)',bd:'rgba(14,165,160,0.3)'}
+    open:  {label:'Open',  color:'#DC2626',bg:'rgba(220,38,38,0.08)',bd:'rgba(220,38,38,0.3)'},
+    closed:{label:'Closed',color:'#0EA5A0',bg:'rgba(14,165,160,0.08)',bd:'rgba(14,165,160,0.3)'}
   };
 
   var counts = {high:0,mid:0,low:0,total:0,open:0,closed:0};
@@ -8441,19 +8449,43 @@ window.renderIssues = function(){
         counts[st]=(counts[st]||0)+1;
         counts.total++;
 
+        // D-DAY 계산
+        var ddayHtml = '';
+        if(iss.dueDate){
+          var today=new Date();today.setHours(0,0,0,0);
+          var due=new Date(iss.dueDate);due.setHours(0,0,0,0);
+          var diff=Math.round((due-today)/(1000*60*60*24));
+          var dc=diff<0?'#DC2626':diff===0?'#D97706':'#0EA5A0';
+          var dt=diff<0?'D+'+Math.abs(diff):diff===0?'D-Day':'D-'+diff;
+          ddayHtml='<span style="padding:2px 7px;border-radius:8px;font-size:11px;font-weight:700;color:'+dc+';background:'+dc+'15;border:1px solid '+dc+'40;">'+dt+'</span>';
+        }
+
         var tr = document.createElement('tr');
         tr.style.cssText = 'background:white;transition:background 0.15s;';
         tr.onmouseover = function(){this.style.background='#F8FAFF';};
         tr.onmouseout  = function(){this.style.background='white';};
         tr.innerHTML =
-          '<td style="text-align:center;vertical-align:middle;padding:8px 6px;">'
+          // 팀 열 (빈칸 - 팀 구분은 separator row에서)
+          '<td style="text-align:center;vertical-align:middle;padding:8px 4px;border-bottom:1px solid #F1F5F9;"></td>'
+          // 담당자
+          +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;border-bottom:1px solid #F1F5F9;">'
             +'<span style="font-size:12px;font-weight:700;color:'+repColor+';">'+rep+'</span></td>'
-          +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;font-weight:500;">'+( iss.client||'-')+'</td>'
-          +'<td style="vertical-align:middle;padding:8px 10px;font-size:12px;color:#374151;word-break:keep-all;line-height:1.5;">'+( iss.content||'-')+'</td>'
-          +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;">'
-            +'<span style="display:inline-block;padding:3px 10px;border-radius:5px;font-size:12px;font-weight:700;color:'+sm.color+';background:'+sm.bg+';border:1px solid '+sm.bd+';">'+sm.label+'</span></td>'
-          +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;">'
-            +'<span style="display:inline-block;padding:3px 10px;border-radius:5px;font-size:12px;font-weight:700;color:'+stm.color+';background:'+stm.bg+';border:1px solid '+stm.bd+';">'+stm.label+'</span></td>';
+          // 고객사
+          +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;font-weight:500;font-size:12px;border-bottom:1px solid #F1F5F9;">'+( iss.client||'-')+'</td>'
+          // 이슈내용 - 좌측정렬 + pre-wrap
+          +'<td style="text-align:left;vertical-align:top;padding:8px 12px;font-size:12px;color:#374151;white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;line-height:1.6;border-bottom:1px solid #F1F5F9;">'+( iss.content||'-')+'</td>'
+          // 등록날짜
+          +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;font-size:11px;color:#64748B;border-bottom:1px solid #F1F5F9;">'+(iss.regDate||'─')+'</td>'
+          // 기한날짜
+          +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;font-size:11px;color:#64748B;border-bottom:1px solid #F1F5F9;">'+(iss.dueDate||'─')+'</td>'
+          // D-DAY
+          +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;border-bottom:1px solid #F1F5F9;">'+ddayHtml+'</td>'
+          // 중요도
+          +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;border-bottom:1px solid #F1F5F9;">'
+            +'<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;color:'+sm.color+';background:'+sm.bg+';border:1px solid '+sm.bd+';">'+sm.label+'</span></td>'
+          // 처리상태
+          +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;border-bottom:1px solid #F1F5F9;">'
+            +'<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;color:'+stm.color+';background:'+stm.bg+';border:1px solid '+stm.bd+';">'+stm.label+'</span></td>';
         teamRows.push(tr);
         hasData = true;
       });
@@ -8461,36 +8493,31 @@ window.renderIssues = function(){
 
     if(teamHasData){
       if(currentTeam==='all'){
-        list.appendChild(_sepRow(team, teamColors[team]||'#4f7fff', COLSPAN, true));
+        list.appendChild(_sepRow(team, teamColorsMap[team]||'#4f7fff', COLSPAN, true));
       }
       teamRows.forEach(function(el){ list.appendChild(el); });
     }
   });
 
-  // 요약 배지
   if(summary){
     summary.innerHTML = [
       {k:'total',  label:'전체',   color:'#4f7fff', bg:'rgba(79,127,255,0.08)'},
       {k:'high',   label:'↑ 높음', color:'#DC2626', bg:'rgba(220,38,38,0.08)'},
       {k:'mid',    label:'● 중간', color:'#D97706', bg:'rgba(217,119,6,0.08)'},
       {k:'low',    label:'↓ 낮음', color:'#0EA5A0', bg:'rgba(14,165,160,0.08)'},
-      {k:'open',   label:'Open',color:'#DC2626',bg:'rgba(220,38,38,0.06)'},
+      {k:'open',   label:'Open',   color:'#DC2626', bg:'rgba(220,38,38,0.06)'},
       {k:'closed', label:'Closed', color:'#0EA5A0', bg:'rgba(14,165,160,0.06)'}
     ].map(function(b){
       return '<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;color:'+b.color+';background:'+b.bg+';border:1px solid '+b.color+'30;">'
-        +b.label+' <strong>'+( counts[b.k]||0)+'</strong></span>';
+        +b.label+' <strong>'+(counts[b.k]||0)+'</strong></span>';
     }).join('');
   }
 
   if(!hasData){
     list.innerHTML='<tr><td colspan="'+COLSPAN+'" style="text-align:center;padding:40px;color:#94A3B8;font-size:13px;">조회된 이슈가 없습니다</td></tr>';
   }
-
-  // 이슈 카운트 배지 갱신
-  var highCnt=(counts.high||0);
-  var el=(function(){var _ic=document.getElementById('issue-count');if(_ic){_ic.style.display='none';_ic.textContent='';}})();
-  (function(){var _ic=document.getElementById('issue-count');if(_ic){_ic.style.display='none';}})();
-};
+}
+;
 
 
 // ════ 이슈사항 행 (순번,고객사,이슈내용,중요도,처리상태,삭제) ════
@@ -9561,7 +9588,7 @@ window.renderIssues = function(){
 
   list.innerHTML='';
   if(!hasData){
-    list.innerHTML='<tr><td colspan="6" style="text-align:center;padding:56px;color:#94A3B8;font-size:13px;">조회된 이슈가 없습니다</td></tr>';
+    list.innerHTML='<tr><td colspan="9" style="text-align:center;padding:56px;color:#94A3B8;font-size:13px;">조회된 이슈가 없습니다</td></tr>';
   } else {
     list.appendChild(frag);
   }
@@ -9697,7 +9724,7 @@ window.renderIssues = function(){
 
   list.innerHTML='';
   if(!hasData){
-    list.innerHTML='<tr><td colspan="6" style="text-align:center;padding:56px;color:#94A3B8;font-size:13px;">조회된 이슈가 없습니다</td></tr>';
+    list.innerHTML='<tr><td colspan="9" style="text-align:center;padding:56px;color:#94A3B8;font-size:13px;">조회된 이슈가 없습니다</td></tr>';
   } else {
     list.appendChild(frag);
   }
@@ -9851,7 +9878,7 @@ window.renderIssues = function(){
 
   list.innerHTML='';
   if(!hasData){
-    list.innerHTML='<tr><td colspan="6" style="text-align:center;padding:56px;color:#94A3B8;font-size:13px;">조회된 이슈가 없습니다</td></tr>';
+    list.innerHTML='<tr><td colspan="9" style="text-align:center;padding:56px;color:#94A3B8;font-size:13px;">조회된 이슈가 없습니다</td></tr>';
   } else {
     list.appendChild(frag);
   }
@@ -10007,7 +10034,7 @@ window.renderIssues = function(){
 
   list.innerHTML='';
   if(!hasData){
-    list.innerHTML='<tr><td colspan="6" style="text-align:center;padding:56px;color:#94A3B8;font-size:13px;">조회된 이슈가 없습니다</td></tr>';
+    list.innerHTML='<tr><td colspan="9" style="text-align:center;padding:56px;color:#94A3B8;font-size:13px;">조회된 이슈가 없습니다</td></tr>';
   } else {
     list.appendChild(frag);
   }
@@ -10164,7 +10191,7 @@ window.renderIssues = function(){
 
   list.innerHTML='';
   if(!hasData){
-    list.innerHTML='<tr><td colspan="6" style="text-align:center;padding:56px;color:#94A3B8;font-size:13px;">조회된 이슈가 없습니다</td></tr>';
+    list.innerHTML='<tr><td colspan="9" style="text-align:center;padding:56px;color:#94A3B8;font-size:13px;">조회된 이슈가 없습니다</td></tr>';
   } else {
     list.appendChild(frag);
   }
@@ -10448,7 +10475,10 @@ window.renderIssues = function(){
           html+='<td rowspan="'+g.issues.length+'" style="text-align:center;vertical-align:middle;padding:10px 8px;width:90px;border-right:1px solid #EEF2F9;"><span style="font-size:13px;font-weight:700;color:'+g.rc+';">'+g.rep+'</span></td>';
         }
         html+='<td style="text-align:center;vertical-align:middle;padding:10px 12px;font-size:13px;color:#374151;font-weight:500;border-right:1px solid #F1F5F9;">'+(iss.client||'─')+'</td>'
-          +'<td style="vertical-align:middle;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;word-break:keep-all;">'+(iss.content||'─')+'</td>'
+          +'<td style="text-align:left;vertical-align:top;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;">'+(iss.content||'─')+'</td>'
+          +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;font-size:12px;color:#64748B;">'+(iss.regDate||'─')+'</td>'
+          +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;font-size:12px;color:#64748B;">'+(iss.dueDate||'─')+'</td>'
+          +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;">'+(iss.dueDate?(function(){var t=new Date();t.setHours(0,0,0,0);var d=new Date(iss.dueDate);d.setHours(0,0,0,0);var df=Math.round((d-t)/86400000);var dc=df<0?'#DC2626':df===0?'#D97706':'#0EA5A0';var dt=df<0?'D+'+Math.abs(df):df===0?'D-Day':'D-'+df;return'<span style="padding:2px 7px;border-radius:8px;font-size:11px;font-weight:700;color:'+dc+';background:'+dc+'15;border:1px solid '+dc+'40;">'+dt+'</span>';}()):'─')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:8px;border-left:1px solid #F1F5F9;">'+rowBadge(SM[sev]||SM.mid)+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:8px;">'+rowBadge(STM[st]||STM.open)+'</td>';
         tr.innerHTML=html; frag.appendChild(tr); hasData=true;
@@ -10456,7 +10486,7 @@ window.renderIssues = function(){
     });
   });
   list.innerHTML='';
-  if(!hasData){list.innerHTML='<tr><td colspan="6" style="text-align:center;padding:56px;color:#94A3B8;font-size:13px;">조회된 이슈가 없습니다</td></tr>';}
+  if(!hasData){list.innerHTML='<tr><td colspan="9" style="text-align:center;padding:56px;color:#94A3B8;font-size:13px;">조회된 이슈가 없습니다</td></tr>';}
   else{list.appendChild(frag);}
 };
 </script>
