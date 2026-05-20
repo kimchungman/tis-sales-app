@@ -10922,18 +10922,18 @@ window.renderVisits=function(){
   // ─ 기간 필터 버튼 ─
   function periodBtn(key,label){
     var act=_visitPeriod===key;
-    return '<button onclick="window._visitPeriod=\''+key+'\';window._visitPage=1;renderVisits();" style="height:28px;padding:0 14px;border-radius:14px;font-size:13px;font-family:inherit;cursor:pointer;border:1.5px solid;font-weight:600;transition:all 0.15s;background:'+(act?'#4f7fff':'white')+';color:'+(act?'white':'#4f7fff')+';border-color:'+(act?'#4f7fff':'rgba(79,127,255,0.4)')+';">'+label+'</button>';
+    return '<button onclick="window._visitFilterDate=String();window._visitPeriod=\''+key+'\';window._visitPage=1;renderVisits();" style="height:28px;padding:0 14px;border-radius:14px;font-size:13px;font-family:inherit;cursor:pointer;border:1.5px solid;font-weight:600;transition:all 0.15s;background:'+(act?'#4f7fff':'white')+';color:'+(act?'white':'#4f7fff')+';border-color:'+(act?'#4f7fff':'rgba(79,127,255,0.4)')+';">'+label+'</button>';
   }
 
   // ─ 담당자 Pill ─
   var allReps=[];
   teams.forEach(function(t){ (TEAM_REPS[t]||[]).forEach(function(r){ if(allReps.indexOf(r)<0) allReps.push(r); }); });
   var PH='height:28px;padding:0 14px;border-radius:14px;font-size:13px;font-family:inherit;cursor:pointer;border:1.5px solid;font-weight:600;display:inline-flex;align-items:center;gap:5px;transition:all 0.15s;white-space:nowrap;';
-  var repPills='<button onclick="window._visitRepFilter=[];window._visitPage=1;renderVisits();" style="'+PH+'min-width:70px;justify-content:center;background:'+(_visitRepFilter.length===0?'#4f7fff':'white')+';color:'+(_visitRepFilter.length===0?'white':'#4f7fff')+';border-color:'+(_visitRepFilter.length===0?'#4f7fff':'rgba(79,127,255,0.4)')+';">전체</button>';
+  var repPills='<button onclick="window._visitFilterDate=String();window._visitRepFilter=[];window._visitPage=1;renderVisits();" style="'+PH+'min-width:70px;justify-content:center;background:'+(_visitRepFilter.length===0?'#4f7fff':'white')+';color:'+(_visitRepFilter.length===0?'white':'#4f7fff')+';border-color:'+(_visitRepFilter.length===0?'#4f7fff':'rgba(79,127,255,0.4)')+';">전체</button>';
   allReps.forEach(function(r){
     var act=_visitRepFilter.indexOf(r)>=0, rc=RC[r]||'#4f7fff';
     var cnt=filtered.filter(function(v){return v.rep===r;}).length;
-    repPills+='<button onclick="var _a=window._visitRepFilter,_i=_a.indexOf(\''+r+'\');_i>=0?_a.splice(_i,1):_a.push(\''+r+'\');window._visitPage=1;renderVisits();" style="'+PH+'background:'+(act?rc:'white')+';color:'+(act?'white':'#475569')+';border-color:'+(act?rc:'#E2E8F0')+';">'+r+' <strong style="font-size:12px;opacity:0.85;">'+cnt+'</strong></button>';
+    repPills+='<button onclick="window._visitFilterDate=String();var _a=window._visitRepFilter,_i=_a.indexOf(\''+r+'\');_i>=0?_a.splice(_i,1):_a.push(\''+r+'\');window._visitPage=1;renderVisits();" style="'+PH+'background:'+(act?rc:'white')+';color:'+(act?'white':'#475569')+';border-color:'+(act?rc:'#E2E8F0')+';">'+r+' <strong style="font-size:12px;opacity:0.85;">'+cnt+'</strong></button>';
   });
 
   // ─ 캘린더 (옵션A: 파란 테두리, 숫자 센터, 배지 없음) ─
@@ -11053,12 +11053,12 @@ window.renderVisits=function(){
     var pages='';
     for(var p=1;p<=totalPages;p++){
       var isAct=p===_visitPage;
-      pages+='<button onclick="window._visitPage='+p+';renderVisits();" style="width:30px;height:30px;border-radius:6px;border:1.5px solid;font-size:13px;cursor:pointer;font-family:inherit;background:'+(isAct?'#4f7fff':'white')+';color:'+(isAct?'white':'#64748B')+';border-color:'+(isAct?'#4f7fff':'#E2E8F0')+';">'+p+'</button>';
+      pages+='<button onclick="window._visitFilterDate=String();window._visitPage='+p+';renderVisits();" style="width:30px;height:30px;border-radius:6px;border:1.5px solid;font-size:13px;cursor:pointer;font-family:inherit;background:'+(isAct?'#4f7fff':'white')+';color:'+(isAct?'white':'#64748B')+';border-color:'+(isAct?'#4f7fff':'#E2E8F0')+';">'+p+'</button>';
     }
     pagination='<div style="display:flex;align-items:center;justify-content:center;gap:6px;padding:14px;">'
-      +'<button onclick="if(window._visitPage>1){window._visitPage--;renderVisits();}" style="height:30px;padding:0 12px;border-radius:6px;border:1.5px solid #E2E8F0;background:white;color:#64748B;font-size:13px;cursor:pointer;font-family:inherit;">‹ 이전</button>'
+      +'<button onclick="window._visitFilterDate=String();if(window._visitPage>1){window._visitPage--;renderVisits();}" style="height:30px;padding:0 12px;border-radius:6px;border:1.5px solid #E2E8F0;background:white;color:#64748B;font-size:13px;cursor:pointer;font-family:inherit;">‹ 이전</button>'
       +pages
-      +'<button onclick="if(window._visitPage<'+totalPages+'){window._visitPage++;renderVisits();}" style="height:30px;padding:0 12px;border-radius:6px;border:1.5px solid #E2E8F0;background:white;color:#64748B;font-size:13px;cursor:pointer;font-family:inherit;">다음 ›</button>'
+      +'<button onclick="window._visitFilterDate=String();if(window._visitPage<'+totalPages+'){window._visitPage++;renderVisits();}" style="height:30px;padding:0 12px;border-radius:6px;border:1.5px solid #E2E8F0;background:white;color:#64748B;font-size:13px;cursor:pointer;font-family:inherit;">다음 ›</button>'
       +'</div>';
   }
 
@@ -11067,7 +11067,7 @@ window.renderVisits=function(){
     +'<input type="date" id="vdf-from" value="'+(_visitDateFrom||'')+'" style="height:28px;border:1.5px solid #E2E8F0;border-radius:8px;padding:0 8px;font-size:13px;font-family:inherit;outline:none;" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" onchange="window._visitDateFrom=this.value;">'
     +'<span style="font-size:13px;color:#94A3B8;">~</span>'
     +'<input type="date" id="vdf-to" value="'+(_visitDateTo||'')+'" style="height:28px;border:1.5px solid #E2E8F0;border-radius:8px;padding:0 8px;font-size:13px;font-family:inherit;outline:none;" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" onchange="window._visitDateTo=this.value;">'
-    +'<button onclick="window._visitPage=1;renderVisits();" style="height:28px;padding:0 14px;border-radius:8px;border:none;background:#4f7fff;color:white;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">조회</button>'
+    +'<button onclick="window._visitFilterDate=String();window._visitPage=1;renderVisits();" style="height:28px;padding:0 14px;border-radius:8px;border:none;background:#4f7fff;color:white;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">조회</button>'
     +'</div>';
 
   // ── 전체 조립 ──
