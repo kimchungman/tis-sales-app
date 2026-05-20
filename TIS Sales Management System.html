@@ -1700,6 +1700,12 @@ input[type="date"]::-webkit-inner-spin-button,
 input[type="date"]::-webkit-clear-button {
   display: none;
 }
+
+/* ══ textarea 자동높이 최종 CSS (JS setProperty로 제어) ══ */
+textarea {
+  max-height: none !important;
+  height: 30px !important;
+}
 </style>
 </head>
 <body>
@@ -3971,13 +3977,12 @@ function switchTab(rep,el){
   if(_rsel){
     function _resizeTAs(container){
       container.querySelectorAll('textarea').forEach(function(ta){
-        ta.style.overflowY='hidden';
-        ta.style.height='1px';
+        ta.style.setProperty('overflow-y','hidden','important');
+        ta.style.setProperty('height','1px','important');
         var h=Math.max(30,ta.scrollHeight);
-        ta.style.height=h+'px';
+        ta.style.setProperty('height',h+'px','important');
       });
     }
-    // 즉시 + 100ms + 300ms (레이아웃 완전 완료 보장)
     _resizeTAs(_rsel);
     setTimeout(function(){ _resizeTAs(_rsel); }, 100);
     setTimeout(function(){ _resizeTAs(_rsel); }, 300);
@@ -4107,9 +4112,10 @@ function buildRepInputs(){
     var _activeRep = document.querySelector('.rep-sec[style*="block"]');
     if(_activeRep) setTimeout(function(){
       _activeRep.querySelectorAll('textarea').forEach(function(ta){
-        ta.style.overflowY='hidden';
-        ta.style.height='1px';
-        ta.style.height=Math.max(30,ta.scrollHeight)+'px';
+        ta.style.setProperty('overflow-y','hidden','important');
+        ta.style.setProperty('height','1px','important');
+        var h=Math.max(30,ta.scrollHeight);
+        ta.style.setProperty('height',h+'px','important');
       });
     }, 300);
     // 이슈사항 textarea 초기 높이 조절 (각 담당자 섹션)
@@ -4182,7 +4188,7 @@ function aRow(rep,ai,a){
     <td style="min-width:240px;vertical-align:top;">
       <textarea rows="1"
         style="width:100%;min-height:30px;height:30px;resize:none;line-height:1.5;display:block;box-sizing:border-box;overflow-y:hidden;text-align:left;"
-        onfocus="if(this.scrollHeight>this.clientHeight){this.style.height='1px';this.style.height=Math.max(30,this.scrollHeight)+'px';}" oninput="this.style.height='1px';this.style.height=Math.max(30,this.scrollHeight)+'px';"
+        onfocus="this.style.setProperty('height','1px','important');this.style.setProperty('height',Math.max(30,this.scrollHeight)+'px','important');" oninput="this.style.setProperty('height','1px','important');this.style.setProperty('height',Math.max(30,this.scrollHeight)+'px','important');"
         onchange="store.reps['${rep}'].activities[${ai}].content=this.value;autoSave();"
         oninput="this.style.setProperty('height','1px','important');this.style.setProperty('height',Math.max(30,this.scrollHeight)+'px','important');"
         onfocus="this.style.setProperty('height',Math.max(this.scrollHeight,30)+'px','important');"
@@ -10737,9 +10743,10 @@ window._switchVTab=function(rep,tab){
   if(!isMain){
     setTimeout(function(){
       vp.querySelectorAll('textarea').forEach(function(ta){
-        ta.style.overflowY='hidden';
-        ta.style.height='1px';
-        ta.style.height=Math.max(30,ta.scrollHeight)+'px';
+        ta.style.setProperty('overflow-y','hidden','important');
+        ta.style.setProperty('height','1px','important');
+        var h=Math.max(30,ta.scrollHeight);
+        ta.style.setProperty('height',h+'px','important');
       });
     }, 50);
   }
@@ -11227,6 +11234,8 @@ async function _spSaveMyRep(){
   if(!myData) return;
   // plan/actual/forecast 정규화
   var _d=JSON.parse(JSON.stringify(myData));
+  // visitLog는 visit_log:{rep} 별도 키로 저장 → 여기서 제외 (크기 축소)
+  _d.visitLog=[];
   ['plan','actual','forecast'].forEach(function(k){
     if(!Array.isArray(_d[k])) _d[k]=new Array(12).fill(0);
     else _d[k]=_d[k].slice(0,12).concat(new Array(12).fill(0)).slice(0,12);
