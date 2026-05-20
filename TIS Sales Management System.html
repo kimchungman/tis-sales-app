@@ -6716,6 +6716,31 @@ function _sanitizeDKey(str){
   return (str||'').replace(/\s+/g,'_').replace(/:/g,'-').replace(/[^a-zA-Z0-9\uAC00-\uD7A3_\-\.]/g,'');
 }
 
+// sanitized DataKey → 원본 rep명 역매핑
+function _findRepByKey(sk){
+  var _allReps=[];
+  if(typeof TEAM_REPS!=='undefined'){
+    Object.keys(TEAM_REPS).forEach(function(t){ (_allReps=_allReps.concat(TEAM_REPS[t]||[])); });
+  } else if(typeof REPS!=='undefined'){ _allReps=REPS; }
+  for(var _i=0;_i<_allReps.length;_i++){
+    if(_sanitizeDKey(_allReps[_i])===sk) return _allReps[_i];
+  }
+  return sk;
+}
+
+// DataKey에서 rep명+날짜 분리 (신구 형식 모두)
+function _parseRepDataKey(dk){
+  var m=dk.match(/^(.+?)[-_]?(\d{4}-\d{2}-\d{2})$/);
+  if(m){
+    var sk=m[1].replace(/[-_]$/,'');
+    return {rep:_findRepByKey(sk), date:m[2]};
+  }
+  var parts=dk.split(':');
+  if(parts.length>=2) return {rep:parts.slice(0,-1).join(':'), date:parts[parts.length-1]};
+  return {rep:dk, date:''};
+}
+
+
 // SP Item ID 영구 캐시 (localStorage)
 function _spGetCachedId(title){
   try{ return localStorage.getItem('_spid_'+title); }catch(e){ return null; }
@@ -11310,7 +11335,8 @@ async function _spLoadAllVisitLogs(){
     var items=(res&&res.value)||[];
     items.forEach(function(item){
       try{
-        var rep=item.DataKey;
+        var _rawKey=item.DataKey;
+        var rep=_findRepByKey(_rawKey); // sanitized→원본 역매핑
         var d=JSON.parse(item.Payload);
         if(d&&Array.isArray(d.visitLog)&&store.reps[rep]){
           var existing=store.reps[rep].visitLog||[];
@@ -11366,8 +11392,7 @@ async function _spSyncOtherReps(){
     var latestByRep={};
     items.forEach(function(item){
       try{
-        var parts=item.DataKey.split(':');
-        var repName=parts.slice(0,-1).join(':');
+        var repName=_parseRepDataKey(item.DataKey).rep;
         if(!latestByRep[repName]) latestByRep[repName]=item; // 최신 1건만
       }catch(e){}
     });
@@ -11416,12 +11441,10 @@ async function _spLoadAllReps(){
     var seen={};
     items.forEach(function(item){
       try{
-        var parts=item.DataKey.split(':');
-        var repName=parts.slice(0,-1).join(':');
-        var itemDate=parts[parts.length-1]; // 하위 호환용
-        if(seen[repName]) return; // 이미 최신 데이터 처리함
+        var parsed=_parseRepDataKey(item.DataKey);
+        var repName=parsed.rep;
+        if(!repName||seen[repName]) return;
         seen[repName]=true;
-        if(false) return; // 날짜 필터 제거
         var repData=JSON.parse(item.Payload);
         if(!store.reps[repName]) store.reps[repName]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[]};
         Object.assign(store.reps[repName], repData);
