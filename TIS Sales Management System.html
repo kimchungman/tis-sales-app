@@ -10854,7 +10854,11 @@ window.initVisitsTabs=function(){
 
 // ════ renderVisits ════
 window.renderVisits=function(){
-  window._visitFilterDate = ''; // 날짜 필터 해제
+  // 날짜 필터 활성 상태면 해당 날짜 뷰 유지
+  if(window._visitFilterDate){
+    if(typeof filterVisitsByDate==='function') filterVisitsByDate(window._visitFilterDate);
+    return;
+  }
   var container=document.getElementById('visits-dashboard');
   if(!container) return;
   _ensureVisitLog();
