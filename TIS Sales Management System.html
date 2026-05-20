@@ -11440,7 +11440,38 @@ async function _spSaveMyRep(){
     if(!_repName) _repName = session.rep; // 제거 실패 시 원래 이름 사용
   }
   var _repKey = (typeof _sanitizeDKey==='function') ? _sanitizeDKey(_repName+'_'+date) : _repName+'-'+date;
-  await _spSaveItem('rep_data', _repKey, _d);
+
+  // ── 크기 자동 체크 및 분리 저장 ──
+  var _payload = JSON.stringify(_d);
+  var SP_LIMIT = 50000; // 50,000자 기준 (SP 한도 63,999자)
+
+  if(_payload.length <= SP_LIMIT){
+    await _spSaveItem('rep_data', _repKey, _d);
+  } else {
+    // 1단계: visitLog를 현재 연도만 남기고 분리
+    var _curYear = new Date().getFullYear().toString();
+    var _allVL = _d.visitLog || [];
+    var _curVL  = _allVL.filter(function(v){ return v.date && v.date.startsWith(_curYear); });
+    var _oldVL  = _allVL.filter(function(v){ return !v.date || !v.date.startsWith(_curYear); });
+    _d.visitLog = _curVL;
+
+    if(JSON.stringify(_d).length <= SP_LIMIT){
+      await _spSaveItem('rep_data', _repKey, _d);
+      if(_oldVL.length > 0){
+        var _oldYear = (_oldVL[0].date||'').slice(0,4)||(parseInt(_curYear)-1).toString();
+        await _spSaveItem('rep_data', _sanitizeDKey(_repName+'_vl_'+_oldYear), {visitLog:_oldVL});
+      }
+      console.log('[SP] visitLog 연도 분리 저장');
+    } else {
+      // 2단계: visitLog 전체 제거 후 저장
+      _d.visitLog = [];
+      await _spSaveItem('rep_data', _repKey, _d);
+      if(_allVL.length > 0){
+        await _spSaveItem('rep_data', _sanitizeDKey(_repName+'_vl_'+_curYear), {visitLog:_allVL});
+      }
+      console.warn('[SP] 크기 초과 - visitLog 완전 분리 저장');
+    }
+  }
 }
 
 // 다른 담당자 데이터 SP 동기화 (내 것 제외)
