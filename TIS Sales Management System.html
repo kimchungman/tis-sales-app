@@ -1701,10 +1701,9 @@ input[type="date"]::-webkit-clear-button {
   display: none;
 }
 
-/* ══ textarea 자동높이 최종 CSS (JS setProperty로 제어) ══ */
+/* ══ textarea 자동높이 최종 CSS ══ */
 textarea {
   max-height: none !important;
-  height: 30px !important;
 }
 </style>
 </head>
@@ -4866,12 +4865,12 @@ function autoResizeTA(el){
     sec.style.display='block';
   }
 
-  // height 1px → scrollHeight 측정
-  el.style.overflowY='scroll';
-  el.style.height='1px';
+  // height 1px → scrollHeight 측정 (setProperty로 CSS !important 우선순위 극복)
+  el.style.setProperty('overflow-y','scroll','important');
+  el.style.setProperty('height','1px','important');
   var h=Math.max(32, el.scrollHeight);
-  el.style.height=h+'px';
-  el.style.overflowY='hidden';
+  el.style.setProperty('height',h+'px','important');
+  el.style.setProperty('overflow-y','hidden','important');
 
   // 복원
   hiddenAncestors.forEach(function(n){n.style.display='none';});
@@ -10495,7 +10494,7 @@ window.renderIssues = function(){
           html+='<td rowspan="'+g.issues.length+'" style="text-align:center;vertical-align:middle;padding:10px 8px;width:90px;border-right:1px solid #EEF2F9;"><span style="font-size:13px;font-weight:700;color:'+g.rc+';">'+g.rep+'</span></td>';
         }
         html+='<td style="text-align:center;vertical-align:middle;padding:10px 12px;font-size:13px;color:#374151;font-weight:500;border-right:1px solid #F1F5F9;">'+(iss.client||'─')+'</td>'
-          +'<td style="text-align:left !important;vertical-align:top !important;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;white-space:pre-wrap !important;word-break:break-word !important;overflow-wrap:break-word !important;">'+(iss.content||'─')+'</td>'
+          +'<td style="text-align:left !important;vertical-align:middle;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;white-space:pre-wrap !important;word-break:break-word !important;overflow-wrap:break-word !important;">'+(iss.content||'─')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;font-size:12px;color:#64748B;">'+(iss.regDate||'─')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;font-size:12px;color:#64748B;">'+(iss.dueDate||'─')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;">'+(iss.dueDate?(function(){var t=new Date();t.setHours(0,0,0,0);var d=new Date(iss.dueDate);d.setHours(0,0,0,0);var df=Math.round((d-t)/86400000);var dc=df<0?'#DC2626':df===0?'#D97706':'#0EA5A0';var dt=df<0?'D+'+Math.abs(df):df===0?'D-Day':'D-'+df;return'<span style="padding:2px 7px;border-radius:8px;font-size:11px;font-weight:700;color:'+dc+';background:'+dc+'15;border:1px solid '+dc+'40;">'+dt+'</span>';}()):'─')+'</td>'
