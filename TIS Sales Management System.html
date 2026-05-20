@@ -5455,7 +5455,7 @@ function buildRepBtns(){
       onmouseover="this.style.background='${color}22'" onmouseout="this.style.background='${color}10'">
       <div style="display:flex;align-items:center;gap:8px;">
         <div style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0;"></div>
-        ${rep}
+        ${getRepDisplayName(rep)}
       </div>
       <span style="font-size:10px;opacity:0.6;">${hasPw?'🔒':'🔓 자유접속'}</span>
     </button>`;
