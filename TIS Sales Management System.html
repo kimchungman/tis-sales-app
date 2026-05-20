@@ -6697,49 +6697,35 @@ async function _initSP() {
 }
 
 // ── 아이템 저장 ─────────────────────────────────────────────
-// DataKey 정규화: 공백→_, 콜론→-, 특수문자 제거
+// DataKey 정규화
 function _sanitizeDKey(str){
   return (str||'').replace(/\s+/g,'_').replace(/:/g,'-').replace(/[^a-zA-Z0-9\uAC00-\uD7A3_\-\.]/g,'');
 }
 
-// ═══ SP 저장 핵심 함수 ═══
-// 개선: Title 단일 조건 쿼리 (항상 인덱싱) + ID 캐시 (반복 쿼리 제거) + save lock
+// SP Item ID 영구 캐시 (localStorage)
+function _spGetCachedId(title){
+  try{ return localStorage.getItem('_spid_'+title); }catch(e){ return null; }
+}
+function _spSetCachedId(title, id){
+  try{ localStorage.setItem('_spid_'+title, String(id)); }catch(e){}
+}
+function _spClearCachedId(title){
+  try{ localStorage.removeItem('_spid_'+title); }catch(e){}
+}
+
 async function _spSaveItem(dtype, dkey, payload, _retry) {
-  if (!window._isSPReady) return;
+  if(!window._isSPReady) return;
 
-  // DataKey 정규화
-  var _dkey = _sanitizeDKey(dkey);
+  var _dkey  = _sanitizeDKey(dkey);
   var _title = dtype + '_' + _dkey;
-  var _lockKey = _title;
+  var _lock  = _title;
 
-  // 동일 key 중복 저장 방지 (재시도 제외)
+  // 중복 실행 방지
   if(!window._spSaveLocks) window._spSaveLocks = {};
-  if(window._spSaveLocks[_lockKey] && !_retry){
-    console.log('[SP] SAVE SKIP (lock):', _lockKey);
-    return;
-  }
-  window._spSaveLocks[_lockKey] = true;
-  console.log('[SP] SAVE START:', _lockKey);
+  if(window._spSaveLocks[_lock] && !_retry){ return; }
+  window._spSaveLocks[_lock] = true;
 
   try {
-    // ID 캐시 확인 (반복 filter 쿼리 제거)
-    if(!window._spIdCache) window._spIdCache = {};
-    var _cachedId = window._spIdCache[_lockKey];
-
-    var _itemId = null;
-    if(_cachedId) {
-      _itemId = _cachedId;
-    } else {
-      // Title로 단일 조건 쿼리 (Title은 SP에서 항상 인덱싱됨 → 500 없음)
-      var _qUrl = _lUrl() + '?$select=Id&$filter=Title+eq+%27' + encodeURIComponent(_title) + '%27';
-      var _qRes = await _spFetch(_qUrl);
-      var _existing = _qRes && _qRes.value && _qRes.value[0];
-      if(_existing) {
-        _itemId = _existing.Id;
-        window._spIdCache[_lockKey] = _itemId;
-      }
-    }
-
     var _body = JSON.stringify({
       Title:     _title,
       DataType:  dtype,
@@ -6748,47 +6734,82 @@ async function _spSaveItem(dtype, dkey, payload, _retry) {
       UpdatedAt: new Date().toISOString()
     });
 
-    if(_itemId) {
-      await _spFetch(_lUrl() + '(' + _itemId + ')', {
-        method:  'POST',
-        headers: { 'X-HTTP-Method': 'MERGE', 'IF-MATCH': '*' },
-        body:    _body
+    // 1단계: localStorage 캐시에서 ID 조회 (GET 쿼리 불필요)
+    var _id = _spGetCachedId(_title);
+
+    if(_id) {
+      try {
+        await _spFetch(_lUrl() + '(' + _id + ')', {
+          method:'POST', headers:{'X-HTTP-Method':'MERGE','IF-MATCH':'*'}, body:_body
+        });
+        return; // 성공
+      } catch(patchErr) {
+        // 404: 아이템이 삭제됨 → 캐시 초기화 후 재생성
+        if(patchErr.message && (patchErr.message.indexOf('404')>=0 || patchErr.message.indexOf('not exist')>=0)){
+          _spClearCachedId(_title);
+          _id = null;
+        } else { throw patchErr; }
+      }
+    }
+
+    // 2단계: ID 캐시 없음 → $top=1 쿼리로 기존 아이템 조회
+    // ($top=1 추가로 SP 5000건 임계값 오류 방지)
+    if(!_id) {
+      try {
+        var _qUrl = _lUrl()
+          + '?$select=Id&$top=1&$filter=DataType+eq+%27' + encodeURIComponent(dtype)
+          + '%27+and+DataKey+eq+%27' + encodeURIComponent(_dkey) + '%27';
+        var _qRes = await _spFetch(_qUrl);
+        var _existing = _qRes && _qRes.value && _qRes.value[0];
+        if(_existing && _existing.Id) {
+          _id = _existing.Id;
+          _spSetCachedId(_title, _id);
+        }
+      } catch(queryErr) {
+        // 쿼리 실패 시 → 새로 생성 (폴백)
+        console.warn('[SP] 조회 실패, 새 아이템 생성:', _title, queryErr.message);
+        _id = null;
+      }
+    }
+
+    // 3단계: 아이템 업데이트 or 생성
+    if(_id) {
+      await _spFetch(_lUrl() + '(' + _id + ')', {
+        method:'POST', headers:{'X-HTTP-Method':'MERGE','IF-MATCH':'*'}, body:_body
       });
     } else {
-      var _created = await _spFetch(_lUrl(), { method: 'POST', body: _body });
-      if(_created && _created.Id) window._spIdCache[_lockKey] = _created.Id;
+      var _res = await _spFetch(_lUrl(), { method:'POST', body:_body });
+      if(_res && _res.Id) _spSetCachedId(_title, _res.Id);
     }
-    console.log('[SP] SAVE END:', _lockKey);
 
   } catch(err) {
-    console.warn('[SP] SAVE ERROR:', _lockKey, err.message);
-    if(err.message && (err.message.indexOf('429') >= 0 || err.message.indexOf('throttl') >= 0)) {
-      // 429: SP 쓰로틀링 → 5초 후 재시도
-      var _rc429 = _retry || 0;
-      if(_rc429 < 2){
-        await new Promise(function(r){ setTimeout(r, 5000*(_rc429+1)); });
-        delete window._spSaveLocks[_lockKey];
-        return _spSaveItem(dtype, dkey, payload, _rc429+1);
-      }
-      console.warn('[SP] 429 쓰로틀링 재시도 초과');
-    } else if(err.message && err.message.indexOf('409') >= 0) {
-      var _rc = _retry || 0;
-      if(_rc < 3){
-        await new Promise(function(r){ setTimeout(r, 800*(_rc+1)); });
-        window._spSaveLocks[_lockKey] = false;
+    if(err.message && (err.message.indexOf('429')>=0 || err.message.indexOf('throttl')>=0)) {
+      var _rc = _retry||0;
+      if(_rc < 2){
+        await new Promise(function(r){ setTimeout(r, 5000*(_rc+1)); });
+        window._spSaveLocks[_lock] = false;
         return _spSaveItem(dtype, dkey, payload, _rc+1);
       }
-    } else if(err.message && err.message.indexOf('401') >= 0) {
-      console.warn('[SP] 401 인증 만료');
+    } else if(err.message && err.message.indexOf('409')>=0) {
+      var _rc2 = _retry||0;
+      if(_rc2 < 3){
+        await new Promise(function(r){ setTimeout(r, 500*(_rc2+1)); });
+        window._spSaveLocks[_lock] = false;
+        return _spSaveItem(dtype, dkey, payload, _rc2+1);
+      }
+    } else if(err.message && err.message.indexOf('401')>=0) {
+      console.warn('[SP] 401 인증만료');
     } else {
       if(dtype !== 'accessLog' && dtype !== 'snapshot'){
         showToast('저장 실패 (' + err.message + ')', 'warn');
       }
+      console.warn('[SP] 저장 실패:', _title, err.message);
     }
   } finally {
-    delete window._spSaveLocks[_lockKey];
+    delete window._spSaveLocks[_lock];
   }
 }
+
 
 
 // ── 아이템 로드 ─────────────────────────────────────────────
