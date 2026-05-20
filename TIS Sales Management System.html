@@ -3926,10 +3926,17 @@ function switchInputTeam(team){
   if(window._briTimer) clearTimeout(window._briTimer);
   window._briTimer = setTimeout(function(){
     window._briTimer = null;
-    // 입력 페이지가 활성 상태일 때만 빌드
     var _ip=document.getElementById('page-input');
     if(!_ip||!_ip.classList.contains('active')) return;
-    // 빌드 전 기존 섹션 모두 숨기기 (flash 방지)
+    var _area=document.getElementById('rep-input-area');
+    // 이미 빌드됐고 dirty 아니면 skip (플리커 방지)
+    if(_area && _area.children.length>0 && !window._inputPageDirty){
+      // 탭만 복원
+      var _at=document.querySelector('#rep-tabs .tab.active');
+      if(_at) { var _ar=_at.dataset&&_at.dataset.rep; if(_ar&&typeof switchTab==='function') switchTab(_ar,_at); }
+      return;
+    }
+    window._inputPageDirty=false;
     document.querySelectorAll('.rep-sec').forEach(function(s){s.style.display='none';});
     buildRepInputs();
     // buildRepInputs 완료 후 현재 활성 담당자 탭 적용 (rAF로 DOM 안정화 후)
@@ -6181,6 +6188,7 @@ function autoSave(){
       };
       // 1. localStorage 저장
       localStorage.setItem('weekly_meeting_data', JSON.stringify(data));
+      window._inputPageDirty=true; // SP 로드 후 input 페이지 재빌드 필요 표시
       updateSaveIndicator(true);
       if(typeof saveToHistory==='function')saveToHistory();
       if(typeof updateHistBtn==='function')updateHistBtn();
@@ -6686,19 +6694,33 @@ async function _initSP() {
 }
 
 // ── 아이템 저장 ─────────────────────────────────────────────
+// DataKey 정규화: 공백→_, 콜론→-, 특수문자 제거 (OData filter 안정화)
+function _sanitizeDKey(str){
+  return (str||'').replace(/\s+/g,'_').replace(/:/g,'-').replace(/[^a-zA-Z0-9가-힣_\-\.]/g,'');
+}
+
 async function _spSaveItem(dtype, dkey, payload, _retry) {
   if (!window._isSPReady) return;
+  // 동일 key 중복 저장 방지
+  if(!window._spSaveLocks) window._spSaveLocks={};
+  var _lockKey=dtype+'_'+dkey;
+  if(window._spSaveLocks[_lockKey] && !_retry){
+    console.log('[SP] 저장 중 skip:', _lockKey);
+    return;
+  }
+  window._spSaveLocks[_lockKey]=true;
   try {
+    var _dkey = (typeof _sanitizeDKey==='function') ? _sanitizeDKey(dkey) : dkey;
     const qUrl = _lUrl() + '?$select=Id&$filter=DataType+eq+%27'
                + encodeURIComponent(dtype) + '%27+and+DataKey+eq+%27'
-               + encodeURIComponent(dkey)  + '%27';
+               + encodeURIComponent(_dkey) + '%27';
     const qRes = await _spFetch(qUrl);
     const existing = qRes && qRes.value && qRes.value[0];
 
     const body = JSON.stringify({
-      Title:     dtype + '_' + dkey,
+      Title:     dtype + '_' + _dkey,
       DataType:  dtype,
-      DataKey:   dkey,
+      DataKey:   _dkey,
       Payload:   JSON.stringify(payload),
       UpdatedAt: new Date().toISOString()
     });
@@ -6732,6 +6754,8 @@ async function _spSaveItem(dtype, dkey, payload, _retry) {
       }
       console.warn('[SP] 저장 실패:', dtype, dkey, err.message);
     }
+  } finally {
+    if(window._spSaveLocks) delete window._spSaveLocks[_lockKey];
   }
 }
 
@@ -11241,7 +11265,8 @@ async function _spSaveMyRep(){
   });
   _d.savedAt=new Date().toISOString();
   _d.date=date;
-  await _spSaveItem('rep_data', session.rep+':'+date, _d);
+  var _repKey = (typeof _sanitizeDKey==='function') ? _sanitizeDKey(session.rep+'_'+date) : session.rep+':'+date;
+  await _spSaveItem('rep_data', _repKey, _d);
 }
 
 // 다른 담당자 데이터 SP 동기화 (내 것 제외)
