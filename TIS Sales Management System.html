@@ -3916,6 +3916,8 @@ function renderRepChart(){
 
 function switchInputTeam(team){
   currentTeam=team;
+  // 팀이 바뀌면 재빌드 강제
+  if(window._lastBuiltTeam !== team) window._lastBuiltTeam = null;
   applyCurrentTeam(team);
   (TEAM_REPS[team]||[]).forEach(function(rep){
     if(!store.reps[rep]) store.reps[rep]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[]};
@@ -3928,15 +3930,17 @@ function switchInputTeam(team){
     window._briTimer = null;
     var _ip=document.getElementById('page-input');
     if(!_ip||!_ip.classList.contains('active')) return;
+    // 같은 팀 && 이미 빌드됨 → 재빌드 없이 탭만 복원 (플리커 방지)
     var _area=document.getElementById('rep-input-area');
-    // 이미 빌드됐고 dirty 아니면 skip (플리커 방지)
-    if(_area && _area.children.length>0 && !window._inputPageDirty){
-      // 탭만 복원
+    var _alreadyBuilt = _area && _area.children.length>0 && window._lastBuiltTeam===currentTeam;
+    if(_alreadyBuilt){
       var _at=document.querySelector('#rep-tabs .tab.active');
-      if(_at) { var _ar=_at.dataset&&_at.dataset.rep; if(_ar&&typeof switchTab==='function') switchTab(_ar,_at); }
+      if(_at && _at.dataset && _at.dataset.rep && typeof switchTab==='function'){
+        switchTab(_at.dataset.rep, _at);
+      }
       return;
     }
-    window._inputPageDirty=false;
+    window._lastBuiltTeam = currentTeam;
     document.querySelectorAll('.rep-sec').forEach(function(s){s.style.display='none';});
     buildRepInputs();
     // buildRepInputs 완료 후 현재 활성 담당자 탭 적용 (rAF로 DOM 안정화 후)
@@ -6188,7 +6192,6 @@ function autoSave(){
       };
       // 1. localStorage 저장
       localStorage.setItem('weekly_meeting_data', JSON.stringify(data));
-      window._inputPageDirty=true; // SP 로드 후 input 페이지 재빌드 필요 표시
       updateSaveIndicator(true);
       if(typeof saveToHistory==='function')saveToHistory();
       if(typeof updateHistBtn==='function')updateHistBtn();
