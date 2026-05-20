@@ -1828,6 +1828,9 @@ table.dt thead th { font-size: 13px !important; }
       <div class="sec-head"><h3>담당자별 현황</h3></div>
       <div class="sec-body"><div class="rep-grid" id="rep-summary"></div></div>
     </div>
+
+    <!-- 고객사별/모델별 달성 매출 -->
+    <div id="dash-top-section" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0 4px;"></div>
   </div>
 
   <!-- INPUT -->
@@ -1839,15 +1842,12 @@ table.dt thead th { font-size: 13px !important; }
   </div>
 
   <!-- ISSUES -->
-  <div class="page" id="page-visits">
+  <div class="page" id="page-visits" style="display:none;">
   <div id="visits-team-tabs"></div>
   <div id="visits-dashboard"></div>
+</div>
 
-
-    <!-- 고객사별/모델별 달성 매출 (하단) -->
-    <div id="dash-top-section" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0 0;"></div></div>
-
-<div class="page" id="page-issues">
+<div class="page" id="page-issues" style="display:none;">
     <div id="issue-team-tabs"></div>
     <div class="sec-card">
       <div class="sec-head" style="flex-direction:column;align-items:stretch;gap:12px;">
@@ -1891,7 +1891,7 @@ table.dt thead th { font-size: 13px !important; }
   <!-- PIPELINE -->
   <!-- PIPELINE -->
   <!-- PIPELINE -->
-  <div class="page" id="page-pipeline">
+  <div class="page" id="page-pipeline" style="display:none;">
     <div id="pipe-team-tabs"></div>
     <div class="sec-card">
       <div class="sec-head" style="flex-direction:column;align-items:stretch;gap:12px;">
@@ -1928,7 +1928,7 @@ table.dt thead th { font-size: 13px !important; }
   <!-- EXPORT -->
   <!-- EXPORT -->
   <!-- EXPORT -->
-  <div class="page" id="page-export">
+  <div class="page" id="page-export" style="display:none;">
     <div class="export-card">
       <h3>주간회의 자료 다운로드</h3>
       <p>입력된 모든 데이터를 기존 양식에 맞게 엑셀로 출력합니다 (단위: 천원 / 부가세 별도)</p>
@@ -1942,7 +1942,7 @@ table.dt thead th { font-size: 13px !important; }
 
 
   <!-- SETTINGS -->
-  <div class="page" id="page-accesslog">
+  <div class="page" id="page-accesslog" style="display:none;">
   <div class="tis-tabs" style="margin-bottom:20px;">
     <button class="tis-tab active" id="acc-tab-list" onclick="switchAccessTab('list')">접속 이력</button>
     <button class="tis-tab" id="acc-tab-stat" onclick="switchAccessTab('stat')">접속 통계</button>
@@ -2032,7 +2032,7 @@ table.dt thead th { font-size: 13px !important; }
   </div>
 </div>
 
-<div class="page" id="page-personal">
+<div class="page" id="page-personal" style="display:none;">
     <div class="sec-card">
       <div class="sec-head"><h3>테마 설정</h3></div>
       <div class="sec-body">
@@ -2094,7 +2094,7 @@ table.dt thead th { font-size: 13px !important; }
       </div>
     </div>
   </div>
-  <div class="page" id="page-settings">
+  <div class="page" id="page-settings" style="display:none;">
     <div id="settings-tab-nav" style="display:flex;gap:4px;margin-bottom:20px;background:#F1F5F9;padding:4px;border-radius:12px;flex-wrap:wrap;">
       <button data-stab="기본설정" onclick="switchSettingsTab('기본설정')" style="padding:8px 14px;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:#0A1628;color:white;">📅 기본설정</button>
       <button data-stab="조직관리" onclick="switchSettingsTab('조직관리')" style="padding:8px 14px;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:transparent;color:#64748B;">👥 조직관리</button>
