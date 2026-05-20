@@ -6682,7 +6682,7 @@ async function _initSP() {
           if(_ap2&&_ap2.id==='page-visits'&&typeof renderVisits==='function') renderVisits();
         }
       }catch(e){}
-    }, 10000);
+    }, 30000);
 
   } catch (err) {
     window._isSPReady = false;
@@ -6731,7 +6731,7 @@ async function _spSaveItem(dtype, dkey, payload, _retry) {
       _itemId = _cachedId;
     } else {
       // Title로 단일 조건 쿼리 (Title은 SP에서 항상 인덱싱됨 → 500 없음)
-      var _qUrl = _lUrl() + "?$select=Id&$filter=Title+eq+'" + encodeURIComponent(_title) + "'";
+      var _qUrl = _lUrl() + '?$select=Id&$filter=Title+eq+%27' + encodeURIComponent(_title) + '%27';
       var _qRes = await _spFetch(_qUrl);
       var _existing = _qRes && _qRes.value && _qRes.value[0];
       if(_existing) {
@@ -6762,7 +6762,16 @@ async function _spSaveItem(dtype, dkey, payload, _retry) {
 
   } catch(err) {
     console.warn('[SP] SAVE ERROR:', _lockKey, err.message);
-    if(err.message && err.message.indexOf('409') >= 0) {
+    if(err.message && (err.message.indexOf('429') >= 0 || err.message.indexOf('throttl') >= 0)) {
+      // 429: SP 쓰로틀링 → 5초 후 재시도
+      var _rc429 = _retry || 0;
+      if(_rc429 < 2){
+        await new Promise(function(r){ setTimeout(r, 5000*(_rc429+1)); });
+        delete window._spSaveLocks[_lockKey];
+        return _spSaveItem(dtype, dkey, payload, _rc429+1);
+      }
+      console.warn('[SP] 429 쓰로틀링 재시도 초과');
+    } else if(err.message && err.message.indexOf('409') >= 0) {
       var _rc = _retry || 0;
       if(_rc < 3){
         await new Promise(function(r){ setTimeout(r, 800*(_rc+1)); });
