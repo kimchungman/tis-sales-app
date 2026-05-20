@@ -3240,8 +3240,7 @@ function _initApp(){
   initAllTabs();
 
   // 입력 페이지 구성 (관리자/일반 동일)
-  buildRepTabs();
-  buildRepInputs();
+  buildRepTabs(); // buildRepInputs는 input 페이지 진입 시에만 실행
 
   // 데이터 렌더
   try{ extractIssues(); }catch(e){}
@@ -6281,8 +6280,7 @@ function addRep(){
     activities:[]
   };
   // Rebuild UI
-  buildRepTabs();
-  buildRepInputs();
+  buildRepTabs(); // buildRepInputs는 input 페이지 진입 시에만 실행
   populateFilters();
   renderDashboard();
   renderRepManage();
@@ -6784,7 +6782,14 @@ async function _spSaveSnap() {
     teamReps: JSON.parse(JSON.stringify(TEAM_REPS)),
     teamColors: JSON.parse(JSON.stringify(TEAM_COLORS)),
     reps: REPS.slice(), repColors: REP_COLORS.slice(),
-    store: JSON.parse(JSON.stringify(store)),
+    store: (function(){
+      var s=JSON.parse(JSON.stringify(store));
+      // visitLog는 별도 visit_log:{rep} 키로 저장되므로 snapshot 제외 (크기 최적화)
+      Object.keys(s.reps||{}).forEach(function(r){
+        if(s.reps[r]) { s.reps[r].visitLog=[]; } // 빈 배열로 대체 (호환성 유지)
+      });
+      return s;
+    })(),
     labels: Object.assign({}, labels)
   };
   const dataKey = currentTeam + '_' + date;
@@ -8599,7 +8604,7 @@ window.deleteIssueRow = function(rep, idx){
       var iList = store.reps[rep].issuesList||[];
       iList.forEach(function(iss){
         if(!iss.content&&!iss.client) return;
-        if(!iss.sev||iss.sev==='none') return; // 중요도 없으면 제외
+        if(iss.sev==='none') return; // 중요도 none이면 제외 (없으면 mid로 간주)
         store.issues.push({
           rep: rep,
           team: repTeam,
