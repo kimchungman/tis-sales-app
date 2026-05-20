@@ -1706,15 +1706,14 @@ textarea {
   max-height: none !important;
 }
 
-/* ── 열 정렬 최종 규칙 ── */
-/* 모든 dt 테이블: 기본 center */
-.dt td { text-align:center !important; vertical-align:middle !important; }
-/* 내용열 (접점내용/파이프라인내용/이슈내용/이슈사항) → left */
-.dt td.content-cell,
-.dt td[data-col="content"],
-td.v-content,
-td.pl-content,
-td.is-content { text-align:left !important; vertical-align:middle !important; }
+
+
+/* ── 열 정렬 (select/input 포함 td 제외) ── */
+.dt td:not(:has(select)):not(:has(input)):not(:has(textarea)) {
+  text-align:center;
+  vertical-align:middle;
+}
+.dt td.content-cell { text-align:left !important; vertical-align:middle !important; white-space:pre-wrap !important; }
 
 </style>
 </head>
@@ -4629,7 +4628,7 @@ function renderIssues(){
       +'<td style="text-align:center;font-size:11px;color:#64748B;vertical-align:middle;">'+(i.team||'')+'</td>'
       +'<td style="text-align:center;font-size:12px;font-weight:600;vertical-align:middle;">'+(i.rep||'')+'</td>'
       +'<td style="text-align:center;font-size:12px;vertical-align:middle;">'+(i.client||'')+'</td>'
-      +'<td class="content-cell" style="padding:8px 14px;font-size:12px;color:#374151;text-align:left !important;white-space:pre-wrap !important;word-break:break-word !important;word-wrap:break-word !important;overflow-wrap:break-word !important;vertical-align:top !important;line-height:1.6;">'+(i.content||'')+'</td>'      +'<td style="text-align:center;font-size:11px;color:#374151;vertical-align:middle;">'+(i.regDate||'─')+'</td>'      +'<td style="text-align:center;font-size:11px;color:#374151;vertical-align:middle;">'+(i.dueDate||'─')+'</td>'      +ddayCell
+      +'<td class="content-cell" style="text-align:left !important;white-space:pre-wrap;word-break:break-word;vertical-align:middle;padding:8px 12px;" style="padding:8px 14px;font-size:12px;color:#374151;text-align:left !important;white-space:pre-wrap !important;word-break:break-word !important;word-wrap:break-word !important;overflow-wrap:break-word !important;vertical-align:top !important;line-height:1.6;">'+(i.content||'')+'</td>'      +'<td style="text-align:center;font-size:11px;color:#374151;vertical-align:middle;">'+(i.regDate||'─')+'</td>'      +'<td style="text-align:center;font-size:11px;color:#374151;vertical-align:middle;">'+(i.dueDate||'─')+'</td>'      +ddayCell
       +'<td style="text-align:center;vertical-align:middle;"><span style="display:inline-flex;align-items:center;justify-content:center;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;color:'+sc+';border:1.5px solid '+sc+'60;">'+(sevLabel[i.sev]||i.sev||'')+'</span></td>'
       +'<td style="text-align:center;vertical-align:middle;"><span style="display:inline-flex;align-items:center;justify-content:center;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;color:'+tc+';border:1.5px solid '+tc+'60;">'+(isOpen?'Open':'Closed')+'</span></td>'
       +'</tr>';
@@ -6733,14 +6732,28 @@ function getRepDisplayName(rep){
   return t?rep+' '+t:rep;
 }
 
-// sanitized DataKey → 원본 rep명 역매핑
+// sanitized DataKey → 원본 rep명 역매핑 (구버전 직책 포함 key 지원)
 function _findRepByKey(sk){
   var _allReps=[];
   if(typeof TEAM_REPS!=='undefined'){
     Object.keys(TEAM_REPS).forEach(function(t){ (_allReps=_allReps.concat(TEAM_REPS[t]||[])); });
   } else if(typeof REPS!=='undefined'){ _allReps=REPS; }
+  // 1차: 정확히 일치
   for(var _i=0;_i<_allReps.length;_i++){
     if(_sanitizeDKey(_allReps[_i])===sk) return _allReps[_i];
+  }
+  // 2차: sk가 rep명으로 시작하는지 (구버전: '김충만_책임' → '김충만' 찾기)
+  for(var _j=0;_j<_allReps.length;_j++){
+    var _san=_sanitizeDKey(_allReps[_j]);
+    if(sk.indexOf(_san)===0||(sk+' ').indexOf(_san+'_')===0||(sk+' ').indexOf(_san+' ')===0) return _allReps[_j];
+  }
+  // 3차: sk에서 마지막 _단어 제거 후 재시도 (직책 suffix)
+  var _parts=sk.split('_');
+  if(_parts.length>1){
+    var _skShort=_parts.slice(0,-1).join('_');
+    for(var _k=0;_k<_allReps.length;_k++){
+      if(_sanitizeDKey(_allReps[_k])===_skShort) return _allReps[_k];
+    }
   }
   return sk;
 }
@@ -8722,7 +8735,7 @@ function _iRow(rep, idx, iss){
       +(canEdit?'<textarea rows="1" style="width:100%;height:28px;min-height:28px;resize:none;line-height:1.4;display:block;box-sizing:border-box;overflow-y:hidden;" oninput="this.style.setProperty(\'height\',\'1px\',\'important\');this.style.setProperty(\'height\',Math.max(28,this.scrollHeight)+\'px\',\'important\');" onchange="store.reps[\''+r+'\'].issuesList['+idx+'].content=this.value;if(typeof extractIssues===\'function\'){extractIssues();renderIssues&&renderIssues();}autoSave&&autoSave();">'+(iss.content||'')+'</textarea>':'<span style="font-size:12px;">'+( iss.content||'─')+'</span>')
     +'</td>'
     // 등록날짜
-    +'<td style="width:110px;vertical-align:middle;padding:2px 4px;">'
+    +'<td style="width:110px;vertical-align:middle;padding:2px 4px;text-align:center;">'
       +(canEdit?'<input type="date" value="'+(iss.regDate||'')+'" style="width:100%;height:28px;box-sizing:border-box;font-size:11px;" onchange="store.reps[\''+r+'\'].issuesList['+idx+'].regDate=this.value;autoSave&&autoSave()">':'<span style="font-size:11px;">'+( iss.regDate||'─')+'</span>')
     +'</td>'
     // 기한날짜 + D-day
@@ -9865,7 +9878,7 @@ window.renderIssues = function(){
         }
         if(isFirstRep){
           html+='<td rowspan="'+g.issues.length+'" style="text-align:center;vertical-align:middle;padding:10px 8px;width:90px;border-right:1px solid #F1F5F9;">'
-            +'<span style="font-size:13px;font-weight:700;color:'+g.rc+';">'+g.rep+'</span></td>';
+            +'<span style="font-size:13px;font-weight:700;color:'+g.rc+';">'+getRepDisplayName(g.rep)+'</span></td>';
         }
         html+='<td style="text-align:center;vertical-align:middle;padding:10px 12px;font-size:13px;color:#374151;font-weight:500;border-right:1px solid #F1F5F9;">'+( iss.client||'─')+'</td>'
           +'<td style="vertical-align:middle;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;word-break:keep-all;">'+( iss.content||'─')+'</td>'
@@ -10017,7 +10030,7 @@ window.renderIssues = function(){
         // 담당자 열: rowspan + 센터
         if(isFirstRep){
           html+='<td rowspan="'+g.issues.length+'" style="text-align:center;vertical-align:middle;padding:10px 8px;width:90px;border-right:1px solid #EEF2F9;">'
-            +'<span style="font-size:13px;font-weight:700;color:'+g.rc+';">'+g.rep+'</span></td>';
+            +'<span style="font-size:13px;font-weight:700;color:'+g.rc+';">'+getRepDisplayName(g.rep)+'</span></td>';
         }
         html+=
           '<td style="text-align:center;vertical-align:middle;padding:10px 12px;font-size:13px;color:#374151;font-weight:500;border-right:1px solid #F1F5F9;">'+( iss.client||'─')+'</td>'
@@ -10173,7 +10186,7 @@ window.renderIssues = function(){
         }
         if(isFirstRep){
           html+='<td rowspan="'+g.issues.length+'" style="text-align:center;vertical-align:middle;padding:10px 8px;width:90px;border-right:1px solid #EEF2F9;">'
-            +'<span style="font-size:13px;font-weight:700;color:'+g.rc+';">'+g.rep+'</span></td>';
+            +'<span style="font-size:13px;font-weight:700;color:'+g.rc+';">'+getRepDisplayName(g.rep)+'</span></td>';
         }
         html+=
           '<td style="text-align:center;vertical-align:middle;padding:10px 12px;font-size:13px;color:#374151;font-weight:500;border-right:1px solid #F1F5F9;">'+( iss.client||'─')+'</td>'
@@ -10330,7 +10343,7 @@ window.renderIssues = function(){
         }
         if(isFirstRep){
           html+='<td rowspan="'+g.issues.length+'" style="text-align:center;vertical-align:middle;padding:10px 8px;width:90px;border-right:1px solid #EEF2F9;">'
-            +'<span style="font-size:13px;font-weight:700;color:'+g.rc+';">'+g.rep+'</span></td>';
+            +'<span style="font-size:13px;font-weight:700;color:'+g.rc+';">'+getRepDisplayName(g.rep)+'</span></td>';
         }
         html+=
           '<td style="text-align:center;vertical-align:middle;padding:10px 12px;font-size:13px;color:#374151;font-weight:500;border-right:1px solid #F1F5F9;">'+( iss.client||'─')+'</td>'
@@ -10494,7 +10507,7 @@ window.renderPipeline = function(){
         }
         if(isFirstRep){
           html += '<td rowspan="'+g.acts.length+'" style="text-align:center;vertical-align:middle;padding:10px 8px;width:90px;border-right:1px solid #EEF2F9;">'
-            +'<span style="font-size:13px;font-weight:700;color:'+g.rc+';">'+g.rep+'</span></td>';
+            +'<span style="font-size:13px;font-weight:700;color:'+g.rc+';">'+getRepDisplayName(g.rep)+'</span></td>';
         }
         html +=
           '<td style="text-align:center;vertical-align:middle;padding:10px 8px;border-right:1px solid #F1F5F9;">'+typeBadge(a.type||'')+'</td>'
@@ -10503,7 +10516,7 @@ window.renderPipeline = function(){
           +'<td style="text-align:right;vertical-align:middle;padding:10px 12px;font-size:13px;font-weight:600;color:#1E293B;border-right:1px solid #F1F5F9;">'+(a.amount?Number(a.amount).toLocaleString('ko-KR'):'-')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:10px 6px;font-size:13px;border-right:1px solid #F1F5F9;">'+(a.prob?(a.prob+'%'):'─')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:10px 8px;font-size:12px;color:#374151;border-right:1px solid #F1F5F9;">'+(a.timing||'─')+'</td>'
-          +'<td style="vertical-align:middle;padding:10px 14px;font-size:13px;color:#374151;line-height:1.6;word-break:keep-all;min-width:200px;">'+(a.content||'─')+'</td>'
+          +'<td class="content-cell" style="text-align:left;vertical-align:middle;padding:10px 14px;font-size:13px;color:#374151;line-height:1.6;white-space:pre-wrap;word-break:break-word;min-width:200px;">'+(a.content||'─')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:10px 8px;">'+progBadge(a.progress||'')+'</td>';
         tr.innerHTML = html;
         frag.appendChild(tr);
@@ -10799,7 +10812,7 @@ function _vRow(rep,idx,v){
   var delBtn=canEdit?'<button onclick="deleteVisit(\''+rep+'\','+idx+')" style="width:26px;height:26px;border-radius:5px;border:1px solid #FCA5A5;background:#FEF2F2;color:#DC2626;cursor:pointer;font-size:14px;line-height:1;flex-shrink:0;">&#215;</button>':'';
 
   return '<tr>'
-    +'<td style="width:100px;vertical-align:middle;padding:5px 5px;">'+dateInp('date',v.date)+'</td>'
+    +'<td style="width:100px;vertical-align:middle;padding:5px 5px;text-align:center;">'+dateInp('date',v.date)+'</td>'
     +'<td style="width:160px;vertical-align:middle;padding:5px 5px;">'+inpCenter('company',v.company)+'</td>'
     +'<td style="width:110px;vertical-align:middle;padding:5px 5px;">'+sel('contactType',contactType,CONTACT_TYPES,TYPE_COLOR)+'</td>'
     +'<td style="width:125px;vertical-align:middle;padding:5px 5px;">'+sel('contactPurpose',contactPurpose,CONTACT_PURPOSES,PURPOSE_COLOR2)+'</td>'
@@ -11425,7 +11438,10 @@ async function _spSyncOtherReps(){
 
     Object.keys(latestByRep).forEach(function(repName){
       try{
+        if(!repName) return; // 빈 이름 무시
         if(repName===myRep) return; // 내 것은 건드리지 않음
+        // TEAM_REPS에 없는 rep 무시 (역매핑 실패 케이스)
+        if(allReps.length>0 && allReps.indexOf(repName)<0) return;
         var item=latestByRep[repName];
         var repData=JSON.parse(item.Payload);
         if(!store.reps[repName]) store.reps[repName]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[]};
