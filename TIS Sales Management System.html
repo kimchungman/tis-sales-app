@@ -8966,7 +8966,7 @@ window.deleteIssueRow = function(rep, idx){
       var c=_cols[i]||'#4f7fff'; var hasPw=!!(_cfg.repPws&&_cfg.repPws[rep]); var init=rep.charAt(0);
       return '<button onclick="selectRep(\''+rep+'\')" style="width:100%;padding:11px 14px;border:1.5px solid #E5E7EB;border-radius:9px;background:white;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:10px;transition:all 0.15s;" onmouseover="this.style.borderColor=\''+c+'\';this.style.background=\''+c+'0D\';" onmouseout="this.style.borderColor=\'#E5E7EB\';this.style.background=\'white\';">'
         +'<div style="width:34px;height:34px;border-radius:8px;background:'+c+'15;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:'+c+';flex-shrink:0;">'+init+'</div>'
-        +'<div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:700;color:#0A1628;">'+rep+'</div>'
+        +'<div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:700;color:#0A1628;">'+(typeof getRepDisplayName==='function'?getRepDisplayName(rep):rep)+'</div>'
         +'<div style="font-size:11px;color:#94A3B8;margin-top:1px;">'+(hasPw?svgLock+' 비밀번호':'자유 접속')+'</div></div>'
         +svgArrow+'</button>';
     }).join('');
@@ -9148,6 +9148,10 @@ window.deleteIssueRow = function(rep, idx){
     var tbody = document.getElementById('pipe-tbody');
     if(!tbody) return;
     tbody.querySelectorAll('tr').forEach(function(tr){ tr.style.background='white'; });
+    // td 열 정렬 보강 (content-cell 제외)
+    tbody.querySelectorAll('td:not(.content-cell)').forEach(function(td){
+      if(!td.classList.contains('content-cell')) td.style.textAlign='center';
+    });
     // 파이프라인 상태 배지 정제
     tbody.querySelectorAll('span').forEach(function(sp){
       var t = sp.textContent||'';
@@ -9199,7 +9203,7 @@ window.deleteIssueRow = function(rep, idx){
         +' onmouseout="this.style.borderColor=\'#E5E7EB\';this.style.background=\'white\';">'
         +'<div style="width:34px;height:34px;border-radius:8px;background:'+c+'18;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:'+c+';flex-shrink:0;">'+init+'</div>'
         +'<div style="flex:1;min-width:0;">'
-          +'<div style="font-size:14px;font-weight:700;color:#0A1628;">'+rep+'</div>'
+          +'<div style="font-size:14px;font-weight:700;color:#0A1628;">'+(typeof getRepDisplayName==="function"?getRepDisplayName(rep):rep)+'</div>'
           +'<div style="font-size:11px;color:#94A3B8;margin-top:1px;">'+(hasPw?'비밀번호 보호':'자유 접속')+'</div>'
         +'</div>'
         +svgArrow+'</button>';
@@ -9214,6 +9218,10 @@ window.deleteIssueRow = function(rep, idx){
     var tbody = document.getElementById('pipe-tbody');
     if(!tbody) return;
     tbody.querySelectorAll('tr').forEach(function(tr){ tr.style.background='white'; });
+    // td 열 정렬 보강 (content-cell 제외)
+    tbody.querySelectorAll('td:not(.content-cell)').forEach(function(td){
+      if(!td.classList.contains('content-cell')) td.style.textAlign='center';
+    });
     tbody.querySelectorAll('span').forEach(function(sp){
       var t = sp.textContent || '';
       if(t.indexOf('Open')>=0){
