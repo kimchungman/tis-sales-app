@@ -10842,7 +10842,7 @@ function _vRow(rep,idx,v){
 
   var delBtn=canEdit?'<button onclick="deleteVisit(\''+rep+'\','+idx+')" style="width:26px;height:26px;border-radius:5px;border:1px solid #FCA5A5;background:#FEF2F2;color:#DC2626;cursor:pointer;font-size:14px;line-height:1;flex-shrink:0;">&#215;</button>':'';
 
-  return '<tr id="vr-'+rep+'-'+idx+'"'
+  return '<tr id="vr-'+rep+'-'+idx+'">'
     +'<td style="width:100px;vertical-align:middle;padding:5px 5px;text-align:center;">'+dateInp('date',v.date)+'</td>'
     +'<td style="width:160px;vertical-align:middle;padding:5px 5px;text-align:center;">'+inpCenter('company',v.company)+'</td>'
     +'<td style="width:110px;vertical-align:middle;padding:5px 5px;text-align:center;">'+sel('contactType',contactType,CONTACT_TYPES,TYPE_COLOR)+'</td>'
