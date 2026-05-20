@@ -3295,6 +3295,7 @@ function showPage(id,navEl){
   if(typeof closeMobileMenu==="function") closeMobileMenu();
   // ── 페이지별 탭 초기화 (매번 호출 보장) ──
   if(id==='input'){
+      window._lastBuiltTeam = null; // 항상 재빌드
     APP.domReady=false; APP.autoDone=false;  // 페이지 진입 초기화
     window._inputPageDirty=false; // 진입 시 dirty 초기화
     initInputTabs();
@@ -4725,8 +4726,8 @@ function renderPipeline(){
       +'<td style="text-align:center;vertical-align:middle;"><span class="badge" style="background:'+repBg+';color:'+repColor+';border:1px solid '+repBorder+';">'+(r.type||'')+'</span></td>'
       +'<td style="text-align:center;vertical-align:middle;font-weight:700;color:var(--text);">'+(r.client||'')+'</td>'
       +'<td style="text-align:center;vertical-align:middle;color:var(--muted);">'+(r.product||'')+'</td>'
-      +'<td class="nt" style="font-weight:600;">'+(r.amount?r.amount.toLocaleString('ko-KR'):'-')+'</td>'
-      +'<td><span class="badge '+pc(r.prob)+'">'+(r.prob?(r.prob*100).toFixed(0)+'%':'-')+'</span></td>'
+      +'<td class="nt" style="text-align:center;vertical-align:middle;font-weight:600;">'+(r.amount?r.amount.toLocaleString('ko-KR'):'-')+'</td>'
+      +'<td style="text-align:center;vertical-align:middle;"><span class="badge '+pc(r.prob)+'">'+(r.prob?(r.prob*100).toFixed(0)+'%':'-')+'</span></td>'
       +'<td style="text-align:center;vertical-align:middle;white-space:nowrap;color:var(--muted);">'+(r.timing||'-')+'</td>'
       +'<td style="text-align:center;vertical-align:middle;"><span style="padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;background:'+stBg+';color:'+stCol+';">'+stLbl+'</span></td>'
       +'<td class="content-cell" style="font-size:12px;color:#374151;text-align:left !important;white-space:pre-wrap !important;word-break:break-word !important;word-wrap:break-word !important;overflow-wrap:break-word !important;vertical-align:top !important;line-height:1.6;padding:8px 12px;">'+(r.content||'')+'</td>'
@@ -6218,13 +6219,11 @@ function autoSave(){
           var d=data.store.reps[r]; if(!d) return '';
           var actSum=(d.actual||[]).reduce(function(a,b){return a+b;},0);
           var planSum=(d.plan||[]).reduce(function(a,b){return a+b;},0);
-          var cCnt=(d.clients||[]).length;
-          var aCnt=(d.activities||[]).length;
-          var iCnt=(d.issuesList||[]).length;
-          // 마지막 수정 내용 일부 (텍스트 변경 감지)
-          var lastC=(d.clients&&d.clients.length?(d.clients[d.clients.length-1].name||''):'');
-          var lastA=(d.activities&&d.activities.length?(d.activities[d.activities.length-1].content||'').slice(0,20):'');
-          return r+':'+actSum+':'+planSum+':'+cCnt+':'+aCnt+':'+iCnt+':'+lastC+':'+lastA;
+          // 전체 내용 변경 감지 (삭제/수정/추가 모두)
+          var cSig=(d.clients||[]).map(function(c){return(c.name||'')+(c.issue||'').slice(0,10);}).join('|');
+          var aSig=(d.activities||[]).map(function(a){return(a.content||'').slice(0,15)+(a.progress||'');}).join('|');
+          var iSig=(d.issuesList||[]).map(function(i){return(i.content||'').slice(0,15)+(i.sev||'')+(i.status||'');}).join('|');
+          return r+':'+actSum+':'+planSum+':'+cSig+':'+aSig+':'+iSig;
         }).join('|'):'') + ':' + (data.date||'');
         if(window._lastAutoSaveHash === _curHash){
           console.log('[autoSave] 변경없음 skip');
@@ -8731,7 +8730,7 @@ function _iRow(rep, idx, iss){
       +(canEdit?'<input type="text" value="'+(iss.client||'')+'" style="width:100%;height:28px;box-sizing:border-box;text-align:center;" onchange="store.reps[\''+r+'\'].issuesList['+idx+'].client=this.value;autoSave&&autoSave()">':'<span style="font-size:12px;">'+( iss.client||'─')+'</span>')
     +'</td>'
     // 이슈 내용
-    +'<td style="min-width:240px;vertical-align:middle;">'
+    +'<td class="content-cell" style="min-width:240px;vertical-align:middle;text-align:left;">'
       +(canEdit?'<textarea rows="1" style="width:100%;height:28px;min-height:28px;resize:none;line-height:1.4;display:block;box-sizing:border-box;overflow-y:hidden;" oninput="this.style.setProperty(\'height\',\'1px\',\'important\');this.style.setProperty(\'height\',Math.max(28,this.scrollHeight)+\'px\',\'important\');" onchange="store.reps[\''+r+'\'].issuesList['+idx+'].content=this.value;if(typeof extractIssues===\'function\'){extractIssues();renderIssues&&renderIssues();}autoSave&&autoSave();">'+(iss.content||'')+'</textarea>':'<span style="font-size:12px;">'+( iss.content||'─')+'</span>')
     +'</td>'
     // 등록날짜
@@ -10818,7 +10817,7 @@ function _vRow(rep,idx,v){
     +'<td style="width:125px;vertical-align:middle;padding:5px 5px;">'+sel('contactPurpose',contactPurpose,CONTACT_PURPOSES,PURPOSE_COLOR2)+'</td>'
     +'<td style="width:150px;vertical-align:middle;padding:5px 5px;">'+inpCenter('contactRep',contactRep)+'</td>'
     +'<td style="width:150px;vertical-align:middle;padding:5px 5px;">'+inpCenter('clientRep',v.clientRep)+'</td>'
-    +'<td style="min-width:200px;vertical-align:middle;padding:5px 5px;">'+ta('content',v.content)+'</td>'
+    +'<td class="content-cell" style="min-width:200px;vertical-align:middle;padding:5px 5px;text-align:left;">'+ta('content',v.content)+'</td>'
     +'<td style="width:34px;vertical-align:middle;padding:5px 4px;text-align:center;">'+delBtn+'</td>'
     +'</tr>';
 }
@@ -11439,7 +11438,11 @@ async function _spSyncOtherReps(){
     Object.keys(latestByRep).forEach(function(repName){
       try{
         if(!repName) return; // 빈 이름 무시
-        if(repName===myRep) return; // 내 것은 건드리지 않음
+        if(!repName) return;
+        // 내 것은 건드리지 않음 (원본명, sanitized명 모두 체크)
+        if(repName===myRep) return;
+        if(typeof _sanitizeDKey==='function'&&_sanitizeDKey(repName)===_sanitizeDKey(myRep)) return;
+        if(myRep&&repName&&(repName.indexOf(myRep)===0||myRep.indexOf(repName)===0)) return;
         // TEAM_REPS에 없는 rep 무시 (역매핑 실패 케이스)
         if(allReps.length>0 && allReps.indexOf(repName)<0) return;
         var item=latestByRep[repName];
