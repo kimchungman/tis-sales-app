@@ -1887,15 +1887,15 @@ input[type="date"]::-webkit-clear-button {
           <table class="dt" style="min-width:900px;width:100%;">
             <thead>
               <tr>
-                <th style="background:#F8FAFC;color:#64748B;width:72px;text-align:center;white-space:nowrap;">팀</th>
-                <th style="background:#F8FAFC;color:#64748B;width:82px;text-align:center;">담당자</th>
-                <th style="background:#F8FAFC;color:#64748B;width:130px;text-align:center;">고객사</th>
-                <th style="background:#F8FAFC;color:#64748B;text-align:left;padding-left:14px;">이슈 내용</th>
-                <th style="background:#F8FAFC;color:#64748B;width:90px;text-align:center;">중요도</th>
-                <th style="background:#F8FAFC;color:#64748B;width:90px;text-align:center;">처리상태</th>
-                <th style="background:#F8FAFC;color:#64748B;width:100px;text-align:center;">등록날짜</th>
-                <th style="background:#F8FAFC;color:#64748B;width:100px;text-align:center;">기한날짜</th>
-                <th style="background:#F8FAFC;color:#64748B;width:70px;text-align:center;">D-DAY</th>
+                <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;width:72px;text-align:center;white-space:nowrap;">팀</th>
+                <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;width:82px;text-align:center;">담당자</th>
+                <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;width:130px;text-align:center;">고객사</th>
+                <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;text-align:left;padding-left:14px;">이슈 내용</th>
+                <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;width:100px;text-align:center;">등록날짜</th>
+                <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;width:100px;text-align:center;">기한날짜</th>
+                <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;width:70px;text-align:center;">D-DAY</th>
+                <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;width:90px;text-align:center;">중요도</th>
+                <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;width:90px;text-align:center;">처리상태</th>
               </tr>
             </thead>
             <tbody id="iss-list"></tbody>
@@ -1924,15 +1924,15 @@ input[type="date"]::-webkit-clear-button {
           <table class="dt" style="min-width:900px;width:100%;">
             <thead>
               <tr>
-                <th style="background:#F8FAFC;color:#64748B;width:62px;text-align:center;white-space:nowrap;">팀</th>
-                <th style="background:#F8FAFC;color:#64748B;width:90px;text-align:center;">담당자</th>
-                <th style="background:#F8FAFC;color:#64748B;width:90px;text-align:center;">구분</th>
-                <th style="background:#F8FAFC;color:#64748B;width:150px;text-align:center;">고객사</th>
-                <th style="background:#F8FAFC;color:#64748B;width:130px;text-align:center;">제품</th>
+                <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;width:62px;text-align:center;white-space:nowrap;">팀</th>
+                <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;width:90px;text-align:center;">담당자</th>
+                <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;width:90px;text-align:center;">구분</th>
+                <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;width:150px;text-align:center;">고객사</th>
+                <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;width:130px;text-align:center;">제품</th>
                 <th style="background:#F8FAFC;color:#64748B;width:110px;text-align:right;padding-right:12px;">금액(M)</th>
                 <th style="background:#F8FAFC;color:#64748B;width:60px;text-align:center;">확도</th>
                 <th style="background:#F8FAFC;color:#64748B;width:120px;text-align:center;">시기</th>
-                <th style="background:#F8FAFC;color:#64748B;min-width:200px;text-align:left;padding-left:12px;white-space:pre-wrap;">내용</th>
+                <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;min-width:200px;text-align:left;padding-left:12px;white-space:pre-wrap;">내용</th>
                 <th style="background:#F8FAFC;color:#64748B;width:90px;text-align:center;">진행사항</th>
               </tr>
             </thead>
@@ -4162,6 +4162,7 @@ function aRow(rep,ai,a){
     <td style="min-width:240px;vertical-align:top;">
       <textarea rows="1"
         style="width:100%;min-height:30px;height:30px;resize:none;line-height:1.5;display:block;box-sizing:border-box;overflow-y:hidden;text-align:left;"
+        oninput="this.style.height='1px';this.style.height=Math.max(30,this.scrollHeight)+'px';"
         onchange="store.reps['${rep}'].activities[${ai}].content=this.value;autoSave();"
         oninput="this.style.setProperty('height','1px','important');this.style.setProperty('height',Math.max(30,this.scrollHeight)+'px','important');"
         onfocus="this.style.setProperty('height',Math.max(this.scrollHeight,30)+'px','important');"
@@ -4565,14 +4566,15 @@ function renderIssues(){
     const sevColor={high:'#DC2626',mid:'#D97706',low:'#0EA5A0'};
     const stColor={open:'#DC2626',closed:'#0EA5A0'};
     // D-day 계산
-    var ddayCell='<td style="text-align:center;"></td>';
+    // D-day td
+    var ddayCell='<td style="text-align:center;vertical-align:middle;"></td>';
     if(i.dueDate){
       var todayD=new Date();todayD.setHours(0,0,0,0);
       var dueD=new Date(i.dueDate);dueD.setHours(0,0,0,0);
       var diff=Math.round((dueD-todayD)/(1000*60*60*24));
       var dc=diff<0?'#DC2626':diff===0?'#D97706':'#0EA5A0';
       var dt=diff<0?'D+'+Math.abs(diff):diff===0?'D-Day':'D-'+diff;
-      ddayCell='<td style="text-align:center;"><span style="padding:2px 7px;border-radius:8px;font-size:11px;font-weight:700;color:'+dc+';background:'+dc+'15;border:1px solid '+dc+'40;">'+dt+'</span></td>';
+      ddayCell='<td style="text-align:center;vertical-align:middle;"><span style="padding:2px 7px;border-radius:8px;font-size:11px;font-weight:700;color:'+dc+';background:'+dc+'15;border:1px solid '+dc+'40;">'+dt+'</span></td>';
     }
     var sc=sevColor[i.sev]||'#CBD5E1';
     var tc=(stColor[i.status||'open']||'#CBD5E1');
@@ -4580,12 +4582,9 @@ function renderIssues(){
       +'<td style="text-align:center;font-size:11px;color:#64748B;vertical-align:middle;">'+(i.team||'')+'</td>'
       +'<td style="text-align:center;font-size:12px;font-weight:600;vertical-align:middle;">'+(i.rep||'')+'</td>'
       +'<td style="text-align:center;font-size:12px;vertical-align:middle;">'+(i.client||'')+'</td>'
-      +'<td style="padding:8px 14px;font-size:12px;color:#374151;line-height:1.6;white-space:pre-wrap !important;word-break:break-word;text-align:left !important;vertical-align:top;">'+(i.content||'')+'</td>'
+      +'<td style="padding:8px 14px;font-size:12px;color:#374151;line-height:1.6;white-space:pre-wrap !important;word-break:break-word;text-align:left !important;vertical-align:top;">'+(i.content||'')+'</td>'      +'<td style="text-align:center;font-size:11px;color:#374151;vertical-align:middle;">'+(i.regDate||'─')+'</td>'      +'<td style="text-align:center;font-size:11px;color:#374151;vertical-align:middle;">'+(i.dueDate||'─')+'</td>'      +ddayCell
       +'<td style="text-align:center;vertical-align:middle;"><span style="display:inline-flex;align-items:center;justify-content:center;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;color:'+sc+';border:1.5px solid '+sc+'60;">'+(sevLabel[i.sev]||i.sev||'')+'</span></td>'
       +'<td style="text-align:center;vertical-align:middle;"><span style="display:inline-flex;align-items:center;justify-content:center;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;color:'+tc+';border:1.5px solid '+tc+'60;">'+(isOpen?'Open':'Closed')+'</span></td>'
-      +'<td style="text-align:center;font-size:11px;color:'+(i.regDate?'#374151':'#94A3B8')+';vertical-align:middle;">'+(i.regDate||'–')+'</td>'
-      +'<td style="text-align:center;font-size:11px;color:'+(i.dueDate?'#374151':'#94A3B8')+';vertical-align:middle;">'+(i.dueDate||'–')+'</td>'
-      +ddayCell
       +'</tr>';
   }).join(''):'<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--muted);">⬜ 조건에 맞는 이슈가 없습니다</td></tr>';
   renderDashIssues();
@@ -4820,7 +4819,11 @@ function exportDash(){
 function autoResizeTA(el){
   if(!el) return;
 
-  // display:none 조상 모두 임시 노출 (scrollHeight 측정을 위해)
+  // wasHidden 체크를 먼저 (hiddenAncestors 루프 전에!)
+  const sec = el.closest('.rep-sec');
+  const wasHidden = sec && sec.style.display === 'none';
+
+  // display:none 조상 임시 노출
   var hiddenAncestors=[];
   var node=el.parentNode;
   while(node&&node!==document.body){
@@ -4830,27 +4833,26 @@ function autoResizeTA(el){
     }
     node=node.parentNode;
   }
-  const sec = el.closest('.rep-sec');
-  const wasHidden = sec && sec.style.display === 'none';
+  // sec도 임시로 invisible하게 노출 (레이아웃에 영향 없이 측정)
   if(wasHidden){
-    sec.style.visibility = 'hidden';
-    sec.style.position = 'absolute';
-    sec.style.display = 'block';
+    sec.style.visibility='hidden';
+    sec.style.position='absolute';
+    sec.style.display='block';
   }
 
-  // 핵심: overflow를 scroll로 바꾸고 height를 1px로 강제 축소 후 scrollHeight 측정
-  // → 내용이 줄어도 정확히 줄어든 높이 반영됨
-  el.style.overflowY = 'scroll';
-  el.style.height = '1px';
-  const h = Math.max(32, el.scrollHeight);
-  el.style.height = h + 'px';
-  el.style.overflowY = 'hidden';
+  // height 1px → scrollHeight 측정
+  el.style.overflowY='scroll';
+  el.style.height='1px';
+  var h=Math.max(32, el.scrollHeight);
+  el.style.height=h+'px';
+  el.style.overflowY='hidden';
 
   // 복원
+  hiddenAncestors.forEach(function(n){n.style.display='none';});
   if(wasHidden){
-    sec.style.display = 'none';
-    sec.style.visibility = '';
-    sec.style.position = '';
+    sec.style.display='none';
+    sec.style.visibility='';
+    sec.style.position='';
   }
 }
 
@@ -6159,6 +6161,25 @@ function autoSave(){
       if(typeof updateHistBtn==='function')updateHistBtn();
       // 2. SP 저장 (연결된 경우 바로 실행)
       if(window._isSPReady){
+        // 실제 데이터 변경 여부 확인 (localStorage 이전값과 비교)
+        // 변경 감지: actual/plan 합계 + client/activity 개수 + issuesList 개수
+        var _curHash = (data.store&&data.store.reps?Object.keys(data.store.reps).map(function(r){
+          var d=data.store.reps[r]; if(!d) return '';
+          var actSum=(d.actual||[]).reduce(function(a,b){return a+b;},0);
+          var planSum=(d.plan||[]).reduce(function(a,b){return a+b;},0);
+          var cCnt=(d.clients||[]).length;
+          var aCnt=(d.activities||[]).length;
+          var iCnt=(d.issuesList||[]).length;
+          // 마지막 수정 내용 일부 (텍스트 변경 감지)
+          var lastC=(d.clients&&d.clients.length?(d.clients[d.clients.length-1].name||''):'');
+          var lastA=(d.activities&&d.activities.length?(d.activities[d.activities.length-1].content||'').slice(0,20):'');
+          return r+':'+actSum+':'+planSum+':'+cCnt+':'+aCnt+':'+iCnt+':'+lastC+':'+lastA;
+        }).join('|'):'') + ':' + (data.date||'');
+        if(window._lastAutoSaveHash === _curHash){
+          console.log('[autoSave] 변경없음 skip');
+          return;
+        }
+        window._lastAutoSaveHash = _curHash;
         if(session && session.role==='rep' && session.rep){
           if(typeof _spSaveMyRep==='function') await _spSaveMyRep();
         } else {
@@ -6679,16 +6700,12 @@ async function _spSaveItem(dtype, dkey, payload, _retry) {
     } else if (err.message && err.message.indexOf('401') >= 0) {
       // 401: 토큰 만료 → 조용히 무시 (다음 요청 시 토큰 갱신됨)
       console.warn('[SP] 401 인증 만료:', dtype, dkey);
-    } else if (err.message && err.message.indexOf('500') >= 0) {
-      // 500: 페이로드 크기 초과 등 서버 오류 → 콘솔만 기록, 토스트 미표시
-      console.warn('[SP] 500 서버오류:', dtype, dkey, err.message);
     } else {
-      // accessLog 저장 실패는 토스트 미표시
+      // accessLog/snapshot 실패는 토스트 미표시 (백그라운드 작업)
       if(dtype !== 'accessLog' && dtype !== 'snapshot'){
-        showToast('저장 실패: ' + err.message, 'warn');
-      } else {
-        console.warn('[SP] 저장 실패:', dtype, dkey, err.message);
+        showToast('저장 실패 (' + err.message + ')', 'warn');
       }
+      console.warn('[SP] 저장 실패:', dtype, dkey, err.message);
     }
   }
 }
@@ -6808,6 +6825,8 @@ function _applySnap(snap, date) {
 
 // ── 스냅샷 저장 ────────────────────────────────────────────
 async function _spSaveSnap() {
+  // admin 아닌 경우 skip (rep는 _spSaveMyRep 사용)
+  if(session && session.role === 'rep') return;
   var _dateEl = document.getElementById('mtg-date');
   const date = (_dateEl && _dateEl.value) ? _dateEl.value : new Date().toISOString().split('T')[0];
   const payload = {
@@ -6838,6 +6857,26 @@ async function _spSaveSnap() {
     labels: Object.assign({}, labels)
   };
   const dataKey = currentTeam + '_' + date;
+  // hash 비교: 이전 저장과 동일하면 skip (중복 저장 방지)
+  var _snapHash = JSON.stringify({
+    store_keys: Object.keys(payload.store&&payload.store.reps||{}).sort(),
+    date: payload.date,
+    team: payload.team
+  });
+  // 핵심 데이터 변경 여부 (plan/actual 합산으로 빠르게 비교)
+  var _snapDataHash = JSON.stringify({
+    d: payload.date,
+    t: payload.team,
+    r: payload.store&&payload.store.reps?Object.keys(payload.store.reps).map(function(r){
+      var d=(payload.store.reps[r]||{});
+      return r+':'+(d.actual||[]).reduce(function(a,b){return a+b;},0)+':'+(d.clients||[]).length;
+    }).join('|'):''
+  });
+  if(window._lastSnapHash === _snapDataHash) {
+    console.log('[SP] snapshot 변경없음 skip');
+    return;
+  }
+  window._lastSnapHash = _snapDataHash;
   await _spSaveItem('snapshot', dataKey, payload);
   await _spLoadHistList();
   if (typeof saveToHistory === 'function') saveToHistory();
@@ -7081,17 +7120,15 @@ async function _loadHistDate(date) {
     return;
   }
   window.autoSave = function() {
-    orig.apply(this, arguments);
-    if (window._isSPReady) {
+    orig.apply(this, arguments); // save는 orig 내부의 1000ms debounce에서만 실행
+    // 접속로그만 별도 기록 (save 중복 제거)
+    if (window._isSPReady && window._msalApp && typeof _recordAccessLog==='function') {
       clearTimeout(window._spAutoT);
-      window._spAutoT = setTimeout(async function(){
-        await _spSaveSnap();
-        if(window._msalApp && typeof _recordAccessLog==='function'){
-          var accs = window._msalApp.getAllAccounts();
-          var msAcc = accs.length>0 ? accs[0].username : '알 수 없음';
-          var rep = session&&session.rep ? session.rep : (session&&session.role==='admin'?'관리자':'게스트');
-          _recordAccessLog(msAcc, rep, '데이터 저장');
-        }
+      window._spAutoT = setTimeout(function(){
+        var accs = window._msalApp.getAllAccounts();
+        var msAcc = accs.length>0 ? accs[0].username : '알 수 없음';
+        var rep = session&&session.rep ? session.rep : (session&&session.role==='admin'?'관리자':'게스트');
+        _recordAccessLog(msAcc, rep, '데이터 저장');
       }, 2000);
     }
   };
@@ -10933,13 +10970,13 @@ window.renderVisits=function(){
     +'<div class="sec-body" class="tbl-scroll-wrap" style="padding-top:4px;">'
     +'<table class="dt" style="min-width:900px;width:100%;">'
     +'<thead><tr>'
-    +'<th style="background:#F8FAFC;color:#64748B;width:62px;white-space:nowrap;">팀</th>'
-    +'<th style="background:#F8FAFC;color:#64748B;width:80px;">담당자</th>'
-    +'<th style="background:#F8FAFC;color:#64748B;width:100px;">접점일자</th>'
-    +'<th style="background:#F8FAFC;color:#64748B;width:130px;">고객사명</th>'
-    +'<th style="background:#F8FAFC;color:#64748B;width:80px;">접점 유형</th>'
-    +'<th style="background:#F8FAFC;color:#64748B;width:90px;">접점 목적</th>'
-    +'<th style="background:#F8FAFC;color:#64748B;text-align:left;padding-left:14px;">접점 내용</th>'
+    +'<th style="background:#F8FAFC;color:#64748B;width:62px;white-space:nowrap;position:sticky;top:0;z-index:5;">팀</th>'
+    +'<th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;width:80px;">담당자</th>'
+    +'<th style="background:#F8FAFC;color:#64748B;position:sticky;top:0;z-index:5;width:100px;">접점일자</th>'
+    +'<th style="background:#F8FAFC;color:#64748B;position:sticky;top:0;z-index:5;width:130px;">고객사명</th>'
+    +'<th style="background:#F8FAFC;color:#64748B;position:sticky;top:0;z-index:5;width:80px;">접점 유형</th>'
+    +'<th style="background:#F8FAFC;color:#64748B;position:sticky;top:0;z-index:5;width:90px;">접점 목적</th>'
+    +'<th style="background:#F8FAFC;color:#64748B;position:sticky;top:0;z-index:5;text-align:left;padding-left:14px;">접점 내용</th>'
     +'</tr></thead>'
     +'<tbody id="visit-list">'+tableRows+'</tbody>'
     +'</table>'+pagination+'</div></div>';
