@@ -5807,6 +5807,8 @@ function saveRepTitle(rep, title){
   if(!authCfg.repTitles) authCfg.repTitles={};
   authCfg.repTitles[rep]=title.trim();
   saveAuthCfg();
+  // 참가자 선택 화면 즉시 갱신
+  if(typeof buildRepBtns==='function') buildRepBtns();
 }
 function applyPermissions(){
   var isAdmin=session.role==='admin';
@@ -8703,7 +8705,7 @@ function _iRow(rep, idx, iss){
   // 중요도 pill+hidden-select
   var sevColor={'high':'#DC2626','mid':'#D97706','low':'#0EA5A0'}[sev]||'#CBD5E1';
   var sevLabel=sev?({'high':'↑ 높음','mid':'● 중간','low':'↓ 낮음'}[sev]||sev):'선택';
-  var sevTd='<td style="width:100px;vertical-align:middle;padding:2px 4px;">'
+  var sevTd='<td style="width:100px;vertical-align:middle;padding:2px 4px;text-align:center;">'
     +'<div style="position:relative;display:block;width:100%;height:28px;">'
     +'<span class="_bsl" style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:28px;box-sizing:border-box;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;pointer-events:none;background:white;color:'+sevColor+';border:1.5px solid '+sevColor+'60;">'+sevLabel+'</span>'
     +(canEdit?'<select class="_bsl-sel" id="isev-'+rep+'-'+idx+'" onchange="var cm={high:\'#DC2626\',mid:\'#D97706\',low:\'#0EA5A0\'};var lm={high:\'↑ 높음\',mid:\'● 중간\',low:\'↓ 낮음\'};var pc=cm[this.value]||\'#CBD5E1\';var sp=this.parentNode.querySelector(\'._bsl\');if(sp){sp.textContent=this.value?lm[this.value]:\'선택\';sp.style.color=pc;sp.style.borderColor=pc+\'60\';}iApplySev(this,this.value);store.reps[\''+r+'\'].issuesList['+idx+'].sev=this.value;if(typeof extractIssues===\'function\'){extractIssues();renderIssues&&renderIssues();}autoSave&&autoSave();" style="position:absolute;inset:0;width:100%;height:100%;opacity:0 !important;z-index:2;cursor:pointer;font-family:inherit;">'+sevOpts+'</select>':'')
@@ -8715,7 +8717,7 @@ function _iRow(rep, idx, iss){
   var stOpts2='<option value="" disabled'+(st===''?' selected':'')+'>선택</option>'
     +[{v:'open',l:'Open'},{v:'closed',l:'Closed'}]
     .map(function(o){return '<option value="'+o.v+'"'+(st===o.v?' selected':'')+'>'+o.l+'</option>';}).join('');
-  var stTd='<td style="width:100px;vertical-align:middle;padding:2px 4px;">'
+  var stTd='<td style="width:100px;vertical-align:middle;padding:2px 4px;text-align:center;">'
     +'<div style="position:relative;display:block;width:100%;height:28px;">'
     +'<span class="_bsl" style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:28px;box-sizing:border-box;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;pointer-events:none;background:white;color:'+stColor+';border:1.5px solid '+stColor+'60;">'+stLabel+'</span>'
     +(canEdit?'<select class="_bsl-sel" id="ist-'+rep+'-'+idx+'" onchange="var cm={open:\'#DC2626\',closed:\'#0EA5A0\'};var lm={open:\'Open\',closed:\'Closed\'};var pc=cm[this.value]||\'#CBD5E1\';var sp=this.parentNode.querySelector(\'._bsl\');if(sp){sp.textContent=this.value?lm[this.value]:\'선택\';sp.style.color=pc;sp.style.borderColor=pc+\'60\';}iApplySt(this,this.value);store.reps[\''+r+'\'].issuesList['+idx+'].status=this.value;if(typeof extractIssues===\'function\'){extractIssues();renderIssues&&renderIssues();}autoSave&&autoSave();" style="position:absolute;inset:0;width:100%;height:100%;opacity:0 !important;z-index:2;cursor:pointer;font-family:inherit;">'+stOpts2+'</select>':'')
@@ -8725,7 +8727,7 @@ function _iRow(rep, idx, iss){
     // 순번
     +'<td style="text-align:center;color:#94A3B8;font-weight:600;font-size:12px;width:40px;vertical-align:middle;">'+(iss.no||idx+1)+'</td>'
     // 고객사
-    +'<td style="width:175px;vertical-align:middle;">'
+    +'<td style="width:175px;vertical-align:middle;text-align:center;">'
       +(canEdit?'<input type="text" value="'+(iss.client||'')+'" style="width:100%;height:28px;box-sizing:border-box;text-align:center;" onchange="store.reps[\''+r+'\'].issuesList['+idx+'].client=this.value;autoSave&&autoSave()">':'<span style="font-size:12px;">'+( iss.client||'─')+'</span>')
     +'</td>'
     // 이슈 내용
@@ -10811,11 +10813,11 @@ function _vRow(rep,idx,v){
 
   return '<tr>'
     +'<td style="width:100px;vertical-align:middle;padding:5px 5px;text-align:center;">'+dateInp('date',v.date)+'</td>'
-    +'<td style="width:160px;vertical-align:middle;padding:5px 5px;">'+inpCenter('company',v.company)+'</td>'
-    +'<td style="width:110px;vertical-align:middle;padding:5px 5px;">'+sel('contactType',contactType,CONTACT_TYPES,TYPE_COLOR)+'</td>'
-    +'<td style="width:125px;vertical-align:middle;padding:5px 5px;">'+sel('contactPurpose',contactPurpose,CONTACT_PURPOSES,PURPOSE_COLOR2)+'</td>'
-    +'<td style="width:150px;vertical-align:middle;padding:5px 5px;">'+inpCenter('contactRep',contactRep)+'</td>'
-    +'<td style="width:150px;vertical-align:middle;padding:5px 5px;">'+inpCenter('clientRep',v.clientRep)+'</td>'
+    +'<td style="width:160px;vertical-align:middle;padding:5px 5px;text-align:center;">'+inpCenter('company',v.company)+'</td>'
+    +'<td style="width:110px;vertical-align:middle;padding:5px 5px;text-align:center;">'+sel('contactType',contactType,CONTACT_TYPES,TYPE_COLOR)+'</td>'
+    +'<td style="width:125px;vertical-align:middle;padding:5px 5px;text-align:center;">'+sel('contactPurpose',contactPurpose,CONTACT_PURPOSES,PURPOSE_COLOR2)+'</td>'
+    +'<td style="width:150px;vertical-align:middle;padding:5px 5px;text-align:center;">'+inpCenter('contactRep',contactRep)+'</td>'
+    +'<td style="width:150px;vertical-align:middle;padding:5px 5px;text-align:center;">'+inpCenter('clientRep',v.clientRep)+'</td>'
     +'<td class="content-cell" style="min-width:200px;vertical-align:middle;padding:5px 5px;text-align:left;">'+ta('content',v.content)+'</td>'
     +'<td style="width:34px;vertical-align:middle;padding:5px 4px;text-align:center;">'+delBtn+'</td>'
     +'</tr>';
