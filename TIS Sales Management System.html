@@ -2334,7 +2334,7 @@ textarea {
             <thead>
               <tr style="background:#F8FAFF;border-bottom:2px solid var(--border);">
                 <th style="width:55px;padding:8px;text-align:center;font-size:11px;color:#64748B;">ID</th>
-                <th style="width:100px;padding:8px;text-align:left;font-size:11px;color:#64748B;">이름</th>
+                <th style="width:100px;padding:8px;text-align:left;font-size:11px;color:#64748B;">이름</th><th style="padding:8px;text-align:center;font-size:11px;color:#64748B;font-weight:600;background:#F8FAFC;border-bottom:2px solid #E2E8F0;">직책</th>
                 <th style="width:46px;padding:8px;text-align:center;font-size:11px;color:#64748B;">색상</th>
                 <th style="width:55px;padding:8px;text-align:center;font-size:11px;color:#64748B;">상태</th>
                 <th style="padding:8px;text-align:left;font-size:11px;color:#64748B;">이메일/도메인</th>
@@ -2607,7 +2607,7 @@ let currentTeam = '솔루션영업팀'; // 현재 선택된 팀
 // ══════════════════════════════════════════
 let session = { role: 'locked', rep: null, team: null };
 let authCfg = { adminPw: '13579',
-  chartType: 'combo', guestPw: '', repPws: {}, repPerms: {}, repEmails: {}, hiddenReps: [], teamReps: {'솔루션영업팀':['전성현','허인수','김충만','최원진'],'그룹지원팀':[]}, teamColors: {'솔루션영업팀':['#1E5FBE','#00A882','#C05000','#7B2FBE'],'그룹지원팀':[]} };
+  chartType: 'combo', guestPw: '', repPws: {}, repPerms: {}, repEmails: {}, repTitles: {}, hiddenReps: [], teamReps: {'솔루션영업팀':['전성현','허인수','김충만','최원진'],'그룹지원팀':[]}, teamColors: {'솔루션영업팀':['#1E5FBE','#00A882','#C05000','#7B2FBE'],'그룹지원팀':[]} };
 
 function loadAuthCfg(){
   const saved = localStorage.getItem('weekly_auth');
@@ -5791,6 +5791,11 @@ function saveRepEmail(rep, email){
   saveAuthCfg();
   showToast('✅ '+rep+' MS 계정이 저장되었습니다.');
 }
+function saveRepTitle(rep, title){
+  if(!authCfg.repTitles) authCfg.repTitles={};
+  authCfg.repTitles[rep]=title.trim();
+  saveAuthCfg();
+}
 function applyPermissions(){
   var isAdmin=session.role==='admin';
   var isRep=session.role==='rep';
@@ -6303,13 +6308,13 @@ function renderRepManage(){
     var teamReps=TEAM_REPS[team]||[];
     var teamColors=TEAM_COLORS[team]||[];
     var icon=teamIcons[ti]||'▪';
-    rows+='<tr style="background:#F1F5F9;"><td colspan="7" style="padding:8px 12px;">';
+    rows+='<tr style="background:#F1F5F9;"><td colspan="8" style="padding:8px 12px;">';
     rows+='<div style="display:flex;align-items:center;justify-content:space-between;">';
     rows+='<span style="font-weight:700;font-size:12px;color:#0A1628;">'+icon+' '+team+'</span>';
     rows+='<button onclick="addRepToTeam(this.dataset.team)" data-team="'+team+'" style="padding:4px 12px;background:#0A1628;color:white;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;">+ 추가</button>';
     rows+='</div></td></tr>';
     if(!teamReps.length){
-      rows+='<tr><td colspan="7" style="padding:8px 16px;color:#94A3B8;font-size:12px;text-align:center;">담당자 없음</td></tr>';
+      rows+='<tr><td colspan="8" style="padding:8px 16px;color:#94A3B8;font-size:12px;text-align:center;">담당자 없음</td></tr>';
     }
     teamReps.forEach(function(rep,i){
       var email=(authCfg.repEmails&&authCfg.repEmails[rep])||'';
@@ -6318,7 +6323,9 @@ function renderRepManage(){
       var statusStyle=isHidden?'background:#F1F5F9;color:#94A3B8;':'background:#D1FAE5;color:#065F46;';
       rows+='<tr style="border-bottom:1px solid #F1F5F9;opacity:'+(isHidden?'0.6':'1')+'">';
       rows+='<td style="padding:8px;text-align:center;color:#64748B;font-size:11px;white-space:nowrap;">'+team.slice(0,3)+'-'+(i+1)+'</td>';
-      rows+='<td style="padding:8px;"><input type="text" value="'+rep+'" data-team="'+team+'" data-idx="'+i+'" onchange="renameRepInTeam(this.dataset.team,parseInt(this.dataset.idx),this.value)" style="width:90px;border:1px solid var(--border);border-radius:6px;padding:4px 7px;font-size:12px;font-weight:600;font-family:inherit;"></td>';
+      rows+='<td style="padding:8px;"><input type="text" value="'+rep+'" data-team="'+team+'" data-idx="'+i+'" onchange="renameRepInTeam(this.dataset.team,parseInt(this.dataset.idx),this.value)" style="width:90px;border:1px solid var(--border);border-radius:6px;padding:4px 7px;font-size:12px;font-weight:600;font-family:inherit;"></td>'
+      var _rtitle=(authCfg.repTitles&&authCfg.repTitles[rep])||'';
+      rows+='<td style="padding:8px;"><input type="text" value="'+_rtitle+'" data-rep="'+rep+'" placeholder="직책" onchange="saveRepTitle(this.dataset.rep,this.value)" style="width:70px;border:1px solid var(--border);border-radius:6px;padding:4px 7px;font-size:12px;font-family:inherit;"></td>';;
       rows+='<td style="padding:8px;text-align:center;"><input type="color" value="'+color+'" data-team="'+team+'" data-idx="'+i+'" onchange="updateTeamColor(this.dataset.team,parseInt(this.dataset.idx),this.value)" style="width:36px;height:28px;border:1px solid var(--border);border-radius:5px;cursor:pointer;padding:2px;"></td>';
       rows+='<td style="padding:8px;text-align:center;"><span style="font-size:11px;padding:3px 8px;border-radius:4px;font-weight:600;'+(isHidden?'background:#F1F5F9;color:#94A3B8;':'background:#D1FAE5;color:#065F46;')+'">'+(isHidden?'비활성':'활성')+'</span></td>';
       rows+='<td style="padding:8px;"><input type="text" value="'+email+'" data-rep="'+rep+'" placeholder="이메일@도메인" onchange="saveRepEmail(this.dataset.rep,this.value)" style="width:100%;border:1px solid var(--border);border-radius:6px;padding:4px 7px;font-size:11px;font-family:inherit;"></td>';
@@ -6872,7 +6879,7 @@ async function _spLoadToday() {
 
   // 오늘 데이터 없으면 SP 히스토리에서 가장 최신 스냅샷 로드
   try{
-    const url = _lUrl() + '?$select=DataKey,Payload&$filter=startswith(Title,%27snapshot%27)&$orderby=UpdatedAt+desc&$top=1';
+    const url = _lUrl() + '?$select=DataKey,Payload&$filter=startswith(Title,%27snapshot%27)&$orderby=Id+desc&$top=1';
     const res = await _spFetch(url);
     if(res && res.value && res.value[0] && res.value[0].Payload){
       const latest = JSON.parse(res.value[0].Payload);
@@ -7277,7 +7284,7 @@ async function _loadAccessLog() {
   }
   tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--muted);">로딩 중...</td></tr>';
   try {
-    const url = _lUrl() + '?$select=Payload,UpdatedAt&$filter=startswith(Title,%27accessLog%27)&$orderby=UpdatedAt+desc&$top=200';
+    const url = _lUrl() + '?$select=Payload,UpdatedAt&$filter=startswith(Title,%27accessLog%27)&$orderby=Id+desc&$top=200';
     const res = await _spFetch(url);
     _accessLogData = (res.value || []).map(function(item) {
       try { return JSON.parse(item.Payload); } catch(e) { return null; }
@@ -11046,7 +11053,7 @@ window.renderVisits=function(){
       });
     });
   });
-  if(!tableRows) tableRows='<tr><td colspan="7" style="text-align:center;padding:48px;color:#94A3B8;font-size:13px;">접점 기록이 없습니다</td></tr>';
+  if(!tableRows) tableRows='<tr><td colspan="8" style="text-align:center;padding:48px;color:#94A3B8;font-size:13px;">접점 기록이 없습니다</td></tr>';
 
   // ─ 페이지네이션 ─
   var pagination='';
@@ -11156,7 +11163,7 @@ window.filterVisitsByDate=function(dateStr){
       });
     });
   });
-  if(!dayVisits.length){ list.innerHTML='<tr><td colspan="7" style="text-align:center;padding:30px;color:#94A3B8;font-size:13px;">'+dateStr+' 접점 기록이 없습니다</td></tr>'; return; }
+  if(!dayVisits.length){ list.innerHTML='<tr><td colspan="8" style="text-align:center;padding:30px;color:#94A3B8;font-size:13px;">'+dateStr+' 접점 기록이 없습니다</td></tr>'; return; }
   list.innerHTML=dayVisits.map(function(v){
     var ct=v.contactType||'방문', cp=v.contactPurpose||'';
     var tpc=TYPE_COLOR[ct]||'#94A3B8', ppc=PURPOSE_COLOR2[cp]||'#94A3B8';
@@ -11332,7 +11339,15 @@ async function _spSaveMyRep(){
   });
   _d.savedAt=new Date().toISOString();
   _d.date=date;
-  var _repKey = (typeof _sanitizeDKey==='function') ? _sanitizeDKey(session.rep+'_'+date) : session.rep+':'+date;
+  // DataKey: 이름만 사용 (직책 제거 - 직책 변경해도 동일 키 유지)
+  var _repName = session.rep;
+  if(typeof authCfg!=='undefined' && authCfg.repTitles && authCfg.repTitles[session.rep]){
+    // 이름에서 직책 suffix 제거 (키는 이름만)
+    var _title = authCfg.repTitles[session.rep];
+    _repName = session.rep.replace(new RegExp('\\s*'+_title.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s*$'),'').trim();
+    if(!_repName) _repName = session.rep; // 제거 실패 시 원래 이름 사용
+  }
+  var _repKey = (typeof _sanitizeDKey==='function') ? _sanitizeDKey(_repName+'_'+date) : _repName+'-'+date;
   await _spSaveItem('rep_data', _repKey, _d);
 }
 
@@ -11343,7 +11358,7 @@ async function _spSyncOtherReps(){
   var changed=false;
   try{
     // 모든 rep_data 로드 (날짜/팀 필터 없음 - 전체 담당자 최신 데이터)
-    var qUrl=_lUrl()+'?$select=DataKey,Payload,UpdatedAt&$filter=startswith(Title,%27rep_data%27)&$orderby=UpdatedAt+desc';
+    var qUrl=_lUrl()+'?$select=DataKey,Payload,UpdatedAt&$filter=startswith(Title,%27rep_data%27)&$orderby=Id+desc';
     var res=await _spFetch(qUrl);
     var items=(res&&res.value)||[];
 
@@ -11394,7 +11409,7 @@ async function _spLoadAllReps(){
   if(!window._isSPReady) return;
   try{
     // 날짜 필터 없이 전체 로드 후 담당자별 최신 데이터 선택
-    var qUrl=_lUrl()+'?$select=DataKey,Payload,UpdatedAt&$filter=startswith(Title,%27rep_data%27)&$orderby=UpdatedAt+desc';
+    var qUrl=_lUrl()+'?$select=DataKey,Payload,UpdatedAt&$filter=startswith(Title,%27rep_data%27)&$orderby=Id+desc';
     var res=await _spFetch(qUrl);
     var items=(res&&res.value)||[];
     // 담당자별 최신 1건만 처리
