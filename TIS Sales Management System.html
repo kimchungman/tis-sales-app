@@ -1705,6 +1705,17 @@ input[type="date"]::-webkit-clear-button {
 textarea {
   max-height: none !important;
 }
+
+/* ── 열 정렬 최종 규칙 ── */
+/* 모든 dt 테이블: 기본 center */
+.dt td { text-align:center !important; vertical-align:middle !important; }
+/* 내용열 (접점내용/파이프라인내용/이슈내용/이슈사항) → left */
+.dt td.content-cell,
+.dt td[data-col="content"],
+td.v-content,
+td.pl-content,
+td.is-content { text-align:left !important; vertical-align:middle !important; }
+
 </style>
 </head>
 <body>
@@ -3970,7 +3981,7 @@ function switchInputTeam(team){
 }// (구버전 switchInputTeam 제거됨)
 
 function buildRepTabs(){
-  document.getElementById('rep-tabs').innerHTML=REPS.map((r,i)=>`<div class="tab${i===0?' active':''}" data-rep="${r}" onclick="switchTab('${r}',this)">${r}</div>`).join('');
+  document.getElementById('rep-tabs').innerHTML=REPS.map((r,i)=>`<div class="tab${i===0?' active':''}" data-rep="${r}" onclick="switchTab('${r}',this)">${getRepDisplayName(r)}</div>`).join('');
 }
 let activeRep=REPS[0];
 function switchTab(rep,el){
@@ -4162,7 +4173,7 @@ function cRow(rep,ci,c){
       <select style="width:60px;font-size:12px;" onchange="store.reps['${rep}'].clients[${ci}].type=this.value;updateProductSummary('${rep}');autoSave();refreshActualForecast('${rep}');updateProductSummary('${rep}');renderDashboard();autoSave();\">${tOpts}</select>
     </td>
     ${MONTHS.map((_,i)=>{const v=(c.actual&&c.actual[i])||0;const disp=v?v.toLocaleString('ko-KR'):'';return`<td style="vertical-align:middle;padding:3px 4px;text-align:right;white-space:nowrap;"><input type="text" value="${disp}" style="width:68px;text-align:right;" onfocus="this.value=this.value.replace(/,/g,'')" onblur="const n=parseFloat(this.value.replace(/,/g,''));this.value=n?n.toLocaleString('ko-KR'):'';" onchange="store.reps['${rep}'].clients[${ci}].actual[${i}]=parseFloat(String(this.value).replace(/,/g,''))||0;refreshActualForecast('${rep}')"></td>`;}).join('')}
-    <td style="vertical-align:middle;padding:3px 4px;min-width:240px;"><textarea style="width:100%;height:32px;min-height:32px;resize:vertical;line-height:1.5;box-sizing:border-box;overflow-y:hidden;" oninput="autoResizeTA(this)" onchange="store.reps['${rep}'].clients[${ci}].issue=this.value;extractIssues();renderIssues();">${c.issue||''}</textarea></td>
+    <td class="content-cell" style="vertical-align:middle;padding:3px 4px;min-width:240px;text-align:left;"><textarea style="width:100%;height:32px;min-height:32px;resize:vertical;line-height:1.5;box-sizing:border-box;overflow-y:hidden;" oninput="autoResizeTA(this)" onchange="store.reps['${rep}'].clients[${ci}].issue=this.value;extractIssues();renderIssues();">${c.issue||''}</textarea></td>
     <td style="vertical-align:middle;padding:3px 4px;text-align:center;width:36px;min-width:36px;position:sticky;right:0;background:white;"><button class="del-btn" onclick="delClient('${rep}',${ci})">×</button></td>
   </tr>`;
 }
@@ -4685,7 +4696,7 @@ function renderPipeline(){
         +'background:'+(isSel?color:color+'18')+';'
         +'border:1.5px solid '+color+';'
         +'color:'+(isSel?'white':color)+';';
-      btn.innerHTML='<span style="font-size:11px;font-weight:700;">'+rep+'</span>'
+      btn.innerHTML='<span style="font-size:11px;font-weight:700;">'+getRepDisplayName(rep)+'</span>'
         +'<span style="font-size:10px;opacity:0.75;margin-left:2px;">'+(selReps.length>0&&isSel?filtCnt:totalCnt)+'건</span>';
       btn.addEventListener('click',function(){_togglePipeRep(this.dataset.rep);});
       legend.appendChild(btn);
@@ -4708,17 +4719,17 @@ function renderPipeline(){
     var stCol=(r.status||'open')==='open'?'#C0392B':'#0A8F6C';
     var stLbl=(r.status||'open')==='open'?'\uD83D\uDD34 Open':'\u2705 Closed';
     return '<tr style="border-left:4px solid '+repColor+';background:'+repBg+';">'
-      +'<td><div style="display:flex;align-items:center;gap:6px;">'
+      +'<td style="text-align:center;vertical-align:middle;"><div style="display:flex;align-items:center;justify-content:center;gap:6px;">'
       +'<div style="width:8px;height:8px;border-radius:50%;background:'+repColor+';flex-shrink:0;"></div>'
-      +'<span style="font-weight:700;font-size:12px;color:'+repColor+';">'+r.rep+'</span>'
+      +'<span style="font-weight:700;font-size:12px;color:'+repColor+';">'+getRepDisplayName(r.rep)+'</span>'
       +'</div></td>'
-      +'<td><span class="badge" style="background:'+repBg+';color:'+repColor+';border:1px solid '+repBorder+';">'+(r.type||'')+'</span></td>'
-      +'<td style="font-weight:700;color:var(--text);">'+(r.client||'')+'</td>'
-      +'<td style="color:var(--muted);">'+(r.product||'')+'</td>'
+      +'<td style="text-align:center;vertical-align:middle;"><span class="badge" style="background:'+repBg+';color:'+repColor+';border:1px solid '+repBorder+';">'+(r.type||'')+'</span></td>'
+      +'<td style="text-align:center;vertical-align:middle;font-weight:700;color:var(--text);">'+(r.client||'')+'</td>'
+      +'<td style="text-align:center;vertical-align:middle;color:var(--muted);">'+(r.product||'')+'</td>'
       +'<td class="nt" style="font-weight:600;">'+(r.amount?r.amount.toLocaleString('ko-KR'):'-')+'</td>'
       +'<td><span class="badge '+pc(r.prob)+'">'+(r.prob?(r.prob*100).toFixed(0)+'%':'-')+'</span></td>'
-      +'<td style="white-space:nowrap;color:var(--muted);">'+(r.timing||'-')+'</td>'
-      +'<td><span style="padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;background:'+stBg+';color:'+stCol+';">'+stLbl+'</span></td>'
+      +'<td style="text-align:center;vertical-align:middle;white-space:nowrap;color:var(--muted);">'+(r.timing||'-')+'</td>'
+      +'<td style="text-align:center;vertical-align:middle;"><span style="padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;background:'+stBg+';color:'+stCol+';">'+stLbl+'</span></td>'
       +'<td class="content-cell" style="font-size:12px;color:#374151;text-align:left !important;white-space:pre-wrap !important;word-break:break-word !important;word-wrap:break-word !important;overflow-wrap:break-word !important;vertical-align:top !important;line-height:1.6;padding:8px 12px;">'+(r.content||'')+'</td>'
       +'</tr>';
   }).join('');
@@ -5600,7 +5611,7 @@ function updateSBAuth(){
     role.textContent='전체 권한 • 클릭하여 전환';
   } else if(session.role==='rep'){
     const i=REPS.indexOf(session.rep);
-    icon.textContent='👤'; name.textContent=session.rep;
+    icon.textContent='👤'; name.textContent=getRepDisplayName(session.rep);
     name.style.color=REP_COLORS[i]||'#00C9A7';
     role.textContent='담당자 모드 • 클릭하여 전환';
   } else if(session.role==='guest'){
@@ -6716,6 +6727,12 @@ function _sanitizeDKey(str){
   return (str||'').replace(/\s+/g,'_').replace(/:/g,'-').replace(/[^a-zA-Z0-9\uAC00-\uD7A3_\-\.]/g,'');
 }
 
+function getRepDisplayName(rep){
+  if(!rep) return rep;
+  var t=(typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[rep])||'';
+  return t?rep+' '+t:rep;
+}
+
 // sanitized DataKey → 원본 rep명 역매핑
 function _findRepByKey(sk){
   var _allReps=[];
@@ -7309,11 +7326,14 @@ async function _loadAccessLog() {
   }
   tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--muted);">로딩 중...</td></tr>';
   try {
-    const url = _lUrl() + '?$select=Payload,UpdatedAt&$filter=startswith(Title,%27accessLog%27)&$orderby=Id+desc&$top=200';
+    // SP 서버 필터 제거 → 500 방지 (클라이언트에서 필터링)
+    const url = _lUrl() + '?$select=Title,Payload,UpdatedAt&$orderby=Id+desc&$top=500';
     const res = await _spFetch(url);
-    _accessLogData = (res.value || []).map(function(item) {
-      try { return JSON.parse(item.Payload); } catch(e) { return null; }
-    }).filter(Boolean);
+    _accessLogData = (res.value || [])
+      .filter(function(item){ return item.Title && item.Title.indexOf('accessLog') === 0; })
+      .map(function(item) {
+        try { return JSON.parse(item.Payload); } catch(e) { return null; }
+      }).filter(Boolean);
     _renderAccessLog();
   } catch(e) {
     tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--muted);">로드 실패: ' + e.message + '</td></tr>';
@@ -7991,7 +8011,7 @@ window.renderIssues = function() {
         // 담당자 셀: 첫 번째 행에만 표시
         var repCell = isFirstOfRep
           ? '<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:' + repColor + ';">'
-            + '<span style="width:6px;height:6px;border-radius:50%;background:' + repColor + ';flex-shrink:0;"></span>' + rep + '</span>'
+            + '<span style="width:6px;height:6px;border-radius:50%;background:' + repColor + ';flex-shrink:0;"></span>' + getRepDisplayName(rep) + '</span>'
           : '<span style="color:#CBD5E1;font-size:10px;">│</span>';
 
         tr.innerHTML =
@@ -8378,7 +8398,7 @@ function _buildMultiFilter(containerId, reps, storageKey, onChange){
           +'if(v){if(s.indexOf(r)<0)s.push(r);}else{var i=s.indexOf(r);if(i>=0)s.splice(i,1);}'
           +'var ac=document.getElementById(\''+containerId+'-all\');if(ac)ac.checked=s.length===all.length;'
           +onChange+'})(this.checked,\''+r+'\')" style="width:14px;height:14px;accent-color:#4f7fff;">'
-          +'<span style="font-weight:500;">'+r+'</span>'
+          +'<span style="font-weight:500;">'+getRepDisplayName(r)+'</span>'
           +'</label></div>';
       }).join('')
       +'</div></div>';
@@ -8605,7 +8625,7 @@ window.renderIssues = function(){
           '<td style="text-align:center;vertical-align:middle;padding:8px 4px;border-bottom:1px solid #F1F5F9;"></td>'
           // 담당자
           +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;border-bottom:1px solid #F1F5F9;">'
-            +'<span style="font-size:12px;font-weight:700;color:'+repColor+';">'+rep+'</span></td>'
+            +'<span style="font-size:12px;font-weight:700;color:'+repColor+';">'+getRepDisplayName(rep)+'</span></td>'
           // 고객사
           +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;font-weight:500;font-size:12px;border-bottom:1px solid #F1F5F9;">'+( iss.client||'-')+'</td>'
           // 이슈내용 - 좌측정렬 + pre-wrap
@@ -10395,7 +10415,7 @@ window.renderPipeline = function(){
     var h = '<button onclick="_pipeRep(\'all\')" style="'+PH+'min-width:70px;justify-content:center;font-weight:'+(rAll?'700':'500')+';background:'+(rAll?'#4f7fff':'white')+';color:'+(rAll?'white':'#4f7fff')+';border-color:'+(rAll?'#4f7fff':'rgba(79,127,255,0.4)')+';">전체</button>';
     allReps.forEach(function(r){
       var act=rSel.indexOf(r)>=0, rc=RC[r]||'#4f7fff', cnt=REP_CNT[r]||0;
-      h+='<button onclick="_pipeRep(\''+r+'\')" style="'+PH+'font-weight:'+(act?'700':'500')+';background:'+(act?rc:'white')+';color:'+(act?'white':'#475569')+';border-color:'+(act?rc:'#E2E8F0')+';">'+r+' <strong style="font-size:12px;opacity:0.85;">'+cnt+'</strong></button>';
+      h+='<button onclick="_pipeRep(\''+r+'\')" style="'+PH+'font-weight:'+(act?'700':'500')+';background:'+(act?rc:'white')+';color:'+(act?'white':'#475569')+';border-color:'+(act?rc:'#E2E8F0')+';">'+getRepDisplayName(r)+' <strong style="font-size:12px;opacity:0.85;">'+cnt+'</strong></button>';
     });
     pillEl.innerHTML = h;
   }
@@ -10552,7 +10572,7 @@ window.renderIssues = function(){
       var act=reps.indexOf(r)>=0,rc=RC[r]||'#4f7fff',cnt=0;
       (store.reps[r]&&store.reps[r].issuesList||[]).forEach(function(iss){if(iss.content||iss.client)cnt++;});
       var s=BTN+'background:'+(act?rc:'white')+';color:'+(act?'white':'#475569')+';border-color:'+(act?rc:'#E2E8F0')+';';
-      h+='<button onclick="_issRep(\''+r+'\')" style="'+s+'">'+r+' <strong style="font-size:12px;opacity:0.85;">'+cnt+'</strong></button>';
+      h+='<button onclick="_issRep(\''+r+'\')" style="'+s+'">'+getRepDisplayName(r)+' <strong style="font-size:12px;opacity:0.85;">'+cnt+'</strong></button>';
     });
     pillEl.innerHTML=h;
   }
@@ -10611,7 +10631,7 @@ window.renderIssues = function(){
           html+='<td rowspan="'+g.issues.length+'" style="text-align:center;vertical-align:middle;padding:10px 8px;width:90px;border-right:1px solid #EEF2F9;"><span style="font-size:13px;font-weight:700;color:'+g.rc+';">'+g.rep+'</span></td>';
         }
         html+='<td style="text-align:center;vertical-align:middle;padding:10px 12px;font-size:13px;color:#374151;font-weight:500;border-right:1px solid #F1F5F9;">'+(iss.client||'─')+'</td>'
-          +'<td style="text-align:left !important;vertical-align:middle;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;white-space:pre-wrap !important;word-break:break-word !important;overflow-wrap:break-word !important;">'+(iss.content||'─')+'</td>'
+          +'<td class="content-cell" style="text-align:left !important;vertical-align:middle;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;white-space:pre-wrap !important;word-break:break-word !important;overflow-wrap:break-word !important;">'+(iss.content||'─')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;font-size:12px;color:#64748B;">'+(iss.regDate||'─')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;font-size:12px;color:#64748B;">'+(iss.dueDate||'─')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;">'+(iss.dueDate?(function(){var t=new Date();t.setHours(0,0,0,0);var d=new Date(iss.dueDate);d.setHours(0,0,0,0);var df=Math.round((d-t)/86400000);var dc=df<0?'#DC2626':df===0?'#D97706':'#0EA5A0';var dt=df<0?'D+'+Math.abs(df):df===0?'D-Day':'D-'+df;return'<span style="padding:2px 7px;border-radius:8px;font-size:11px;font-weight:700;color:'+dc+';background:'+dc+'15;border:1px solid '+dc+'40;">'+dt+'</span>';}()):'─')+'</td>'
@@ -10965,8 +10985,8 @@ window.renderVisits=function(){
   var repPills='<button onclick="window._visitFilterDate=String();window._visitRepFilter=[];window._visitPage=1;renderVisits();" style="'+PH+'min-width:70px;justify-content:center;background:'+(_visitRepFilter.length===0?'#4f7fff':'white')+';color:'+(_visitRepFilter.length===0?'white':'#4f7fff')+';border-color:'+(_visitRepFilter.length===0?'#4f7fff':'rgba(79,127,255,0.4)')+';">전체</button>';
   allReps.forEach(function(r){
     var act=_visitRepFilter.indexOf(r)>=0, rc=RC[r]||'#4f7fff';
-    var cnt=filtered.filter(function(v){return v.rep===r;}).length;
-    repPills+='<button onclick="window._visitFilterDate=String();var _a=window._visitRepFilter,_i=_a.indexOf(\''+r+'\');_i>=0?_a.splice(_i,1):_a.push(\''+r+'\');window._visitPage=1;renderVisits();" style="'+PH+'background:'+(act?rc:'white')+';color:'+(act?'white':'#475569')+';border-color:'+(act?rc:'#E2E8F0')+';">'+r+' <strong style="font-size:12px;opacity:0.85;">'+cnt+'</strong></button>';
+    var cnt=allVisits.filter(function(v){return v.rep===r;}).length;
+    repPills+='<button onclick="window._visitFilterDate=String();var _a=window._visitRepFilter,_i=_a.indexOf(\''+r+'\');_i>=0?_a.splice(_i,1):_a.push(\''+r+'\');window._visitPage=1;renderVisits();" style="'+PH+'background:'+(act?rc:'white')+';color:'+(act?'white':'#475569')+';border-color:'+(act?rc:'#E2E8F0')+';">'+getRepDisplayName(r)+' <strong style="font-size:12px;opacity:0.85;">'+cnt+'</strong></button>';
   });
 
   // ─ 캘린더 (옵션A: 파란 테두리, 숫자 센터, 배지 없음) ─
@@ -11068,7 +11088,7 @@ window.renderVisits=function(){
             +'<span style="position:absolute;left:0;top:0;bottom:0;width:4px;background:'+tc2+';border-radius:0 3px 3px 0;"></span>'
             +'<span style="font-size:13px;font-weight:700;color:'+tc2+';writing-mode:vertical-rl;letter-spacing:.1em;white-space:nowrap;">'+team+'</span></td>';
         }
-        if(isFirstRep){ tableRows+='<td rowspan="'+repVisits.length+'" style="text-align:center;vertical-align:middle;padding:10px 8px;width:80px;border-right:1px solid #EEF2F9;"><span style="font-size:13px;font-weight:700;color:'+rc2+';">'+rep+'</span></td>'; }
+        if(isFirstRep){ tableRows+='<td rowspan="'+repVisits.length+'" style="text-align:center;vertical-align:middle;padding:10px 8px;width:80px;border-right:1px solid #EEF2F9;"><span style="font-size:13px;font-weight:700;color:'+rc2+';">'+getRepDisplayName(rep)+'</span></td>'; }
         tableRows+='<td style="text-align:center;padding:10px 8px;font-size:13px;color:#374151;border-right:1px solid #F1F5F9;">'+(v.date||'─')+'</td>'
           +'<td style="text-align:center;padding:10px 10px;font-size:13px;font-weight:500;color:#374151;border-right:1px solid #F1F5F9;">'+(v.company||'─')+'</td>'
           +'<td style="text-align:center;padding:10px 8px;border-right:1px solid #F1F5F9;"><span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;color:'+tpc+';background:white;border:1.5px solid '+tpc+'50;">'+ct+'</span></td>'
