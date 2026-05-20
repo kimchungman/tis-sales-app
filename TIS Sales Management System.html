@@ -1682,6 +1682,24 @@ table.dt thead th { font-size: 13px !important; }
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
   @page{margin:12mm 10mm;}
 }
+
+/* 날짜 input 달력 아이콘 숨기기 - 클릭 시 달력 뜨는 구조 유지 */
+input[type="date"] {
+  position: relative;
+  cursor: pointer;
+}
+input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  cursor: pointer;
+  z-index: 1;
+}
+input[type="date"]::-webkit-inner-spin-button,
+input[type="date"]::-webkit-clear-button {
+  display: none;
+}
 </style>
 </head>
 <body>
@@ -3949,6 +3967,10 @@ function switchTab(rep,el){
   // 탭 전환 시 항상 '매출 및 프로젝트 현황' 탭으로 초기화
   // (이전에 '고객 접점 기록' 탭이 열려 있었어도 메인 탭을 보여줌)
   if(typeof window._switchVTab==='function') window._switchVTab(rep,'main');
+  // textarea 자동 높이
+  if(_rsel) _rsel.querySelectorAll('textarea').forEach(function(ta){
+    if(!ta.closest('[id^="vpanel-"]')&&typeof autoResizeTA==='function') autoResizeTA(ta);
+  });
 }
 function buildRepInputs(){
   const area=document.getElementById('rep-input-area');
@@ -4561,8 +4583,8 @@ function renderIssues(){
       +'<td style="padding:8px 14px;font-size:12px;color:#374151;line-height:1.6;white-space:pre-wrap !important;word-break:break-word;text-align:left !important;vertical-align:top;">'+(i.content||'')+'</td>'
       +'<td style="text-align:center;vertical-align:middle;"><span style="display:inline-flex;align-items:center;justify-content:center;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;color:'+sc+';border:1.5px solid '+sc+'60;">'+(sevLabel[i.sev]||i.sev||'')+'</span></td>'
       +'<td style="text-align:center;vertical-align:middle;"><span style="display:inline-flex;align-items:center;justify-content:center;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;color:'+tc+';border:1.5px solid '+tc+'60;">'+(isOpen?'Open':'Closed')+'</span></td>'
-      +'<td style="text-align:center;font-size:11px;color:'+(i.regDate?'#374151':'#CBD5E1')+';vertical-align:middle;">'+(i.regDate||'─')+'</td>'
-      +'<td style="text-align:center;font-size:11px;color:'+(i.dueDate?'#374151':'#CBD5E1')+';vertical-align:middle;">'+(i.dueDate||'─')+'</td>'
+      +'<td style="text-align:center;font-size:11px;color:'+(i.regDate?'#374151':'#94A3B8')+';vertical-align:middle;">'+(i.regDate||'–')+'</td>'
+      +'<td style="text-align:center;font-size:11px;color:'+(i.dueDate?'#374151':'#94A3B8')+';vertical-align:middle;">'+(i.dueDate||'–')+'</td>'
       +ddayCell
       +'</tr>';
   }).join(''):'<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--muted);">⬜ 조건에 맞는 이슈가 없습니다</td></tr>';
@@ -4834,7 +4856,14 @@ function autoResizeTA(el){
 
 function resizeAllTextareas(){
   document.querySelectorAll('textarea').forEach(ta => {
-    // vpanel(고객접점기록) 내 textarea는 스킵 - 임시 display:block으로 인한 탭 상태 오염 방지
+    if(ta.closest('[id^="vpanel-"]')) return;
+    autoResizeTA(ta);
+  });
+}
+// 특정 컨테이너 내 textarea만 resize
+function resizeTextareasIn(container){
+  if(!container) return;
+  container.querySelectorAll('textarea').forEach(ta => {
     if(ta.closest('[id^="vpanel-"]')) return;
     autoResizeTA(ta);
   });
@@ -6650,10 +6679,15 @@ async function _spSaveItem(dtype, dkey, payload, _retry) {
     } else if (err.message && err.message.indexOf('401') >= 0) {
       // 401: 토큰 만료 → 조용히 무시 (다음 요청 시 토큰 갱신됨)
       console.warn('[SP] 401 인증 만료:', dtype, dkey);
+    } else if (err.message && err.message.indexOf('500') >= 0) {
+      // 500: 페이로드 크기 초과 등 서버 오류 → 콘솔만 기록, 토스트 미표시
+      console.warn('[SP] 500 서버오류:', dtype, dkey, err.message);
     } else {
-      // accessLog 저장 실패는 토스트 미표시 (중요하지 않은 데이터)
-      if(dtype !== 'accessLog'){
+      // accessLog 저장 실패는 토스트 미표시
+      if(dtype !== 'accessLog' && dtype !== 'snapshot'){
         showToast('저장 실패: ' + err.message, 'warn');
+      } else {
+        console.warn('[SP] 저장 실패:', dtype, dkey, err.message);
       }
     }
   }
@@ -6786,7 +6820,18 @@ async function _spSaveSnap() {
       var s=JSON.parse(JSON.stringify(store));
       // visitLog는 별도 visit_log:{rep} 키로 저장되므로 snapshot 제외 (크기 최적화)
       Object.keys(s.reps||{}).forEach(function(r){
-        if(s.reps[r]) { s.reps[r].visitLog=[]; } // 빈 배열로 대체 (호환성 유지)
+        var d=s.reps[r]; if(!d) return;
+        d.visitLog=[]; // 별도 visit_log 키로 저장
+        // clients: plan 배열 제외 (rep_data에 있음), 핵심 필드만 유지
+        if(d.clients) d.clients=d.clients.map(function(c){
+          return {name:c.name,type:c.type,status:c.status,product:c.product,
+                  actual:c.actual,plan:c.plan,issue:c.issue,sev:c.sev};
+        });
+        // activities: content/client/progress만 유지
+        if(d.activities) d.activities=d.activities.map(function(a){
+          return {client:a.client,content:a.content,progress:a.progress,
+                  sev:a.sev,status:a.status,type:a.type,no:a.no};
+        });
       });
       return s;
     })(),
@@ -8426,7 +8471,7 @@ function _iRow(rep, idx, iss){
 
   // 중요도 pill+hidden-select
   var sevColor={'high':'#DC2626','mid':'#D97706','low':'#0EA5A0'}[sev]||'#CBD5E1';
-  var sevLabel={'high':'↑ 높음','mid':'● 중간','low':'↓ 낮음'}[sev]||(sev||'선택');
+  var sevLabel=sev?({'high':'↑ 높음','mid':'● 중간','low':'↓ 낮음'}[sev]||sev):'선택';
   var sevTd='<td style="width:100px;vertical-align:middle;padding:2px 4px;">'
     +'<div style="position:relative;display:block;width:100%;height:28px;">'
     +'<span class="_bsl" style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:28px;box-sizing:border-box;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;pointer-events:none;background:white;color:'+sevColor+';border:1.5px solid '+sevColor+'60;">'+sevLabel+'</span>'
@@ -8435,7 +8480,7 @@ function _iRow(rep, idx, iss){
 
   // 처리상태 - 중요도와 동일한 pill+hidden-select 방식
   var stColor={'open':'#DC2626','closed':'#0EA5A0'}[st]||'#CBD5E1';
-  var stLabel={'open':'Open','closed':'Closed'}[st]||(st||'선택');
+  var stLabel=st?({'open':'Open','closed':'Closed'}[st]||st):'선택';
   var stOpts2='<option value="" disabled'+(st===''?' selected':'')+'>선택</option>'
     +[{v:'open',l:'Open'},{v:'closed',l:'Closed'}]
     .map(function(o){return '<option value="'+o.v+'"'+(st===o.v?' selected':'')+'>'+o.l+'</option>';}).join('');
@@ -10461,7 +10506,7 @@ function addIssueRow(rep){
   if(!store.reps[rep].issuesList) store.reps[rep].issuesList=[];
   var idx=store.reps[rep].issuesList.length;
   var today=new Date().toISOString().split('T')[0];
-  store.reps[rep].issuesList.push({client:'',content:'',sev:'mid',status:'open',regDate:today,dueDate:''});
+  store.reps[rep].issuesList.push({client:'',content:'',sev:'',status:'',regDate:today,dueDate:''});
   var tbody=document.getElementById('it-'+rep);
   if(tbody) tbody.insertAdjacentHTML('beforeend',_iRow(rep,idx,store.reps[rep].issuesList[idx]));
   autoSave&&autoSave();
