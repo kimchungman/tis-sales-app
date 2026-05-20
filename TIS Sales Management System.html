@@ -1738,6 +1738,12 @@ tr[id^="ir-"] td.content-cell { text-align:left !important; }
 tr[id^="vr-"] td:not(.content-cell) { text-align:center !important; vertical-align:middle !important; }
 tr[id^="vr-"] td.content-cell { text-align:left !important; }
 
+
+[id^="ct-"] td:not(:has(textarea)) { text-align:center !important; vertical-align:middle !important; }
+
+/* 고객사별 실적 - 고객사명 입력 텍스트 중앙 */
+[id^="ct-"] input[type="text"] { text-align: center !important; }
+[id^="ct-"] td { text-align: center !important; vertical-align: middle !important; }
 </style>
 </head>
 <body>
@@ -6244,11 +6250,8 @@ function autoSave(){
         var _curHash = (data.store&&data.store.reps?Object.keys(data.store.reps).map(function(r){
           var d=data.store.reps[r]; if(!d) return '';
           // 모든 데이터 변경 감지 (visitLog 제외 - autoSave로 함께 저장)
-          var _snap=JSON.parse(JSON.stringify(d));
-          delete _snap.visitLog; // visitLog는 별도로 체크
-          var vlLen=(d.visitLog||[]).length;
-          var vlLast=d.visitLog&&d.visitLog.length?(d.visitLog[d.visitLog.length-1].date||''):'';
-          return r+':'+JSON.stringify(_snap)+':vl'+vlLen+':'+vlLast;
+          // 모든 입력 데이터 변경 감지 (visitLog 포함 전체)
+          return r+':'+JSON.stringify(d);
         }).join('|'):'') + ':' + (data.date||'');
         if(window._lastAutoSaveHash === _curHash){
           console.log('[autoSave] 변경없음 skip');
@@ -6703,6 +6706,7 @@ async function _initSP() {
         // 변경 전 해시
         // _applySnap 내부 renderDashboard 막기
         // 공동편집: 다른 담당자 데이터만 동기화
+        await _spLoadAllVisitLogs();
         var _changed = await _spSyncOtherReps();
         await _spLoadHistList();
         if(_changed){
@@ -11488,7 +11492,7 @@ async function _spSyncOtherReps(){
         var existingIss=store.reps[repName].issuesList||[];
         var newIss=repData.issuesList||[];
         if(newIss.length>=existingIss.length) store.reps[repName].issuesList=newIss;
-        // visitLog: rep_data에 통합 (더 많은 쪽 사용)
+        // visitLog: 더 많은 쪽 사용
         var existingVL=store.reps[repName].visitLog||[];
         var newVL=repData.visitLog||[];
         if(newVL.length>=existingVL.length) store.reps[repName].visitLog=newVL;
