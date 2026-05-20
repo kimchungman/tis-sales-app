@@ -1151,7 +1151,7 @@ table#mo-table > tbody > tr > td:first-child {
   white-space: nowrap !important;
 }
 .dt td {
-  text-align: center !important;
+  text-align: center;
   padding: 7px 8px !important;
   vertical-align: middle !important;
   border-bottom: 1px solid #F1F5F9 !important;
@@ -3967,15 +3967,20 @@ function switchTab(rep,el){
   // 탭 전환 시 항상 '매출 및 프로젝트 현황' 탭으로 초기화
   // (이전에 '고객 접점 기록' 탭이 열려 있었어도 메인 탭을 보여줌)
   if(typeof window._switchVTab==='function') window._switchVTab(rep,'main');
-  // textarea 자동 높이 - 레이아웃 완료 후 실행
+  // textarea 자동 높이 - 브라우저 레이아웃 완료 보장
   if(_rsel){
-    requestAnimationFrame(function(){
-      _rsel.querySelectorAll('textarea').forEach(function(ta){
-        if(ta.closest('[id^="vpanel-"]')) return;
+    function _resizeTAs(container){
+      container.querySelectorAll('textarea').forEach(function(ta){
+        ta.style.overflowY='hidden';
         ta.style.height='1px';
-        ta.style.height=Math.max(32,ta.scrollHeight)+'px';
+        var h=Math.max(30,ta.scrollHeight);
+        ta.style.height=h+'px';
       });
-    });
+    }
+    // 즉시 + 100ms + 300ms (레이아웃 완전 완료 보장)
+    _resizeTAs(_rsel);
+    setTimeout(function(){ _resizeTAs(_rsel); }, 100);
+    setTimeout(function(){ _resizeTAs(_rsel); }, 300);
   }
 }
 function buildRepInputs(){
@@ -4098,6 +4103,15 @@ function buildRepInputs(){
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     applyPermissions();
     resizeAllTextareas();
+    // 추가: 300ms 후 재실행 (레이아웃 완전 완료 보장)
+    var _activeRep = document.querySelector('.rep-sec[style*="block"]');
+    if(_activeRep) setTimeout(function(){
+      _activeRep.querySelectorAll('textarea').forEach(function(ta){
+        ta.style.overflowY='hidden';
+        ta.style.height='1px';
+        ta.style.height=Math.max(30,ta.scrollHeight)+'px';
+      });
+    }, 300);
     // 이슈사항 textarea 초기 높이 조절 (각 담당자 섹션)
     document.querySelectorAll('[id^="ct-"] textarea, [id^="at-"] textarea, [id^="it-"] textarea').forEach(function(ta){
       if(typeof autoResizeTA==='function') autoResizeTA(ta);
@@ -4168,7 +4182,7 @@ function aRow(rep,ai,a){
     <td style="min-width:240px;vertical-align:top;">
       <textarea rows="1"
         style="width:100%;min-height:30px;height:30px;resize:none;line-height:1.5;display:block;box-sizing:border-box;overflow-y:hidden;text-align:left;"
-        oninput="this.style.height='1px';this.style.height=Math.max(30,this.scrollHeight)+'px';"
+        onfocus="if(this.scrollHeight>this.clientHeight){this.style.height='1px';this.style.height=Math.max(30,this.scrollHeight)+'px';}" oninput="this.style.height='1px';this.style.height=Math.max(30,this.scrollHeight)+'px';"
         onchange="store.reps['${rep}'].activities[${ai}].content=this.value;autoSave();"
         oninput="this.style.setProperty('height','1px','important');this.style.setProperty('height',Math.max(30,this.scrollHeight)+'px','important');"
         onfocus="this.style.setProperty('height',Math.max(this.scrollHeight,30)+'px','important');"
@@ -10475,7 +10489,7 @@ window.renderIssues = function(){
           html+='<td rowspan="'+g.issues.length+'" style="text-align:center;vertical-align:middle;padding:10px 8px;width:90px;border-right:1px solid #EEF2F9;"><span style="font-size:13px;font-weight:700;color:'+g.rc+';">'+g.rep+'</span></td>';
         }
         html+='<td style="text-align:center;vertical-align:middle;padding:10px 12px;font-size:13px;color:#374151;font-weight:500;border-right:1px solid #F1F5F9;">'+(iss.client||'─')+'</td>'
-          +'<td style="text-align:left;vertical-align:top;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;">'+(iss.content||'─')+'</td>'
+          +'<td style="text-align:left !important;vertical-align:top !important;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;white-space:pre-wrap !important;word-break:break-word !important;overflow-wrap:break-word !important;">'+(iss.content||'─')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;font-size:12px;color:#64748B;">'+(iss.regDate||'─')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;font-size:12px;color:#64748B;">'+(iss.dueDate||'─')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;">'+(iss.dueDate?(function(){var t=new Date();t.setHours(0,0,0,0);var d=new Date(iss.dueDate);d.setHours(0,0,0,0);var df=Math.round((d-t)/86400000);var dc=df<0?'#DC2626':df===0?'#D97706':'#0EA5A0';var dt=df<0?'D+'+Math.abs(df):df===0?'D-Day':'D-'+df;return'<span style="padding:2px 7px;border-radius:8px;font-size:11px;font-weight:700;color:'+dc+';background:'+dc+'15;border:1px solid '+dc+'40;">'+dt+'</span>';}()):'─')+'</td>'
@@ -10719,6 +10733,16 @@ window._switchVTab=function(rep,tab){
   var isMain=tab==='main';
   mp.style.display=isMain?'block':'none';
   vp.style.display=isMain?'none':'block';
+  // visit탭 전환 시 vpanel textarea resize
+  if(!isMain){
+    setTimeout(function(){
+      vp.querySelectorAll('textarea').forEach(function(ta){
+        ta.style.overflowY='hidden';
+        ta.style.height='1px';
+        ta.style.height=Math.max(30,ta.scrollHeight)+'px';
+      });
+    }, 50);
+  }
   // 인라인 스타일 직접 제어 (CSS 종속성 없음)
   var TEAL='#0EA5A0';
   [mb,vb].forEach(function(b){
