@@ -6697,70 +6697,90 @@ async function _initSP() {
 }
 
 // ── 아이템 저장 ─────────────────────────────────────────────
-// DataKey 정규화: 공백→_, 콜론→-, 특수문자 제거 (OData filter 안정화)
+// DataKey 정규화: 공백→_, 콜론→-, 특수문자 제거
 function _sanitizeDKey(str){
-  return (str||'').replace(/\s+/g,'_').replace(/:/g,'-').replace(/[^a-zA-Z0-9가-힣_\-\.]/g,'');
+  return (str||'').replace(/\s+/g,'_').replace(/:/g,'-').replace(/[^a-zA-Z0-9\uAC00-\uD7A3_\-\.]/g,'');
 }
 
+// ═══ SP 저장 핵심 함수 ═══
+// 개선: Title 단일 조건 쿼리 (항상 인덱싱) + ID 캐시 (반복 쿼리 제거) + save lock
 async function _spSaveItem(dtype, dkey, payload, _retry) {
   if (!window._isSPReady) return;
-  // 동일 key 중복 저장 방지
-  if(!window._spSaveLocks) window._spSaveLocks={};
-  var _lockKey=dtype+'_'+dkey;
+
+  // DataKey 정규화
+  var _dkey = _sanitizeDKey(dkey);
+  var _title = dtype + '_' + _dkey;
+  var _lockKey = _title;
+
+  // 동일 key 중복 저장 방지 (재시도 제외)
+  if(!window._spSaveLocks) window._spSaveLocks = {};
   if(window._spSaveLocks[_lockKey] && !_retry){
-    console.log('[SP] 저장 중 skip:', _lockKey);
+    console.log('[SP] SAVE SKIP (lock):', _lockKey);
     return;
   }
-  window._spSaveLocks[_lockKey]=true;
-  try {
-    var _dkey = (typeof _sanitizeDKey==='function') ? _sanitizeDKey(dkey) : dkey;
-    const qUrl = _lUrl() + '?$select=Id&$filter=DataType+eq+%27'
-               + encodeURIComponent(dtype) + '%27+and+DataKey+eq+%27'
-               + encodeURIComponent(_dkey) + '%27';
-    const qRes = await _spFetch(qUrl);
-    const existing = qRes && qRes.value && qRes.value[0];
+  window._spSaveLocks[_lockKey] = true;
+  console.log('[SP] SAVE START:', _lockKey);
 
-    const body = JSON.stringify({
-      Title:     dtype + '_' + _dkey,
+  try {
+    // ID 캐시 확인 (반복 filter 쿼리 제거)
+    if(!window._spIdCache) window._spIdCache = {};
+    var _cachedId = window._spIdCache[_lockKey];
+
+    var _itemId = null;
+    if(_cachedId) {
+      _itemId = _cachedId;
+    } else {
+      // Title로 단일 조건 쿼리 (Title은 SP에서 항상 인덱싱됨 → 500 없음)
+      var _qUrl = _lUrl() + "?$select=Id&$filter=Title+eq+'" + encodeURIComponent(_title) + "'";
+      var _qRes = await _spFetch(_qUrl);
+      var _existing = _qRes && _qRes.value && _qRes.value[0];
+      if(_existing) {
+        _itemId = _existing.Id;
+        window._spIdCache[_lockKey] = _itemId;
+      }
+    }
+
+    var _body = JSON.stringify({
+      Title:     _title,
       DataType:  dtype,
       DataKey:   _dkey,
       Payload:   JSON.stringify(payload),
       UpdatedAt: new Date().toISOString()
     });
 
-    if (existing) {
-      await _spFetch(_lUrl() + '(' + existing.Id + ')', {
-        method: 'POST',
+    if(_itemId) {
+      await _spFetch(_lUrl() + '(' + _itemId + ')', {
+        method:  'POST',
         headers: { 'X-HTTP-Method': 'MERGE', 'IF-MATCH': '*' },
-        body: body
+        body:    _body
       });
     } else {
-      await _spFetch(_lUrl(), { method: 'POST', body: body });
+      var _created = await _spFetch(_lUrl(), { method: 'POST', body: _body });
+      if(_created && _created.Id) window._spIdCache[_lockKey] = _created.Id;
     }
-  } catch (err) {
-    // 409 Conflict: 동시 수정 충돌 → 자동 재시도 (최대 3회)
-    if (err.message && err.message.indexOf('409') >= 0) {
-      var retryCount = _retry || 0;
-      if (retryCount < 3) {
-        await new Promise(function(r){ setTimeout(r, 500 * (retryCount + 1)); });
-        return _spSaveItem(dtype, dkey, payload, retryCount + 1);
+    console.log('[SP] SAVE END:', _lockKey);
+
+  } catch(err) {
+    console.warn('[SP] SAVE ERROR:', _lockKey, err.message);
+    if(err.message && err.message.indexOf('409') >= 0) {
+      var _rc = _retry || 0;
+      if(_rc < 3){
+        await new Promise(function(r){ setTimeout(r, 800*(_rc+1)); });
+        window._spSaveLocks[_lockKey] = false;
+        return _spSaveItem(dtype, dkey, payload, _rc+1);
       }
-      // 3회 실패 시 조용히 무시 (다음 autoSave에서 재시도됨)
-      console.warn('[SP] 409 충돌 저장 실패, 다음 저장 시 재시도:', dtype, dkey);
-    } else if (err.message && err.message.indexOf('401') >= 0) {
-      // 401: 토큰 만료 → 조용히 무시 (다음 요청 시 토큰 갱신됨)
-      console.warn('[SP] 401 인증 만료:', dtype, dkey);
+    } else if(err.message && err.message.indexOf('401') >= 0) {
+      console.warn('[SP] 401 인증 만료');
     } else {
-      // accessLog/snapshot 실패는 토스트 미표시 (백그라운드 작업)
       if(dtype !== 'accessLog' && dtype !== 'snapshot'){
         showToast('저장 실패 (' + err.message + ')', 'warn');
       }
-      console.warn('[SP] 저장 실패:', dtype, dkey, err.message);
     }
   } finally {
-    if(window._spSaveLocks) delete window._spSaveLocks[_lockKey];
+    delete window._spSaveLocks[_lockKey];
   }
 }
+
 
 // ── 아이템 로드 ─────────────────────────────────────────────
 async function _spLoadItem(dtype, dkey) {
