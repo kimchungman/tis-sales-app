@@ -4327,7 +4327,7 @@ function renderTopClients(){
   var cs=Object.values(cm).sort(function(a,b){return b.amount-a.amount;});
   var maxC=cs.length?cs[0].amount:1;
   var totalC=cs.reduce(function(s,c){return s+c.amount;},0);
-  var rowsC=cs.slice(0,20).map(function(item,i){
+  var rowsC=cs.map(function(item,i){
     var pct=Math.max(3,Math.round(item.amount/maxC*100));
     var col=RC[item.reps[0]]||'#4f7fff';
     return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #F8FAFC;">'
@@ -6673,7 +6673,14 @@ async function _initSP() {
           if(_pid2==='dashboard'&&typeof renderDashboard==='function') renderDashboard();
           if(_pid2==='issues'&&typeof renderIssues==='function') renderIssues();
           if(_pid2==='pipeline'&&typeof renderPipeline==='function') renderPipeline();
-          if(_pid2==='visits'&&typeof renderVisits==='function') renderVisits();
+          if(_pid2==='visits'){
+            // 날짜 필터 선택 중이면 해당 날짜 뷰 유지, 아니면 전체 렌더
+            if(window._visitFilterDate && typeof filterVisitsByDate==='function'){
+              filterVisitsByDate(window._visitFilterDate);
+            } else if(typeof renderVisits==='function'){
+              renderVisits();
+            }
+          }
           // 입력 페이지 DOM은 건드리지 않음 - dirty 마킹만
           if(!_ipOn) window._inputPageDirty = true;
         } else {
@@ -10847,6 +10854,7 @@ window.initVisitsTabs=function(){
 
 // ════ renderVisits ════
 window.renderVisits=function(){
+  window._visitFilterDate = ''; // 날짜 필터 해제
   var container=document.getElementById('visits-dashboard');
   if(!container) return;
   _ensureVisitLog();
@@ -11122,6 +11130,7 @@ window.renderVisits=function(){
 window.changeVisitCalMonth=function(delta){ _visitCalDate.setMonth(_visitCalDate.getMonth()+delta); renderVisits(); };
 
 window.filterVisitsByDate=function(dateStr){
+  window._visitFilterDate = dateStr; // 날짜 필터 상태 유지
   var info=document.getElementById('visit-filter-info');
   if(info) info.textContent='📅 '+dateStr;
   var list=document.getElementById('visit-list');
