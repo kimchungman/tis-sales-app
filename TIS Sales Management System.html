@@ -6653,6 +6653,8 @@ async function _initSP() {
     await _spLoadSettings();
     await _spLoadToday();      // 기존 스냅샷 로드 (하위 호환)
     await _spLoadAllReps();
+    // 기존 visit_log 데이터 마이그레이션 (rep_data 통합 전 데이터 호환)
+      if(typeof _spLoadAllVisitLogs==='function') await _spLoadAllVisitLogs();
     await _spLoadHistList();
 
     // 데이터 로드 후 대시보드 즉시 재렌더링 (모든 사용자)
