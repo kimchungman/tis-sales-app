@@ -1715,6 +1715,29 @@ textarea {
 }
 .dt td.content-cell { text-align:left !important; vertical-align:middle !important; white-space:pre-wrap !important; }
 
+
+/* ════ 대시보드 테이블 열 중앙 정렬 (최종, !important) ════ */
+/* 고객접점현황 접점기록 - 접점내용 제외 모든 열 */
+#visit-list td:not(.content-cell) { text-align:center !important; vertical-align:middle !important; }
+#visit-list td.content-cell { text-align:left !important; }
+
+/* 영업파이프라인 - 내용 제외 모든 열 */
+#pipe-tbody td:not(.content-cell) { text-align:center !important; vertical-align:middle !important; }
+#pipe-tbody td.content-cell { text-align:left !important; white-space:pre-wrap !important; }
+
+/* 이슈현황 - 이슈내용 제외 모든 열 */
+#iss-list td:not(.content-cell) { text-align:center !important; vertical-align:middle !important; }
+#iss-list td.content-cell { text-align:left !important; white-space:pre-wrap !important; }
+
+
+/* ════ 입력폼 이슈사항 중앙 정렬 (내용 제외) ════ */
+tr[id^="ir-"] td:not(.content-cell) { text-align:center !important; vertical-align:middle !important; }
+tr[id^="ir-"] td.content-cell { text-align:left !important; }
+
+/* ════ 입력폼 접점기록 중앙 정렬 (접점내용 제외) ════ */
+tr[id^="vr-"] td:not(.content-cell) { text-align:center !important; vertical-align:middle !important; }
+tr[id^="vr-"] td.content-cell { text-align:left !important; }
+
 </style>
 </head>
 <body>
@@ -10819,7 +10842,7 @@ function _vRow(rep,idx,v){
 
   var delBtn=canEdit?'<button onclick="deleteVisit(\''+rep+'\','+idx+')" style="width:26px;height:26px;border-radius:5px;border:1px solid #FCA5A5;background:#FEF2F2;color:#DC2626;cursor:pointer;font-size:14px;line-height:1;flex-shrink:0;">&#215;</button>':'';
 
-  return '<tr>'
+  return '<tr id="vr-'+rep+'-'+idx+'"'
     +'<td style="width:100px;vertical-align:middle;padding:5px 5px;text-align:center;">'+dateInp('date',v.date)+'</td>'
     +'<td style="width:160px;vertical-align:middle;padding:5px 5px;text-align:center;">'+inpCenter('company',v.company)+'</td>'
     +'<td style="width:110px;vertical-align:middle;padding:5px 5px;text-align:center;">'+sel('contactType',contactType,CONTACT_TYPES,TYPE_COLOR)+'</td>'
