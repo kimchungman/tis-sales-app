@@ -7276,7 +7276,7 @@ async function _loadAccessLog() {
   }
   tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--muted);">로딩 중...</td></tr>';
   try {
-    const url = _lUrl() + "?$select=Payload,UpdatedAt&$filter=DataType+eq+'accessLog'&$orderby=UpdatedAt+desc&$top=200";
+    const url = _lUrl() + '?$select=Payload,UpdatedAt&$filter=DataType+eq+%27accessLog%27&$orderby=UpdatedAt+desc&$top=200';
     const res = await _spFetch(url);
     _accessLogData = (res.value || []).map(function(item) {
       try { return JSON.parse(item.Payload); } catch(e) { return null; }
