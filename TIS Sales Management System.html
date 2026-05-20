@@ -10583,7 +10583,7 @@ function _vRow(rep,idx,v){
   function ta(field,val){
     var style='width:100%;min-height:30px;box-sizing:border-box;font-size:12px;font-family:inherit;text-align:left;border:1px solid #E2E8F0;border-radius:6px;padding:4px 8px;outline:none;resize:none;overflow-y:hidden;transition:border-color 0.15s;line-height:1.5;text-align:left;';
     if(!canEdit) return '<span style="font-size:12px;color:#374151;padding:2px 4px;display:block;line-height:1.5;white-space:pre-wrap;text-align:left;">'+( val||'─')+'</span>';
-    return '<textarea rows="1" style="'+style+'" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" oninput="this.style.setProperty(\'height\',\'1px\',\'important\');this.style.setProperty(\'height\',Math.max(30,this.scrollHeight)+\'px\',\'important\');" onchange="store.reps[\''+r+'\'].visitLog['+idx+'].'+field+'=this.value;autoSave&&autoSave();">'+(val||'')+'</textarea>';
+    return '<textarea rows="1" style="'+style+'" oninput="this.style.height=\'1px\';this.style.height=Math.max(30,this.scrollHeight)+\'px\';" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" oninput="this.style.setProperty(\'height\',\'1px\',\'important\');this.style.setProperty(\'height\',Math.max(30,this.scrollHeight)+\'px\',\'important\');" onchange="store.reps[\''+r+'\'].visitLog['+idx+'].'+field+'=this.value;autoSave&&autoSave();">'+(val||'')+'</textarea>';
   }
   function sel(field, val, opts, colorMap){
     var currVal=(val===undefined||val===null)?'':(val);
