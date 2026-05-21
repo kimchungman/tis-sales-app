@@ -6792,6 +6792,8 @@ async function _initSP() {
           }
         }
         // 공동편집: 다른 담당자 데이터만 동기화
+        await _loadAccessLog();
+        if(typeof updateAccessDisplay==='function') updateAccessDisplay();
         var _changed = await _spSyncOtherReps();
         await _spLoadHistList();
         if(_changed){
@@ -7463,6 +7465,7 @@ async function _loadAccessLog() {
         try { return JSON.parse(item.Payload); } catch(e) { return null; }
       }).filter(Boolean);
     _renderAccessLog();
+    if(typeof updateAccessDisplay==='function') updateAccessDisplay();
   } catch(e) {
     tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--muted);">로드 실패: ' + e.message + '</td></tr>';
   }
