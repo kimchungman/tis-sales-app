@@ -11650,17 +11650,30 @@ async function _spSyncOtherReps(){
   var changed=false;
   try{
     // 모든 rep_data 로드 (날짜/팀 필터 없음 - 전체 담당자 최신 데이터)
-    var qUrl=_lUrl()+'?$select=Id,Title,DataType,DataKey,Payload&$top=2000';
-    var res=await _spFetch(qUrl);
+    var qUrl=_lUrl()+'?$select=Id,Title,DataType,DataKey,Payload&$top=500';
+    var res=await _spFetchAll(qUrl);
     var items=(res&&res.value)||[];
 
-    // 담당자별 최신 데이터만 유지 (UpdatedAt 내림차순이므로 첫 번째가 최신)
-    var latestByRep={};
+    // 담당자별 최신 데이터 선택 (savedAt 기준 - $orderby 없으므로 직접 비교)
+    var allByRep={};
     items.forEach(function(item){
       try{
+        if(item.DataType!=='rep_data'&&!(item.Title&&item.Title.indexOf('rep_data_')===0)) return;
         var repName=_parseRepDataKey(item.DataKey).rep;
-        if(!latestByRep[repName]) latestByRep[repName]=item; // 최신 1건만
+        if(!repName) return;
+        if(!allByRep[repName]) allByRep[repName]=[];
+        allByRep[repName].push(item);
       }catch(e){}
+    });
+    var latestByRep={};
+    Object.keys(allByRep).forEach(function(repName){
+      latestByRep[repName]=allByRep[repName].reduce(function(best,item){
+        try{
+          var pl=JSON.parse(item.Payload||'{}');
+          var bp=JSON.parse(best.Payload||'{}');
+          return (pl.savedAt||'') > (bp.savedAt||'') ? item : best;
+        }catch(e){ return best; }
+      });
     });
 
     // 전체 팀 담당자 목록
@@ -11721,14 +11734,35 @@ async function _spLoadAllReps(){
   if(!window._isSPReady) return;
   try{
     // 날짜 필터 없이 전체 로드 후 담당자별 최신 데이터 선택
-    var qUrl=_lUrl()+'?$select=Id,Title,DataType,DataKey,Payload&$top=2000';
-    var res=await _spFetch(qUrl);
+    var qUrl=_lUrl()+'?$select=Id,Title,DataType,DataKey,Payload&$top=500';
+    var res=await _spFetchAll(qUrl);
     var items=(res&&res.value)||[];
-    // 담당자별 최신 1건만 처리
-    var seen={};
+    // 담당자별 최신 데이터 선택 (savedAt 기준)
+    var allByRep2={};
     items.forEach(function(item){
       try{
         if(item.DataType!=='rep_data'&&!(item.Title&&item.Title.indexOf('rep_data_')===0)) return;
+        var repName=_parseRepDataKey(item.DataKey).rep;
+        if(!repName) return;
+        if(!allByRep2[repName]) allByRep2[repName]=[];
+        allByRep2[repName].push(item);
+      }catch(e){}
+    });
+    var seen={};
+    var sortedItems=[];
+    Object.keys(allByRep2).forEach(function(repName){
+      var best=allByRep2[repName].reduce(function(b,item){
+        try{
+          var pl=JSON.parse(item.Payload||'{}');
+          var bp=JSON.parse(b.Payload||'{}');
+          return (pl.savedAt||'')>(bp.savedAt||'') ? item : b;
+        }catch(e){ return b; }
+      });
+      sortedItems.push(best);
+    });
+    var items=sortedItems;
+    var dummy={}; items.forEach(function(item){
+      try{
         var parsed=_parseRepDataKey(item.DataKey);
         var repName=parsed.rep;
         if(!repName||seen[repName]) return;
