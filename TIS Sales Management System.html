@@ -6774,6 +6774,13 @@ async function _initSP() {
       }catch(e){}
     }, 10000);
 
+    // 접속현황 10초마다 갱신 (별도 타이머)
+    window._accessTimer = setInterval(async function(){
+      try{
+        await _loadAccessLog();
+        if(typeof updateAccessDisplay==='function') updateAccessDisplay();
+      }catch(e){}
+    }, 10000);
     window._spSyncTimer = setInterval(async function(){
       if(!window._isSPReady) return;
       try{
@@ -6792,10 +6799,9 @@ async function _initSP() {
           }
         }
         // 공동편집: 다른 담당자 데이터만 동기화
-        await _loadAccessLog();
-        if(typeof updateAccessDisplay==='function') updateAccessDisplay();
         var _changed = await _spSyncOtherReps();
         await _spLoadHistList();
+        try{ if(typeof updateAccessDisplay==='function') updateAccessDisplay(); }catch(_e){}
         if(_changed){
           var _activePage=document.querySelector('.page.active');
           var _pid2=_activePage?_activePage.id.replace('page-',''):'';
