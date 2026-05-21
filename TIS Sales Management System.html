@@ -4613,6 +4613,7 @@ async function manualRefresh(){
     if(typeof renderDashboard==='function') renderDashboard();
     if(typeof renderIssues==='function') renderIssues();
     if(typeof renderPipeline==='function') renderPipeline();
+    if(typeof renderVisits==='function') renderVisits();
     if(typeof loadBanner==='function') loadBanner();
     if(typeof updateAccessDisplay==='function') updateAccessDisplay();
     showToast('🔄 최신 데이터로 갱신됐습니다.');
