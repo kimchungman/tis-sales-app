@@ -130,7 +130,9 @@ function renderSelectOptsSettings(){
     if(f.fixed) h+=' <span style="font-size:10px;color:#94A3B8;font-weight:400;">(라벨만 변경)</span>';
     h+='</div><div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">';
     opts.forEach(function(opt,i){
-      h+='<div style="display:inline-flex;align-items:center;gap:3px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:3px 8px;">';
+      var _da=f.fixed?'':' draggable="true" data-sofield="'+f.key+'" data-soidx="'+i+'" ondragstart="soStartDrag(event,this)" ondragover="soDragOver(event)" ondrop="soDrop(event,this)" ondragleave="soDragLeave(event)"';
+      h+='<div'+_da+' style="display:inline-flex;align-items:center;gap:3px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:3px 8px;cursor:'+(f.fixed?'default':'grab')+';transition:all 0.15s;">';
+      if(!f.fixed) h+='<span style="color:#CBD5E1;font-size:10px;margin-right:2px;user-select:none;">⠿</span>';
       h+='<input type="text" value="'+opt.replace(/"/g,'&quot;')+'" data-field="'+f.key+'" data-idx="'+i+'" oninput="updateSelectOpt(this)" style="border:none;background:transparent;font-size:12px;font-weight:600;color:#374151;width:'+Math.max(opt.length*7,40)+'px;min-width:30px;max-width:120px;outline:none;font-family:inherit;">';
       if(!f.fixed) h+='<button onclick="deleteSelectOpt(this)" data-field="'+f.key+'" data-idx="'+i+'" style="border:none;background:none;cursor:pointer;color:#94A3B8;font-size:13px;padding:0 2px;line-height:1;" title="삭제">×</button>';
       h+='</div>';
@@ -139,6 +141,24 @@ function renderSelectOptsSettings(){
     h+='</div></div>';
   });
   el.innerHTML=h;
+}
+var _soDragField='', _soDragIdx=-1;
+function soStartDrag(e,el){
+  _soDragField=el.dataset.sofield; _soDragIdx=parseInt(el.dataset.soidx);
+  e.currentTarget.style.opacity='0.4'; e.dataTransfer.effectAllowed='move';
+}
+function soDragOver(e){ e.preventDefault(); e.currentTarget.style.background='#EFF6FF'; e.currentTarget.style.borderColor='#4f7fff'; }
+function soDragLeave(e){ e.currentTarget.style.background='#F8FAFC'; e.currentTarget.style.borderColor='#E2E8F0'; }
+function soDrop(e,el){
+  e.preventDefault(); e.currentTarget.style.background='#F8FAFC'; e.currentTarget.style.borderColor='#E2E8F0';
+  var field=el.dataset.sofield; var toIdx=parseInt(el.dataset.soidx);
+  if(_soDragField!==field||_soDragIdx===toIdx||_soDragIdx<0) return;
+  if(!authCfg.selectOptions) authCfg.selectOptions={};
+  if(!authCfg.selectOptions[field]) authCfg.selectOptions[field]=getSelectOpts(field).slice();
+  var arr=authCfg.selectOptions[field];
+  var moved=arr.splice(_soDragIdx,1)[0];
+  arr.splice(toIdx,0,moved);
+  saveAuthCfg(); refreshSelectOptions(); renderSelectOptsSettings(); _soDragIdx=-1;
 }
 function updateSelectOpt(input){
   var field=input.dataset.field; var idx=parseInt(input.dataset.idx);
@@ -3869,7 +3889,7 @@ function renderMainChart(){
   if(cfEl){
     var cv=cfEl.value;
     cfEl.innerHTML='<option value="all">전체 담당자</option>';
-    allDR.forEach(function(r){cfEl.innerHTML+='<option value="'+r+'">'+r+'</option>';});
+    allDR.forEach(function(r){cfEl.innerHTML+='<option value="'+r+'">'+(typeof getRepDisplayName==='function'?getRepDisplayName(r):r)+'</option>';});
     cfEl.value=allDR.includes(cv)?cv:'all';
   }
 
@@ -5548,11 +5568,20 @@ function doGuestWithName(name){
         try{ if(typeof renderDashboard==='function') renderDashboard(); }catch(e){}
         try{ if(typeof renderIssues==='function') renderIssues(); }catch(e){}
         try{ if(typeof renderPipeline==='function') renderPipeline(); }catch(e){}
-        // 게스트 이름으로 접속 기록
+        // 게스트 접속현황 즉시 반영 후 SP 저장
         if(window._msalApp){
           var _accs=window._msalApp.getAllAccounts();
           var _msAcc=_accs.length>0?_accs[0].username:'';
-          await _recordAccessLog(_msAcc, session.guestName||name.trim(), '접속');
+          var _gName=session.guestName||name.trim();
+          // 메모리에 먼저 추가 → 즉시 표시
+          if(!window._accessLogData) window._accessLogData=[];
+          window._accessLogData.unshift({
+            msAccount:_msAcc, selectedRep:_gName,
+            action:'접속', timestamp:new Date().toISOString()
+          });
+          if(typeof updateAccessDisplay==='function') updateAccessDisplay();
+          // SP 저장
+          try{ await _recordAccessLog(_msAcc, _gName, '접속'); }catch(e){}
         }
       }
     }catch(e){}
@@ -6467,13 +6496,13 @@ function autoSave(){
         window._lastAutoSaveHash = _curHash;
         if(session && session.role==='rep' && session.rep){
           if(typeof _spSaveMyRep==='function') await _spSaveMyRep();
-        } else {
-          // 관리자: 현재 선택된 담당자 데이터 저장
+        } else if(session && session.role==='admin') {
+          // 관리자만: 담당자 데이터 + 스냅샷 저장
           if(typeof activeRep!=='undefined'&&activeRep&&store.reps&&store.reps[activeRep]){
             if(typeof _spSaveRepByName==='function') await _spSaveRepByName(activeRep);
           }
           if(typeof _spSaveSnap==='function') await _spSaveSnap();
-        }
+        } // 게스트: SP 쓰기 없음
         updateSaveIndicator(true);
       }
     } catch(e){
@@ -7155,6 +7184,7 @@ async function _spSaveItem(dtype, dkey, payload, _retry) {
       if(dtype !== 'accessLog' && dtype !== 'snapshot'){
         showToast('저장 실패 (' + err.message + ')', 'warn');
       }
+      if(err.message&&err.message.includes('403')&&typeof session!=='undefined'&&session&&session.role==='guest') return;
       console.warn('[SP] 저장 실패:', _title, err.message);
     }
   } finally {
@@ -11968,7 +11998,9 @@ function renderAccessStat(range){
       var ts=entry.timestamp||entry.ts||entry.time||'';
       var name=entry.selectedRep||entry.rep||entry.msAccount||'';
       if(name==='게스트'||!name) name=entry.guestName||'게스트';
-      if(ts) logs.push({name:name, ts:ts});
+      // 접속 이벤트만 집계
+      if(entry.action && entry.action!=='접속') return;
+      if(ts) logs.push({name:name, ts:ts, action:entry.action||'접속'});
     });
   } else {
     // localStorage fallback
@@ -12002,9 +12034,13 @@ function renderAccessStat(range){
   // KPI
   var kpiEl=document.getElementById('stat-kpi');
   if(kpiEl){
-    var uniq=[...new Set(filtered.map(function(l){return l.name;}))].length;
-    var total=filtered.length;
-    var today=filtered.filter(function(l){return new Date(l.ts).toDateString()===now.toDateString();}).length;
+    var _seen={}; var dedupFiltered=filtered.filter(function(l){
+      var dk=(l.ts||'').split('T')[0]+'_'+l.name;
+      if(_seen[dk]) return false; _seen[dk]=true; return true;
+    });
+    var uniq=[...new Set(dedupFiltered.map(function(l){return l.name;}))].length;
+    var total=dedupFiltered.length;
+    var today=dedupFiltered.filter(function(l){return new Date(l.ts).toDateString()===now.toDateString();}).length;
     var label=range==='week'?'이번 주':range==='month'?'이번 달':range==='custom'?'선택 기간':'전체';
     var kpiData=[
       {cls:'blue', label:label+' 총 접속', val:total, unit:'회'},
