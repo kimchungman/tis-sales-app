@@ -4696,14 +4696,7 @@ async function manualRefresh(){
       window._spIdCache = {};
 
       await _spLoadSettings();       // 관리자 설정 (배너/팝업 포함)
-      await _spLoadAllReps();
-    // SP 로드 완료 → repSavedHashes 갱신 (방금 받은 데이터를 "이미 저장됨"으로 표시)
-    window._spDataLoaded = true;
-    if(typeof store!=='undefined' && store.reps){
-      Object.keys(store.reps).forEach(function(r){
-        try{ _repSavedHashes[r] = JSON.stringify(store.reps[r]); }catch(e){}
-      });
-    }        // 모든 담당자 최신 데이터
+      await _spLoadAllReps();        // 모든 담당자 최신 데이터
       await _spLoadAllVisitLogs();   // 접점기록
       await _loadAccessLog();        // 접속이력
 
@@ -5733,7 +5726,32 @@ function tryRep(){
   if(pw===authCfg.repPws[pendingRep]){ doRepLogin(pendingRep); }
   else { document.getElementById('rep-err').textContent='❌ 비밀번호가 틀렸습니다.'; document.getElementById('rep-pw').value=''; document.getElementById('rep-pw').focus(); }
 }
+
+function _showAccessDenied(rep,msAcc){
+  var prev=document.getElementById('_access-denied-overlay');
+  if(prev) prev.remove();
+  var overlay=document.createElement('div');
+  overlay.id='_access-denied-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(10,22,40,0.75);z-index:99999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
+  var box=document.createElement('div');
+  box.style.cssText='background:white;border-radius:20px;padding:40px 36px;max-width:420px;width:90%;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.3);';
+  var icon=document.createElement('div');icon.style.cssText='font-size:48px;margin-bottom:16px;';icon.textContent='🔒';
+  var title=document.createElement('div');title.style.cssText='font-size:18px;font-weight:800;color:#0A1628;margin-bottom:10px;';title.textContent='접속 권한이 없는 계정입니다';
+  var sub=document.createElement('div');sub.style.cssText='font-size:13px;color:#64748B;margin-bottom:6px;';sub.textContent='현재 로그인 계정';
+  var email=document.createElement('div');email.style.cssText='font-size:13px;font-weight:700;color:#DC2626;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:8px 16px;margin-bottom:20px;word-break:break-all;';email.textContent=msAcc;
+  var msg=document.createElement('div');msg.style.cssText='font-size:13px;color:#374151;line-height:1.8;margin-bottom:28px;';msg.textContent='시스템 관리자에게 문의 바랍니다.';
+  var btn=document.createElement('button');btn.style.cssText='padding:12px 32px;background:#0A1628;color:white;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;';btn.textContent='확인';btn.onclick=function(){overlay.remove();};
+  box.appendChild(icon);box.appendChild(title);box.appendChild(sub);box.appendChild(email);box.appendChild(msg);box.appendChild(btn);
+  overlay.appendChild(box);document.body.appendChild(overlay);
+}
 function doRepLogin(rep){
+  // 이메일 불일치 시 접근 차단
+  if(typeof authCfg!=='undefined'&&authCfg.repEmails&&authCfg.repEmails[rep]){
+    var _reg=(authCfg.repEmails[rep]||'').toLowerCase().trim();
+    var _cur='';
+    if(window._msalApp){var _a=window._msalApp.getAllAccounts();if(_a.length>0)_cur=(_a[0].username||'').toLowerCase().trim();}
+    if(_cur&&_reg&&_cur!==_reg){_showAccessDenied(rep,_cur);return;}
+  }
   session={role:'rep', rep:rep, team:currentTeam};
   localStorage.setItem('_tisSavedSession', JSON.stringify({role:'rep',rep:rep,team:currentTeam}));
   // 모든 탭을 본인 팀으로 초기화
@@ -6475,6 +6493,10 @@ function autoSave(){
           // 모든 입력 데이터 변경 감지 (visitLog 포함 전체)
           return r+':'+JSON.stringify(d);
         }).join('|'):'') + ':' + (data.date||'');
+        if(!window._spDataLoaded){
+          console.log('[autoSave] SP 로드 전 저장 skip');
+          return;
+        }
         if(window._lastAutoSaveHash === _curHash){
           console.log('[autoSave] 변경없음 skip');
           return;
@@ -6905,6 +6927,7 @@ function _lUrl() {
 }
 
 async function _initSP() {
+  window._spDataLoaded = false; // SP 로드 완료 전 저장 차단
   try {
     _setSPStatus('connecting');
 
@@ -6928,6 +6951,13 @@ async function _initSP() {
     await _spLoadSettings();
     await _spLoadToday();      // 기존 스냅샷 로드 (하위 호환)
     await _spLoadAllReps();
+    // SP 로드 완료 → 저장 허용 + repSavedHashes 초기화
+    window._spDataLoaded = true;
+    if(typeof _repSavedHashes!=='undefined' && typeof store!=='undefined' && store.reps){
+      Object.keys(store.reps).forEach(function(r){
+        try{ _repSavedHashes[r]=JSON.stringify(store.reps[r]); }catch(e){}
+      });
+    }
     // 기존 visit_log 데이터 마이그레이션 (rep_data 통합 전 데이터 호환)
       if(typeof _spLoadAllVisitLogs==='function') await _spLoadAllVisitLogs();
     await _spLoadHistList();
@@ -7709,9 +7739,13 @@ function _renderAccessLog() {
     return '<tr style="border-bottom:1px solid var(--border);">'
       + '<td style="padding:8px 12px;color:var(--text);">' + (log.msAccount || '-') + '</td>'
       + '<td style="padding:8px 12px;">'
-      +   '<span style="font-weight:600;color:' + (isSame ? '#198038' : '#DA1E28') + ';">'
-      +   (log.selectedRep || '-') + '</span>'
-      +   (!isSame ? ' <span style="font-size:10px;color:#DA1E28;">⚠️불일치</span>' : '')
+      + (function(){
+          var _aR=[];
+          if(typeof TEAM_REPS!=='undefined') Object.keys(TEAM_REPS).forEach(function(t){(TEAM_REPS[t]||[]).forEach(function(r){_aR.push(r);});});
+          var _iG=log.selectedRep&&_aR.length>0&&_aR.indexOf(log.selectedRep)<0;
+          if(_iG) return '<span style="display:inline-flex;align-items:center;gap:5px;"><span style="font-weight:700;color:#4f7fff;">&#128065; '+(log.selectedRep||'-')+'</span><span style="font-size:10px;font-weight:700;color:#4f7fff;background:rgba(79,127,255,0.12);border:1px solid rgba(79,127,255,0.35);border-radius:20px;padding:1px 8px;">게스트</span></span>';
+          return '<span style="font-weight:600;color:'+(isSame?'#198038':'#DA1E28')+'">'+(log.selectedRep||'-')+'</span>'+(isSame?'':' <span style="font-size:10px;color:#DA1E28;">⚠️불일치</span>');
+        })()
       + '</td>'
       + '<td style="padding:8px 12px;color:var(--muted);white-space:nowrap;">' + ts + '</td>'
       + '<td style="padding:8px 12px;">'
