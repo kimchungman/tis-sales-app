@@ -6358,6 +6358,7 @@ function autoSave(){
           }
           if(typeof _spSaveSnap==='function') await _spSaveSnap();
         }
+        updateSaveIndicator(true);
       }
     } catch(e){
       console.error('자동저장 실패:', e);
@@ -7497,26 +7498,26 @@ async function _recordAccessLog(msAccount, selectedRep, action) {
 
 // 접속이력 로드
 async function _loadAccessLog() {
-  const tbody = document.getElementById('accesslog-tbody');
-  if (!tbody) return;
-  if (!window._isSPReady) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--muted);">SP 연결 후 사용 가능합니다</td></tr>';
-    return;
-  }
-  tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--muted);">로딩 중...</td></tr>';
+  if (!window._isSPReady) return;
   try {
-    // SP 서버 필터 제거 → 500 방지 (클라이언트에서 필터링)
-    const url = _lUrl() + '?$select=Id,Title,DataType,Payload&$top=1000';
-    const res = await _spFetch(url);
+    const url = _lUrl() + '?$select=Id,Title,DataType,Payload&$top=500';
+    const res = await _spFetchAll(url);
     _accessLogData = (res.value || [])
-      .filter(function(item){ return item.Title && item.Title.indexOf('accessLog') === 0; })
+      .filter(function(item){
+        return (item.DataType==='accessLog') ||
+               (item.Title && item.Title.indexOf('accessLog_') === 0);
+      })
       .map(function(item) {
         try { return JSON.parse(item.Payload); } catch(e) { return null; }
       }).filter(Boolean);
-    _renderAccessLog();
+    // 접속이력 페이지 렌더 (있을 때만)
+    const tbody = document.getElementById('accesslog-tbody');
+    if(tbody) _renderAccessLog();
+    // 상단 뱃지 항상 갱신
     if(typeof updateAccessDisplay==='function') updateAccessDisplay();
   } catch(e) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--muted);">로드 실패: ' + e.message + '</td></tr>';
+    const tbody = document.getElementById('accesslog-tbody');
+    if(tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--muted);">로드 실패: ' + e.message + '</td></tr>';
   }
 }
 
