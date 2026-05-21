@@ -83,6 +83,92 @@ var st,ct,ut,lt,dt,ht,pt,gt,ft,mt=function(){function t(e,t,r){this.networkInter
 
 
 
+
+// ════ 선택박스 옵션 관리 전역 상수 및 함수 ════
+var _DEFAULT_SELECT_OPTS = {
+  clientType:['MA','개발','상품','기타'],
+  clientStatus:['달성','예상'],
+  clientProduct:['그룹웨어','웹메일','ERP','MES','PIMS','스포츠','VOA','기타'],
+  activityType:['전략과제','신규영업','기존고객','신규고객'],
+  activityProgress:['제안','견적','입찰','수주','계약','보류','Drop'],
+  issueSev:['높음','중간','낮음'],
+  issueStatus:['Open','Closed'],
+  contactType:['방문','전화','이메일','화상회의','기타'],
+  contactPurpose:['신규 발굴','기존 관리','견적/제안','계약','이슈 대응','정보 수집','기타']
+};
+function getSelectOpts(field){
+  var so=(typeof authCfg!=='undefined'&&authCfg.selectOptions&&authCfg.selectOptions[field]);
+  return (so&&so.length>0)?so:(_DEFAULT_SELECT_OPTS[field]||[]);
+}
+function refreshSelectOptions(){
+  if(document.querySelector('.page#page-input.active')){
+    window._lastBuiltTeam=null;
+    if(typeof buildRepInputs==='function') buildRepInputs();
+  }
+  if(typeof CONTACT_TYPES!=='undefined') CONTACT_TYPES.splice(0,CONTACT_TYPES.length,...getSelectOpts('contactType'));
+  if(typeof CONTACT_PURPOSES!=='undefined') CONTACT_PURPOSES.splice(0,CONTACT_PURPOSES.length,...getSelectOpts('contactPurpose'));
+}
+function renderSelectOptsSettings(){
+  var el=document.getElementById('select-opts-container');
+  if(!el) return;
+  var fields=[
+    {key:'clientType',      label:'고객사별 실적 - 유형',    fixed:false},
+    {key:'clientStatus',    label:'고객사별 실적 - 상태',    fixed:false},
+    {key:'clientProduct',   label:'고객사별 실적 - 제품',    fixed:false},
+    {key:'activityType',    label:'영업활동 - 구분',          fixed:false},
+    {key:'activityProgress',label:'영업활동 - 진행사항',     fixed:false},
+    {key:'issueSev',        label:'이슈사항 - 중요도',       fixed:true},
+    {key:'issueStatus',     label:'이슈사항 - 처리상태',     fixed:true},
+    {key:'contactType',     label:'접점 기록 - 접점 유형',   fixed:false},
+    {key:'contactPurpose',  label:'접점 기록 - 접점 목적',   fixed:false}
+  ];
+  var h='';
+  fields.forEach(function(f){
+    var opts=getSelectOpts(f.key);
+    h+='<div style="margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #F1F5F9;">';
+    h+='<div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:8px;">'+f.label;
+    if(f.fixed) h+=' <span style="font-size:10px;color:#94A3B8;font-weight:400;">(라벨만 변경)</span>';
+    h+='</div><div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">';
+    opts.forEach(function(opt,i){
+      h+='<div style="display:inline-flex;align-items:center;gap:3px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:3px 8px;">';
+      h+='<input type="text" value="'+opt.replace(/"/g,'&quot;')+'" data-field="'+f.key+'" data-idx="'+i+'" oninput="updateSelectOpt(this)" style="border:none;background:transparent;font-size:12px;font-weight:600;color:#374151;width:'+Math.max(opt.length*7,40)+'px;min-width:30px;max-width:120px;outline:none;font-family:inherit;">';
+      if(!f.fixed) h+='<button onclick="deleteSelectOpt(this)" data-field="'+f.key+'" data-idx="'+i+'" style="border:none;background:none;cursor:pointer;color:#94A3B8;font-size:13px;padding:0 2px;line-height:1;" title="삭제">×</button>';
+      h+='</div>';
+    });
+    if(!f.fixed) h+='<button onclick="addSelectOpt(this)" data-field="'+f.key+'" style="padding:3px 10px;border:1.5px dashed #CBD5E1;border-radius:8px;background:transparent;font-size:12px;color:#94A3B8;cursor:pointer;font-family:inherit;">+ 추가</button>';
+    h+='</div></div>';
+  });
+  el.innerHTML=h;
+}
+function updateSelectOpt(input){
+  var field=input.dataset.field; var idx=parseInt(input.dataset.idx);
+  if(!authCfg.selectOptions) authCfg.selectOptions={};
+  if(!authCfg.selectOptions[field]) authCfg.selectOptions[field]=getSelectOpts(field).slice();
+  authCfg.selectOptions[field][idx]=input.value;
+  saveAuthCfg();
+  refreshSelectOptions();
+}
+function addSelectOpt(btn){
+  var field=btn.dataset.field;
+  var newVal=prompt('새 옵션 이름:','');
+  if(!newVal||!newVal.trim()) return;
+  if(!authCfg.selectOptions) authCfg.selectOptions={};
+  if(!authCfg.selectOptions[field]) authCfg.selectOptions[field]=getSelectOpts(field).slice();
+  authCfg.selectOptions[field].push(newVal.trim());
+  saveAuthCfg();
+  refreshSelectOptions();
+  renderSelectOptsSettings();
+}
+function deleteSelectOpt(btn){
+  var field=btn.dataset.field; var idx=parseInt(btn.dataset.idx);
+  if(!confirm('삭제하시겠습니까?')) return;
+  if(!authCfg.selectOptions) authCfg.selectOptions={};
+  if(!authCfg.selectOptions[field]) authCfg.selectOptions[field]=getSelectOpts(field).slice();
+  authCfg.selectOptions[field].splice(idx,1);
+  saveAuthCfg();
+  refreshSelectOptions();
+  renderSelectOptsSettings();
+}
 </script>
 <script>
 /* MSAL 로드 검증 */
@@ -1719,6 +1805,7 @@ textarea {
 /* ════ 대시보드 테이블 열 중앙 정렬 (최종, !important) ════ */
 /* 고객접점현황 접점기록 - 접점내용 제외 모든 열 */
 #visit-list td:not(.content-cell) { text-align:center !important; vertical-align:middle !important; }
+#visit-list .company-cell { min-width:170px; white-space:nowrap; }
 #visit-list td.content-cell { text-align:left !important; }
 
 /* 영업파이프라인 - 내용 제외 모든 열 */
@@ -2201,7 +2288,11 @@ tr[id^="vr-"] td.content-cell { text-align:left !important; }
         </div>
         <div id="week-preview" style="margin-top:14px;padding:12px;background:var(--light);border-radius:8px;font-size:12px;color:var(--navy);"></div>
       </div>
-    </div>
+    
+      <div class="sec-card" style="margin-top:16px;">
+        <div class="sec-head"><h3>📋 선택박스 옵션 관리</h3></div>
+        <div class="sec-body"><div id="select-opts-container"></div></div>
+      </div></div>
       <div class="sec-card">
         <div class="sec-head"><h3>📊 대시보드 그래프 타입</h3></div>
         <div class="sec-body">
@@ -2989,7 +3080,10 @@ function updateSBWeek(d){
 
 const pgMeta={dashboard:['통합 대시보드','경영계획 vs 실적 현황'],input:['영업 진행 현황','담당자별 실적 및 활동 입력'],issues:['이슈 현황','고객사별 이슈 및 리스크'],pipeline:['영업 파이프라인','신규 및 기존 고객 영업 현황'],visits:['고객 접점 현황','고객 접점 기록 대시보드'],export:['엑셀 출력','주간회의 자료 다운로드'],personal:['개인설정','테마 및 글씨 크기 설정'],settings:['설정','담당자 관리 및 회의 날짜 설정'],accesslog:['접속 이력','MS 계정 및 담당자별 접속 현황']};
 function switchSettingsTab(tab){
-  if(tab==='기본설정' && typeof renderLayoutSettings==='function') setTimeout(renderLayoutSettings,50);
+  if(tab==='기본설정'){
+    if(typeof renderLayoutSettings==='function') setTimeout(renderLayoutSettings,50);
+    if(typeof renderSelectOptsSettings==='function') setTimeout(renderSelectOptsSettings,100);
+  }
   ['기본설정','조직관리','공지설정','테마'].forEach(function(t){
     var el=document.getElementById('stab-pane-'+t);
     if(el) el.style.display=t===tab?'block':'none';
@@ -3321,8 +3415,10 @@ function _initApp(){
 
   // 데이터 렌더
   try{ extractIssues(); }catch(e){}
+  try{ renderDashboard(); }catch(e){}
   try{ renderIssues(); }catch(e){}
   try{ renderPipeline(); }catch(e){}
+  try{ renderVisits(); }catch(e){}
   try{ populateFilters(); }catch(e){}
 
   // 대시보드로 이동
@@ -3692,7 +3788,7 @@ function renderRepSummary(){
       html+='<div style="background:white;border:1px solid #E2E8F0;border-radius:10px;padding:16px 18px;min-height:120px;display:flex;flex-direction:column;">';
       html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
       html+='<div style="display:flex;align-items:center;gap:8px;"><div style="width:10px;height:10px;border-radius:50%;background:'+color+';flex-shrink:0;"></div>';
-      html+='<strong style="font-size:14px;font-weight:700;color:#0A1628;">'+name+'</strong></div>';
+      html+='<strong style="font-size:14px;font-weight:700;color:#0A1628;">'+(typeof getRepDisplayName==='function'?getRepDisplayName(name):name)+'</strong></div>';
       html+='<span style="font-size:16px;font-weight:800;color:'+rateColor+';">'+(plan>0?rate+'%':'-')+'</span></div>';
       html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px;">';
       html+='<div style="background:#F8FAFC;border-radius:6px;padding:8px 10px;"><div style="font-size:10px;font-weight:600;color:#94A3B8;letter-spacing:0.04em;margin-bottom:3px;">계획</div><div style="font-size:13px;font-weight:700;color:#1E293B;">'+plan.toLocaleString('ko-KR')+'</div></div>';
@@ -4200,8 +4296,8 @@ function buildRepInputs(){
 }
 
 function cRow(rep,ci,c){
-  const tOpts=['MA','개발','상품','기타'].map(t=>`<option${(c.type||'MA')===t?' selected':''}>${t}</option>`).join('');
-  const sOpts=['달성','예상'].map(st=>`<option${(c.status||'달성')===st?' selected':''}>${st}</option>`).join('');
+  const tOpts=getSelectOpts('clientType').map(t=>`<option${(c.type||getSelectOpts('clientType')[0]||'')===t?' selected':''}>${t}</option>`).join('');
+  const sOpts=getSelectOpts('clientStatus').map(st=>`<option${(c.status||getSelectOpts('clientStatus')[0]||'')===st?' selected':''}>${st}</option>`).join('');
   return`<tr id="cr-${rep}-${ci}">
     <td style="vertical-align:middle;padding:3px 4px;white-space:nowrap;"><input type="text" value="${c.name||''}" style="width:100%;min-width:140px;text-align:center;" onchange="store.reps['${rep}'].clients[${ci}].name=this.value;autoSave()"></td>
     <td style="vertical-align:middle;padding:3px 4px;text-align:center;white-space:nowrap;">
@@ -4210,7 +4306,7 @@ function cRow(rep,ci,c){
     <td style="vertical-align:middle;padding:3px 2px;text-align:center;white-space:nowrap;">
       <select style="width:108px;font-size:11px;text-align:center;" onchange="store.reps['${rep}'].clients[${ci}].product=this.value;autoSave()">
         <option value="">-</option>
-        ${['그룹웨어','웹메일','ERP','MES','PIMS','스포츠','VOA','기타'].map(p=>`<option value="${p}"${(c.product||'')===p?' selected':''}>${p}</option>`).join('')}
+        ${getSelectOpts('clientProduct').map(p=>`<option value="${p}"${(c.product||'')===p?' selected':''}>${p}</option>`).join('')}
       </select>
     </td>
     <td style="vertical-align:middle;padding:3px 4px;text-align:center;white-space:nowrap;">
@@ -4223,9 +4319,9 @@ function cRow(rep,ci,c){
 }
 
 function aRow(rep,ai,a){
-  const types=['전략과제','신규영업','기존고객','신규고객'];
+  const types=getSelectOpts('activityType');
   const tOpts=types.map(t=>`<option${a.type===t?' selected':''}>${t}</option>`).join('');
-  const progList=['제안','견적','입찰','수주','계약','보류','Drop'];
+  const progList=getSelectOpts('activityProgress');
   const progOpts='<option value="" disabled'+((!a.progress||a.progress==='')?'selected':'')+'>선택</option>'+progList.map(p=>`<option${(a.progress||'')===p?' selected':''}>${p}</option>`).join('');
   return`<tr>
     <td style="text-align:center;color:var(--muted);font-weight:600;font-size:12px;width:40px;vertical-align:middle;">${a.no||ai+1}</td>
@@ -4720,7 +4816,7 @@ function populateFilters(){
     while(el.options.length>1)el.remove(1);
     getActiveReps().forEach(function(r){
       var o=document.createElement('option');
-      o.value=r; o.textContent=r;
+      o.value=r; o.textContent=(typeof getRepDisplayName==='function'?getRepDisplayName(r):r);
       el.appendChild(o);
     });
   });
@@ -5443,6 +5539,24 @@ function doGuestWithName(name){
   showToast('👤 '+name.trim()+'님으로 접속했습니다.');
   if(typeof recordAccess==='function') recordAccess(name.trim(), true);
   setTimeout(function(){ if(!window._isSPReady) _startSP(); },200);
+  // SP 이미 연결됐으면 최신 데이터 로드 + 게스트 이름 접속기록
+  setTimeout(async function(){
+    try{
+      if(window._isSPReady){
+        await _spLoadAllReps();
+        await _spLoadAllVisitLogs();
+        try{ if(typeof renderDashboard==='function') renderDashboard(); }catch(e){}
+        try{ if(typeof renderIssues==='function') renderIssues(); }catch(e){}
+        try{ if(typeof renderPipeline==='function') renderPipeline(); }catch(e){}
+        // 게스트 이름으로 접속 기록
+        if(window._msalApp){
+          var _accs=window._msalApp.getAllAccounts();
+          var _msAcc=_accs.length>0?_accs[0].username:'';
+          await _recordAccessLog(_msAcc, session.guestName||name.trim(), '접속');
+        }
+      }
+    }catch(e){}
+  }, 800);
 }
 function doGuest(){
   goGuestStep();
@@ -5628,6 +5742,7 @@ function doRepLogin(rep){
     try{
       if(!window._isSPReady && typeof _initSP==='function'){
         await _initSP();
+        try{ if(typeof renderDashboard==='function') renderDashboard(); }catch(e){}
       }
       // MS 계정 확인 후 로그 기록
       if(window._isSPReady && window._msalApp){
@@ -6824,6 +6939,8 @@ async function _initSP() {
     }, 10000);
     window._spSyncTimer = setInterval(async function(){
       if(!window._isSPReady) return;
+      if(window._syncRunning){ return; } // 중복 실행 방지
+      window._syncRunning = true;
       try{
         // 관리자 설정 60초마다 동기화 (15초 × 4사이클)
         if(!window._syncCount) window._syncCount=0;
@@ -6840,6 +6957,9 @@ async function _initSP() {
           }
           // 배너/팝업 항상 갱신 (authCfg 업데이트됐으므로)
           try{ if(typeof loadBanner==='function') loadBanner(); }catch(e){}
+          // 선택박스 옵션 갱신
+          try{ if(typeof refreshSelectOptions==='function') refreshSelectOptions(); }catch(e){}
+          try{ if(typeof renderSelectOptsSettings==='function') renderSelectOptsSettings(); }catch(e){}
 
         }
         // 공동편집: 다른 담당자 데이터만 동기화
@@ -6873,6 +6993,7 @@ async function _initSP() {
     }, 10000);
 
   } catch (err) {
+    window._spInitializing = false;
     window._isSPReady = false;
     _setSPStatus('error');
     var errMsg = err.message || '';
@@ -7465,7 +7586,7 @@ async function _loadHistDate(date) {
         var accs = window._msalApp.getAllAccounts();
         var msAcc = accs.length>0 ? accs[0].username : '알 수 없음';
         var rep = session&&session.rep ? session.rep : (session&&session.role==='admin'?'관리자':'게스트');
-        _recordAccessLog(msAcc, rep, '데이터 저장');
+        // _recordAccessLog 데이터저장 제거 (통계 오염 방지)
       }, 2000);
     }
   };
@@ -7545,6 +7666,8 @@ function _renderAccessLog() {
   var today = now.toISOString().split('T')[0];
   var weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
+  // 최근 접속 순 정렬
+  _accessLogData.sort(function(a,b){ return (b.timestamp||'').localeCompare(a.timestamp||''); });
   var filtered = _accessLogData.filter(function(log) {
     if (!log.timestamp) return false;
     if (_accessLogFilter === 'today') return log.timestamp.startsWith(today);
@@ -8860,6 +8983,9 @@ window.renderIssues = function(){
 
 // ════ 이슈사항 행 (순번,고객사,이슈내용,중요도,처리상태,삭제) ════
 function _iRow(rep, idx, iss){
+  // onchange 핸들러용 전역 라벨 변수 (따옴표 충돌 방지)
+  window._ISSEV_LABELS = getSelectOpts('issueSev');
+  window._ISST_LABELS  = getSelectOpts('issueStatus');
   var sev = iss.sev||'';
   var st  = iss.status||'';
   var r   = rep.replace(/'/g,"\\'");
@@ -10991,8 +11117,8 @@ function _vRow(rep,idx,v){
   return '<tr id="vr-'+rep+'-'+idx+'">'
     +'<td style="width:100px;vertical-align:middle;padding:5px 5px;text-align:center;">'+dateInp('date',v.date)+'</td>'
     +'<td style="width:160px;vertical-align:middle;padding:5px 5px;text-align:center;">'+inpCenter('company',v.company)+'</td>'
-    +'<td style="width:110px;vertical-align:middle;padding:5px 5px;text-align:center;">'+sel('contactType',contactType,CONTACT_TYPES,TYPE_COLOR)+'</td>'
-    +'<td style="width:125px;vertical-align:middle;padding:5px 5px;text-align:center;">'+sel('contactPurpose',contactPurpose,CONTACT_PURPOSES,PURPOSE_COLOR2)+'</td>'
+    +'<td style="width:110px;vertical-align:middle;padding:5px 5px;text-align:center;">'+sel('contactType',contactType,getSelectOpts('contactType'),TYPE_COLOR)+'</td>'
+    +'<td style="width:125px;vertical-align:middle;padding:5px 5px;text-align:center;">'+sel('contactPurpose',contactPurpose,getSelectOpts('contactPurpose'),PURPOSE_COLOR2)+'</td>'
     +'<td style="width:150px;vertical-align:middle;padding:5px 5px;text-align:center;">'+inpCenter('contactRep',contactRep)+'</td>'
     +'<td style="width:150px;vertical-align:middle;padding:5px 5px;text-align:center;">'+inpCenter('clientRep',v.clientRep)+'</td>'
     +'<td class="content-cell" style="min-width:200px;vertical-align:middle;padding:5px 5px;text-align:left;">'+ta('content',v.content)+'</td>'
@@ -11365,7 +11491,7 @@ window.renderVisits=function(){
     +'<th style="background:#F8FAFC;color:#64748B;width:62px;white-space:nowrap;position:sticky;top:0;z-index:5;">팀</th>'
     +'<th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;width:80px;">담당자</th>'
     +'<th style="background:#F8FAFC;color:#64748B;position:sticky;top:0;z-index:5;width:100px;">접점일자</th>'
-    +'<th style="background:#F8FAFC;color:#64748B;position:sticky;top:0;z-index:5;width:130px;">고객사명</th>'
+    +'<th style="background:#F8FAFC;color:#64748B;position:sticky;top:0;z-index:5;width:180px;white-space:nowrap;">고객사명</th>'
     +'<th style="background:#F8FAFC;color:#64748B;position:sticky;top:0;z-index:5;width:80px;">접점 유형</th>'
     +'<th style="background:#F8FAFC;color:#64748B;position:sticky;top:0;z-index:5;width:90px;">접점 목적</th>'
     +'<th style="background:#F8FAFC;color:#64748B;position:sticky;top:0;z-index:5;text-align:left;padding-left:14px;">접점 내용</th>'
