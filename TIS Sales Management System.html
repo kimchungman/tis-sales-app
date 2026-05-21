@@ -4590,15 +4590,31 @@ async function manualRefresh(){
   if(btn) btn.style.animation='spin 0.8s linear infinite';
   try{
     if(window._isSPReady){
-      await _spLoadSettings();       // 관리자 설정
-      await _spLoadAllReps();        // 전체 담당자 최신 데이터
-      await _spLoadAllVisitLogs();   // 접점기록 마이그레이션용
-      await _loadAccessLog();        // 접속현황
+      // SP ID 캐시 초기화 (잘못된 캐시로 저장 실패 방지)
+      Object.keys(localStorage)
+        .filter(function(k){ return k.startsWith('_spid_'); })
+        .forEach(function(k){ localStorage.removeItem(k); });
+      window._spIdCache = {};
+
+      await _spLoadSettings();       // 관리자 설정 (배너/팝업 포함)
+      await _spLoadAllReps();        // 모든 담당자 최신 데이터
+      await _spLoadAllVisitLogs();   // 접점기록
+      await _loadAccessLog();        // 접속이력
+
+      // 내 데이터 강제 저장 (캐시 초기화로 정확한 ID 재조회 후 저장)
+      if(session && session.role==='rep' && typeof _spSaveMyRep==='function'){
+        await _spSaveMyRep();
+      } else if(session && session.role==='admin' && typeof activeRep!=='undefined' && activeRep){
+        if(typeof _spSaveRepByName==='function') await _spSaveRepByName(activeRep);
+      }
     }
+    // 화면 전체 갱신
     if(typeof extractIssues==='function') extractIssues();
     if(typeof renderDashboard==='function') renderDashboard();
     if(typeof renderIssues==='function') renderIssues();
     if(typeof renderPipeline==='function') renderPipeline();
+    if(typeof loadBanner==='function') loadBanner();
+    try{ if(typeof showPopupNotice==='function') showPopupNotice(); }catch(e){}
     if(typeof updateAccessDisplay==='function') updateAccessDisplay();
     showToast('🔄 최신 데이터로 갱신됐습니다.');
   }catch(e){
@@ -6797,6 +6813,9 @@ async function _initSP() {
             if(typeof renderRepManage==='function') renderRepManage();
             _changed = true;
           }
+          // 배너/팝업 항상 갱신 (authCfg 업데이트됐으므로)
+          try{ if(typeof loadBanner==='function') loadBanner(); }catch(e){}
+          try{ if(typeof showPopupNotice==='function') showPopupNotice(); }catch(e){}
         }
         // 공동편집: 다른 담당자 데이터만 동기화
         var _changed = await _spSyncOtherReps();
