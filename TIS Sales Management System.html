@@ -6707,6 +6707,23 @@ async function _getToken() {
 
 
 // ── SP REST API 호출 ────────────────────────────────────────
+// SP 전체 페이징 로드 (nextLink 자동 처리)
+async function _spFetchAll(url) {
+  var allItems = [];
+  var nextUrl = url;
+  var maxPages = 20; // 무한루프 방지 (페이지당 500개 × 20 = 최대 10,000건)
+  while(nextUrl && maxPages-- > 0) {
+    try {
+      var res = await _spFetch(nextUrl);
+      if(!res || !res.value) break;
+      allItems = allItems.concat(res.value);
+      // SP가 더 있으면 nextLink 제공
+      nextUrl = res['odata.nextLink'] || res['@odata.nextLink'] || null;
+    } catch(e) { break; }
+  }
+  return { value: allItems };
+}
+
 async function _spFetch(url, opts) {
   const token = window._spToken;
   const headers = {
@@ -6970,8 +6987,8 @@ async function _spSaveItem(dtype, dkey, payload, _retry) {
     if(!_id) {
       try {
         // $filter 우회: 전체 로드 후 Title 매칭
-        var _qUrl = _lUrl() + '?$select=Id,Title&$top=5000';
-        var _qRes = await _spFetch(_qUrl);
+        var _qUrl = _lUrl() + '?$select=Id,Title&$top=500';
+        var _qRes = await _spFetchAll(_qUrl);
         var _existing = _qRes && _qRes.value && _qRes.value.find(function(i){ return i.Title===_title; });
         if(_existing && _existing.Id) {
           _id = _existing.Id;
@@ -7031,8 +7048,8 @@ async function _spLoadItem(dtype, dkey) {
     var _ldkey = (typeof _sanitizeDKey==='function') ? _sanitizeDKey(dkey) : dkey;
     var _ltitle = dtype + '_' + _ldkey;
     // $filter 대신 전체 로드 후 클라이언트 필터링 (SP $filter 정책 우회)
-    const qUrl = _lUrl() + '?$select=Id,Title,Payload&$top=5000';
-    const res  = await _spFetch(qUrl);
+    const qUrl = _lUrl() + '?$select=Id,Title,Payload&$top=500';
+    const res  = await _spFetchAll(qUrl);
     const items2 = (res && res.value) || [];
     const item = items2.find(function(i){ return i.Title === _ltitle; });
     if(!item) return null;
@@ -7062,7 +7079,7 @@ async function _spLoadTeamSnap(team, date) {
 async function _spLoadHistList() {
   if (!window._isSPReady) return;
   try {
-    const url = _lUrl() + '?$select=Id,Title,DataType,DataKey&$top=200';
+    const url = _lUrl() + '?$select=Id,Title,DataType,DataKey&$top=500';
     const res = await _spFetch(url);
     window._spHL = (res.value || []).map(i => ({ date: i.DataKey, savedAt: i.UpdatedAt }));
     const el = document.getElementById('hist-count');
@@ -7080,7 +7097,7 @@ async function _spLoadToday() {
 
   // 오늘 데이터 없으면 SP 히스토리에서 가장 최신 스냅샷 로드
   try{
-    const url = _lUrl() + '?$select=Id,Title,DataType,DataKey,Payload&$top=200';
+    const url = _lUrl() + '?$select=Id,Title,DataType,DataKey,Payload&$top=500';
     const res = await _spFetch(url);
     if(res && res.value && res.value[0] && res.value[0].Payload){
       const latest = JSON.parse(res.value[0].Payload);
@@ -11503,8 +11520,8 @@ async function _spLoadVisitLog(rep){
   if(!window._isSPReady) return;
   try{
     // $filter 우회: 전체 로드 후 클라이언트 필터
-    var qUrl=_lUrl()+'?$select=Id,Title,DataType,DataKey,Payload&$top=5000';
-    var res=await _spFetch(qUrl);
+    var qUrl=_lUrl()+'?$select=Id,Title,DataType,DataKey,Payload&$top=500';
+    var res=await _spFetchAll(qUrl);
     var items=(res&&res.value)||[];
     var found=items.find(function(i){
       return (i.DataType==='visit_log'||i.Title&&i.Title.indexOf('visit_log_')===0)&&i.DataKey===rep;
@@ -11524,8 +11541,8 @@ async function _spLoadVisitLog(rep){
 async function _spLoadAllVisitLogs(){
   if(!window._isSPReady) return;
   try{
-    var qUrl=_lUrl()+'?$select=Id,Title,DataType,DataKey,Payload&$top=2000';
-    var res=await _spFetch(qUrl);
+    var qUrl=_lUrl()+'?$select=Id,Title,DataType,DataKey,Payload&$top=500';
+    var res=await _spFetchAll(qUrl);
     var items=(res&&res.value)||[];
     items.forEach(function(item){
       try{
