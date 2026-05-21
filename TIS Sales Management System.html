@@ -6114,10 +6114,10 @@ function updateAccessDisplay(){
       if(_tskst !== today) return;
       var rep = entry.selectedRep||'';
       var msAcc = entry.msAccount||'';
-      var isGuest = (!rep || rep==='게스트' || !REPS_ALL.includes(rep));
-      var isAdmin = (msAcc && !rep);
+      var isRepUser = rep && REPS_ALL.includes(rep);
+      var isAdminUser = (!rep) && msAcc && msAcc !== 'guest';
       var displayKey = rep || msAcc || 'unknown';
-      var type = isRep ? 'rep' : (isAdmin ? 'admin' : 'guest');
+      var type = isRepUser ? 'rep' : (isAdminUser ? 'admin' : 'guest');
       if(!userMap[displayKey] || ts > userMap[displayKey].ts){
         userMap[displayKey] = {
           name: rep || (msAcc?msAcc.split('@')[0]:'알수없음'),
