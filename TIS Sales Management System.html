@@ -6129,28 +6129,20 @@ function updateAccessDisplay(){
       if(_tskst !== today) return;
       var rep = entry.selectedRep||'';
       var msAcc = entry.msAccount||'';
-      // 담당자 판별: 이름만 OR 이름+직책 형식 모두 인식
-      var isRepUser = rep && (
-        REPS_ALL.includes(rep) ||
-        REPS_ALL.some(function(r){
-          return rep === r ||
-                 rep === (typeof getRepDisplayName==='function' ? getRepDisplayName(r) : r) ||
-                 rep.startsWith(r+' ') || rep.startsWith(r+'　');
-        })
-      );
+      // 담당자 판별 + displayKey 정규화 (중복 방지)
+      var _matchedRep = REPS_ALL.find(function(r){
+        return rep === r ||
+               rep === (typeof getRepDisplayName==='function' ? getRepDisplayName(r) : r) ||
+               rep.startsWith(r+' ');
+      });
+      var isRepUser = rep && !!_matchedRep;
       var isAdminUser = (!rep) && msAcc && msAcc !== 'guest';
-      var displayKey = rep || msAcc || 'unknown';
+      // displayKey: 항상 REPS_ALL 기준 이름으로 정규화 (중복 제거)
+      var displayKey = _matchedRep || rep || msAcc || 'unknown';
       var type = isRepUser ? 'rep' : (isAdminUser ? 'admin' : 'guest');
       if(!userMap[displayKey] || ts > userMap[displayKey].ts){
         userMap[displayKey] = {
-          // 이름 정규화: 이름+직책 형식이면 이름만 추출해서 표시
-          name: (function(){
-            if(!rep) return msAcc?msAcc.split('@')[0]:'알수없음';
-            var matched = REPS_ALL.find(function(r){
-              return rep===r || rep.startsWith(r+' ');
-            });
-            return matched ? (typeof getRepDisplayName==='function' ? getRepDisplayName(matched) : matched) : rep;
-          })(),
+          name: _matchedRep ? (typeof getRepDisplayName==='function' ? getRepDisplayName(_matchedRep) : _matchedRep) : (rep || (msAcc?msAcc.split('@')[0]:'알수없음')),
           time: toKST(ts),
           ts: ts,
           type: type
