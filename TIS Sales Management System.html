@@ -6501,11 +6501,6 @@ function autoSave(){
           console.log('[autoSave] 변경없음 skip');
           return;
         }
-        // SP 로드 완료 전 저장 차단 (초기 빈 데이터 덮어쓰기 방지)
-        if(!window._spDataLoaded){
-          console.log('[autoSave] SP 로드 전 저장 skip');
-          return;
-        }
         window._lastAutoSaveHash = _curHash;
         if(session && session.role==='rep' && session.rep){
           if(typeof _spSaveMyRep==='function') await _spSaveMyRep();
