@@ -4614,7 +4614,6 @@ async function manualRefresh(){
     if(typeof renderIssues==='function') renderIssues();
     if(typeof renderPipeline==='function') renderPipeline();
     if(typeof loadBanner==='function') loadBanner();
-    try{ if(typeof showPopupNotice==='function') showPopupNotice(); }catch(e){}
     if(typeof updateAccessDisplay==='function') updateAccessDisplay();
     showToast('🔄 최신 데이터로 갱신됐습니다.');
   }catch(e){
@@ -6130,13 +6129,28 @@ function updateAccessDisplay(){
       if(_tskst !== today) return;
       var rep = entry.selectedRep||'';
       var msAcc = entry.msAccount||'';
-      var isRepUser = rep && REPS_ALL.includes(rep);
+      // 담당자 판별: 이름만 OR 이름+직책 형식 모두 인식
+      var isRepUser = rep && (
+        REPS_ALL.includes(rep) ||
+        REPS_ALL.some(function(r){
+          return rep === r ||
+                 rep === (typeof getRepDisplayName==='function' ? getRepDisplayName(r) : r) ||
+                 rep.startsWith(r+' ') || rep.startsWith(r+'　');
+        })
+      );
       var isAdminUser = (!rep) && msAcc && msAcc !== 'guest';
       var displayKey = rep || msAcc || 'unknown';
       var type = isRepUser ? 'rep' : (isAdminUser ? 'admin' : 'guest');
       if(!userMap[displayKey] || ts > userMap[displayKey].ts){
         userMap[displayKey] = {
-          name: rep || (msAcc?msAcc.split('@')[0]:'알수없음'),
+          // 이름 정규화: 이름+직책 형식이면 이름만 추출해서 표시
+          name: (function(){
+            if(!rep) return msAcc?msAcc.split('@')[0]:'알수없음';
+            var matched = REPS_ALL.find(function(r){
+              return rep===r || rep.startsWith(r+' ');
+            });
+            return matched ? (typeof getRepDisplayName==='function' ? getRepDisplayName(matched) : matched) : rep;
+          })(),
           time: toKST(ts),
           ts: ts,
           type: type
@@ -6815,7 +6829,7 @@ async function _initSP() {
           }
           // 배너/팝업 항상 갱신 (authCfg 업데이트됐으므로)
           try{ if(typeof loadBanner==='function') loadBanner(); }catch(e){}
-          try{ if(typeof showPopupNotice==='function') showPopupNotice(); }catch(e){}
+
         }
         // 공동편집: 다른 담당자 데이터만 동기화
         var _changed = await _spSyncOtherReps();
