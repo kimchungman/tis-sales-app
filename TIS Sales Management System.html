@@ -6117,7 +6117,7 @@ function updateAccessDisplay(){
       var isGuest = (!rep || rep==='게스트' || !REPS_ALL.includes(rep));
       var isAdmin = (msAcc && !rep);
       var displayKey = rep || msAcc || 'unknown';
-      var type = REPS_ALL.includes(rep) ? 'rep' : (isAdmin ? 'admin' : 'guest');
+      var type = isRep ? 'rep' : (isAdmin ? 'admin' : 'guest');
       if(!userMap[displayKey] || ts > userMap[displayKey].ts){
         userMap[displayKey] = {
           name: rep || (msAcc?msAcc.split('@')[0]:'알수없음'),
@@ -7434,10 +7434,13 @@ async function _recordAccessLog(msAccount, selectedRep, action) {
     const logKey  = dateKey + '_' + (msAccount || 'unknown') + '_' + now.getTime();
     await _spSaveItem('accessLog', logKey, {
       msAccount:   msAccount   || '알 수 없음',
-      selectedRep: selectedRep || '게스트',
+      selectedRep: selectedRep || '',
       action:      action      || '접속',
       timestamp:   now.toISOString()
     });
+    // 저장 후 접속현황 즉시 갱신
+    await _loadAccessLog();
+    if(typeof updateAccessDisplay==='function') updateAccessDisplay();
   } catch(e) {}
 }
 
@@ -10836,7 +10839,7 @@ window.addVisit = function(rep){
   store.reps[rep].visitLog.unshift({
     id:Date.now(), date:today, company:'',
     contactType:'', contactPurpose:'',
-    contactRep:rep, clientRep:'', content:''
+    contactRep:(typeof getRepDisplayName==='function'?getRepDisplayName(rep):rep), clientRep:'', content:''
   });
   _rebuildVisitTable(rep);
   autoSave&&autoSave();
