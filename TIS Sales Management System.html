@@ -203,6 +203,9 @@ console.log('[MSAL] ✅ 정상 로드됨. PublicClientApplication:', typeof msal
 
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzRmN2ZmZiIvPgogIDx0ZXh0IHg9IjE2IiB5PSIyMiIgZm9udC1mYW1pbHk9IkFyaWFsLHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiIGZvbnQtd2VpZ2h0PSI5MDAiCiAgICBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgbGV0dGVyLXNwYWNpbmc9Ii0wLjUiPlRJUzwvdGV4dD4KPC9zdmc+">
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -3395,28 +3398,8 @@ function initAllTabs() {
 
 // ════ 공통 초기 렌더 (관리자/일반 동일하게 실행) ════
 function _initApp(){
-  // localStorage 캐시에서 데이터 먼저 로드 (SP 연결 전)
-  try{
-    var _lsSnap = localStorage.getItem('_lastSnap');
-    if(_lsSnap && typeof _applySnap==='function'){
-      var _snap = JSON.parse(_lsSnap);
-      // store.reps 복원 (UI 데이터)
-      if(_snap.store && _snap.store.reps){
-        Object.keys(_snap.store.reps).forEach(function(r){
-          var d = _snap.store.reps[r];
-          if(!d) return;
-          // plan/actual/forecast 정확히 12개로 정규화 (누적 방지)
-          if(!Array.isArray(d.plan)) d.plan = new Array(12).fill(0);
-          else d.plan = d.plan.slice(0,12).concat(new Array(12).fill(0)).slice(0,12);
-          if(!Array.isArray(d.actual)) d.actual = new Array(12).fill(0);
-          else d.actual = d.actual.slice(0,12).concat(new Array(12).fill(0)).slice(0,12);
-          if(!Array.isArray(d.forecast)) d.forecast = new Array(12).fill(0);
-          else d.forecast = d.forecast.slice(0,12).concat(new Array(12).fill(0)).slice(0,12);
-          store.reps[r] = d;
-        });
-      }
-    }
-  }catch(e){}
+  // _lastSnap 로드 제거 - SP를 단일 진실 소스로 사용
+  // (구버전 localStorage 데이터가 SP 최신 데이터를 덮어쓰는 문제 방지)
   // 팀 데이터 확인/초기화
   TEAMS.forEach(function(team){
     (TEAM_REPS[team]||[]).forEach(function(r){
@@ -6297,24 +6280,21 @@ function updateAccessDisplay(){
   }
 
   // 접속자 목록 (담당자 접속 → 게스트/관리자 → 미접속 담당자)
-  var repOnline = [], guestOnline = [], repOffline = [];
+  var allOnline = [], repOffline = [];
   Object.keys(userMap).forEach(function(k){
-    var e = userMap[k];
-    if(e.type==='rep') repOnline.push(e);
-    else guestOnline.push(e);
+    allOnline.push(userMap[k]);
   });
   // 미접속 담당자
   REPS_ALL.forEach(function(rep){
     if(!userMap[rep]) repOffline.push({name:rep, time:'', type:'offline'});
   });
-  // 각 그룹 최근순 정렬
-  repOnline.sort(function(a,b){ return b.ts.localeCompare(a.ts); });
-  guestOnline.sort(function(a,b){ return b.ts.localeCompare(a.ts); });
+  // 전체 접속자 시간순 통합 정렬 (담당자/게스트/관리자 구분 없이)
+  allOnline.sort(function(a,b){ return (b.ts||'').localeCompare(a.ts||''); });
 
-  var totalOnline = repOnline.length + guestOnline.length;
+  var totalOnline = allOnline.length;
 
   // 변경 없으면 skip
-  var newHash = JSON.stringify(repOnline.concat(guestOnline).map(function(e){ return e.name+e.time; }));
+  var newHash = JSON.stringify(allOnline.map(function(e){ return e.name+e.time; }));
   if(window._accessDisplayHash===newHash) return;
   window._accessDisplayHash = newHash;
 
@@ -6349,8 +6329,7 @@ function updateAccessDisplay(){
   if(!totalOnline && !repOffline.length){
     html2 = '<div style="padding:14px;font-size:12px;color:#94A3B8;text-align:center;">오늘 접속 없음</div>';
   } else {
-    repOnline.forEach(function(e){ html2 += makeRow(e, 1); });
-    guestOnline.forEach(function(e){ html2 += makeRow(e, 1); });
+    allOnline.forEach(function(e){ html2 += makeRow(e, 1); });
     if(repOffline.length > 0){
       html2 += '<div style="padding:4px 14px;font-size:10px;color:#CBD5E1;background:#FAFAFA;border-bottom:1px solid #F1F5F9;">미접속</div>';
       repOffline.forEach(function(e){ html2 += makeRow(e, 0.5); });
@@ -6497,10 +6476,8 @@ function autoSave(){
         if(session && session.role==='rep' && session.rep){
           if(typeof _spSaveMyRep==='function') await _spSaveMyRep();
         } else if(session && session.role==='admin') {
-          // 관리자만: 담당자 데이터 + 스냅샷 저장
-          if(typeof activeRep!=='undefined'&&activeRep&&store.reps&&store.reps[activeRep]){
-            if(typeof _spSaveRepByName==='function') await _spSaveRepByName(activeRep);
-          }
+          // 관리자: 변경된 모든 rep 저장 (activeRep 의존 제거)
+          if(typeof _spSaveChangedReps==='function') await _spSaveChangedReps(data.store.reps);
           if(typeof _spSaveSnap==='function') await _spSaveSnap();
         } // 게스트: SP 쓰기 없음
         updateSaveIndicator(true);
@@ -11775,6 +11752,20 @@ async function _spSaveMyRep(){
   }
 }
 // 관리자가 특정 담당자 데이터를 SP에 저장
+var _repSavedHashes = {};
+async function _spSaveChangedReps(currentReps){
+  if(!window._isSPReady||!currentReps) return;
+  var toSave=[];
+  Object.keys(currentReps).forEach(function(rep){
+    try{
+      var h=JSON.stringify(currentReps[rep]||{});
+      if(_repSavedHashes[rep]!==h){_repSavedHashes[rep]=h;toSave.push(rep);}
+    }catch(e){}
+  });
+  for(var i=0;i<toSave.length;i++){
+    try{ await _spSaveRepByName(toSave[i]); }catch(e){}
+  }
+}
 async function _spSaveRepByName(repName){
   if(!window._isSPReady || !repName) return;
   var repData = store.reps[repName];
