@@ -1744,6 +1744,18 @@ tr[id^="vr-"] td.content-cell { text-align:left !important; }
 /* 고객사별 실적 - 고객사명 입력 텍스트 중앙 */
 [id^="ct-"] input[type="text"] { text-align: center !important; }
 [id^="ct-"] td { text-align: center !important; vertical-align: middle !important; }
+
+@keyframes pulse-dot {
+  0%,100% { transform:scale(1); opacity:1; }
+  50% { transform:scale(1.4); opacity:0.7; }
+}
+
+@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+
+.topbar-right { display:flex; align-items:center; gap:10px; }
+
+.topbar-right { align-items:center !important; }
+.topbar-right > * { flex-shrink:0; }
 </style>
 </head>
 <body>
@@ -1811,27 +1823,30 @@ tr[id^="vr-"] td.content-cell { text-align:left !important; }
       <div id="banner-bar"></div>
       <span id="sp-status"></span>
       <span id="save-indicator"></span>
-      <input type="date" id="mtg-date">
+      <input type="date" id="mtg-date" style="height:32px;width:130px;box-sizing:border-box;padding:0 12px;border-radius:20px;border:1.5px solid #E2E8F0;font-size:12px;font-weight:600;color:#374151;background:white;cursor:pointer;font-family:inherit;transition:all 0.2s;text-align:center;" onfocus="this.style.borderColor='#4f7fff'" onblur="this.style.borderColor='#E2E8F0'">
+
       <div style="position:relative;display:inline-block;">
-        <button id="hist-btn" onclick="toggleHistory()" class="tb-btn">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span id="hist-count">0건</span>
+        <button id="access-count-btn" onclick="toggleAccessPopup()" class="tb-btn" style="display:flex;align-items:center;justify-content:center;gap:6px;height:32px;min-width:90px;box-sizing:border-box;padding:0 12px;border-radius:20px;background:linear-gradient(135deg,#1E5FBE15,#4f7fff15);border:1.5px solid #4f7fff40;transition:all 0.2s;" onmouseover="this.style.background='linear-gradient(135deg,#1E5FBE25,#4f7fff25)'" onmouseout="this.style.background='linear-gradient(135deg,#1E5FBE15,#4f7fff15)'">
+          <span style="position:relative;display:inline-flex;align-items:center;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4f7fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span id="access-pulse" style="position:absolute;top:-2px;right:-2px;width:7px;height:7px;background:#22C55E;border-radius:50%;border:1.5px solid white;animation:pulse-dot 2s infinite;"></span>
+          </span>
+          <span style="font-size:12px;font-weight:600;color:#1E5FBE;">접속</span>
+          <span id="access-count-num" style="background:#4f7fff;color:white;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;min-width:18px;text-align:center;">0</span>
         </button>
-        <div id="hist-dropdown" class="tb-dropdown" style="display:none;">
-          <div class="tb-dropdown-head">날짜 이력</div>
-          <div id="hist-list" style="padding:6px;"></div>
-        </div>
-      </div>
-      <div style="position:relative;display:inline-block;">
-        <button id="access-count-btn" onclick="toggleAccessPopup()" class="tb-btn">
-          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>접속 현황 <span id="access-count-num">0</span>
-        </button>
-        <div id="access-popup" class="tb-dropdown" style="display:none;">
+        <div id="access-popup" class="tb-dropdown" style="display:none;position:absolute;top:calc(100% + 8px);left:0;right:auto;min-width:240px;z-index:9999;">
           <div class="tb-dropdown-head">오늘 접속 현황</div>
           <div id="access-list" style="padding:6px;max-height:400px;overflow-y:auto;"></div>
         </div>
       </div>
-      <button onclick="window.print()" class="tb-icon-btn" title="인쇄/PDF" id="print-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></button>
-      <button id="refresh-btn" onclick="manualRefresh()" class="tb-icon-btn" title="새로고침"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
+      <button onclick="window.print()" id="print-btn" title="인쇄/PDF" style="display:flex;align-items:center;justify-content:center;gap:6px;height:32px;min-width:90px;box-sizing:border-box;padding:0 12px;border-radius:20px;background:linear-gradient(135deg,#64748B15,#94A3B815);border:1.5px solid #94A3B840;cursor:pointer;transition:all 0.2s;font-family:inherit;" onmouseover="this.style.background='linear-gradient(135deg,#64748B25,#94A3B825)'" onmouseout="this.style.background='linear-gradient(135deg,#64748B15,#94A3B815)'">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          <span style="font-size:12px;font-weight:600;color:#64748B;">인쇄</span>
+        </button>
+      <button id="refresh-btn" onclick="manualRefresh()" title="새로고침" style="display:flex;align-items:center;justify-content:center;gap:6px;height:32px;min-width:90px;box-sizing:border-box;padding:0 12px;border-radius:20px;background:linear-gradient(135deg,#05966915,#10B98115);border:1.5px solid #10B98140;cursor:pointer;transition:all 0.2s;font-family:inherit;" onmouseover="this.style.background='linear-gradient(135deg,#05966925,#10B98125)'" onmouseout="this.style.background='linear-gradient(135deg,#05966915,#10B98115)'">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          <span style="font-size:12px;font-weight:600;color:#059669;">동기화</span>
+        </button>
     </div>
   </div>
   <div class="content">
@@ -4570,13 +4585,27 @@ function getPipeReps(){
   return (TEAM_REPS[_currentPipeTeam]||[]).filter(function(r){ return store.reps[r]; });
 }
 
-function manualRefresh(){
-  if(typeof extractIssues==='function') extractIssues();
-  if(typeof renderIssues==='function') renderIssues();
-  if(typeof renderPipeline==='function') renderPipeline();
-  if(typeof renderDashboard==='function') renderDashboard();
-  if(typeof _spLoadHistList==='function') _spLoadHistList();
-  showToast('🔄 새로고침 완료');
+async function manualRefresh(){
+  var btn = document.getElementById('refresh-btn');
+  if(btn) btn.style.animation='spin 0.8s linear infinite';
+  try{
+    if(window._isSPReady){
+      await _spLoadSettings();       // 관리자 설정
+      await _spLoadAllReps();        // 전체 담당자 최신 데이터
+      await _spLoadAllVisitLogs();   // 접점기록 마이그레이션용
+      await _loadAccessLog();        // 접속현황
+    }
+    if(typeof extractIssues==='function') extractIssues();
+    if(typeof renderDashboard==='function') renderDashboard();
+    if(typeof renderIssues==='function') renderIssues();
+    if(typeof renderPipeline==='function') renderPipeline();
+    if(typeof updateAccessDisplay==='function') updateAccessDisplay();
+    showToast('🔄 최신 데이터로 갱신됐습니다.');
+  }catch(e){
+    showToast('새로고침 실패: '+e.message, 'warn');
+  }finally{
+    if(btn) btn.style.animation='';
+  }
 }
 
 function extractIssues(){
@@ -6050,77 +6079,117 @@ function recordAccess(repName, isGuest){
   updateAccessDisplay();
 }
 function updateAccessDisplay(){
-  const today=new Date().toISOString().split('T')[0];
-  // 최신 timestamp 기준 map 구조 (same user → 최신 1건만 유지)
-  let userMap={}; // {displayName: {time, ts, guest}}
+  // KST(UTC+9) 기준 오늘 날짜
+  var _kstNow = new Date(Date.now() + 9*60*60*1000);
+  var today = _kstNow.toISOString().split('T')[0];
+  var REPS_ALL = [];
+  if(typeof TEAM_REPS!=='undefined'){
+    Object.keys(TEAM_REPS).forEach(function(t){ REPS_ALL=REPS_ALL.concat(TEAM_REPS[t]||[]); });
+  }
 
-  // localStorage (내 브라우저)
-  try{
-    const local=JSON.parse(localStorage.getItem('access_'+today)||'{}');
-    Object.keys(local).forEach(function(name){
-      var e=local[name];
-      var t=typeof e==='object'?e.time||'':''+e;
-      var ts=today+'T'+(t||'00:00')+':00';
-      if(!userMap[name]||ts>userMap[name].ts)
-        userMap[name]={time:t,ts:ts,guest:!!(e&&e.guest)};
-    });
-  }catch(e){}
+  // _accessLogData에서 오늘 데이터 추출 (동일인 최신만)
+  var userMap = {}; // { displayKey: {name, time, ts, type} }
 
-  // SP 접속 로그 병합 (최신 timestamp 우선)
+  function toKST(ts){
+    // UTC → KST(+9) 변환 후 오전/오후 형식
+    try{
+      var d = new Date(ts);
+      d.setHours(d.getHours()+9);
+      var h = d.getUTCHours(), m = d.getUTCMinutes();
+      var ampm = h < 12 ? '오전' : '오후';
+      var hh = h % 12 || 12;
+      return ampm + ' ' + hh + ':' + (m<10?'0':'')+m;
+    }catch(e){ return ''; }
+  }
+
   if(window._accessLogData && Array.isArray(window._accessLogData)){
-    // timestamp 내림차순 정렬 → 최신 먼저
-    var sorted=[].concat(window._accessLogData).sort(function(a,b){
-      return (b.timestamp||b.ts||'').localeCompare(a.timestamp||a.ts||'');
+    var sorted = [].concat(window._accessLogData).sort(function(a,b){
+      return (b.timestamp||'').localeCompare(a.timestamp||'');
     });
     sorted.forEach(function(entry){
       if(!entry) return;
-      var ts=entry.timestamp||entry.ts||'';
-      if(!ts.startsWith(today)) return;
-      var repName=entry.selectedRep||entry.rep||'';
-      var msAcc=entry.msAccount||entry.account||'';
-      var isGuest=(!repName||repName==='게스트');
-      // 게스트: guestName으로 구분, 담당자: repName으로 구분
-      var displayName=isGuest
-        ?(entry.guestName||repName||'게스트_'+(ts.substring(11,16)))
-        :repName;
-      if(!displayName) displayName=msAcc?msAcc.split('@')[0]:'알수없음';
-      var t=ts.length>=16?ts.substring(11,16):'';
-      // 최신 timestamp만 유지
-      if(!userMap[displayName]||ts>userMap[displayName].ts)
-        userMap[displayName]={time:t,ts:ts,guest:isGuest};
+      var ts = entry.timestamp||'';
+      // KST 기준 날짜 필터
+      var _tskst = new Date(new Date(ts).getTime() + 9*60*60*1000).toISOString().split('T')[0];
+      if(_tskst !== today) return;
+      var rep = entry.selectedRep||'';
+      var msAcc = entry.msAccount||'';
+      var isGuest = (!rep || rep==='게스트' || !REPS_ALL.includes(rep));
+      var isAdmin = (msAcc && !rep);
+      var displayKey = rep || msAcc || 'unknown';
+      var type = REPS_ALL.includes(rep) ? 'rep' : (isAdmin ? 'admin' : 'guest');
+      if(!userMap[displayKey] || ts > userMap[displayKey].ts){
+        userMap[displayKey] = {
+          name: rep || (msAcc?msAcc.split('@')[0]:'알수없음'),
+          time: toKST(ts),
+          ts: ts,
+          type: type
+        };
+      }
     });
   }
 
-  // 최신순 정렬
-  var names=Object.keys(userMap).sort(function(a,b){
-    return (userMap[b].ts||'').localeCompare(userMap[a].ts||'');
-  }).slice(0,30);
+  // 접속자 목록 (담당자 접속 → 게스트/관리자 → 미접속 담당자)
+  var repOnline = [], guestOnline = [], repOffline = [];
+  Object.keys(userMap).forEach(function(k){
+    var e = userMap[k];
+    if(e.type==='rep') repOnline.push(e);
+    else guestOnline.push(e);
+  });
+  // 미접속 담당자
+  REPS_ALL.forEach(function(rep){
+    if(!userMap[rep]) repOffline.push({name:rep, time:'', type:'offline'});
+  });
+  // 각 그룹 최근순 정렬
+  repOnline.sort(function(a,b){ return b.ts.localeCompare(a.ts); });
+  guestOnline.sort(function(a,b){ return b.ts.localeCompare(a.ts); });
 
-  // 변경 없으면 render skip
-  var newHash=JSON.stringify(names.map(function(n){return n+userMap[n].time;}));
+  var totalOnline = repOnline.length + guestOnline.length;
+
+  // 변경 없으면 skip
+  var newHash = JSON.stringify(repOnline.concat(guestOnline).map(function(e){ return e.name+e.time; }));
   if(window._accessDisplayHash===newHash) return;
-  window._accessDisplayHash=newHash;
-  const countEl=document.getElementById('access-count-num');
-  if(countEl) countEl.textContent=names.length;
-  const listEl=document.getElementById('access-list');
-  if(listEl){
-    if(!names.length){
-      listEl.innerHTML='<div style="padding:10px 14px;font-size:12px;color:#94A3B8;">오늘 접속 없음</div>';
-    } else {
-      listEl.innerHTML=names.map(n=>{
-        var entry=userMap[n];
-        var isGuest=entry&&entry.guest;
-        var time=entry&&entry.time?entry.time:'';
-        var roleTag=isGuest
-          ?'<span style="font-size:10px;color:#94A3B8;border:1px solid #E2E8F0;border-radius:4px;padding:1px 5px;margin-left:4px;">게스트</span>'
-          :'';
-        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 14px;font-size:12px;border-bottom:1px solid var(--border);">'
-          +'<span style="font-weight:600;">'+n+roleTag+'</span>'
-          +'<span style="color:#94A3B8;font-size:11px;">'+time+'</span>'
-          +'</div>';
-      }).join('');
+  window._accessDisplayHash = newHash;
+
+  // 숫자 뱃지 업데이트
+  var countEl = document.getElementById('access-count-num');
+  if(countEl) countEl.textContent = totalOnline;
+
+  // 드롭다운 목록 렌더
+  var listEl = document.getElementById('access-list');
+  if(!listEl) return;
+
+  function makeRow(entry, opacity){
+    var badge = (entry.type==='guest')
+      ? '<span style="font-size:10px;color:#94A3B8;border:1px solid #E2E8F0;border-radius:4px;padding:1px 5px;margin-left:4px;">게스트</span>'
+      : (entry.type==='admin')
+      ? '<span style="font-size:10px;color:#7C3AED;border:1px solid #DDD6FE;border-radius:4px;padding:1px 5px;margin-left:4px;">관리자</span>'
+      : '';
+    var dot = entry.type==='offline'
+      ? '<span style="width:7px;height:7px;border-radius:50%;background:#E2E8F0;display:inline-block;margin-right:7px;flex-shrink:0;"></span>'
+      : '<span style="width:7px;height:7px;border-radius:50%;background:#22C55E;display:inline-block;margin-right:7px;flex-shrink:0;"></span>';
+    var timeStr = entry.type==='offline'
+      ? '<span style="color:#CBD5E1;font-size:11px;">미접속</span>'
+      : '<span style="color:#94A3B8;font-size:11px;">'+entry.time+'</span>';
+    return '<div style="display:flex;align-items:center;padding:7px 14px;border-bottom:1px solid #F1F5F9;opacity:'+(opacity||1)+';">'
+      + dot
+      + '<span style="font-weight:600;font-size:12px;flex:1;">'+entry.name+badge+'</span>'
+      + timeStr
+      + '</div>';
+  }
+
+  var html2 = '';
+  if(!totalOnline && !repOffline.length){
+    html2 = '<div style="padding:14px;font-size:12px;color:#94A3B8;text-align:center;">오늘 접속 없음</div>';
+  } else {
+    repOnline.forEach(function(e){ html2 += makeRow(e, 1); });
+    guestOnline.forEach(function(e){ html2 += makeRow(e, 1); });
+    if(repOffline.length > 0){
+      html2 += '<div style="padding:4px 14px;font-size:10px;color:#CBD5E1;background:#FAFAFA;border-bottom:1px solid #F1F5F9;">미접속</div>';
+      repOffline.forEach(function(e){ html2 += makeRow(e, 0.5); });
     }
   }
+  listEl.innerHTML = html2;
 }
 function toggleAccessPopup(){
   updateAccessDisplay();
@@ -6261,6 +6330,10 @@ function autoSave(){
         if(session && session.role==='rep' && session.rep){
           if(typeof _spSaveMyRep==='function') await _spSaveMyRep();
         } else {
+          // 관리자: 현재 선택된 담당자 데이터 저장
+          if(typeof activeRep!=='undefined'&&activeRep&&store.reps&&store.reps[activeRep]){
+            if(typeof _spSaveRepByName==='function') await _spSaveRepByName(activeRep);
+          }
           if(typeof _spSaveSnap==='function') await _spSaveSnap();
         }
       }
@@ -6695,18 +6768,30 @@ async function _initSP() {
     window._spSyncAccessTimer = setInterval(async function(){
       if(!window._isSPReady) return;
       try{
-        // 60초마다 접속로그 로드 → 상단 접속현황 업데이트
+        // 10초마다 접속로그 로드 → 상단 접속현황 업데이트
         await _loadAccessLog();
+        if(typeof updateAccessDisplay==='function') updateAccessDisplay();
       }catch(e){}
-    }, 60000);
+    }, 10000);
 
     window._spSyncTimer = setInterval(async function(){
       if(!window._isSPReady) return;
       try{
-        // 변경 전 해시
-        // _applySnap 내부 renderDashboard 막기
+        // 관리자 설정 60초마다 동기화 (15초 × 4사이클)
+        if(!window._syncCount) window._syncCount=0;
+        window._syncCount++;
+        if(window._syncCount % 4 === 0){
+          var _settingsBefore = JSON.stringify({teams:TEAMS, teamReps:TEAM_REPS});
+          await _spLoadSettings(); // 관리자 설정 최신화 (모든 사용자)
+          // 설정 변경됐으면 UI 갱신
+          if(JSON.stringify({teams:TEAMS, teamReps:TEAM_REPS}) !== _settingsBefore){
+            if(typeof buildRepTabs==='function') buildRepTabs();
+            if(typeof buildRepBtns==='function') buildRepBtns();
+            if(typeof renderRepManage==='function') renderRepManage();
+            _changed = true;
+          }
+        }
         // 공동편집: 다른 담당자 데이터만 동기화
-        await _spLoadAllVisitLogs();
         var _changed = await _spSyncOtherReps();
         await _spLoadHistList();
         if(_changed){
@@ -11473,6 +11558,31 @@ async function _spSaveMyRep(){
     }
   }
 }
+// 관리자가 특정 담당자 데이터를 SP에 저장
+async function _spSaveRepByName(repName){
+  if(!window._isSPReady || !repName) return;
+  var repData = store.reps[repName];
+  if(!repData) return;
+  var date = document.getElementById('mtg-date')?document.getElementById('mtg-date').value:'';
+  if(!date) date = new Date().toISOString().split('T')[0];
+  var _d = JSON.parse(JSON.stringify(repData));
+  ['plan','actual','forecast'].forEach(function(k){
+    if(!Array.isArray(_d[k])) _d[k]=new Array(12).fill(0);
+    else _d[k]=_d[k].slice(0,12).concat(new Array(12).fill(0)).slice(0,12);
+  });
+  _d.savedAt = new Date().toISOString();
+  _d.date = date;
+  var _repKey = (typeof _sanitizeDKey==='function') ? _sanitizeDKey(repName+'_'+date) : repName+'-'+date;
+  // 크기 체크
+  var _payload = JSON.stringify(_d);
+  if(_payload.length <= 50000){
+    await _spSaveItem('rep_data', _repKey, _d);
+  } else {
+    _d.visitLog = [];
+    await _spSaveItem('rep_data', _repKey, _d);
+  }
+}
+
 
 // 다른 담당자 데이터 SP 동기화 (내 것 제외)
 async function _spSyncOtherReps(){
@@ -11504,10 +11614,21 @@ async function _spSyncOtherReps(){
       try{
         if(!repName) return; // 빈 이름 무시
         if(!repName) return;
-        // 내 것은 건드리지 않음 (원본명, sanitized명 모두 체크)
-        if(repName===myRep) return;
-        if(typeof _sanitizeDKey==='function'&&_sanitizeDKey(repName)===_sanitizeDKey(myRep)) return;
-        if(myRep&&repName&&(repName.indexOf(myRep)===0||myRep.indexOf(repName)===0)) return;
+        // 내 데이터: SP 버전이 더 최신이면 업데이트 (관리자가 수정한 경우)
+        var _isMyRep = repName===myRep ||
+          (typeof _sanitizeDKey==='function'&&_sanitizeDKey(repName)===_sanitizeDKey(myRep)) ||
+          (myRep&&repName&&(repName.indexOf(myRep)===0||myRep.indexOf(repName)===0));
+        if(_isMyRep){
+          // savedAt 비교 - SP가 더 최신이면 반영 (관리자 수정 반영)
+          var _spSavedAt = new Date(repData.savedAt||0).getTime();
+          var _localSavedAt = new Date((store.reps[myRep]&&store.reps[myRep].savedAt)||0).getTime();
+          if(_spSavedAt > _localSavedAt + 5000){ // 5초 이상 차이날 때만
+            if(!store.reps[myRep]) store.reps[myRep]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[]};
+            Object.assign(store.reps[myRep], repData);
+            _changed = true;
+          }
+          return;
+        }
         // TEAM_REPS에 없는 rep 무시 (역매핑 실패 케이스)
         if(allReps.length>0 && allReps.indexOf(repName)<0) return;
         var item=latestByRep[repName];
