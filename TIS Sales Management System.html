@@ -3416,7 +3416,13 @@ function _initApp(){
   // 입력 페이지 구성 (관리자/일반 동일)
   buildRepTabs(); // buildRepInputs는 input 페이지 진입 시에만 실행
 
-  // 데이터 렌더
+  // 대시보드 먼저 visible 설정 (차트가 보이는 상태에서 렌더링해야 정상 표시)
+  var pd=document.getElementById('page-dashboard');
+  if(pd){pd.classList.add('active');pd.style.display='block';}
+  var _dn = document.querySelector('.nav-item[onclick*="dashboard"]');
+  showPage('dashboard', _dn);
+
+  // 데이터 렌더 (페이지가 visible 된 후)
   try{ extractIssues(); }catch(e){}
   try{ renderDashboard(); }catch(e){}
   try{ renderIssues(); }catch(e){}
@@ -3424,12 +3430,12 @@ function _initApp(){
   try{ renderVisits(); }catch(e){}
   try{ populateFilters(); }catch(e){}
 
-  // 대시보드로 이동
-  // page-dashboard를 먼저 표시해야 차트가 정상 렌더링됨
-  var pd=document.getElementById('page-dashboard');
-  if(pd){pd.classList.add('active');pd.style.display='block';}
-  var _dn = document.querySelector('.nav-item[onclick*="dashboard"]');
-  showPage('dashboard', _dn);
+  // 차트는 DOM 크기 계산이 필요하므로 약간의 딜레이 후 재렌더
+  setTimeout(function(){
+    try{ renderDashboard(); }catch(e){}
+    try{ if(typeof renderRepChart==='function') renderRepChart(); }catch(e){}
+    try{ if(typeof renderMainChart==='function') renderMainChart(); }catch(e){}
+  }, 100);
 
   // 권한에 따른 UI 조정
   applyPermissions();
