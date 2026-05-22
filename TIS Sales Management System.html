@@ -4471,30 +4471,44 @@ function buildRepInputs(){
 
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     applyPermissions();
-    resizeAllTextareas();
-    // 추가: 300ms 후 재실행 (레이아웃 완전 완료 보장)
+    // 활성 담당자 섹션만 textarea 처리 (전체 X → 빠름)
     var _activeRep = document.querySelector('.rep-sec[style*="block"]');
-    if(_activeRep) setTimeout(function(){
+    if(_activeRep){
       _activeRep.querySelectorAll('textarea').forEach(function(ta){
         ta.style.setProperty('overflow-y','hidden','important');
         ta.style.setProperty('height','1px','important');
         var h=Math.max(30,ta.scrollHeight);
         ta.style.setProperty('height',h+'px','important');
       });
-    }, 300);
-    // 이슈사항 textarea 초기 높이 조절 (각 담당자 섹션)
-    document.querySelectorAll('[id^="ct-"] textarea, [id^="at-"] textarea, [id^="it-"] textarea').forEach(function(ta){
-      if(typeof autoResizeTA==='function') autoResizeTA(ta);
-    });
-    // 기존 데이터 type/status 기본값 보정
-    REPS.forEach(rep=>{
-      (store.reps[rep].clients||[]).forEach(c=>{
+    }
+    // 이슈 textarea: 활성 섹션만
+    if(_activeRep){
+      _activeRep.querySelectorAll('[id^="ct-"] textarea, [id^="at-"] textarea, [id^="it-"] textarea').forEach(function(ta){
+        if(typeof autoResizeTA==='function') autoResizeTA(ta);
+      });
+    }
+    // 기본값 보정: 활성 담당자만 즉시, 나머지는 백그라운드
+    var _curRep = session && session.rep ? session.rep : (REPS[0]||'');
+    if(_curRep && store.reps[_curRep]){
+      (store.reps[_curRep].clients||[]).forEach(c=>{
         if(!c.type || !['MA','개발','상품','기타'].includes(c.type)) c.type='MA';
         if(!c.status || !['달성','예상'].includes(c.status)) c.status='달성';
         if(!c.actual) c.actual=new Array(12).fill(0);
       });
-    });
+    }
     updateAllProductSummary();
+    // 나머지 담당자 기본값 보정은 백그라운드로
+    setTimeout(function(){
+      REPS.forEach(function(rep){
+        if(rep===_curRep) return;
+        (store.reps[rep]&&store.reps[rep].clients||[]).forEach(function(c){
+          if(!c.type || !['MA','개발','상품','기타'].includes(c.type)) c.type='MA';
+          if(!c.status || !['달성','예상'].includes(c.status)) c.status='달성';
+          if(!c.actual) c.actual=new Array(12).fill(0);
+        });
+      });
+      if(typeof resizeAllTextareas==='function') resizeAllTextareas();
+    }, 500);
 
     // 담당자 모드: 초기 진입 시에만 본인 탭으로 자동 이동
     if(session && session.role==='rep' && session.rep && window._autoTabPending){
