@@ -3615,6 +3615,7 @@ function showPage(id,navEl){
     APP.domReady=false; APP.autoDone=false;  // 페이지 진입 초기화
     window._inputPageDirty=false; // 진입 시 dirty 초기화
 
+    window._autoTabPending = true; // 초기 진입 시 자동 탭 이동 허용
     // session.team 기준으로 팀 탭 초기화
     if(session && session.role==='rep' && session.team){
       _tabState.input = session.team; // 항상 본인 팀으로 강제
@@ -4476,11 +4477,12 @@ function buildRepInputs(){
     });
     updateAllProductSummary();
 
-    // 담당자 모드: 빌드 완료 후 팀탭 + 담당자탭 + 내용 최종 확정
-    if(session && session.role==='rep' && session.rep){
+    // 담당자 모드: 초기 진입 시에만 본인 탭으로 자동 이동
+    if(session && session.role==='rep' && session.rep && window._autoTabPending){
+      window._autoTabPending = false; // 1회만 실행
       var _myRep  = session.rep;
       var _myTeam = session.team || currentTeam || '';
-      // ① 팀 탭 활성화 (마지막 확정 → 어떤 재초기화도 덮어씀)
+      // ① 팀 탭 활성화
       document.querySelectorAll('#input-team-tabs .tis-tab').forEach(function(t){
         t.classList.toggle('active', t.getAttribute('data-tab')===_myTeam);
       });
@@ -11888,9 +11890,9 @@ document.addEventListener('app:ready', function(){
   }
   if(!myTeam){ APP.domReady=false; APP.spReady=false; return; }
 
-  // 1단계: switchInputTeam 직접 호출 (클릭 시뮬레이션 대신)
-  // → currentTeam 설정 + buildRepTabs 동기 완료 보장
+  // 1단계: switchInputTeam 직접 호출
   if(typeof switchInputTeam==='function') switchInputTeam(myTeam);
+  window._autoTabPending = true; // buildRepInputs 완료 시 자동 탭 확정
 
   // 팀 탭 UI 활성화 (시각적 표시만)
   document.querySelectorAll('#input-team-tabs .tis-tab').forEach(function(t){
