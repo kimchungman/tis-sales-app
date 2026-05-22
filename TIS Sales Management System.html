@@ -5723,7 +5723,16 @@ function selectRep(rep){
 }
 function tryRep(){
   const pw=document.getElementById('rep-pw').value;
-  if(pw===authCfg.repPws[pendingRep]){ doRepLogin(pendingRep); }
+  if(pw===authCfg.repPws[pendingRep]){
+    // 비밀번호 맞아도 도메인 체크
+    if(typeof authCfg!=='undefined'&&authCfg.repEmails&&authCfg.repEmails[pendingRep]){
+      var _reg2=(authCfg.repEmails[pendingRep]||'').toLowerCase().trim();
+      var _cur2='';
+      if(window._msalApp){var _a2=window._msalApp.getAllAccounts();if(_a2.length>0)_cur2=(_a2[0].username||'').toLowerCase().trim();}
+      if(_cur2&&_reg2&&_cur2!==_reg2){_showAccessDenied(pendingRep,_cur2);return;}
+    }
+    doRepLogin(pendingRep);
+  }
   else { document.getElementById('rep-err').textContent='❌ 비밀번호가 틀렸습니다.'; document.getElementById('rep-pw').value=''; document.getElementById('rep-pw').focus(); }
 }
 
@@ -5745,13 +5754,6 @@ function _showAccessDenied(rep,msAcc){
   overlay.appendChild(box);document.body.appendChild(overlay);
 }
 function doRepLogin(rep){
-  // 이메일 불일치 시 접근 차단
-  if(typeof authCfg!=='undefined'&&authCfg.repEmails&&authCfg.repEmails[rep]){
-    var _reg=(authCfg.repEmails[rep]||'').toLowerCase().trim();
-    var _cur='';
-    if(window._msalApp){var _a=window._msalApp.getAllAccounts();if(_a.length>0)_cur=(_a[0].username||'').toLowerCase().trim();}
-    if(_cur&&_reg&&_cur!==_reg){_showAccessDenied(rep,_cur);return;}
-  }
   session={role:'rep', rep:rep, team:currentTeam};
   localStorage.setItem('_tisSavedSession', JSON.stringify({role:'rep',rep:rep,team:currentTeam}));
   // 모든 탭을 본인 팀으로 초기화
@@ -6944,13 +6946,19 @@ async function _initSP() {
 
     // 설정 + 오늘 데이터 자동 로드 (최초 접속 시 동기화)
     await _spLoadSettings();
-    await _spLoadToday();      // 기존 스냅샷 로드 (하위 호환)
+    // _spLoadToday 제거: 구버전 스냅샷이 최신 데이터 오염 방지
     await _spLoadAllReps();
     // SP 로드 완료 → 저장 허용 + repSavedHashes 초기화
     window._spDataLoaded = true;
     if(typeof _repSavedHashes!=='undefined' && typeof store!=='undefined' && store.reps){
       Object.keys(store.reps).forEach(function(r){
-        try{ _repSavedHashes[r]=JSON.stringify(store.reps[r]); }catch(e){}
+        try{
+          // savedAt 없으면 현재 시각으로 초기화 (sync 보호)
+          if(store.reps[r] && !store.reps[r].savedAt){
+            store.reps[r].savedAt = new Date().toISOString();
+          }
+          _repSavedHashes[r]=JSON.stringify(store.reps[r]);
+        }catch(e){}
       });
     }
     // 기존 visit_log 데이터 마이그레이션 (rep_data 통합 전 데이터 호환)
@@ -11811,6 +11819,8 @@ async function _spSaveRepByName(repName){
   if(!window._isSPReady || !repName) return;
   var repData = store.reps[repName];
   if(!repData) return;
+  // 저장 시 항상 현재 시각을 savedAt으로 기록 (sync 충돌 방지)
+  repData.savedAt = new Date().toISOString();
   var date = document.getElementById('mtg-date')?document.getElementById('mtg-date').value:'';
   if(!date) date = new Date().toISOString().split('T')[0];
   var _d = JSON.parse(JSON.stringify(repData));
@@ -11897,18 +11907,22 @@ async function _spSyncOtherReps(){
         if(!store.reps[repName]) store.reps[repName]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[]};
         var before=JSON.stringify(store.reps[repName]);
 
-        // 핵심 데이터(plan/actual/clients/activities)는 항상 최신 SP 데이터 사용
-        ['plan','actual','forecast','clients','activities'].forEach(function(k){
-          if(repData[k]!==undefined) store.reps[repName][k]=repData[k];
-        });
-        // issuesList: 더 많은 쪽
-        var existingIss=store.reps[repName].issuesList||[];
-        var newIss=repData.issuesList||[];
-        if(newIss.length>=existingIss.length) store.reps[repName].issuesList=newIss;
-        // visitLog: 더 많은 쪽 사용
-        var existingVL=store.reps[repName].visitLog||[];
-        var newVL=repData.visitLog||[];
-        if(newVL.length>=existingVL.length) store.reps[repName].visitLog=newVL;
+        // savedAt 비교: SP가 로컬보다 최신일 때만 업데이트 (로컬 최신 데이터 보호)
+        var _spSavedAt2 = new Date(repData.savedAt||0).getTime();
+        var _localSavedAt2 = new Date((store.reps[repName]&&store.reps[repName].savedAt)||0).getTime();
+        // SP가 5초 이상 최신이거나, 로컬에 savedAt이 없을 때만 업데이트
+        if(_spSavedAt2 > _localSavedAt2 - 5000){
+          ['plan','actual','forecast','clients','activities'].forEach(function(k){
+            if(repData[k]!==undefined) store.reps[repName][k]=repData[k];
+          });
+          var existingIss=store.reps[repName].issuesList||[];
+          var newIss=repData.issuesList||[];
+          if(newIss.length>=existingIss.length) store.reps[repName].issuesList=newIss;
+          var existingVL=store.reps[repName].visitLog||[];
+          var newVL=repData.visitLog||[];
+          if(newVL.length>=existingVL.length) store.reps[repName].visitLog=newVL;
+          if(repData.savedAt) store.reps[repName].savedAt=repData.savedAt;
+        }
 
         var after=JSON.stringify(store.reps[repName]);
         if(before!==after) changed=true;
@@ -12250,23 +12264,28 @@ async function _startSP(){
   if(typeof orig!=='function') return;
   window.doRepLogin=function(rep){
     var team=window.currentTeam||'';
-    // session에 team 저장 (원본이 team 저장 안 함)
+    // 도메인 불일치 차단 (래퍼에서 직접 체크 → orig 우회 방지)
+    if(typeof authCfg!=='undefined'&&authCfg.repEmails&&authCfg.repEmails[rep]){
+      var _reg=(authCfg.repEmails[rep]||'').toLowerCase().trim();
+      var _cur='';
+      if(window._msalApp){var _a=window._msalApp.getAllAccounts();if(_a.length>0)_cur=(_a[0].username||'').toLowerCase().trim();}
+      if(_cur&&_reg&&_cur!==_reg){
+        if(typeof _showAccessDenied==='function') _showAccessDenied(rep,_cur);
+        return; // 차단 - 이후 실행 없음
+      }
+    }
+    // session에 team 저장
     session.team=team;
-    // localStorage 저장 (redirect 복귀 시 복원용)
     localStorage.setItem('_savedSession',JSON.stringify({role:'rep',rep:rep,team:team}));
-    // 탭 상태 설정
     _tabState.input=team; _tabState.issues=team;
     _tabState.pipeline=team; _tabState.visits=team;
-    // 원본 실행 (closeAuth, applyPermissions, showToast, 300ms SP)
+    // 원본 실행 (doRepLogin: session설정, closeAuth, _initApp, showToast)
     orig(rep);
-    // orig가 session={role:'rep',rep}로 덮어씌움 → team 재설정
+    // orig가 session.team 덮어쓸 수 있으므로 재설정
     session.team = team;
-    // 원본이 _initApp 안 함 → 여기서 호출 (대시보드 표시)
-    if(typeof _initApp==='function') _initApp();
-    // buildRepInputs 후 권한 재적용
+    // 권한 재적용 (orig의 _initApp 이후)
     if(typeof applyPermissions==='function') setTimeout(applyPermissions, 50);
-    // SP 연결
-    setTimeout(function(){ if(!window._isSPReady) _startSP(); },200);
+    // _initApp은 orig 내에서 이미 호출됨 → 여기서 중복 호출 제거
   };
 })();
 
