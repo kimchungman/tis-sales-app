@@ -5965,13 +5965,17 @@ function _showAccessDenied(rep,msAcc){
   overlay.appendChild(box);document.body.appendChild(overlay);
 }
 function doRepLogin(rep){
-  session={role:'rep', rep:rep, team:currentTeam};
-  localStorage.setItem('_tisSavedSession', JSON.stringify({role:'rep',rep:rep,team:currentTeam}));
+  // 담당자의 실제 소속팀 조회 (currentTeam 아닌 REP_TEAM_MAP 기준)
+  var _repTeam = (typeof REP_TEAM_MAP!=='undefined' && REP_TEAM_MAP[rep])
+    ? REP_TEAM_MAP[rep] : currentTeam;
+  console.log('[doRepLogin] rep='+rep+' REP_TEAM_MAP='+JSON.stringify(typeof REP_TEAM_MAP!=='undefined'?REP_TEAM_MAP:null)+' _repTeam='+_repTeam);
+  session={role:'rep', rep:rep, team:_repTeam};
+  localStorage.setItem('_tisSavedSession', JSON.stringify({role:'rep',rep:rep,team:_repTeam}));
   // 모든 탭을 본인 팀으로 초기화
-  _tabState.input    = currentTeam;
-  _tabState.issues   = currentTeam;
-  _tabState.pipeline = currentTeam;
-  _tabState.visits   = currentTeam;
+  _tabState.input    = _repTeam;
+  _tabState.issues   = _repTeam;
+  _tabState.pipeline = _repTeam;
+  _tabState.visits   = _repTeam;
   closeAuth();
   _initApp();
   showToast('👤 '+rep+'으로 접속했습니다.');
@@ -5981,12 +5985,14 @@ function doRepLogin(rep){
     try{ if(!window._isSPReady&&typeof _initSP==='function') await _initSP(); }catch(e){}
   }, 800);
 }function doRepLogin(rep){
-  session={role:'rep', rep:rep, team:window.currentTeam||''};
-  localStorage.setItem('_tisSavedSession', JSON.stringify({role:'rep',rep:rep,team:window.currentTeam||''}));
-  _tabState.input=window.currentTeam||'';
-  _tabState.issues=window.currentTeam||'';
-  _tabState.pipeline=window.currentTeam||'';
-  _tabState.visits=window.currentTeam||'';
+  var _repTeam2 = (typeof REP_TEAM_MAP!=='undefined' && REP_TEAM_MAP[rep])
+    ? REP_TEAM_MAP[rep] : (window.currentTeam||'');
+  session={role:'rep', rep:rep, team:_repTeam2};
+  localStorage.setItem('_tisSavedSession', JSON.stringify({role:'rep',rep:rep,team:_repTeam2}));
+  _tabState.input=_repTeam2;
+  _tabState.issues=_repTeam2;
+  _tabState.pipeline=_repTeam2;
+  _tabState.visits=_repTeam2;
   closeAuth();
   // 대시보드 표시 + 전체 렌더
   if(typeof _initApp==='function') _initApp();
@@ -12501,7 +12507,7 @@ async function _startSP(){
   var orig=window.doRepLogin;
   if(typeof orig!=='function') return;
   window.doRepLogin=function(rep){
-    var team=window.currentTeam||'';
+    var team=(typeof REP_TEAM_MAP!=='undefined'&&REP_TEAM_MAP[rep])?REP_TEAM_MAP[rep]:(window.currentTeam||'');
     // 도메인 불일치 차단 (래퍼에서 직접 체크 → orig 우회 방지)
     if(typeof authCfg!=='undefined'&&authCfg.repEmails&&authCfg.repEmails[rep]){
       var _reg=(authCfg.repEmails[rep]||'').toLowerCase().trim();
