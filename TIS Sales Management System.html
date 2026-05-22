@@ -2467,6 +2467,7 @@ tr[id^="vr-"] td.content-cell { text-align:left !important; }
     </div>
     </div>
     <div id="stab-pane-조직관리" style="display:none;">
+
       <div class="sec-card">
 
       <div class="sec-head">
@@ -2560,6 +2561,51 @@ tr[id^="vr-"] td.content-cell { text-align:left !important; }
       </div>
     </div>
     </div>
+      <!-- 게스트 접근 허용 사용자 -->
+      <div class="sec-card" style="margin-top:16px;">
+        <div class="sec-head">
+          <h3>게스트 접근 허용 사용자</h3>
+        </div>
+        <div class="sec-body">
+          <p style="font-size:12px;color:#64748B;margin:0 0 16px;">M365 이메일 기반으로 자동 인증됩니다. 등록된 사용자는 비밀번호 없이 게스트로 접속할 수 있습니다.</p>
+          <!-- 추가 입력 -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 2fr auto;gap:8px;align-items:end;margin-bottom:16px;">
+            <div>
+              <div style="font-size:11px;font-weight:600;color:#374151;margin-bottom:4px;">이름 *</div>
+              <input id="ga-name" type="text" placeholder="홍길동" maxlength="20"
+                style="width:100%;height:36px;border:1.5px solid #E2E8F0;border-radius:8px;padding:0 10px;font-size:12px;font-family:inherit;box-sizing:border-box;outline:none;">
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:600;color:#374151;margin-bottom:4px;">직책</div>
+              <input id="ga-title" type="text" placeholder="대표이사" maxlength="20"
+                style="width:100%;height:36px;border:1.5px solid #E2E8F0;border-radius:8px;padding:0 10px;font-size:12px;font-family:inherit;box-sizing:border-box;outline:none;">
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:600;color:#374151;margin-bottom:4px;">이메일 주소 *</div>
+              <input id="ga-email" type="email" placeholder="hong@company.com"
+                onkeydown="if(event.key==='Enter') addGuestAllow();"
+                style="width:100%;height:36px;border:1.5px solid #E2E8F0;border-radius:8px;padding:0 10px;font-size:12px;font-family:inherit;box-sizing:border-box;outline:none;">
+            </div>
+            <button onclick="addGuestAllow()" class="btn btn-primary" style="height:36px;padding:0 16px;font-size:12px;white-space:nowrap;">+ 추가</button>
+          </div>
+          <!-- 목록 테이블 -->
+          <div style="border:1px solid #E2E8F0;border-radius:10px;overflow:hidden;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+              <thead>
+                <tr style="background:#F8FAFC;">
+                  <th style="padding:10px 12px;text-align:left;font-weight:700;color:#374151;border-bottom:1px solid #E2E8F0;">이름</th>
+                  <th style="padding:10px 12px;text-align:left;font-weight:700;color:#374151;border-bottom:1px solid #E2E8F0;">직책</th>
+                  <th style="padding:10px 12px;text-align:left;font-weight:700;color:#374151;border-bottom:1px solid #E2E8F0;">이메일</th>
+                  <th style="padding:10px 12px;text-align:center;font-weight:700;color:#374151;border-bottom:1px solid #E2E8F0;width:60px;">삭제</th>
+                </tr>
+              </thead>
+              <tbody id="guest-allow-list-body">
+                <tr><td colspan="4" style="text-align:center;padding:20px;color:#94A3B8;font-size:12px;">등록된 사용자가 없습니다</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     <div id="stab-pane-공지설정" style="display:none;">
       <div class="sec-card">
       <div class="sec-head"><h3>공지사항 설정</h3></div>
@@ -2846,6 +2892,66 @@ function saveGuestPw(){
   authCfg.guestPw=inp.value;
   saveAuthCfg();
   showToast('✅ 게스트 비밀번호가 저장됐습니다.');
+}
+
+// ════ 게스트 허용 목록 관련 ════
+function _getGuestAllowMatch(email){
+  if(!email) return null;
+  var list = authCfg.guestAllowList || [];
+  var em = email.toLowerCase().trim();
+  return list.find(function(g){
+    return (g.email||'').toLowerCase().trim() === em;
+  }) || null;
+}
+
+function doGuestKnown(){
+  var match = window._matchedGuest;
+  if(!match) return;
+  var displayName = match.name + (match.title ? ' ' + match.title : '');
+  doGuestWithName(displayName, true); // skipPwCheck=true
+}
+
+function renderGuestAllowList(){
+  var el = document.getElementById('guest-allow-list-body');
+  if(!el) return;
+  var list = authCfg.guestAllowList || [];
+  if(list.length === 0){
+    el.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:#94A3B8;font-size:12px;">등록된 사용자가 없습니다</td></tr>';
+    return;
+  }
+  el.innerHTML = list.map(function(g, i){
+    return '<tr style="border-bottom:1px solid #F1F5F9;">'
+      +'<td style="padding:10px 12px;font-size:13px;font-weight:600;color:#1E293B;">'+(g.name||'')+'</td>'
+      +'<td style="padding:10px 12px;font-size:12px;color:#64748B;">'+(g.title||'')+'</td>'
+      +'<td style="padding:10px 12px;font-size:12px;color:#64748B;">'+(g.email||'')+'</td>'
+      +'<td style="padding:10px 12px;text-align:center;">'
+      +'<button onclick="deleteGuestAllow('+i+')" style="padding:3px 10px;border:1px solid #FECACA;border-radius:6px;background:#FEF2F2;color:#DC2626;font-size:11px;cursor:pointer;font-family:inherit;">삭제</button>'
+      +'</td></tr>';
+  }).join('');
+}
+
+function addGuestAllow(){
+  var name  = (document.getElementById('ga-name')||{}).value||'';
+  var title = (document.getElementById('ga-title')||{}).value||'';
+  var email = (document.getElementById('ga-email')||{}).value||'';
+  if(!name.trim()||!email.trim()){showToast('이름과 이메일을 입력해주세요.','warn');return;}
+  if(!/^[^@]+@[^@]+\.[^@]+$/.test(email.trim())){showToast('올바른 이메일 형식을 입력해주세요.','warn');return;}
+  if(!authCfg.guestAllowList) authCfg.guestAllowList=[];
+  var dup = authCfg.guestAllowList.find(function(g){return (g.email||'').toLowerCase()===email.trim().toLowerCase();});
+  if(dup){showToast('이미 등록된 이메일입니다.','warn');return;}
+  authCfg.guestAllowList.push({name:name.trim(), title:title.trim(), email:email.trim().toLowerCase()});
+  saveAuthCfg();
+  ['ga-name','ga-title','ga-email'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  renderGuestAllowList();
+  showToast('✅ 게스트 접근 사용자가 등록되었습니다.');
+}
+
+function deleteGuestAllow(idx){
+  if(!confirm('삭제하시겠습니까?')) return;
+  if(authCfg.guestAllowList) authCfg.guestAllowList.splice(idx,1);
+  saveAuthCfg();
+  renderGuestAllowList();
+  showToast('✅ 삭제되었습니다.');
 }
 function saveAuthCfg(){
   authCfg.teams = TEAMS.slice();
@@ -5537,27 +5643,39 @@ function openAuth(){
   goStep0();
 }
 function goGuestStep(){
-  // 게스트 이름 입력 단계로 이동
   document.getElementById('auth-s0').style.display='none';
   var gs=document.getElementById('auth-s-guest');
-  if(gs){
-    gs.style.display='block';
-    var inp=document.getElementById('guest-name-input');
-    if(inp){ inp.value=''; inp.focus(); }
-    var btn=document.getElementById('guest-confirm-btn');
-    if(btn){ btn.disabled=true; btn.style.opacity='0.45'; btn.style.cursor='not-allowed'; }
+  if(!gs) return;
+  gs.style.display='block';
+  var _msE='';
+  if(window._msalApp){var _ac=window._msalApp.getAllAccounts();if(_ac.length>0)_msE=(_ac[0].username||'').toLowerCase().trim();}
+  var _gm=(typeof _getGuestAllowMatch==='function')?_getGuestAllowMatch(_msE):null;
+  var _kd=document.getElementById('auth-s-guest-known');
+  var _ud=document.getElementById('auth-s-guest-unknown');
+  if(_gm){
+    window._matchedGuest=_gm;
+    if(_kd)_kd.style.display='block'; if(_ud)_ud.style.display='none';
+    var _ne=document.getElementById('guest-known-name');
+    if(_ne)_ne.textContent=_gm.name+(_gm.title?' '+_gm.title:'');
+  } else {
+    window._matchedGuest=null;
+    if(_kd)_kd.style.display='none'; if(_ud)_ud.style.display='block';
+    var _gi=document.getElementById('guest-name-input');if(_gi){_gi.value='';_gi.focus();}
+    var _gb=document.getElementById('guest-confirm-btn');if(_gb){_gb.disabled=true;_gb.style.opacity='0.5';}
   }
 }
-function doGuestWithName(name){
+function doGuestWithName(name, skipPwCheck){
   if(!name||!name.trim()) return;
-  // 비밀번호 검증
-  var pwInput=document.getElementById('guest-pw-input');
-  var enteredPw=pwInput?pwInput.value:'';
-  var guestPw=authCfg.guestPw||'';
-  if(guestPw && enteredPw!==guestPw){
-    showToast('🔒 비밀번호가 올바르지 않습니다.','warn');
-    if(pwInput){pwInput.value='';pwInput.focus();}
-    return;
+  // 비밀번호 검증 (등록된 사용자는 skip)
+  if(!skipPwCheck){
+    var pwInput=document.getElementById('guest-pw-input');
+    var enteredPw=pwInput?pwInput.value:'';
+    var guestPw=authCfg.guestPw||'';
+    if(guestPw && enteredPw!==guestPw){
+      showToast('🔒 비밀번호가 올바르지 않습니다.','warn');
+      if(pwInput){pwInput.value='';pwInput.focus();}
+      return;
+    }
   }
   session={role:'guest',rep:null,team:null,guestName:name.trim()};
   closeAuth();
@@ -7470,6 +7588,7 @@ async function _spLoadSettings() {
   if (cfg.authCfg && typeof authCfg !== 'undefined') {
     const _oldAuth=JSON.parse(JSON.stringify(authCfg));
     Object.assign(authCfg, cfg.authCfg);
+    if(cfg.authCfg && cfg.authCfg.guestAllowList) authCfg.guestAllowList = cfg.authCfg.guestAllowList;
     localStorage.setItem('weekly_auth', JSON.stringify(cfg.authCfg));
   }
 
@@ -7835,46 +7954,41 @@ function _renderAccessLog() {
         </div>
       </div>
       
-      <!-- 게스트 이름 입력 단계 -->
+            <!-- 게스트 이름 입력 단계 -->
       <div id="auth-s-guest" style="display:none;">
-        <button class="auth-back-btn" onclick="document.getElementById('auth-s-guest').style.display='none';document.getElementById('auth-s0').style.display='block';">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg> 뒤로
-        </button>
-        <div class="auth-step-label auth-div-title" style="margin-top:12px;">게스트 접속</div>
-        <p style="font-size:12px;color:#94A3B8;margin:0 0 16px;line-height:1.6;">이름과 비밀번호를 입력하시면 열람 전용으로<br>접속할 수 있습니다.</p>
-        <div style="position:relative;margin-bottom:14px;">
-          <input id="guest-name-input" type="text" placeholder="이름을 입력하세요"
-            maxlength="20"
-            oninput="
-              var v=this.value.trim();
-              var pw=document.getElementById('guest-pw-input');
-              var btn=document.getElementById('guest-confirm-btn');
-              if(btn){
-                var ok=v&&pw&&pw.value.trim();
-                btn.disabled=!ok;
-                btn.style.opacity=ok?'1':'0.45';
-                btn.style.cursor=ok?'pointer':'not-allowed';
-              }
-            "
-            onkeydown="if(event.key==='Enter'){var pw=document.getElementById('guest-pw-input');if(pw)pw.focus();}"
-            style="width:100%;height:42px;border:1.5px solid #E2E8F0;border-radius:9px;padding:0 14px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;transition:border 0.15s;"
-            onfocus="this.style.borderColor='#4f7fff'"
-            onblur="this.style.borderColor='#E2E8F0'"
-          >
+        <button class="auth-back-btn" onclick="document.getElementById('auth-s-guest').style.display='none';document.getElementById('auth-s0').style.display='block';" style="background:none;border:none;cursor:pointer;color:#64748B;font-size:12px;padding:0;margin-bottom:16px;font-family:inherit;">← 뒤로</button>
+
+        <!-- 등록된 사용자 -->
+        <div id="auth-s-guest-known" style="display:none;">
+          <div style="text-align:center;padding:8px 0 20px;">
+            <div id="guest-known-name" style="font-size:18px;font-weight:700;color:#0A1628;margin-bottom:8px;"></div>
+            <div style="display:inline-flex;align-items:center;gap:6px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:20px;padding:5px 14px;">
+              <div style="width:6px;height:6px;border-radius:50%;background:#059669;"></div>
+              <span style="font-size:12px;font-weight:600;color:#059669;">접속 계정이 확인되었습니다</span>
+            </div>
+          </div>
+          <button onclick="doGuestKnown()" style="width:100%;height:42px;border:none;border-radius:9px;background:linear-gradient(135deg,#0A1628,#1e3a5f);color:white;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">게스트로 보기</button>
         </div>
-        <div style="margin-top:10px;padding-bottom:4px;">
-          <input id="guest-pw-input" type="password" placeholder="비밀번호"
-            autocomplete="off"
-            style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;transition:border-color 0.2s;"
-            onfocus="this.style.borderColor='#4f7fff'" onblur="this.style.borderColor='var(--border)'"
-            oninput="var n=document.getElementById('guest-name-input');var p=this;var btn=document.getElementById('guest-confirm-btn');if(n&&p&&btn){btn.disabled=!(n.value.trim()&&p.value.trim());btn.style.opacity=btn.disabled?'0.45':'1';btn.style.cursor=btn.disabled?'not-allowed':'pointer';}"
-            onkeydown="if(event.key==='Enter')document.getElementById('guest-confirm-btn').click()">
+
+        <!-- 미등록 사용자 -->
+        <div id="auth-s-guest-unknown" style="display:none;">
+          <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;padding:10px 14px;margin-bottom:16px;">
+            <p style="margin:0;font-size:12px;color:#92400E;line-height:1.6;">등록되지 않은 사용자입니다.<br>이름과 비밀번호를 입력해주세요.</p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px;">
+            <input id="guest-name-input" type="text" placeholder="이름을 입력하세요" maxlength="20"
+              oninput="var v=this.value.trim();var pw=document.getElementById('guest-pw-input');var btn=document.getElementById('guest-confirm-btn');if(btn){var ok=v&&pw&&pw.value.trim();btn.disabled=!ok;btn.style.opacity=ok?'1':'0.5';}"
+              onkeydown="if(event.key==='Enter'){var pw=document.getElementById('guest-pw-input');if(pw)pw.focus();}"
+              style="width:100%;height:42px;border:1.5px solid #E2E8F0;border-radius:9px;padding:0 14px;font-size:14px;font-family:inherit;box-sizing:border-box;outline:none;">
+            <input id="guest-pw-input" type="password" placeholder="비밀번호" autocomplete="off"
+              oninput="var n=document.getElementById('guest-name-input');var p=this;var btn=document.getElementById('guest-confirm-btn');if(n&&p&&btn){btn.disabled=!(n.value.trim()&&p.value.trim());btn.style.opacity=(n.value.trim()&&p.value.trim())?'1':'0.5';}"
+              onkeydown="if(event.key==='Enter')document.getElementById('guest-confirm-btn').click()"
+              style="width:100%;height:42px;border:1.5px solid #E2E8F0;border-radius:9px;padding:0 14px;font-size:14px;font-family:inherit;box-sizing:border-box;outline:none;">
+          </div>
+          <button id="guest-confirm-btn" disabled
+            onclick="var v=document.getElementById('guest-name-input').value.trim();if(v)doGuestWithName(v);"
+            style="width:100%;height:42px;border:none;border-radius:9px;background:linear-gradient(135deg,#0A1628,#1e3a5f);color:white;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;opacity:0.5;">게스트로 보기</button>
         </div>
-        <button id="guest-confirm-btn" disabled
-          onclick="var v=document.getElementById('guest-name-input').value.trim();if(v)doGuestWithName(v);"
-          style="width:100%;height:42px;border:none;border-radius:9px;background:#4f7fff;color:white;font-size:14px;font-weight:700;cursor:not-allowed;font-family:inherit;transition:all 0.15s;opacity:0.45;">
-          접속하기
-        </button>
       </div>
 <div id="auth-s1" style="display:none;">
         <button class="auth-back-btn" onclick="document.getElementById('auth-s1').style.display='none';document.getElementById('auth-s0').style.display='block';"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg> 팀 선택으로</button>
