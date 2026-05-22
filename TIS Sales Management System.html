@@ -4237,6 +4237,7 @@ function renderRepChart(){
 // INPUT
 
 function switchInputTeam(team){
+  console.log('[switchInputTeam] called with:', JSON.stringify(team));
   currentTeam=team;
   // 팀이 바뀌면 재빌드 강제
   if(window._lastBuiltTeam !== team) window._lastBuiltTeam = null;
@@ -11847,6 +11848,24 @@ document.addEventListener('app:ready', function(){
 
   var myTeam = session.team || '';
   var myRep  = session.rep;
+
+  // ══ 디버그 로그 ══
+  console.log('[AutoTab] session.team =', JSON.stringify(myTeam));
+  console.log('[AutoTab] session.rep  =', JSON.stringify(myRep));
+  console.log('[AutoTab] TEAMS =', JSON.stringify(TEAMS));
+  var _teamBtns = document.querySelectorAll('#input-team-tabs .tis-tab');
+  _teamBtns.forEach(function(b){
+    console.log('[AutoTab] teamBtn data-tab='+JSON.stringify(b.dataset.tab)+' text='+JSON.stringify(b.textContent.trim())+' active='+b.classList.contains('active'));
+  });
+  var _repBtns = document.querySelectorAll('#rep-tabs .tab');
+  console.log('[AutoTab] repTab count=', _repBtns.length);
+  _repBtns.forEach(function(b){
+    console.log('[AutoTab] repBtn data-rep='+JSON.stringify(b.dataset.rep));
+  });
+  console.log('[AutoTab] myTeam===TEAMS match:', TEAMS.indexOf(myTeam));
+  console.log('[AutoTab] myTeam charCodes:', myTeam.split('').map(function(c){return c.charCodeAt(0);}));
+  var _firstTeam = TEAMS[0]||'';
+  console.log('[AutoTab] TEAMS[0] charCodes:', _firstTeam.split('').map(function(c){return c.charCodeAt(0);}));
 
   // fallback: REP_TEAM_MAP
   if(!myTeam && typeof REP_TEAM_MAP!=='undefined' && REP_TEAM_MAP[myRep]){
