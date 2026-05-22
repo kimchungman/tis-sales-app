@@ -4351,11 +4351,14 @@ function buildRepInputs(){
       forecast:new Array(12).fill(0),clients:[],activities:[],visitLog:[]
     };
   });
-  // rep 모드: 본인 섹션만 빌드 (속도 최적화)
-  // admin/guest: 전체 빌드
-  var _repsToRender = (session && session.role==='rep' && session.rep && REPS.indexOf(session.rep)>=0)
-    ? [session.rep] : REPS;
-  area.innerHTML=_repsToRender.map((rep,ri)=>`
+  // session.rep을 맨 앞으로 정렬해서 렌더 (DOM에 먼저 들어감)
+  var _myRep = (session && session.rep && REPS.indexOf(session.rep)>=0) ? session.rep : null;
+  var _repsOrdered = _myRep
+    ? [_myRep].concat(REPS.filter(function(r){ return r!==_myRep; }))
+    : REPS;
+  var _repsRest = _myRep ? REPS.filter(function(r){ return r!==_myRep; }) : [];
+
+  area.innerHTML=_repsOrdered.map((rep,ri)=>`
   <div class="rep-sec" id="rs-${rep}" style="display:none">
 
     <!-- 매출 현황 -->
