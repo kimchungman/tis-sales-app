@@ -11833,34 +11833,31 @@ document.addEventListener('app:ready', function(){
   var pg=document.getElementById('page-input');
   if(!pg||!pg.classList.contains('active')) return;
 
-  // session.team 우선 사용 (REP_TEAM_MAP보다 신뢰도 높음)
   var myTeam = session.team || '';
   var myRep  = session.rep;
 
-  // 1단계: 팀 탭 활성화 (다른 팀이면 클릭 → switchInputTeam → buildRepTabs 동기 실행)
-  var teamTab = document.querySelector('#input-team-tabs .tis-tab[data-tab="'+myTeam+'"]');
-  if(!teamTab){
-    // 팀탭 없으면 REP_TEAM_MAP fallback
-    if(typeof REP_TEAM_MAP!=='undefined' && REP_TEAM_MAP[myRep]){
-      myTeam = REP_TEAM_MAP[myRep];
-      teamTab = document.querySelector('#input-team-tabs .tis-tab[data-tab="'+myTeam+'"]');
-    }
-    if(!teamTab){ APP.domReady=false; APP.spReady=false; return; }
+  // fallback: REP_TEAM_MAP
+  if(!myTeam && typeof REP_TEAM_MAP!=='undefined' && REP_TEAM_MAP[myRep]){
+    myTeam = REP_TEAM_MAP[myRep];
   }
+  if(!myTeam){ APP.domReady=false; APP.spReady=false; return; }
 
-  // 팀 탭이 다르면 클릭 (switchInputTeam 호출 → buildRepTabs 동기 완료)
-  if(!teamTab.classList.contains('active')){
-    teamTab.click(); // 동기: buildRepTabs 즉시 완료됨
-  }
+  // 1단계: switchInputTeam 직접 호출 (클릭 시뮬레이션 대신)
+  // → currentTeam 설정 + buildRepTabs 동기 완료 보장
+  if(typeof switchInputTeam==='function') switchInputTeam(myTeam);
 
-  // 2단계: 담당자 탭 탐색 (buildRepTabs 완료 후이므로 즉시 존재)
+  // 팀 탭 UI 활성화 (시각적 표시만)
+  document.querySelectorAll('#input-team-tabs .tis-tab').forEach(function(t){
+    t.classList.toggle('active', t.getAttribute('data-tab')===myTeam);
+  });
+
+  // 2단계: 담당자 탭 탐색 (switchInputTeam → buildRepTabs 동기 완료됨)
   var repTab = document.querySelector('#rep-tabs .tab[data-rep="'+myRep+'"]');
   if(!repTab){ APP.domReady=false; return; }
 
   APP.autoDone=true;
-  repTab.click(); // switchTab: activeRep 설정 + 탭 활성화
+  repTab.click();
   if(typeof applyPermissions==='function') applyPermissions();
-  // buildRepInputs 완료 후 내용 표시는 buildRepInputs 내부 훅에서 처리
 });
 
 
