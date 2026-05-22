@@ -3611,7 +3611,11 @@ function showPage(id,navEl){
   if(typeof closeMobileMenu==="function") closeMobileMenu();
   // ── 페이지별 탭 초기화 (매번 호출 보장) ──
   if(id==='input'){
-      // _lastBuiltTeam은 유지 (팀이 같으면 재빌드 스킵)
+      // rep 모드: _lastBuiltTeam 유지 (재빌드 스킵 최적화)
+    // admin/guest: 항상 리셋 (다른 담당자 최신 데이터 보장)
+    if(!session || session.role !== 'rep'){
+      window._lastBuiltTeam = null;
+    }
     APP.domReady=false; APP.autoDone=false;  // 페이지 진입 초기화
     window._inputPageDirty=false; // 진입 시 dirty 초기화
 
