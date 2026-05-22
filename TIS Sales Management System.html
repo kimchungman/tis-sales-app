@@ -3463,8 +3463,16 @@ function _buildTeamTabs(containerId, pageKey, onSelect) {
       if(typeof TEAMS !== 'undefined' && TEAMS.indexOf(cur) < 0) TEAMS.push(cur);
       if(typeof TEAM_REPS !== 'undefined' && !TEAM_REPS[cur]) TEAM_REPS[cur] = [];
     } else {
-      cur = tabs[0] || 'all';
-      _tabState[pageKey] = cur;
+      // session.team이 TEAMS에 없어도 rep 모드에서는 리셋하지 않음
+      if(session && session.role==='rep' && session.team && cur===session.team){
+        // 신규팀 - tabs에 추가
+        tabs.push(cur);
+        if(typeof TEAMS!=='undefined' && TEAMS.indexOf(cur)<0) TEAMS.push(cur);
+        if(typeof TEAM_REPS!=='undefined' && !TEAM_REPS[cur]) TEAM_REPS[cur]=[];
+      } else {
+        cur = tabs[0] || 'all';
+        _tabState[pageKey] = cur;
+      }
     }
   }
 
@@ -4456,16 +4464,20 @@ function buildRepInputs(){
     });
     updateAllProductSummary();
 
-    // 담당자 모드: 빌드 완료 후 본인 탭/내용 즉시 선택
+    // 담당자 모드: 빌드 완료 후 팀탭 + 담당자탭 + 내용 최종 확정
     if(session && session.role==='rep' && session.rep){
-      var _myRep = session.rep;
-      // 모든 탭/섹션 초기화
+      var _myRep  = session.rep;
+      var _myTeam = session.team || currentTeam || '';
+      // ① 팀 탭 활성화 (마지막 확정 → 어떤 재초기화도 덮어씀)
+      document.querySelectorAll('#input-team-tabs .tis-tab').forEach(function(t){
+        t.classList.toggle('active', t.getAttribute('data-tab')===_myTeam);
+      });
+      // ② 담당자 탭 활성화
       document.querySelectorAll('#rep-tabs .tab').forEach(function(t){ t.classList.remove('active'); });
       document.querySelectorAll('.rep-sec').forEach(function(s){ s.style.display='none'; });
-      // 본인 탭 활성화
       var _myTab = document.querySelector('#rep-tabs .tab[data-rep="'+_myRep+'"]');
       if(_myTab){ _myTab.classList.add('active'); activeRep=_myRep; }
-      // 본인 섹션 표시
+      // ③ 담당자 내용 표시
       var _mySec = document.getElementById('rs-'+_myRep);
       if(_mySec){ _mySec.style.display='block'; }
       if(typeof applyPermissions==='function') applyPermissions();
