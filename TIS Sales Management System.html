@@ -1954,7 +1954,9 @@ tr[id^="vr-"] td.content-cell { text-align:left !important; }
           <span style="font-size:12px;font-weight:600;color:#64748B;">인쇄</span>
         </button>
       <button id="refresh-btn" onclick="manualRefresh()" title="새로고침" style="display:flex;align-items:center;justify-content:center;gap:6px;height:32px;min-width:90px;box-sizing:border-box;padding:0 12px;border-radius:20px;background:linear-gradient(135deg,#05966915,#10B98115);border:1.5px solid #10B98140;cursor:pointer;transition:all 0.2s;font-family:inherit;" onmouseover="this.style.background='linear-gradient(135deg,#05966925,#10B98125)'" onmouseout="this.style.background='linear-gradient(135deg,#05966915,#10B98115)'">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          <span id="refresh-icon" style="display:inline-flex;align-items:center;transform-origin:center;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          </span>
           <span style="font-size:12px;font-weight:600;color:#059669;">동기화</span>
         </button>
     </div>
@@ -2138,11 +2140,10 @@ tr[id^="vr-"] td.content-cell { text-align:left !important; }
     <div class="sec-card">
       <div class="sec-head">
         <h3>접속 이력</h3>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <button onclick="_filterAccessLog('today')" id="log-btn-today" class="btn btn-primary" style="font-size:11px;padding:4px 12px;">오늘</button>
-          <button onclick="_filterAccessLog('week')" id="log-btn-week" class="btn btn-outline" style="font-size:11px;padding:4px 12px;">이번주</button>
-          <button onclick="_filterAccessLog('all')" id="log-btn-all" class="btn btn-outline" style="font-size:11px;padding:4px 12px;">전체</button>
-          <button onclick="_loadAccessLog()" class="btn btn-outline" style="font-size:11px;padding:4px 12px;">🔄 새로고침</button>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <button onclick="_filterAccessLog('today')" id="log-btn-today" class="btn btn-primary" style="font-size:11px;padding:4px 14px;">오늘</button>
+          <button onclick="_filterAccessLog('week')" id="log-btn-week" class="btn btn-outline" style="font-size:11px;padding:4px 14px;">이번주</button>
+          <button onclick="_filterAccessLog('all')" id="log-btn-all" class="btn btn-outline" style="font-size:11px;padding:4px 14px;">전체</button>
         </div>
       </div>
       <div class="sec-body" style="padding:16px 18px;">
@@ -4708,8 +4709,8 @@ function getPipeReps(){
 }
 
 async function manualRefresh(){
-  var btn = document.getElementById('refresh-btn');
-  if(btn) btn.style.animation='spin 0.8s linear infinite';
+  var _rIcon = document.getElementById('refresh-icon');
+  if(_rIcon) _rIcon.style.animation='spin 0.8s linear infinite';
   try{
     if(window._isSPReady){
       // SP ID 캐시 초기화 (잘못된 캐시로 저장 실패 방지)
@@ -4742,7 +4743,7 @@ async function manualRefresh(){
   }catch(e){
     showToast('새로고침 실패: '+e.message, 'warn');
   }finally{
-    if(btn) btn.style.animation='';
+    if(_rIcon) _rIcon.style.animation='';
   }
 }
 
