@@ -4269,9 +4269,12 @@ function switchInputTeam(team){
     var _area=document.getElementById('rep-input-area');
     var _alreadyBuilt = _area && _area.children.length>0 && window._lastBuiltTeam===currentTeam;
     if(_alreadyBuilt){
-      var _at=document.querySelector('#rep-tabs .tab.active');
-      if(_at && _at.dataset && _at.dataset.rep && typeof switchTab==='function'){
-        switchTab(_at.dataset.rep, _at);
+      // session.rep 탭 직접 선택 (이미 buildRepTabs에서 active 설정됨)
+      var _myRepTab = (session&&session.rep)
+        ? document.querySelector('#rep-tabs .tab[data-rep="'+session.rep+'"]')
+        : document.querySelector('#rep-tabs .tab.active');
+      if(_myRepTab && typeof switchTab==='function'){
+        switchTab(_myRepTab.dataset.rep, _myRepTab);
       }
       return;
     }
@@ -4305,7 +4308,10 @@ function switchInputTeam(team){
 }// (구버전 switchInputTeam 제거됨)
 
 function buildRepTabs(){
-  document.getElementById('rep-tabs').innerHTML=REPS.map((r,i)=>`<div class="tab${i===0?' active':''}" data-rep="${r}" onclick="switchTab('${r}',this)">${getRepDisplayName(r)}</div>`).join('');
+  // session.rep 탭을 처음부터 active로 생성 (시각적 점프 방지)
+  var _activeRep = (session && session.role==='rep' && session.rep && REPS.indexOf(session.rep)>=0)
+    ? session.rep : REPS[0];
+  document.getElementById('rep-tabs').innerHTML=REPS.map((r)=>`<div class="tab${r===_activeRep?' active':''}" data-rep="${r}" onclick="switchTab('${r}',this)">${getRepDisplayName(r)}</div>`).join('');
 }
 let activeRep=REPS[0];
 function switchTab(rep,el){
