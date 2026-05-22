@@ -2596,7 +2596,7 @@ tr[id^="vr-"] td.content-cell { text-align:left !important; }
                   <th style="padding:10px 12px;text-align:left;font-weight:700;color:#374151;border-bottom:1px solid #E2E8F0;">이름</th>
                   <th style="padding:10px 12px;text-align:left;font-weight:700;color:#374151;border-bottom:1px solid #E2E8F0;">직책</th>
                   <th style="padding:10px 12px;text-align:left;font-weight:700;color:#374151;border-bottom:1px solid #E2E8F0;">이메일</th>
-                  <th style="padding:10px 12px;text-align:center;font-weight:700;color:#374151;border-bottom:1px solid #E2E8F0;width:60px;">삭제</th>
+                  <th style="padding:10px 12px;text-align:center;font-weight:700;color:#374151;border-bottom:1px solid #E2E8F0;width:100px;">관리</th>
                 </tr>
               </thead>
               <tbody id="guest-allow-list-body">
@@ -2897,11 +2897,20 @@ function saveGuestPw(){
 // ════ 게스트 허용 목록 관련 ════
 function _getGuestAllowMatch(email){
   if(!email) return null;
-  var list = authCfg.guestAllowList || [];
   var em = email.toLowerCase().trim();
-  return list.find(function(g){
-    return (g.email||'').toLowerCase().trim() === em;
-  }) || null;
+  // guestAllowList 확인
+  var list = authCfg.guestAllowList || [];
+  var found = list.find(function(g){ return (g.email||'').toLowerCase().trim()===em; });
+  if(found) return found;
+  // 팀 담당자 이메일(repEmails) 확인
+  var repEmails = authCfg.repEmails || {};
+  for(var rep in repEmails){
+    if((repEmails[rep]||'').toLowerCase().trim()===em){
+      var title = (authCfg.repTitles||{})[rep]||'';
+      return {name:rep, title:title, email:em, isRep:true};
+    }
+  }
+  return null;
 }
 
 function doGuestKnown(){
@@ -2916,15 +2925,16 @@ function renderGuestAllowList(){
   if(!el) return;
   var list = authCfg.guestAllowList || [];
   if(list.length === 0){
-    el.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:#94A3B8;font-size:12px;">등록된 사용자가 없습니다</td></tr>';
+    el.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#94A3B8;font-size:12px;">등록된 사용자가 없습니다</td></tr>';
     return;
   }
   el.innerHTML = list.map(function(g, i){
-    return '<tr style="border-bottom:1px solid #F1F5F9;">'
+    return '<tr style="border-bottom:1px solid #F1F5F9;" id="ga-row-'+i+'">'
       +'<td style="padding:10px 12px;font-size:13px;font-weight:600;color:#1E293B;">'+(g.name||'')+'</td>'
       +'<td style="padding:10px 12px;font-size:12px;color:#64748B;">'+(g.title||'')+'</td>'
       +'<td style="padding:10px 12px;font-size:12px;color:#64748B;">'+(g.email||'')+'</td>'
-      +'<td style="padding:10px 12px;text-align:center;">'
+      +'<td style="padding:8px 12px;text-align:center;display:flex;gap:4px;justify-content:center;">'
+      +'<button onclick="editGuestAllow('+i+')" style="padding:3px 10px;border:1px solid #BFDBFE;border-radius:6px;background:#EFF6FF;color:#1D4ED8;font-size:11px;cursor:pointer;font-family:inherit;">수정</button>'
       +'<button onclick="deleteGuestAllow('+i+')" style="padding:3px 10px;border:1px solid #FECACA;border-radius:6px;background:#FEF2F2;color:#DC2626;font-size:11px;cursor:pointer;font-family:inherit;">삭제</button>'
       +'</td></tr>';
   }).join('');
@@ -2946,6 +2956,20 @@ function addGuestAllow(){
   showToast('✅ 게스트 접근 사용자가 등록되었습니다.');
 }
 
+
+function editGuestAllow(idx){
+  if(!authCfg.guestAllowList||!authCfg.guestAllowList[idx]) return;
+  var g=authCfg.guestAllowList[idx];
+  var n=document.getElementById('ga-name'); if(n) n.value=g.name||'';
+  var t=document.getElementById('ga-title'); if(t) t.value=g.title||'';
+  var e=document.getElementById('ga-email'); if(e) e.value=g.email||'';
+  // 기존 항목 삭제 후 입력 필드에서 저장
+  authCfg.guestAllowList.splice(idx,1);
+  saveAuthCfg();
+  renderGuestAllowList();
+  if(n) n.focus();
+  showToast('수정할 내용을 변경 후 추가해주세요.', 'info');
+}
 function deleteGuestAllow(idx){
   if(!confirm('삭제하시겠습니까?')) return;
   if(authCfg.guestAllowList) authCfg.guestAllowList.splice(idx,1);
@@ -5809,6 +5833,11 @@ function goStep0(){
   document.getElementById('auth-s1').style.display='none';
   document.getElementById('auth-s2').style.display='none';
   document.getElementById('auth-s3') && (document.getElementById('auth-s3').style.display='none');
+  // 게스트 화면 초기화
+  var _sg=document.getElementById('auth-s-guest'); if(_sg) _sg.style.display='none';
+  var _kd=document.getElementById('auth-s-guest-known'); if(_kd) _kd.style.display='none';
+  var _ud=document.getElementById('auth-s-guest-unknown'); if(_ud) _ud.style.display='none';
+  window._matchedGuest=null;
   const sub = document.getElementById('auth-sub-title');
   if(sub) sub.textContent='팀을 선택하세요';
 }
