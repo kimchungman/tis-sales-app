@@ -11890,22 +11890,36 @@ document.addEventListener('app:ready', function(){
   }
   if(!myTeam){ APP.domReady=false; APP.spReady=false; return; }
 
-  // 1단계: switchInputTeam 직접 호출
-  if(typeof switchInputTeam==='function') switchInputTeam(myTeam);
-  window._autoTabPending = true; // buildRepInputs 완료 시 자동 탭 확정
-
-  // 팀 탭 UI 활성화 (시각적 표시만)
-  document.querySelectorAll('#input-team-tabs .tis-tab').forEach(function(t){
-    t.classList.toggle('active', t.getAttribute('data-tab')===myTeam);
-  });
-
-  // 2단계: 담당자 탭 탐색 (switchInputTeam → buildRepTabs 동기 완료됨)
-  var repTab = document.querySelector('#rep-tabs .tab[data-rep="'+myRep+'"]');
-  if(!repTab){ APP.domReady=false; return; }
-
-  APP.autoDone=true;
-  repTab.click();
-  if(typeof applyPermissions==='function') applyPermissions();
+  // 이미 맞는 팀이면 switchInputTeam 생략 (buildRepInputs 중복 방지)
+  if(typeof currentTeam !== 'undefined' && currentTeam === myTeam){
+    // 팀 탭 UI만 확인
+    document.querySelectorAll('#input-team-tabs .tis-tab').forEach(function(t){
+      t.classList.toggle('active', t.getAttribute('data-tab')===myTeam);
+    });
+    // rep 탭 탐색 → buildRepInputs 완료 대기 후 처리
+    var repTab = document.querySelector('#rep-tabs .tab[data-rep="'+myRep+'"]');
+    if(repTab){
+      APP.autoDone=true;
+      window._autoTabPending = true;
+      repTab.click();
+      if(typeof applyPermissions==='function') applyPermissions();
+    } else {
+      // rep 탭 미생성 시 buildRepInputs 완료 후 처리
+      window._autoTabPending = true;
+    }
+  } else {
+    // 다른 팀이면 switchInputTeam 호출 후 rep 탐색
+    if(typeof switchInputTeam==='function') switchInputTeam(myTeam);
+    window._autoTabPending = true;
+    document.querySelectorAll('#input-team-tabs .tis-tab').forEach(function(t){
+      t.classList.toggle('active', t.getAttribute('data-tab')===myTeam);
+    });
+    var repTab = document.querySelector('#rep-tabs .tab[data-rep="'+myRep+'"]');
+    if(!repTab){ APP.domReady=false; return; }
+    APP.autoDone=true;
+    repTab.click();
+    if(typeof applyPermissions==='function') applyPermissions();
+  }
 });
 
 
