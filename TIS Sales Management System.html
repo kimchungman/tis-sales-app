@@ -2837,6 +2837,17 @@ function loadAuthCfg(){
 }
 
 // 팀 데이터 동기화 (authCfg.teamReps → TEAM_REPS, REPS)
+
+// 담당자의 실제 소속팀 조회 (TEAM_REPS 직접 검색)
+function _getRepActualTeam(rep){
+  var found = '';
+  if(typeof TEAM_REPS !== 'undefined'){
+    Object.keys(TEAM_REPS).forEach(function(team){
+      if((TEAM_REPS[team]||[]).indexOf(rep) >= 0) found = team;
+    });
+  }
+  return found || currentTeam || (TEAMS&&TEAMS[0]) || '';
+}
 function syncTeamData(){
   if(authCfg.teamReps){
     Object.keys(authCfg.teamReps).forEach(function(team){
@@ -5966,9 +5977,8 @@ function _showAccessDenied(rep,msAcc){
 }
 function doRepLogin(rep){
   // 담당자의 실제 소속팀 조회 (currentTeam 아닌 REP_TEAM_MAP 기준)
-  var _repTeam = (typeof REP_TEAM_MAP!=='undefined' && REP_TEAM_MAP[rep])
-    ? REP_TEAM_MAP[rep] : currentTeam;
-  console.log('[doRepLogin] rep='+rep+' REP_TEAM_MAP='+JSON.stringify(typeof REP_TEAM_MAP!=='undefined'?REP_TEAM_MAP:null)+' _repTeam='+_repTeam);
+  var _repTeam = _getRepActualTeam(rep);
+  console.log('[doRepLogin] rep='+rep+' _repTeam='+_repTeam);
   session={role:'rep', rep:rep, team:_repTeam};
   localStorage.setItem('_tisSavedSession', JSON.stringify({role:'rep',rep:rep,team:_repTeam}));
   // 모든 탭을 본인 팀으로 초기화
@@ -5985,8 +5995,7 @@ function doRepLogin(rep){
     try{ if(!window._isSPReady&&typeof _initSP==='function') await _initSP(); }catch(e){}
   }, 800);
 }function doRepLogin(rep){
-  var _repTeam2 = (typeof REP_TEAM_MAP!=='undefined' && REP_TEAM_MAP[rep])
-    ? REP_TEAM_MAP[rep] : (window.currentTeam||'');
+  var _repTeam2 = _getRepActualTeam(rep);
   session={role:'rep', rep:rep, team:_repTeam2};
   localStorage.setItem('_tisSavedSession', JSON.stringify({role:'rep',rep:rep,team:_repTeam2}));
   _tabState.input=_repTeam2;
@@ -11852,8 +11861,8 @@ document.addEventListener('app:ready', function(){
   var pg=document.getElementById('page-input');
   if(!pg||!pg.classList.contains('active')) return;
 
-  var myTeam = session.team || '';
   var myRep  = session.rep;
+  var myTeam = session.team || _getRepActualTeam(myRep) || '';
 
   // ══ 디버그 로그 ══
   console.log('[AutoTab] session.team =', JSON.stringify(myTeam));
@@ -12507,7 +12516,7 @@ async function _startSP(){
   var orig=window.doRepLogin;
   if(typeof orig!=='function') return;
   window.doRepLogin=function(rep){
-    var team=(typeof REP_TEAM_MAP!=='undefined'&&REP_TEAM_MAP[rep])?REP_TEAM_MAP[rep]:(window.currentTeam||'');
+    var team=_getRepActualTeam(rep);
     // 도메인 불일치 차단 (래퍼에서 직접 체크 → orig 우회 방지)
     if(typeof authCfg!=='undefined'&&authCfg.repEmails&&authCfg.repEmails[rep]){
       var _reg=(authCfg.repEmails[rep]||'').toLowerCase().trim();
