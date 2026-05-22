@@ -3238,6 +3238,10 @@ function switchSettingsTab(tab){
     if(typeof renderLayoutSettings==='function') setTimeout(renderLayoutSettings,50);
     if(typeof renderSelectOptsSettings==='function') setTimeout(renderSelectOptsSettings,100);
   }
+  if(tab==='조직관리'){
+    if(typeof renderRepManage==='function') setTimeout(renderRepManage,50);
+    if(typeof renderGuestAllowList==='function') setTimeout(renderGuestAllowList,60);
+  }
   ['기본설정','조직관리','공지설정','테마'].forEach(function(t){
     var el=document.getElementById('stab-pane-'+t);
     if(el) el.style.display=t===tab?'block':'none';
@@ -3637,6 +3641,7 @@ function showPage(id,navEl){
     setTimeout(function(){
       if(typeof renderCfgTeams==='function') renderCfgTeams();
       if(typeof renderRepManage==='function') renderRepManage();
+      if(typeof renderGuestAllowList==='function') renderGuestAllowList();
       if(typeof renderRepAuthTable==='function') renderRepAuthTable();
       if(typeof updateAddRepButtons==='function') updateAddRepButtons();
       if(typeof syncLabelInputs==='function') syncLabelInputs();
@@ -7189,6 +7194,7 @@ async function _initSP() {
           // 선택박스 옵션 갱신
           try{ if(typeof refreshSelectOptions==='function') refreshSelectOptions(); }catch(e){}
           try{ if(typeof renderSelectOptsSettings==='function') renderSelectOptsSettings(); }catch(e){}
+          try{ if(typeof renderGuestAllowList==='function') renderGuestAllowList(); }catch(e){}
 
         }
         // 공동편집: 다른 담당자 데이터만 동기화
