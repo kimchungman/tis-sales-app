@@ -4456,6 +4456,12 @@ function buildRepInputs(){
       </table></div></div>
     </div>
   </div>`).join('');
+  // session.rep 섹션 즉시 표시 (rAF 대기 없이 바로 브라우저 페인트)
+  if(session && session.rep){
+    var _prSec = document.getElementById('rs-'+session.rep);
+    if(_prSec) _prSec.style.display = 'block';
+  }
+
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     applyPermissions();
     resizeAllTextareas();
@@ -4497,9 +4503,9 @@ function buildRepInputs(){
       document.querySelectorAll('.rep-sec').forEach(function(s){ s.style.display='none'; });
       var _myTab = document.querySelector('#rep-tabs .tab[data-rep="'+_myRep+'"]');
       if(_myTab){ _myTab.classList.add('active'); activeRep=_myRep; }
-      // ③ 담당자 내용 표시
+      // ③ 담당자 내용 표시 (이미 area.innerHTML 직후 표시됨, 탭 상태만 확인)
       var _mySec = document.getElementById('rs-'+_myRep);
-      if(_mySec){ _mySec.style.display='block'; }
+      if(_mySec && _mySec.style.display!=='block'){ _mySec.style.display='block'; }
       if(typeof applyPermissions==='function') applyPermissions();
     }
   }));
