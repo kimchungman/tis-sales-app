@@ -4316,8 +4316,13 @@ function buildRepInputs(){
 }
 
 function cRow(rep,ci,c){
-  const tOpts=getSelectOpts('clientType').map(t=>`<option${(c.type||getSelectOpts('clientType')[0]||'')===t?' selected':''}>${t}</option>`).join('');
-  const sOpts=getSelectOpts('clientStatus').map(st=>`<option${(c.status||getSelectOpts('clientStatus')[0]||'')===st?' selected':''}>${st}</option>`).join('');
+  var _cTypeOpts=getSelectOpts('clientType');
+  // 저장된 값이 옵션에 없으면 보존
+  if(c.type&&_cTypeOpts.indexOf(c.type)<0) _cTypeOpts=_cTypeOpts.concat([c.type]);
+  const tOpts=_cTypeOpts.map(t=>`<option${(c.type||_cTypeOpts[0]||'')===t?' selected':''}>${t}</option>`).join('');
+  var _cStOpts=getSelectOpts('clientStatus');
+  if(c.status&&_cStOpts.indexOf(c.status)<0) _cStOpts=_cStOpts.concat([c.status]);
+  const sOpts=_cStOpts.map(st=>`<option${(c.status||_cStOpts[0]||'')===st?' selected':''}>${st}</option>`).join('');
   return`<tr id="cr-${rep}-${ci}">
     <td style="vertical-align:middle;padding:3px 4px;white-space:nowrap;"><input type="text" value="${c.name||''}" style="width:100%;min-width:140px;text-align:center;" onchange="store.reps['${rep}'].clients[${ci}].name=this.value;autoSave()"></td>
     <td style="vertical-align:middle;padding:3px 4px;text-align:center;white-space:nowrap;">
@@ -4326,7 +4331,7 @@ function cRow(rep,ci,c){
     <td style="vertical-align:middle;padding:3px 2px;text-align:center;white-space:nowrap;">
       <select style="width:108px;font-size:11px;text-align:center;" onchange="store.reps['${rep}'].clients[${ci}].product=this.value;autoSave()">
         <option value="">-</option>
-        ${getSelectOpts('clientProduct').map(p=>`<option value="${p}"${(c.product||'')===p?' selected':''}>${p}</option>`).join('')}
+        ${(function(){ var _opts=getSelectOpts('clientProduct'); if(c.product&&_opts.indexOf(c.product)<0) _opts=_opts.concat([c.product]); return _opts; })().map(p=>`<option value="${p}"${(c.product||'')===p?' selected':''}>${p}</option>`).join('')}
       </select>
     </td>
     <td style="vertical-align:middle;padding:3px 4px;text-align:center;white-space:nowrap;">
@@ -4339,7 +4344,8 @@ function cRow(rep,ci,c){
 }
 
 function aRow(rep,ai,a){
-  const types=getSelectOpts('activityType');
+  const _rawTypes=getSelectOpts('activityType');
+  const types=(!a.type||_rawTypes.indexOf(a.type)>=0)?_rawTypes:_rawTypes.concat([a.type]);
   const tOpts=types.map(t=>`<option${a.type===t?' selected':''}>${t}</option>`).join('');
   const progList=getSelectOpts('activityProgress');
   const progOpts='<option value="" disabled'+((!a.progress||a.progress==='')?'selected':'')+'>선택</option>'+progList.map(p=>`<option${(a.progress||'')===p?' selected':''}>${p}</option>`).join('');
@@ -11190,8 +11196,8 @@ function _vRow(rep,idx,v){
   return '<tr id="vr-'+rep+'-'+idx+'">'
     +'<td style="width:100px;vertical-align:middle;padding:5px 5px;text-align:center;">'+dateInp('date',v.date)+'</td>'
     +'<td style="width:160px;vertical-align:middle;padding:5px 5px;text-align:center;">'+inpCenter('company',v.company)+'</td>'
-    +'<td style="width:110px;vertical-align:middle;padding:5px 5px;text-align:center;">'+sel('contactType',contactType,getSelectOpts('contactType'),TYPE_COLOR)+'</td>'
-    +'<td style="width:125px;vertical-align:middle;padding:5px 5px;text-align:center;">'+sel('contactPurpose',contactPurpose,getSelectOpts('contactPurpose'),PURPOSE_COLOR2)+'</td>'
+    +'<td style="width:110px;vertical-align:middle;padding:5px 5px;text-align:center;">'+sel('contactType',contactType,(function(){ var _o=getSelectOpts('contactType'); if(contactType&&_o.indexOf(contactType)<0) _o=_o.concat([contactType]); return _o; })(),TYPE_COLOR)+'</td>'
+    +'<td style="width:125px;vertical-align:middle;padding:5px 5px;text-align:center;">'+sel('contactPurpose',contactPurpose,(function(){ var _o=getSelectOpts('contactPurpose'); if(contactPurpose&&_o.indexOf(contactPurpose)<0) _o=_o.concat([contactPurpose]); return _o; })(),PURPOSE_COLOR2)+'</td>'
     +'<td style="width:150px;vertical-align:middle;padding:5px 5px;text-align:center;">'+inpCenter('contactRep',contactRep)+'</td>'
     +'<td style="width:150px;vertical-align:middle;padding:5px 5px;text-align:center;">'+inpCenter('clientRep',v.clientRep)+'</td>'
     +'<td class="content-cell" style="min-width:200px;vertical-align:middle;padding:5px 5px;text-align:left;">'+ta('content',v.content)+'</td>'
