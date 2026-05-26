@@ -1385,7 +1385,7 @@ td.lbl-prod-goods {
 }
 
 /* ── 5. select 박스: 통일된 스타일 ── */
-.dt select {
+.dt select:not(._bsl-sel) {
   border: 1px solid #E2E8F0 !important;
   border-radius: 5px !important;
   background: white !important;
@@ -1395,7 +1395,7 @@ td.lbl-prod-goods {
   text-align: center !important;
   text-align-last: center !important;
 }
-.dt select:focus {
+.dt select:not(._bsl-sel):focus {
   border-color: #4f7fff !important;
   outline: none !important;
 }
@@ -11575,10 +11575,10 @@ function _vRow(rep,idx,v){
       +"if(sp){sp.textContent=this.value||'선택';sp.style.color=pc;sp.style.borderColor=pc+'60';}"
       +"store.reps['"+r+"'].visitLog["+idx+"]."+field+"=this.value;"
       +"autoSave&&autoSave();"
-      +"if(typeof _markVisitLogDirty!=='undefined') _markVisitLogDirty('" + r + "');";
+      +"if(typeof _markVisitLogDirty!=='undefined') _markVisitLogDirty('"+r+"');";
     return '<div style="position:relative;display:inline-block;width:100%;cursor:pointer;">'
       +'<span class="_vbsl" style="'+bStyle+'width:100%;box-sizing:border-box;pointer-events:none;">'+(currVal||'선택')+'</span>'
-      +'<select onchange="'+onChange+'" style="position:absolute;inset:0;width:100%;height:100%;opacity:0 !important;cursor:pointer;font-family:inherit;z-index:2;">'
+      +'<select onchange="'+onChange+'" style="position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;opacity:0 !important;cursor:pointer;font-family:inherit;z-index:2;border:none !important;outline:none !important;background:transparent !important;-webkit-appearance:none !important;appearance:none !important;">'
       +optHtml+'</select></div>';
   }
 
