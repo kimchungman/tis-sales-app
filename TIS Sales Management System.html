@@ -1916,6 +1916,16 @@ td.content-cell {
   vertical-align: top !important;
   line-height: 1.6 !important;
 }
+
+/* 선택박스 드롭다운 옵션 중앙정렬 */
+._bsl-sel option {
+  text-align: center;
+  text-align-last: center;
+}
+select._bsl-sel {
+  text-align: center;
+  text-align-last: center;
+}
 </style>
 </head>
 <body>
@@ -4657,7 +4667,7 @@ function aRow(rep,ai,a){
   const types=(!a.type||_rawTypes.indexOf(a.type)>=0)?_rawTypes:_rawTypes.concat([a.type]);
   const tOpts=types.map(t=>`<option${a.type===t?' selected':''}>${t}</option>`).join('');
   const progList=getSelectOpts('activityProgress');
-  const progOpts='<option value="" disabled'+((!a.progress||a.progress==='')?'selected':'')+'>선택</option>'+progList.map(p=>`<option${(a.progress||'')===p?' selected':''}>${p}</option>`).join('');
+  const progOpts='<option value="" disabled'+((!a.progress||a.progress==='')?'selected':'')+' style="text-align:center">선택</option>'+progList.map(p=>`<option style="text-align:center"${(a.progress||'')===p?' selected':''}>${p}</option>`).join('');
   return`<tr>
     <td style="text-align:center;color:var(--muted);font-weight:600;font-size:12px;width:40px;vertical-align:middle;">${a.no||ai+1}</td>
     <td style="width:90px;vertical-align:middle;">
@@ -9457,7 +9467,7 @@ function _iRow(rep, idx, iss){
   // 중요도 옵션
   var sevOpts='<option value="" disabled'+(sev===''?' selected':'')+'>선택</option>'
     +[{v:'high',l:'↑ 높음'},{v:'mid',l:'● 중간'},{v:'low',l:'↓ 낮음'}]
-    .map(function(o){return '<option value="'+o.v+'"'+(sev===o.v?' selected':'')+'>'+o.l+'</option>';}).join('');
+    .map(function(o){return '<option value="'+o.v+'" style="text-align:center"'+(sev===o.v?' selected':'')+'>'+o.l+'</option>';}).join('');
 
 
   // 중요도 pill+hidden-select
@@ -9466,7 +9476,7 @@ function _iRow(rep, idx, iss){
   var sevTd='<td style="width:100px;vertical-align:middle;padding:2px 4px;text-align:center;">'
     +'<div style="position:relative;display:block;width:100%;height:28px;">'
     +'<span class="_bsl" style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:28px;box-sizing:border-box;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;pointer-events:none;background:white;color:'+sevColor+';border:1.5px solid '+sevColor+'60;">'+sevLabel+'</span>'
-    +(canEdit?'<select class="_bsl-sel" id="isev-'+rep+'-'+idx+'" onchange="var cm={high:\'#DC2626\',mid:\'#D97706\',low:\'#0EA5A0\'};var lm={high:\'↑ 높음\',mid:\'● 중간\',low:\'↓ 낮음\'};var pc=cm[this.value]||\'#CBD5E1\';var sp=this.parentNode.querySelector(\'._bsl\');if(sp){sp.textContent=this.value?lm[this.value]:\'선택\';sp.style.color=pc;sp.style.borderColor=pc+\'60\';}iApplySev(this,this.value);store.reps[\''+r+'\'].issuesList['+idx+'].sev=this.value;if(typeof extractIssues===\'function\'){extractIssues();renderIssues&&renderIssues();}autoSave&&autoSave();" style="position:absolute;inset:0;width:100%;height:100%;opacity:0 !important;z-index:2;cursor:pointer;font-family:inherit;">'+sevOpts+'</select>':'')
+    +(canEdit?'<select class="_bsl-sel" size="1" id="isev-'+rep+'-'+idx+'" onchange="var cm={high:\'#DC2626\',mid:\'#D97706\',low:\'#0EA5A0\'};var lm={high:\'↑ 높음\',mid:\'● 중간\',low:\'↓ 낮음\'};var pc=cm[this.value]||\'#CBD5E1\';var sp=this.parentNode.querySelector(\'._bsl\');if(sp){sp.textContent=this.value?lm[this.value]:\'선택\';sp.style.color=pc;sp.style.borderColor=pc+\'60\';}iApplySev(this,this.value);store.reps[\''+r+'\'].issuesList['+idx+'].sev=this.value;if(typeof extractIssues===\'function\'){extractIssues();renderIssues&&renderIssues();}autoSave&&autoSave();" style="position:absolute;inset:0;width:100%;height:100%;opacity:0 !important;z-index:2;cursor:pointer;font-family:inherit;">'+sevOpts+'</select>':'')
     +'</div></td>';
 
   // 처리상태 - 중요도와 동일한 pill+hidden-select 방식
@@ -9474,11 +9484,11 @@ function _iRow(rep, idx, iss){
   var stLabel=st?({'open':'Open','closed':'Closed'}[st]||st):'선택';
   var stOpts2='<option value="" disabled'+(st===''?' selected':'')+'>선택</option>'
     +[{v:'open',l:'Open'},{v:'closed',l:'Closed'}]
-    .map(function(o){return '<option value="'+o.v+'"'+(st===o.v?' selected':'')+'>'+o.l+'</option>';}).join('');
+    .map(function(o){return '<option value="'+o.v+'" style="text-align:center"'+(st===o.v?' selected':'')+'>'+o.l+'</option>';}).join('');
   var stTd='<td style="width:100px;vertical-align:middle;padding:2px 4px;text-align:center;">'
     +'<div style="position:relative;display:block;width:100%;height:28px;">'
     +'<span class="_bsl" style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:28px;box-sizing:border-box;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;pointer-events:none;background:white;color:'+stColor+';border:1.5px solid '+stColor+'60;">'+stLabel+'</span>'
-    +(canEdit?'<select class="_bsl-sel" id="ist-'+rep+'-'+idx+'" onchange="var cm={open:\'#DC2626\',closed:\'#0EA5A0\'};var lm={open:\'Open\',closed:\'Closed\'};var pc=cm[this.value]||\'#CBD5E1\';var sp=this.parentNode.querySelector(\'._bsl\');if(sp){sp.textContent=this.value?lm[this.value]:\'선택\';sp.style.color=pc;sp.style.borderColor=pc+\'60\';}iApplySt(this,this.value);store.reps[\''+r+'\'].issuesList['+idx+'].status=this.value;if(typeof extractIssues===\'function\'){extractIssues();renderIssues&&renderIssues();}autoSave&&autoSave();" style="position:absolute;inset:0;width:100%;height:100%;opacity:0 !important;z-index:2;cursor:pointer;font-family:inherit;">'+stOpts2+'</select>':'')
+    +(canEdit?'<select class="_bsl-sel" size="1" id="ist-'+rep+'-'+idx+'" onchange="var cm={open:\'#DC2626\',closed:\'#0EA5A0\'};var lm={open:\'Open\',closed:\'Closed\'};var pc=cm[this.value]||\'#CBD5E1\';var sp=this.parentNode.querySelector(\'._bsl\');if(sp){sp.textContent=this.value?lm[this.value]:\'선택\';sp.style.color=pc;sp.style.borderColor=pc+\'60\';}iApplySt(this,this.value);store.reps[\''+r+'\'].issuesList['+idx+'].status=this.value;if(typeof extractIssues===\'function\'){extractIssues();renderIssues&&renderIssues();}autoSave&&autoSave();" style="position:absolute;inset:0;width:100%;height:100%;opacity:0 !important;z-index:2;cursor:pointer;font-family:inherit;">'+stOpts2+'</select>':'')
     +'</div></td>';
 
   return '<tr id="ir-'+rep+'-'+idx+'">'
@@ -11663,6 +11673,8 @@ window._switchVTab=function(rep,tab){
   vp.style.display=isMain?'none':'block';
   // visit탭 전환 시 vpanel textarea resize
   if(!isMain){
+    // 방문탭 전환 시 badge 색상 재렌더 (TYPE_COLOR 초기화 보장)
+    if(typeof _rebuildVisitTable==='function') _rebuildVisitTable(rep);
     setTimeout(function(){
       vp.querySelectorAll('textarea').forEach(function(ta){
         ta.style.setProperty('overflow-y','hidden','important');
