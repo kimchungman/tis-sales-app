@@ -1789,6 +1789,10 @@ table.dt thead th { font-size: 13px !important; }
   .main{margin-left:0!important;width:100%!important;}
   .page{display:none!important;}.page.active{display:block!important;}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+  /* 스크롤 컨테이너 인쇄 시 전체 표시 */
+  .tbl-scroll-wrap{max-height:none!important;overflow:visible!important;}
+  #visits-dashboard .tbl-scroll-wrap,
+  #visits-scroll-wrap{max-height:none!important;overflow:visible!important;}
   @page{margin:12mm 10mm;}
 }
 
