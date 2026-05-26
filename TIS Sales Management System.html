@@ -1870,6 +1870,53 @@ tr[id^="vr-"] td.content-cell { text-align:left !important; }
 
 .topbar-right { align-items:center !important; }
 .topbar-right > * { flex-shrink:0; }
+
+/* Chrome focus ring 완전 차단 */
+._bsl-sel:focus-visible {
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+/* .dt select > ._bsl-sel specificity 역전 - 회색 테두리 완전 차단 */
+.dt select._bsl-sel,
+.dt select._bsl-sel:focus,
+.dt select._bsl-sel:hover,
+.dt select._bsl-sel:active,
+.dt select._bsl-sel:focus-visible {
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+  opacity: 0 !important;
+  padding: 0 !important;
+}
+/* 진행사항 숨김 select - CSS height override 방지 */
+._bsl-sel {
+  opacity: 0 !important;
+  height: 100% !important;
+  width: 100% !important;
+}
+/* 텍스트 줄바꿈 강제 적용 */
+.content-cell {
+  white-space: pre-wrap !important;
+  text-align: left !important;
+  vertical-align: top !important;
+  word-break: break-word !important;
+  line-height: 1.6 !important;
+}
+/* .dt td보다 높은 specificity로 override */
+.dt td.content-cell,
+table td.content-cell,
+td.content-cell {
+  text-align: left !important;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  vertical-align: top !important;
+  line-height: 1.6 !important;
+}
 </style>
 </head>
 <body>
@@ -12762,51 +12809,5 @@ async function _startSP(){
   -moz-appearance: none !important;
   appearance: none !important;
   -webkit-tap-highlight-color: transparent !important;
-}
-/* Chrome focus ring 완전 차단 */
-._bsl-sel:focus-visible {
-  outline: 0 !important;
-  box-shadow: none !important;
-}
-/* .dt select > ._bsl-sel specificity 역전 - 회색 테두리 완전 차단 */
-.dt select._bsl-sel,
-.dt select._bsl-sel:focus,
-.dt select._bsl-sel:hover,
-.dt select._bsl-sel:active,
-.dt select._bsl-sel:focus-visible {
-  border: none !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  color: transparent !important;
-  outline: none !important;
-  box-shadow: none !important;
-  opacity: 0 !important;
-  padding: 0 !important;
-}
-/* 진행사항 숨김 select - CSS height override 방지 */
-._bsl-sel {
-  opacity: 0 !important;
-  height: 100% !important;
-  width: 100% !important;
-}
-/* 텍스트 줄바꿈 강제 적용 */
-.content-cell {
-  white-space: pre-wrap !important;
-  text-align: left !important;
-  vertical-align: top !important;
-  word-break: break-word !important;
-  line-height: 1.6 !important;
-}
-/* .dt td보다 높은 specificity로 override */
-.dt td.content-cell,
-table td.content-cell,
-td.content-cell {
-  text-align: left !important;
-  white-space: pre-wrap !important;
-  word-break: break-word !important;
-  word-wrap: break-word !important;
-  overflow-wrap: break-word !important;
-  vertical-align: top !important;
-  line-height: 1.6 !important;
 }
 >
