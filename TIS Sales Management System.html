@@ -2989,6 +2989,44 @@ function deleteGuestAllow(idx){
   renderGuestAllowList();
   showToast('✅ 삭제되었습니다.');
 }
+
+// ── SP 끊김 임시 저장 ──
+function _spSaveOffline(dtype, dkey, payload){
+  try{
+    var q = JSON.parse(localStorage.getItem('_spOfflineQ') || '[]');
+    var found = false;
+    for(var i=0;i<q.length;i++){
+      if(q[i].dt===dtype && q[i].dk===dkey){ q[i].pl=payload; q[i].ts=Date.now(); found=true; break; }
+    }
+    if(!found) q.push({dt:dtype, dk:dkey, pl:payload, ts:Date.now()});
+    localStorage.setItem('_spOfflineQ', JSON.stringify(q));
+    showToast('⚠️ SP 끊김 — 로컴 임시저장', 'warn');
+  }catch(e){}
+}
+function _spFlushOffline(){
+  try{
+    var q = JSON.parse(localStorage.getItem('_spOfflineQ') || '[]');
+    if(!q.length) return;
+    var cnt = q.length;
+    var failed = [];
+    var chain = Promise.resolve();
+    q.forEach(function(item){
+      chain = chain.then(function(){
+        return Promise.resolve(_spSaveItem(item.dt, item.dk, item.pl)).catch(function(){ failed.push(item); });
+      });
+    });
+    chain.then(function(){
+      if(!failed.length){
+        localStorage.removeItem('_spOfflineQ');
+        showToast('✅ 임시저장 ' + cnt + '건 자동 업로드 완료');
+      } else {
+        localStorage.setItem('_spOfflineQ', JSON.stringify(failed));
+      }
+    });
+  }catch(e){}
+}
+// ── 끝 ──
+
 function saveAuthCfg(){
   authCfg.teams = TEAMS.slice();
   authCfg.teamReps = JSON.parse(JSON.stringify(TEAM_REPS));
@@ -5747,6 +5785,16 @@ function loadLabels(){
 let pendingRep = null;
 
 function openAuth(){
+  // 세션 만료 안내 메시지 표시 여부
+  var _expMsg = document.getElementById('auth-expire-msg');
+  if(_expMsg){
+    if(sessionStorage.getItem('_sessionExpired')==='1'){
+      _expMsg.style.display='block';
+      sessionStorage.removeItem('_sessionExpired');
+    } else {
+      _expMsg.style.display='none';
+    }
+  }
   if(typeof resetAllState==="function") resetAllState();
   buildRepBtns();
   // 팝업 공지 표시
@@ -7222,6 +7270,11 @@ async function _initSP() {
     await _spLoadAllReps();
     // SP 로드 완료 → 저장 허용 + repSavedHashes 초기화
     window._spDataLoaded = true;
+    // 오프라인 임시저장 데이터 자동 업로드
+    try{
+      var _oq=JSON.parse(localStorage.getItem('_spOfflineQ')||'[]');
+      if(_oq.length>0 && typeof _spFlushOffline==='function') setTimeout(_spFlushOffline, 2000);
+    }catch(e){}
     if(typeof _repSavedHashes!=='undefined' && typeof store!=='undefined' && store.reps){
       Object.keys(store.reps).forEach(function(r){
         try{
@@ -7321,6 +7374,20 @@ async function _initSP() {
     window._isSPReady = false;
     _setSPStatus('error');
     var errMsg = err.message || '';
+    // 401 토큰 만료 → MSAL 자동갱신도 실패한 경우 → 로그인창 이동
+    if(errMsg.includes('401') || errMsg.includes('token') || errMsg.includes('unauthorized')){
+      showToast('🔒 세션이 만료되었습니다. 다시 로그인해주세요.', 'warn');
+      setTimeout(function(){
+        try{
+          // 현재 데이터 임시 보존
+          if(typeof session !== 'undefined' && session)
+            sessionStorage.setItem('_preAuthSession', JSON.stringify(session));
+          sessionStorage.setItem('_sessionExpired','1');
+          if(typeof openAuth === 'function') openAuth();
+        }catch(e){}
+      }, 1500);
+      return;
+    }
     if(errMsg.includes('redirect') || errMsg.includes('reply') || errMsg.includes('AADSTS')){
       showToast('Azure redirect URI 등록 필요. 현재URL: ' + window.location.href.split('?')[0], 'warn');
     } else {
@@ -7526,6 +7593,7 @@ async function _spLoadTeamSnap(team, date) {
 // ── 히스토리 목록 ───────────────────────────────────────────
 async function _spLoadHistList() {
   if (!window._isSPReady) return;
+
   try {
     const url = _lUrl() + '?$select=Id,Title,DataType,DataKey&$top=500';
     const res = await _spFetch(url);
@@ -8061,6 +8129,13 @@ function _renderAccessLog() {
       </div>
     </div>
     <div class="auth-card-body">
+      <!-- 세션 만료 안내 -->
+      <div id="auth-expire-msg" style="display:none;margin-bottom:20px;">
+        <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-left:3px solid #4f7fff;border-radius:8px;padding:14px 16px;">
+          <div style="font-size:12px;font-weight:700;color:#0A1628;letter-spacing:0.05em;margin-bottom:4px;">세션이 만료되었습니다</div>
+          <div style="font-size:11px;color:#64748B;line-height:1.7;">보안을 위해 자동으로 로그아웃되었습니다.<br>다시 로그인해주세요.</div>
+        </div>
+      </div>
       <div id="auth-s0">
         <div class="auth-step-label auth-div-title">팀 선택</div>
         <div id="auth-team-btns" style="display:flex;flex-direction:column;gap:8px;"></div>
