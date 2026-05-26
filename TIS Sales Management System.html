@@ -1866,6 +1866,22 @@ tr[id^="vr-"] td.content-cell { text-align:left !important; }
 
 .topbar-right { align-items:center !important; }
 .topbar-right > * { flex-shrink:0; }
+
+/* 고객 접점 현황 테이블 스크롤 */
+#visits-scroll-wrap {
+  max-height: 520px;
+  overflow-y: auto;
+  overflow-x: auto;
+  border-radius: 0 0 10px 10px;
+  border: 1px solid #E2E8F0;
+}
+#visits-scroll-wrap thead th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #F8FAFC !important;
+  box-shadow: 0 1px 0 #E2E8F0;
+}
 </style>
 </head>
 <body>
@@ -2054,7 +2070,7 @@ tr[id^="vr-"] td.content-cell { text-align:left !important; }
 
       </div>
       <div class="sec-body" style="padding-top:4px;">
-        <div class="tbl-scroll-wrap">
+        <div class="tbl-scroll-wrap" id="visits-scroll-wrap" style="max-height:520px;overflow-y:auto;overflow-x:auto;">
           <table class="dt" style="min-width:900px;width:100%;">
             <thead>
               <tr>
@@ -2091,7 +2107,7 @@ tr[id^="vr-"] td.content-cell { text-align:left !important; }
         <div id="pipe-progress-pills" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
       </div>
       <div class="sec-body" style="padding-top:4px;">
-        <div class="tbl-scroll-wrap">
+        <div class="tbl-scroll-wrap" id="visits-scroll-wrap" style="max-height:520px;overflow-y:auto;overflow-x:auto;">
           <table class="dt" style="min-width:900px;width:100%;">
             <thead>
               <tr>
