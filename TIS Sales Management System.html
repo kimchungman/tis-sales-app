@@ -11473,6 +11473,9 @@ function _rebuildVisitTable(rep){
 }
 
 // ─── 접점 행 HTML ───
+
+var _vLogDirty={};var _vLogTimer=null;
+function _markVisitLogDirty(rep){_vLogDirty[rep]=true;clearTimeout(_vLogTimer);_vLogTimer=setTimeout(function(){var d=Object.keys(_vLogDirty);_vLogDirty={};d.forEach(function(r){if(typeof _spSaveVisitLog==='function')_spSaveVisitLog(r).catch(function(e){});});},2000);}
 function _vRow(rep,idx,v){
   var r=rep.replace(/'/g,"\\'");
   var canEdit=(session.role==='admin')||(session.role==='rep'&&session.rep===rep);
@@ -11485,22 +11488,22 @@ function _vRow(rep,idx,v){
   function inp(field,val,w){
     var style='width:100%;height:30px;box-sizing:border-box;font-size:12px;font-family:inherit;border:1px solid #E2E8F0;border-radius:6px;padding:0 8px;outline:none;transition:border-color 0.15s;';
     if(!canEdit) return '<span style="font-size:12px;color:#374151;padding:2px 4px;display:block;text-align:left;white-space:pre-wrap;word-break:break-word;">'+( val||'─')+'</span>';
-    return '<input type="text" value="'+(val||'')+'" style="'+style+'" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" onchange="store.reps[\''+r+'\'].visitLog['+idx+'].'+field+'=this.value;autoSave&&autoSave();typeof renderVisits===\'function\'&&renderVisits();">';
+    return '<input type="text" value="'+(val||'')+'" style="'+style+'" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" onchange="store.reps[\''+r+'\'].visitLog['+idx+'].'+field+'=this.value;autoSave&&autoSave();_markVisitLogDirty(\''+r+'\');typeof renderVisits===\'function\'&&renderVisits();">';
   }
   // 중앙정렬 + 자동높이 textarea (company, contactRep, clientRep)
   function inpCenter(field,val){
     if(!canEdit) return '<span style="font-size:12px;color:#374151;padding:2px 4px;display:block;text-align:center;">'+( val||'─')+'</span>';
-    return '<textarea rows="1" style="width:100%;min-height:30px;height:30px;box-sizing:border-box;font-size:12px;font-family:inherit;border:1px solid #E2E8F0;border-radius:6px;padding:4px 8px;outline:none;resize:none;overflow-y:hidden;text-align:center;line-height:1.5;transition:border-color 0.15s;" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" oninput="this.style.setProperty(\'height\',\'1px\',\'important\');this.style.setProperty(\'height\',Math.max(30,this.scrollHeight)+\'px\',\'important\');" onchange="store.reps[\''+r+'\'].visitLog['+idx+'].'+field+'=this.value;autoSave&&autoSave();">'+(val||'')+'</textarea>';
+    return '<textarea rows="1" style="width:100%;min-height:30px;height:30px;box-sizing:border-box;font-size:12px;font-family:inherit;border:1px solid #E2E8F0;border-radius:6px;padding:4px 8px;outline:none;resize:none;overflow-y:hidden;text-align:center;line-height:1.5;transition:border-color 0.15s;" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" oninput="this.style.setProperty(\'height\',\'1px\',\'important\');this.style.setProperty(\'height\',Math.max(30,this.scrollHeight)+\'px\',\'important\');" onchange="store.reps[\''+r+'\'].visitLog['+idx+'].'+field+'=this.value;autoSave&&autoSave();_markVisitLogDirty(\''+r+'\');">'+(val||'')+'</textarea>';
   }
   function dateInp(field,val){
     var style='width:100%;height:30px;box-sizing:border-box;font-size:12px;font-family:inherit;border:1px solid #E2E8F0;border-radius:6px;padding:0 6px;outline:none;transition:border-color 0.15s;';
     if(!canEdit) return '<span style="font-size:12px;color:#374151;padding:2px 4px;display:block;text-align:left;white-space:pre-wrap;word-break:break-word;">'+( val||'─')+'</span>';
-    return '<input type="date" value="'+(val||'')+'" style="'+style+'" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" onchange="store.reps[\''+r+'\'].visitLog['+idx+'].'+field+'=this.value;autoSave&&autoSave();typeof renderVisits===\'function\'&&renderVisits();">';
+    return '<input type="date" value="'+(val||'')+'" style="'+style+'" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" onchange="store.reps[\''+r+'\'].visitLog['+idx+'].'+field+'=this.value;autoSave&&autoSave();_markVisitLogDirty(\''+r+'\');typeof renderVisits===\'function\'&&renderVisits();">';
   }
   function ta(field,val){
     var style='width:100%;min-height:30px;box-sizing:border-box;font-size:12px;font-family:inherit;text-align:left;border:1px solid #E2E8F0;border-radius:6px;padding:4px 8px;outline:none;resize:none;overflow-y:hidden;transition:border-color 0.15s;line-height:1.5;text-align:left;';
     if(!canEdit) return '<span style="font-size:12px;color:#374151;padding:2px 4px;display:block;line-height:1.5;white-space:pre-wrap;text-align:left;">'+( val||'─')+'</span>';
-    return '<textarea rows="1" style="'+style+'" oninput="this.style.height=\'1px\';this.style.height=Math.max(30,this.scrollHeight)+\'px\';" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" oninput="this.style.setProperty(\'height\',\'1px\',\'important\');this.style.setProperty(\'height\',Math.max(30,this.scrollHeight)+\'px\',\'important\');" onchange="store.reps[\''+r+'\'].visitLog['+idx+'].'+field+'=this.value;autoSave&&autoSave();">'+(val||'')+'</textarea>';
+    return '<textarea rows="1" style="'+style+'" oninput="this.style.height=\'1px\';this.style.height=Math.max(30,this.scrollHeight)+\'px\';" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" oninput="this.style.setProperty(\'height\',\'1px\',\'important\');this.style.setProperty(\'height\',Math.max(30,this.scrollHeight)+\'px\',\'important\');" onchange="store.reps[\''+r+'\'].visitLog['+idx+'].'+field+'=this.value;autoSave&&autoSave();_markVisitLogDirty(\''+r+'\');">'+(val||'')+'</textarea>';
   }
   function sel(field, val, opts, colorMap){
     var currVal=(val===undefined||val===null)?'':(val);
