@@ -1866,22 +1866,6 @@ tr[id^="vr-"] td.content-cell { text-align:left !important; }
 
 .topbar-right { align-items:center !important; }
 .topbar-right > * { flex-shrink:0; }
-
-/* 고객 접점 현황 테이블 스크롤 */
-#visits-scroll-wrap {
-  max-height: 520px;
-  overflow-y: auto;
-  overflow-x: auto;
-  border-radius: 0 0 10px 10px;
-  border: 1px solid #E2E8F0;
-}
-#visits-scroll-wrap thead th {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  background: #F8FAFC !important;
-  box-shadow: 0 1px 0 #E2E8F0;
-}
 </style>
 </head>
 <body>
@@ -2070,7 +2054,7 @@ tr[id^="vr-"] td.content-cell { text-align:left !important; }
 
       </div>
       <div class="sec-body" style="padding-top:4px;">
-        <div class="tbl-scroll-wrap" id="visits-scroll-wrap" style="max-height:520px;overflow-y:auto;overflow-x:auto;">
+        <div class="tbl-scroll-wrap">
           <table class="dt" style="min-width:900px;width:100%;">
             <thead>
               <tr>
@@ -2107,7 +2091,7 @@ tr[id^="vr-"] td.content-cell { text-align:left !important; }
         <div id="pipe-progress-pills" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
       </div>
       <div class="sec-body" style="padding-top:4px;">
-        <div class="tbl-scroll-wrap" id="visits-scroll-wrap" style="max-height:520px;overflow-y:auto;overflow-x:auto;">
+        <div class="tbl-scroll-wrap">
           <table class="dt" style="min-width:900px;width:100%;">
             <thead>
               <tr>
@@ -11921,7 +11905,8 @@ window.renderVisits=function(){
     +customFilter
     +'<div style="display:flex;gap:6px;flex-wrap:wrap;">'+repPills+'</div>'
     +'</div>'
-    +'<div class="sec-body" class="tbl-scroll-wrap" style="padding-top:4px;">'
+    +'<div class="sec-body" style="padding-top:4px;overflow:hidden;">'
+    +'<div style="max-height:480px;overflow-y:auto;overflow-x:auto;border-radius:0 0 10px 10px;">'
     +'<table class="dt" style="min-width:900px;width:100%;">'
     +'<thead><tr>'
     +'<th style="background:#F8FAFC;color:#64748B;width:62px;white-space:nowrap;position:sticky;top:0;z-index:5;">팀</th>'
@@ -11933,7 +11918,7 @@ window.renderVisits=function(){
     +'<th style="background:#F8FAFC;color:#64748B;position:sticky;top:0;z-index:5;text-align:left;padding-left:14px;">접점 내용</th>'
     +'</tr></thead>'
     +'<tbody id="visit-list">'+tableRows+'</tbody>'
-    +'</table>'+pagination+'</div></div>';
+    +'</table></div>'+pagination+'</div></div>';
 };
 
 window.changeVisitCalMonth=function(delta){ _visitCalDate.setMonth(_visitCalDate.getMonth()+delta); renderVisits(); };
