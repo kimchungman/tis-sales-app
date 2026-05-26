@@ -2928,8 +2928,8 @@ function _getGuestAllowMatch(email){
 function doGuestKnown(){
   var match = window._matchedGuest;
   if(!match) return;
-  var displayName = match.name + (match.title ? ' ' + match.title : '');
-  doGuestWithName(displayName, true); // skipPwCheck=true
+  // raw name만 전달 - 직책은 display 시점에 getRepDisplayName으로 적용
+  doGuestWithName(match.name, true); // skipPwCheck=true
 }
 
 function renderGuestAllowList(){
@@ -8097,7 +8097,7 @@ function _renderAccessLog() {
           var _aR=[];
           if(typeof TEAM_REPS!=='undefined') Object.keys(TEAM_REPS).forEach(function(t){(TEAM_REPS[t]||[]).forEach(function(r){_aR.push(r);});});
           var _iG=log.selectedRep&&_aR.length>0&&_aR.indexOf(log.selectedRep)<0;
-          var _gDispName = (typeof getRepDisplayName==='function'?getRepDisplayName(log.selectedRep):log.selectedRep)||'-';
+          var _gDispName = _safeRepDisplayName(log.selectedRep)||'-';
           if(_iG) return '<span style="display:inline-flex;align-items:center;gap:5px;"><span style="font-weight:700;color:#4f7fff;">&#128065; '+_gDispName+'</span><span style="font-size:10px;font-weight:700;color:#4f7fff;background:rgba(79,127,255,0.12);border:1px solid rgba(79,127,255,0.35);border-radius:20px;padding:1px 8px;">게스트</span></span>';
           var _dispName = _safeRepDisplayName(log.selectedRep)||'-';
           return '<span style="font-weight:600;color:'+(isSame?'#198038':'#DA1E28')+'">'+ _dispName +'</span>'+(isSame?'':' <span style="font-size:10px;color:#DA1E28;">⚠️불일치</span>');
@@ -12174,7 +12174,8 @@ async function _spSaveMyRep(){
   var SP_LIMIT = 50000; // 50,000자 기준 (SP 한도 63,999자)
 
   if(_payload.length <= SP_LIMIT){
-    await _spSaveItem('rep_data', _repKey, _d);
+    delete _d.visitLog; // visitLog는 별도 키로 저장
+  await _spSaveItem('rep_data', _repKey, _d);
   } else {
     // 1단계: visitLog를 현재 연도만 남기고 분리
     var _curYear = new Date().getFullYear().toString();
@@ -12233,13 +12234,10 @@ async function _spSaveRepByName(repName){
   _d.date = date;
   var _repKey = (typeof _sanitizeDKey==='function') ? _sanitizeDKey(repName+'_'+date) : repName+'-'+date;
   // 크기 체크
-  var _payload = JSON.stringify(_d);
-  if(_payload.length <= 50000){
-    await _spSaveItem('rep_data', _repKey, _d);
-  } else {
-    _d.visitLog = [];
-    await _spSaveItem('rep_data', _repKey, _d);
-  }
+  // visitLog는 visit_log:{rep} 별도 키로 저장 - rep_data에서 항상 제외
+  // (관리자 save가 다른 담당자의 visitLog를 덮어쓰는 문제 방지)
+  delete _d.visitLog;
+  await _spSaveItem('rep_data', _repKey, _d);
 }
 
 
