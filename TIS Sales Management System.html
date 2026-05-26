@@ -4643,7 +4643,7 @@ function aRow(rep,ai,a){
     <td style="width:100px;vertical-align:middle;padding:2px 4px;">
       <div style="position:relative;display:block;width:100%;height:28px;">
         <span class="_bsl" style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:28px;box-sizing:border-box;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;pointer-events:none;background:white;color:${({'제안':'#4f7fff','견적':'#0EA5A0','입찰':'#7C3AED','수주':'#059669','계약':'#16A34A','보류':'#D97706','Drop':'#DC2626'}[a.progress]||'#CBD5E1')};border:1.5px solid ${({'제안':'#4f7fff','견적':'#0EA5A0','입찰':'#7C3AED','수주':'#059669','계약':'#16A34A','보류':'#D97706','Drop':'#DC2626'}[a.progress]||'#CBD5E1')}60;">${a.progress||'선택'}</span>
-        <select class="_bsl-sel" size="1" onchange="var cm={'제안':'#4f7fff','견적':'#0EA5A0','입찰':'#7C3AED','수주':'#059669','계약':'#16A34A','보류':'#D97706','Drop':'#DC2626'};var pc=cm[this.value]||'#CBD5E1';var sp=this.parentNode.querySelector('._bsl');if(sp){sp.textContent=this.value||'선택';sp.style.color=pc;sp.style.borderColor=pc+'60';}store.reps['${rep}'].activities[${ai}].progress=this.value;autoSave();" style="position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;opacity:0 !important;z-index:2;cursor:pointer;font-family:inherit;-webkit-appearance:none;-moz-appearance:none;appearance:none;background:transparent;border:none;">${progOpts}</select>
+        <select class="_bsl-sel" size="1" onchange="var cm={'제안':'#4f7fff','견적':'#0EA5A0','입찰':'#7C3AED','수주':'#059669','계약':'#16A34A','보류':'#D97706','Drop':'#DC2626'};var pc=cm[this.value]||'#CBD5E1';var sp=this.parentNode.querySelector('._bsl');if(sp){sp.textContent=this.value||'선택';sp.style.color=pc;sp.style.borderColor=pc+'60';}store.reps['${rep}'].activities[${ai}].progress=this.value;autoSave();" style="position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;opacity:0 !important;z-index:2;cursor:pointer;font-family:inherit;-webkit-appearance:none;-moz-appearance:none;appearance:none;background:transparent;border:none;outline:none;box-shadow:none;color:transparent;">${progOpts}</select>
       </div>
     </td>
     <td style="width:34px;vertical-align:middle;text-align:center;">
@@ -12714,6 +12714,24 @@ async function _startSP(){
 })();
 </script>
 </body
+/* ═ _bsl 커스텀 선택박스 - 모든 상태에서 native UI 완전 숨김 ═ */
+._bsl-sel,
+._bsl-sel:focus,
+._bsl-sel:hover,
+._bsl-sel:active,
+._bsl-sel:visited,
+._bsl-sel:focus-within,
+._bsl-sel:focus-visible {
+  opacity: 0 !important;
+  color: transparent !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+}
 /* 진행사항 숨김 select - CSS height override 방지 */
 ._bsl-sel {
   opacity: 0 !important;
