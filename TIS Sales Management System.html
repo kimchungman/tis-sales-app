@@ -12504,8 +12504,9 @@ function renderAccessStat(range){
     repEl.innerHTML=sorted.map(function(e){
       var pct=maxC>0?Math.round(e[1].count/maxC*100):0;
       var last=e[1].last?new Date(e[1].last).toLocaleDateString('ko-KR'):'';
+      var _dn=typeof getRepDisplayName==='function'?getRepDisplayName(e[0]):e[0];
       return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);">'
-        +'<div style="width:72px;font-size:12px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;">'+e[0]+'</div>'
+        +'<div style="width:90px;font-size:12px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;">'+_dn+'</div>'
         +'<div style="flex:1;background:#F1F5F9;border-radius:20px;height:8px;overflow:hidden;">'
         +'<div style="height:100%;background:var(--blue2);border-radius:20px;width:'+pct+'%;transition:width 0.4s ease;"></div>'
         +'</div>'
