@@ -8083,8 +8083,10 @@ function _renderAccessLog() {
           var _aR=[];
           if(typeof TEAM_REPS!=='undefined') Object.keys(TEAM_REPS).forEach(function(t){(TEAM_REPS[t]||[]).forEach(function(r){_aR.push(r);});});
           var _iG=log.selectedRep&&_aR.length>0&&_aR.indexOf(log.selectedRep)<0;
-          if(_iG) return '<span style="display:inline-flex;align-items:center;gap:5px;"><span style="font-weight:700;color:#4f7fff;">&#128065; '+(log.selectedRep||'-')+'</span><span style="font-size:10px;font-weight:700;color:#4f7fff;background:rgba(79,127,255,0.12);border:1px solid rgba(79,127,255,0.35);border-radius:20px;padding:1px 8px;">게스트</span></span>';
-          return '<span style="font-weight:600;color:'+(isSame?'#198038':'#DA1E28')+'">'+(log.selectedRep||'-')+'</span>'+(isSame?'':' <span style="font-size:10px;color:#DA1E28;">⚠️불일치</span>');
+          var _gDispName = (typeof getRepDisplayName==='function'?getRepDisplayName(log.selectedRep):log.selectedRep)||'-';
+          if(_iG) return '<span style="display:inline-flex;align-items:center;gap:5px;"><span style="font-weight:700;color:#4f7fff;">&#128065; '+_gDispName+'</span><span style="font-size:10px;font-weight:700;color:#4f7fff;background:rgba(79,127,255,0.12);border:1px solid rgba(79,127,255,0.35);border-radius:20px;padding:1px 8px;">게스트</span></span>';
+          var _dispName = (typeof getRepDisplayName==='function'?getRepDisplayName(log.selectedRep):log.selectedRep)||'-';
+          return '<span style="font-weight:600;color:'+(isSame?'#198038':'#DA1E28')+'">'+ _dispName +'</span>'+(isSame?'':' <span style="font-size:10px;color:#DA1E28;">⚠️불일치</span>');
         })()
       + '</td>'
       + '<td style="padding:8px 12px;color:var(--muted);white-space:nowrap;">' + ts + '</td>'
