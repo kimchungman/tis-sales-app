@@ -7402,6 +7402,20 @@ function _sanitizeDKey(str){
   return (str||'').replace(/\s+/g,'_').replace(/:/g,'-').replace(/[^a-zA-Z0-9\uAC00-\uD7A3_\-\.]/g,'');
 }
 
+
+// 이름+직책 중복 방지 (이미 직책 포함된 경우 재적용 안함)
+function _safeRepDisplayName(name){
+  if(!name) return name||'-';
+  if(typeof getRepDisplayName!=='function') return name;
+  // repTitles에서 이미 직책이 붙어있는지 확인
+  var titles = (typeof authCfg!=='undefined'&&authCfg.repTitles)||{};
+  var reps = Object.keys(titles);
+  for(var _i=0;_i<reps.length;_i++){
+    var _base=reps[_i], _t=titles[_base];
+    if(_t && name===_base+' '+_t) return name; // 이미 직책 포함
+  }
+  return getRepDisplayName(name);
+}
 function getRepDisplayName(rep){
   if(!rep) return rep;
   var t=(typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[rep])||'';
@@ -8085,7 +8099,7 @@ function _renderAccessLog() {
           var _iG=log.selectedRep&&_aR.length>0&&_aR.indexOf(log.selectedRep)<0;
           var _gDispName = (typeof getRepDisplayName==='function'?getRepDisplayName(log.selectedRep):log.selectedRep)||'-';
           if(_iG) return '<span style="display:inline-flex;align-items:center;gap:5px;"><span style="font-weight:700;color:#4f7fff;">&#128065; '+_gDispName+'</span><span style="font-size:10px;font-weight:700;color:#4f7fff;background:rgba(79,127,255,0.12);border:1px solid rgba(79,127,255,0.35);border-radius:20px;padding:1px 8px;">게스트</span></span>';
-          var _dispName = (typeof getRepDisplayName==='function'?getRepDisplayName(log.selectedRep):log.selectedRep)||'-';
+          var _dispName = _safeRepDisplayName(log.selectedRep)||'-';
           return '<span style="font-weight:600;color:'+(isSame?'#198038':'#DA1E28')+'">'+ _dispName +'</span>'+(isSame?'':' <span style="font-size:10px;color:#DA1E28;">⚠️불일치</span>');
         })()
       + '</td>'
@@ -11506,7 +11520,7 @@ function _vRow(rep,idx,v){
       +"if(sp){sp.textContent=this.value||'선택';sp.style.color=pc;sp.style.borderColor=pc+'60';}"
       +"store.reps['"+r+"'].visitLog["+idx+"]."+field+"=this.value;"
       +"autoSave&&autoSave();"
-      +"autoSave&&autoSave();";
+      +"if(typeof _markVisitLogDirty!=='undefined') _markVisitLogDirty('" + r + "');";
     return '<div style="position:relative;display:inline-block;width:100%;cursor:pointer;">'
       +'<span class="_vbsl" style="'+bStyle+'width:100%;box-sizing:border-box;pointer-events:none;">'+(currVal||'선택')+'</span>'
       +'<select onchange="'+onChange+'" style="position:absolute;inset:0;width:100%;height:100%;opacity:0 !important;cursor:pointer;font-family:inherit;z-index:2;">'
@@ -12282,7 +12296,12 @@ async function _spSyncOtherReps(){
           var _localSavedAt = new Date((store.reps[myRep]&&store.reps[myRep].savedAt)||0).getTime();
           if(_spSavedAt > _localSavedAt + 5000){ // 5초 이상 차이날 때만
             if(!store.reps[myRep]) store.reps[myRep]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[]};
+            // visitLog 보호: repData는 visitLog 제외 저장이므로 덮어쓰기 방지
+            var _localVL = store.reps[myRep].visitLog||[];
             Object.assign(store.reps[myRep], repData);
+            if(!store.reps[myRep].visitLog || store.reps[myRep].visitLog.length < _localVL.length){
+              store.reps[myRep].visitLog = _localVL;
+            }
             _changed = true;
           }
           return;
@@ -12504,7 +12523,7 @@ function renderAccessStat(range){
     repEl.innerHTML=sorted.map(function(e){
       var pct=maxC>0?Math.round(e[1].count/maxC*100):0;
       var last=e[1].last?new Date(e[1].last).toLocaleDateString('ko-KR'):'';
-      var _dn=typeof getRepDisplayName==='function'?getRepDisplayName(e[0]):e[0];
+      var _dn=_safeRepDisplayName(e[0]);
       return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);">'
         +'<div style="width:90px;font-size:12px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;">'+_dn+'</div>'
         +'<div style="flex:1;background:#F1F5F9;border-radius:20px;height:8px;overflow:hidden;">'
