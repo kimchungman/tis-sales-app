@@ -2023,6 +2023,21 @@ window._renderRich = function(text) {
 </script>
 </head>
 <body>
+<!-- Rich Editor Toolbar -->
+<div id="_rich-bar" style="display:none;position:fixed;z-index:99999;background:white;border:1px solid #E2E8F0;border-radius:10px;padding:5px 8px;box-shadow:0 4px 20px rgba(0,0,0,.18);align-items:center;gap:4px;">
+  <button id="_rb-b" title="굵게 (Ctrl+B)" style="border:none;background:transparent;cursor:pointer;border-radius:6px;padding:3px 8px;font-size:14px;font-weight:900;transition:background 0.1s;"><b>B</b></button>
+  <div style="width:1px;height:18px;background:#E2E8F0;flex-shrink:0;"></div>
+  <div class="rb-color" data-color="#DC2626" style="width:18px;height:18px;border-radius:50%;background:#DC2626;cursor:pointer;flex-shrink:0;border:2px solid transparent;" title="빨강" onmouseover="this.style.borderColor='#888'" onmouseout="this.style.borderColor='transparent'"></div>
+  <div class="rb-color" data-color="#D97706" style="width:18px;height:18px;border-radius:50%;background:#D97706;cursor:pointer;flex-shrink:0;border:2px solid transparent;" title="주황"></div>
+  <div class="rb-color" data-color="#CA8A04" style="width:18px;height:18px;border-radius:50%;background:#CA8A04;cursor:pointer;flex-shrink:0;border:2px solid transparent;" title="노랑"></div>
+  <div class="rb-color" data-color="#059669" style="width:18px;height:18px;border-radius:50%;background:#059669;cursor:pointer;flex-shrink:0;border:2px solid transparent;" title="초록"></div>
+  <div class="rb-color" data-color="#2563EB" style="width:18px;height:18px;border-radius:50%;background:#2563EB;cursor:pointer;flex-shrink:0;border:2px solid transparent;" title="파랑"></div>
+  <div class="rb-color" data-color="#7C3AED" style="width:18px;height:18px;border-radius:50%;background:#7C3AED;cursor:pointer;flex-shrink:0;border:2px solid transparent;" title="보라"></div>
+  <div class="rb-color" data-color="#64748B" style="width:18px;height:18px;border-radius:50%;background:#64748B;cursor:pointer;flex-shrink:0;border:2px solid transparent;" title="회색"></div>
+  <div style="width:1px;height:18px;background:#E2E8F0;flex-shrink:0;"></div>
+  <button id="_rb-x" title="서식 제거" style="border:none;background:transparent;cursor:pointer;border-radius:6px;padding:3px 7px;font-size:13px;color:#94A3B8;transition:background 0.1s;">✕</button>
+</div>
+
 <div id="sb-ov" onclick="toggleSidebar()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:198;"></div>
 <aside class="sidebar">
   <div class="sidebar-logo" style="padding:14px 16px 12px;border-bottom:1px solid rgba(255,255,255,0.08);background:#111827;">
