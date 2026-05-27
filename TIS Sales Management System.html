@@ -2002,7 +2002,7 @@ window._renderRich=function(text){
   if(/<(b|strong|span|font|br)[\s>]/i.test(text))return window._sanitizeRich(text);
   return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
 };
-function _ctrlB(e){if((e.ctrlKey||e.metaKey)&&e.key==='b'){e.preventDefault();document.execCommand('bold');}}
+function _ctrlB(e){if((e.ctrlKey||e.metaKey)&&(e.key==='b'||e.key==='B')){e.preventDefault();document.execCommand('bold');}}
 function _showRTB(el){
   var s=window.getSelection();
   var b=document.getElementById('_rtb');
@@ -2058,7 +2058,7 @@ document.addEventListener('mousedown',function(e){
   }
   document.addEventListener('mouseup',function(e){if(e.target.closest&&e.target.closest('#_rtb'))return;setTimeout(show,80);});
   document.addEventListener('mousedown',function(e){if(!e.target.closest||!e.target.closest('#_rtb')){var b=getBar();if(b)b.style.display='none';}});
-  document.addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&e.key==='b'){var s=window.getSelection();if(s&&inR(s.anchorNode)){e.preventDefault();document.execCommand('bold');}}});
+  // Ctrl+B는 각 rich-ed onkeydown에서 처리
 })();
 </script>
 
