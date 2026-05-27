@@ -1926,7 +1926,101 @@ select._bsl-sel {
   text-align: center;
   text-align-last: center;
 }
+
+/* ═══ Rich Editor ═══ */
+.rich-ed {
+  min-height: 30px;
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 12px;
+  font-family: inherit;
+  border: 1px solid #E2E8F0;
+  border-radius: 6px;
+  padding: 4px 8px;
+  outline: none;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  cursor: text;
+  transition: border-color 0.15s;
+  background: white;
+  color: #1E293B;
+}
+.rich-ed:focus { border-color: #4f7fff; }
+.rich-ed:empty:before {
+  content: attr(data-ph);
+  color: #94A3B8;
+  pointer-events: none;
+}
+#_rich-bar {
+  display: none;
+  position: fixed;
+  z-index: 99999;
+  background: white;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 5px 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.14);
+  align-items: center;
+  gap: 4px;
+  user-select: none;
+}
+#_rich-bar button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 3px 6px;
+  font-size: 13px;
+  transition: background 0.1s;
+}
+#_rich-bar button:hover { background: #F1F5F9; }
+#_rich-bar .rb-sep { width:1px;height:18px;background:#E2E8F0;flex-shrink:0; }
+#_rich-bar .rb-color {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.1s, transform 0.1s;
+}
+#_rich-bar .rb-color:hover { border-color: #64748B; transform: scale(1.15); }
 </style>
+<script>
+/* ═══ Rich Editor 핵심 함수 (early init) ═══ */
+window._sanitizeRich = function(h) {
+  if (!h) return '';
+  var d = document.createElement('div');
+  d.innerHTML = h;
+  function clean(node) {
+    var kids = Array.prototype.slice.call(node.childNodes);
+    kids.forEach(function(c) {
+      if (c.nodeType === 3) return;
+      var t = (c.tagName || '').toLowerCase();
+      if (t === 'b' || t === 'strong' || t === 'br') { clean(c); }
+      else if (t === 'span') {
+        var s = c.getAttribute('style') || '';
+        if (/^color:\s*#[0-9a-fA-F]{3,8}$/.test(s.trim())) { clean(c); }
+        else { while (c.firstChild) node.insertBefore(c.firstChild, c); node.removeChild(c); }
+      } else if (t === 'div' || t === 'p') {
+        node.insertBefore(document.createElement('br'), c);
+        while (c.firstChild) node.insertBefore(c.firstChild, c);
+        node.removeChild(c);
+      } else {
+        node.replaceChild(document.createTextNode(c.textContent || ''), c);
+      }
+    });
+  }
+  clean(d);
+  return d.innerHTML.replace(/(<br>\s*){3,}/g, '<br><br>');
+};
+window._renderRich = function(text) {
+  if (!text) return '─';
+  if (/<(b|strong|span|br)[\s>]/i.test(text)) return window._sanitizeRich(text);
+  return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+};
+</script>
 </head>
 <body>
 <div id="sb-ov" onclick="toggleSidebar()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:198;"></div>
@@ -4657,7 +4751,7 @@ function cRow(rep,ci,c){
       <select style="width:60px;font-size:12px;" onchange="store.reps['${rep}'].clients[${ci}].type=this.value;updateProductSummary('${rep}');autoSave();refreshActualForecast('${rep}');updateProductSummary('${rep}');renderDashboard();autoSave();\">${tOpts}</select>
     </td>
     ${MONTHS.map((_,i)=>{const v=(c.actual&&c.actual[i])||0;const disp=v?v.toLocaleString('ko-KR'):'';return`<td style="vertical-align:middle;padding:3px 4px;text-align:right;white-space:nowrap;"><input type="text" value="${disp}" style="width:68px;text-align:right;" onfocus="this.value=this.value.replace(/,/g,'')" onblur="const n=parseFloat(this.value.replace(/,/g,''));this.value=n?n.toLocaleString('ko-KR'):'';" onchange="store.reps['${rep}'].clients[${ci}].actual[${i}]=parseFloat(String(this.value).replace(/,/g,''))||0;refreshActualForecast('${rep}')"></td>`;}).join('')}
-    <td class="content-cell" style="vertical-align:middle;padding:3px 4px;min-width:240px;text-align:left;"><textarea style="width:100%;height:32px;min-height:32px;resize:vertical;line-height:1.5;box-sizing:border-box;overflow-y:hidden;" oninput="autoResizeTA(this)" onchange="store.reps['${rep}'].clients[${ci}].issue=this.value;extractIssues();renderIssues();">${c.issue||''}</textarea></td>
+    <td class="content-cell" style="vertical-align:middle;padding:3px 4px;min-width:240px;text-align:left;"><div class="rich-ed" contenteditable="true" data-ph="이슈사항..." onpaste="event.preventDefault();var _pt=(event.clipboardData||window.clipboardData).getData('text/plain');document.execCommand('insertText',false,_pt);" oninput="store.reps['${rep}'].clients[${ci}].issue=_sanitizeRich(this.innerHTML);extractIssues();renderIssues();autoSave();" onfocus="this.style.borderColor='#4f7fff'" onblur="this.style.borderColor='#E2E8F0'">${c.issue||''}</div></td>
     <td style="vertical-align:middle;padding:3px 4px;text-align:center;width:36px;min-width:36px;position:sticky;right:0;background:white;"><button class="del-btn" onclick="delClient('${rep}',${ci})">×</button></td>
   </tr>`;
 }
@@ -4692,13 +4786,7 @@ function aRow(rep,ai,a){
       <input type="text" value="${a.timing||''}" style="width:100%;text-align:center;" onchange="store.reps['${rep}'].activities[${ai}].timing=this.value;autoSave()">
     </td>
     <td style="min-width:240px;vertical-align:top;">
-      <textarea rows="1"
-        style="width:100%;min-height:30px;height:30px;resize:none;line-height:1.5;display:block;box-sizing:border-box;overflow-y:hidden;text-align:left;"
-        onfocus="this.style.setProperty('height','1px','important');this.style.setProperty('height',Math.max(30,this.scrollHeight)+'px','important');" oninput="this.style.setProperty('height','1px','important');this.style.setProperty('height',Math.max(30,this.scrollHeight)+'px','important');"
-        onchange="store.reps['${rep}'].activities[${ai}].content=this.value;autoSave();"
-        oninput="this.style.setProperty('height','1px','important');this.style.setProperty('height',Math.max(30,this.scrollHeight)+'px','important');"
-        onfocus="this.style.setProperty('height',Math.max(this.scrollHeight,30)+'px','important');"
-      >${a.content||''}</textarea>
+      <div class="rich-ed" contenteditable="true" data-ph="활동 내용..." onpaste="event.preventDefault();var _pt=(event.clipboardData||window.clipboardData).getData('text/plain');document.execCommand('insertText',false,_pt);" oninput="store.reps['${rep}'].activities[${ai}].content=_sanitizeRich(this.innerHTML);autoSave();" onfocus="this.style.borderColor='#4f7fff'" onblur="this.style.borderColor='#E2E8F0'">${a.content||''}</div>
     </td>
     <td style="width:100px;vertical-align:middle;padding:2px 4px;">
       <div style="position:relative;display:block;width:100%;height:28px;">
@@ -8452,7 +8540,7 @@ window.renderIssues = function() {
           :'<span style="font-size:11px;color:#D1D5DB;">─</span>')
         +'</td>'
         +'<td style="text-align:center;vertical-align:middle;padding:9px 10px;font-size:13px;font-weight:500;color:#374151;">'+( d.iss.client||'─')+'</td>'
-        +'<td style="vertical-align:middle;padding:9px 14px;font-size:13px;color:#374151;line-height:1.6;word-break:keep-all;">'+( d.iss.content||'─')+'</td>'
+        +'<td style="vertical-align:middle;padding:9px 14px;font-size:13px;color:#374151;line-height:1.6;word-break:keep-all;">'+_renderRich(d.iss.content||'─')+'</td>'
         +'<td style="text-align:center;vertical-align:middle;padding:9px 8px;"><span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;color:'+sm.c+';background:'+sm.bg+';border:1px solid '+sm.bd+';">'+sm.l+'</span></td>'
         +'<td style="text-align:center;vertical-align:middle;padding:9px 8px;"><span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;color:'+stm.c+';background:'+stm.bg+';border:1px solid '+stm.bd+';">'+stm.l+'</span></td>';
       tr.innerHTML = html;
@@ -9048,7 +9136,7 @@ window.renderIssues = function(){
         tr.onmouseout=function(){this.style.background='white';};
         tr.innerHTML=
           '<td style="text-align:center;vertical-align:middle;padding:9px 10px;font-size:13px;font-weight:500;color:#374151;word-break:keep-all;">'+( iss.client||'-')+'</td>'
-          +'<td style="vertical-align:middle;padding:9px 12px;font-size:13px;color:#374151;line-height:1.6;word-break:keep-all;">'+( iss.content||'-')+'</td>'
+          +'<td style="vertical-align:middle;padding:9px 12px;font-size:13px;color:#374151;line-height:1.6;word-break:keep-all;">'+_renderRich(iss.content||'─')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:9px 8px;">'
             +'<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;color:'+sm.c+';background:'+sm.bg+';border:1px solid '+sm.bd+';">'+sm.label+'</span></td>'
           +'<td style="text-align:center;vertical-align:middle;padding:9px 8px;">'
@@ -9145,7 +9233,7 @@ window.renderPipeline = function(){
           +'<td style="text-align:right;vertical-align:middle;padding:9px 10px;font-size:13px;font-weight:600;color:#1E293B;">'+(a.amount?Number(a.amount).toLocaleString('ko-KR'):'-')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:9px 8px;font-size:13px;">'+(a.prob?(a.prob+'%'):'-')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:9px 8px;font-size:12px;color:#374151;">'+( a.timing||'-')+'</td>'
-          +'<td style="vertical-align:middle;padding:9px 12px;font-size:12px;color:#374151;line-height:1.5;word-break:keep-all;">'+( a.content||'-')+'</td>'
+          +'<td style="vertical-align:middle;padding:9px 12px;font-size:12px;color:#374151;line-height:1.5;word-break:keep-all;">'+_renderRich(a.content||'─')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:9px 8px;">'
             +(prog?'<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;color:'+(progColor[prog]||'#64748B')+';background:'+(progColor[prog]||'#64748B')+'15;border:1px solid '+(progColor[prog]||'#64748B')+'40;">'+prog+'</span>':'<span style="color:#CBD5E1;font-size:12px;">-</span>')+'</td>';
         teamRows.push(tr); hasData=true;
@@ -9312,7 +9400,7 @@ window.renderPipeline = function(){
           +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;">'
             +(a.prob?(a.prob+'%'):'-')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;">'+( a.timing||'-')+'</td>'
-          +'<td style="vertical-align:middle;padding:8px 10px;font-size:12px;color:#374151;word-break:keep-all;">'+( a.content||'-')+'</td>'
+          +'<td style="vertical-align:middle;padding:8px 10px;font-size:12px;color:#374151;word-break:keep-all;">'+_renderRich(a.content||'─')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;">'
             +(prog?'<span style="'+progStyle+'">'+prog+'</span>':'<span style="color:#CBD5E1;font-size:12px;">-</span>')+'</td>';
         teamTbody.push(tr);
@@ -9435,7 +9523,7 @@ window.renderIssues = function(){
           // 고객사
           +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;font-weight:500;font-size:12px;border-bottom:1px solid #F1F5F9;">'+( iss.client||'-')+'</td>'
           // 이슈내용 - 좌측정렬 + pre-wrap
-          +'<td style="text-align:left;vertical-align:top;padding:8px 12px;font-size:12px;color:#374151;white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;line-height:1.6;border-bottom:1px solid #F1F5F9;">'+( iss.content||'-')+'</td>'
+          +'<td style="text-align:left;vertical-align:top;padding:8px 12px;font-size:12px;color:#374151;white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;line-height:1.6;border-bottom:1px solid #F1F5F9;">'+_renderRich(iss.content||'─')+'</td>'
           // 등록날짜
           +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;font-size:11px;color:#64748B;border-bottom:1px solid #F1F5F9;">'+(iss.regDate||'─')+'</td>'
           // 기한날짜
@@ -9528,7 +9616,7 @@ function _iRow(rep, idx, iss){
     +'</td>'
     // 이슈 내용
     +'<td class="content-cell" style="min-width:240px;vertical-align:middle;text-align:left;">'
-      +(canEdit?'<textarea rows="1" style="width:100%;height:28px;min-height:28px;resize:none;line-height:1.4;display:block;box-sizing:border-box;overflow-y:hidden;" oninput="this.style.setProperty(\'height\',\'1px\',\'important\');this.style.setProperty(\'height\',Math.max(28,this.scrollHeight)+\'px\',\'important\');" onchange="store.reps[\''+r+'\'].issuesList['+idx+'].content=this.value;if(typeof extractIssues===\'function\'){extractIssues();renderIssues&&renderIssues();}autoSave&&autoSave();">'+(iss.content||'')+'</textarea>':'<span style="font-size:12px;">'+( iss.content||'─')+'</span>')
+      +(canEdit?'<div class="rich-ed" contenteditable="true" data-ph="이슈 내용..." onpaste="event.preventDefault();var _pt=(event.clipboardData||window.clipboardData).getData(\'text/plain\');document.execCommand(\'insertText\',false,_pt);" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" oninput="store.reps[\''+r+'\'].issuesList['+idx+'].content=_sanitizeRich(this.innerHTML);if(typeof extractIssues===\'function\'){extractIssues();renderIssues&&renderIssues();}autoSave&&autoSave();">'+_sanitizeRich(iss.content||'')+'</div>':'<span style="font-size:12px;white-space:pre-wrap;">'+_renderRich(iss.content||'─')+'</span>')
     +'</td>'
     // 등록날짜
     +'<td style="width:110px;vertical-align:middle;padding:2px 4px;text-align:center;">'
@@ -10215,7 +10303,7 @@ window.renderIssues = function() {
           :'<span style="font-size:11px;color:#D1D5DB;">─</span>')
         +'</td>'
         +'<td style="text-align:center;vertical-align:middle;padding:9px 10px;font-size:13px;font-weight:500;color:#374151;">'+( d.iss.client||'─')+'</td>'
-        +'<td style="vertical-align:middle;padding:9px 14px;font-size:13px;color:#374151;line-height:1.6;word-break:keep-all;">'+( d.iss.content||'─')+'</td>'
+        +'<td style="vertical-align:middle;padding:9px 14px;font-size:13px;color:#374151;line-height:1.6;word-break:keep-all;">'+_renderRich(d.iss.content||'─')+'</td>'
         +'<td style="text-align:center;vertical-align:middle;padding:9px 8px;"><span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;color:'+sm.c+';background:'+sm.bg+';border:1px solid '+sm.bd+';">'+sm.l+'</span></td>'
         +'<td style="text-align:center;vertical-align:middle;padding:9px 8px;"><span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;color:'+stm.c+';background:'+stm.bg+';border:1px solid '+stm.bd+';">'+stm.l+'</span></td>';
       tr.innerHTML = html;
@@ -10385,7 +10473,7 @@ window.renderIssues = function(){
         // 고객사
         +'<td style="text-align:center;vertical-align:middle;padding:10px 12px;font-size:13px;color:#374151;font-weight:500;border-right:1px solid #F1F5F9;">'+( d.iss.client||'─')+'</td>'
         // 이슈내용
-        +'<td style="vertical-align:middle;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;word-break:keep-all;">'+( d.iss.content||'─')+'</td>'
+        +'<td style="vertical-align:middle;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;word-break:keep-all;">'+_renderRich(d.iss.content||'─')+'</td>'
         // 중요도: border-only
         +'<td style="text-align:center;vertical-align:middle;padding:10px 8px;border-left:1px solid #F1F5F9;">'+rowBadge(sm)+'</td>'
         // 처리상태: border-only (동일 스타일)
@@ -10548,7 +10636,7 @@ window.renderIssues = function(){
         }
 
         html+='<td style="text-align:center;vertical-align:middle;padding:10px 12px;font-size:13px;color:#374151;font-weight:500;border-right:1px solid #F1F5F9;">'+( iss.client||'─')+'</td>'
-          +'<td style="vertical-align:middle;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;word-break:keep-all;">'+( iss.content||'─')+'</td>'
+          +'<td style="vertical-align:middle;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;word-break:keep-all;">'+_renderRich(iss.content||'─')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:10px 8px;border-left:1px solid #F1F5F9;">'+rowBadge(sm)+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:10px 8px;">'+rowBadge(stm)+'</td>';
 
@@ -10685,7 +10773,7 @@ window.renderIssues = function(){
             +'<span style="font-size:13px;font-weight:700;color:'+g.rc+';">'+getRepDisplayName(g.rep)+'</span></td>';
         }
         html+='<td style="text-align:center;vertical-align:middle;padding:10px 12px;font-size:13px;color:#374151;font-weight:500;border-right:1px solid #F1F5F9;">'+( iss.client||'─')+'</td>'
-          +'<td style="vertical-align:middle;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;word-break:keep-all;">'+( iss.content||'─')+'</td>'
+          +'<td style="vertical-align:middle;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;word-break:keep-all;">'+_renderRich(iss.content||'─')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:8px;border-left:1px solid #F1F5F9;">'+rowBadge(sm)+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:8px;">'+rowBadge(stm)+'</td>';
         tr.innerHTML=html;
@@ -10838,7 +10926,7 @@ window.renderIssues = function(){
         }
         html+=
           '<td style="text-align:center;vertical-align:middle;padding:10px 12px;font-size:13px;color:#374151;font-weight:500;border-right:1px solid #F1F5F9;">'+( iss.client||'─')+'</td>'
-          +'<td style="vertical-align:middle;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;word-break:keep-all;">'+( iss.content||'─')+'</td>'
+          +'<td style="vertical-align:middle;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;word-break:keep-all;">'+_renderRich(iss.content||'─')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:8px;border-left:1px solid #F1F5F9;">'+rowBadge(sm)+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:8px;">'+rowBadge(stm)+'</td>';
 
@@ -10994,7 +11082,7 @@ window.renderIssues = function(){
         }
         html+=
           '<td style="text-align:center;vertical-align:middle;padding:10px 12px;font-size:13px;color:#374151;font-weight:500;border-right:1px solid #F1F5F9;">'+( iss.client||'─')+'</td>'
-          +'<td style="vertical-align:middle;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;word-break:keep-all;">'+( iss.content||'─')+'</td>'
+          +'<td style="vertical-align:middle;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;word-break:keep-all;">'+_renderRich(iss.content||'─')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:8px;border-left:1px solid #F1F5F9;">'+rowBadge(sm)+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:8px;">'+rowBadge(stm)+'</td>';
 
@@ -11151,7 +11239,7 @@ window.renderIssues = function(){
         }
         html+=
           '<td style="text-align:center;vertical-align:middle;padding:10px 12px;font-size:13px;color:#374151;font-weight:500;border-right:1px solid #F1F5F9;">'+( iss.client||'─')+'</td>'
-          +'<td style="vertical-align:middle;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;word-break:keep-all;">'+( iss.content||'─')+'</td>'
+          +'<td style="vertical-align:middle;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;word-break:keep-all;">'+_renderRich(iss.content||'─')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:8px;border-left:1px solid #F1F5F9;">'+rowBadge(sm)+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:8px;">'+rowBadge(stm)+'</td>';
 
@@ -11320,7 +11408,7 @@ window.renderPipeline = function(){
           +'<td style="text-align:right;vertical-align:middle;padding:10px 12px;font-size:13px;font-weight:600;color:#1E293B;border-right:1px solid #F1F5F9;">'+(a.amount?Number(a.amount).toLocaleString('ko-KR'):'-')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:10px 6px;font-size:13px;border-right:1px solid #F1F5F9;">'+(a.prob?(a.prob+'%'):'─')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:10px 8px;font-size:12px;color:#374151;border-right:1px solid #F1F5F9;">'+(a.timing||'─')+'</td>'
-          +'<td class="content-cell" style="text-align:left;vertical-align:middle;padding:10px 14px;font-size:13px;color:#374151;line-height:1.6;white-space:pre-wrap;word-break:break-word;min-width:200px;">'+(a.content||'─')+'</td>'
+          +'<td class="content-cell" style="text-align:left;vertical-align:middle;padding:10px 14px;font-size:13px;color:#374151;line-height:1.6;white-space:pre-wrap;word-break:break-word;min-width:200px;">'+_renderRich(a.content||'─')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:10px 8px;">'+progBadge(a.progress||'')+'</td>';
         tr.innerHTML = html;
         frag.appendChild(tr);
@@ -11448,7 +11536,7 @@ window.renderIssues = function(){
           html+='<td rowspan="'+g.issues.length+'" style="text-align:center;vertical-align:middle;padding:10px 8px;width:90px;border-right:1px solid #EEF2F9;"><span style="font-size:13px;font-weight:700;color:'+g.rc+';">'+g.rep+'</span></td>';
         }
         html+='<td style="text-align:center;vertical-align:middle;padding:10px 12px;font-size:13px;color:#374151;font-weight:500;border-right:1px solid #F1F5F9;">'+(iss.client||'─')+'</td>'
-          +'<td class="content-cell" style="text-align:left !important;vertical-align:middle;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;white-space:pre-wrap !important;word-break:break-word !important;overflow-wrap:break-word !important;">'+(iss.content||'─')+'</td>'
+          +'<td class="content-cell" style="text-align:left !important;vertical-align:middle;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;white-space:pre-wrap !important;word-break:break-word !important;overflow-wrap:break-word !important;">'+_renderRich(iss.content||'─')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;font-size:12px;color:#64748B;">'+(iss.regDate||'─')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;font-size:12px;color:#64748B;">'+(iss.dueDate||'─')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;">'+(iss.dueDate?(function(){var t=new Date();t.setHours(0,0,0,0);var d=new Date(iss.dueDate);d.setHours(0,0,0,0);var df=Math.round((d-t)/86400000);var dc=df<0?'#DC2626':df===0?'#D97706':'#0EA5A0';var dt=df<0?'D+'+Math.abs(df):df===0?'D-Day':'D-'+df;return'<span style="padding:2px 7px;border-radius:8px;font-size:11px;font-weight:700;color:'+dc+';background:'+dc+'15;border:1px solid '+dc+'40;">'+dt+'</span>';}()):'─')+'</td>'
@@ -11591,9 +11679,9 @@ function _vRow(rep,idx,v){
     return '<input type="date" value="'+(val||'')+'" style="'+style+'" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" onchange="store.reps[\''+r+'\'].visitLog['+idx+'].'+field+'=this.value;autoSave&&autoSave();_markVisitLogDirty(\''+r+'\');typeof renderVisits===\'function\'&&renderVisits();">';
   }
   function ta(field,val){
-    var style='width:100%;min-height:30px;box-sizing:border-box;font-size:12px;font-family:inherit;text-align:left;border:1px solid #E2E8F0;border-radius:6px;padding:4px 8px;outline:none;resize:none;overflow-y:hidden;transition:border-color 0.15s;line-height:1.5;text-align:left;';
-    if(!canEdit) return '<span style="font-size:12px;color:#374151;padding:2px 4px;display:block;line-height:1.5;white-space:pre-wrap;text-align:left;">'+( val||'─')+'</span>';
-    return '<textarea rows="1" style="'+style+'" oninput="this.style.height=\'1px\';this.style.height=Math.max(30,this.scrollHeight)+\'px\';" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" oninput="this.style.setProperty(\'height\',\'1px\',\'important\');this.style.setProperty(\'height\',Math.max(30,this.scrollHeight)+\'px\',\'important\');" onchange="store.reps[\''+r+'\'].visitLog['+idx+'].'+field+'=this.value;autoSave&&autoSave();_markVisitLogDirty(\''+r+'\');">'+(val||'')+'</textarea>';
+    var safeVal=(typeof _sanitizeRich==='function')?_sanitizeRich(val||''):(val||'');
+    if(!canEdit) return '<span style="font-size:12px;color:#374151;padding:2px 4px;display:block;line-height:1.5;white-space:pre-wrap;text-align:left;">'+(typeof _renderRich==='function'?_renderRich(val||'─'):(val||'─'))+'</span>';
+    return '<div class="rich-ed" contenteditable="true" data-ph="내용 입력..." onpaste="event.preventDefault();var _pt=(event.clipboardData||window.clipboardData).getData(\'text/plain\');document.execCommand(\'insertText\',false,_pt);" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" oninput="store.reps[\''+r+'\'].visitLog['+idx+'].'+field+'=_sanitizeRich(this.innerHTML);autoSave&&autoSave();_markVisitLogDirty(\''+r+'\');">'+safeVal+'</div>';
   }
   function sel(field, val, opts, colorMap){
     var currVal=(val===undefined||val===null)?'':(val);
@@ -11919,7 +12007,7 @@ window.renderVisits=function(){
           +'<td style="text-align:center;padding:10px 10px;font-size:13px;font-weight:500;color:#374151;border-right:1px solid #F1F5F9;">'+(v.company||'─')+'</td>'
           +'<td style="text-align:center;padding:10px 8px;border-right:1px solid #F1F5F9;"><span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;color:'+tpc+';background:white;border:1.5px solid '+tpc+'50;">'+ct+'</span></td>'
           +'<td style="text-align:center;padding:10px 8px;border-right:1px solid #F1F5F9;">'+(cp?'<span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;color:'+ppc+';background:white;border:1.5px solid '+ppc+'50;">'+cp+'</span>':'─')+'</td>'
-          +'<td class="content-cell" style="padding:10px 12px;font-size:13px;color:#374151;line-height:1.6;text-align:left !important;white-space:pre-wrap;word-break:break-word;vertical-align:middle;">'+(v.content||'─')+'</td>'
+          +'<td class="content-cell" style="padding:10px 12px;font-size:13px;color:#374151;line-height:1.6;text-align:left !important;white-space:pre-wrap;word-break:break-word;vertical-align:middle;">'+_renderRich(v.content||'─')+'</td>'
           +'</tr>';
       });
     });
@@ -12045,7 +12133,7 @@ window.filterVisitsByDate=function(dateStr){
       +'<td style="text-align:center;padding:10px 10px;font-size:13px;font-weight:500;">'+( v.company||'─')+'</td>'
       +'<td style="text-align:center;padding:10px 8px;"><span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;color:'+tpc+';background:white;border:1.5px solid '+tpc+'50;">'+ct+'</span></td>'
       +'<td style="text-align:center;padding:10px 8px;">'+(cp?'<span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;color:'+ppc+';background:white;border:1.5px solid '+ppc+'50;">'+cp+'</span>':'─')+'</td>'
-      +'<td style="padding:10px 14px;font-size:13px;color:#374151;line-height:1.5;">'+( v.content||'─')+'</td>'
+      +'<td style="padding:10px 14px;font-size:13px;color:#374151;line-height:1.5;">'+_renderRich(v.content||'─')+'</td>'
       +'</tr>';
   }).join('');
 };
