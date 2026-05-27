@@ -1900,7 +1900,7 @@ tr[id^="vr-"] td.content-cell { text-align:left !important; }
 .content-cell {
   white-space: pre-wrap !important;
   text-align: left !important;
-  vertical-align: top !important;
+  vertical-align: middle !important;
   word-break: break-word !important;
   line-height: 1.6 !important;
 }
@@ -1913,7 +1913,7 @@ td.content-cell {
   word-break: break-word !important;
   word-wrap: break-word !important;
   overflow-wrap: break-word !important;
-  vertical-align: top !important;
+  vertical-align: middle !important;
   line-height: 1.6 !important;
 }
 
@@ -8156,14 +8156,14 @@ function _renderAccessLog() {
 
   var now   = new Date();
   var today = now.toISOString().split('T')[0];
-  var weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  var _ls=new Date(now);var _lw=_ls.getDay();_ls.setDate(_ls.getDate()+(_lw===0?-6:1-_lw));var weekAgo=_ls.toISOString().split('T')[0];
 
   // 최근 접속 순 정렬
   _accessLogData.sort(function(a,b){ return (b.timestamp||'').localeCompare(a.timestamp||''); });
   var filtered = _accessLogData.filter(function(log) {
     if (!log.timestamp) return false;
     if (_accessLogFilter === 'today') return log.timestamp.startsWith(today);
-    if (_accessLogFilter === 'week')  return log.timestamp >= weekAgo;
+    if (_accessLogFilter === 'week')  return (log.timestamp||'').split('T')[0] >= weekAgo;
     return true;
   });
 
@@ -11766,7 +11766,7 @@ window.renderVisits=function(){
   // 기간 필터 계산
   var now=new Date(), today=now.toISOString().split('T')[0];
   var cutoff='';
-  if(_visitPeriod==='week'){ var d=new Date(now);d.setDate(now.getDate()-7);cutoff=d.toISOString().split('T')[0]; }
+  if(_visitPeriod==='week'){ var d=new Date(now);var _day=d.getDay();var _diff=_day===0?-6:1-_day;d.setDate(d.getDate()+_diff);cutoff=d.toISOString().split('T')[0]; }
   else if(_visitPeriod==='month'){ var d=new Date(now);d.setMonth(now.getMonth()-1);cutoff=d.toISOString().split('T')[0]; }
   else if(_visitPeriod==='3month'){ var d=new Date(now);d.setMonth(now.getMonth()-3);cutoff=d.toISOString().split('T')[0]; }
   else if(_visitPeriod==='custom'){ cutoff=_visitDateFrom||''; }
@@ -11786,8 +11786,8 @@ window.renderVisits=function(){
   var calY=_visitCalDate.getFullYear(), calM=_visitCalDate.getMonth();
   var calMonthStr=calY+'-'+(String(calM+1).padStart(2,'0'));
   var thisMonthAll=allVisits.filter(function(v){ return (v.date||'').startsWith(calMonthStr); });
-  var weekAgo=new Date(now); weekAgo.setDate(now.getDate()-7);
-  var thisWeek=allVisits.filter(function(v){ return v.date&&v.date>=weekAgo.toISOString().split('T')[0]; });
+  var weekStart=new Date(now);var _wd=weekStart.getDay();weekStart.setDate(weekStart.getDate()+(_wd===0?-6:1-_wd));
+  var thisWeek=allVisits.filter(function(v){ return v.date&&v.date>=weekStart.toISOString().split('T')[0]; });
 
   // ─ KPI 카드 (통합 대시보드 스타일) ─
   function kpi(cls,label,val,unit){
@@ -11919,7 +11919,7 @@ window.renderVisits=function(){
           +'<td style="text-align:center;padding:10px 10px;font-size:13px;font-weight:500;color:#374151;border-right:1px solid #F1F5F9;">'+(v.company||'─')+'</td>'
           +'<td style="text-align:center;padding:10px 8px;border-right:1px solid #F1F5F9;"><span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;color:'+tpc+';background:white;border:1.5px solid '+tpc+'50;">'+ct+'</span></td>'
           +'<td style="text-align:center;padding:10px 8px;border-right:1px solid #F1F5F9;">'+(cp?'<span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;color:'+ppc+';background:white;border:1.5px solid '+ppc+'50;">'+cp+'</span>':'─')+'</td>'
-          +'<td class="content-cell" style="padding:10px 12px;font-size:13px;color:#374151;line-height:1.6;text-align:left !important;white-space:pre-wrap;word-break:break-word;vertical-align:top;">'+(v.content||'─')+'</td>'
+          +'<td class="content-cell" style="padding:10px 12px;font-size:13px;color:#374151;line-height:1.6;text-align:left !important;white-space:pre-wrap;word-break:break-word;vertical-align:middle;">'+(v.content||'─')+'</td>'
           +'</tr>';
       });
     });
