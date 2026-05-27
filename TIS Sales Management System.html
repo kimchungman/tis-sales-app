@@ -1984,6 +1984,7 @@ window._renderRich=function(text){
   if(/<(b|strong|span|br)[\s>]/i.test(text))return window._sanitizeRich(text);
   return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
 };
+function _ctrlB(e){if((e.ctrlKey||e.metaKey)&&e.key==='b'){e.preventDefault();document.execCommand('bold');}}
 function _showRTB(el){
   var s=window.getSelection();
   var b=document.getElementById('_rtb');
@@ -4239,7 +4240,7 @@ function renderDashIssues(){
         var b=i.sev==='high'?'<span style="background:#FEE2E2;color:#DC2626;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;">🔴 높음</span>':'<span style="background:#FEF9C3;color:#D97706;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;">🟡 중간</span>';
         html+='<div style="background:white;border:1px solid #F1F5F9;border-radius:8px;padding:10px 12px;margin-bottom:6px;">';
         html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'+b+'<strong style="font-size:12px;">'+(i.client||i.rep||'')+'</strong><span style="font-size:11px;color:#94A3B8;">│ '+i.rep+'</span></div>';
-        html+='<div style="font-size:12px;color:#374151;line-height:1.6;text-align:left !important;white-space:pre-wrap !important;word-break:break-word;vertical-align:top;">'+(i.content||'')+'</div></div>';
+        html+='<div style="font-size:12px;color:#374151;line-height:1.6;text-align:left !important;white-space:pre-wrap !important;word-break:break-word;vertical-align:top;">'+_renderRich(i.content||'─')+'</div></div>';
       });
       html+='</div>';
     });
@@ -4254,7 +4255,7 @@ function renderDashIssues(){
         var b=i.sev==='high'?'<span style="background:#FEE2E2;color:#DC2626;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;">🔴 높음</span>':'<span style="background:#FEF9C3;color:#D97706;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;">🟡 중간</span>';
         html+='<div style="background:white;border:1px solid #F1F5F9;border-radius:8px;padding:10px 12px;margin-bottom:6px;">';
         html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'+b+'<strong style="font-size:12px;">'+(i.client||'')+'</strong></div>';
-        html+='<div style="font-size:12px;color:#374151;line-height:1.6;text-align:left !important;white-space:pre-wrap !important;word-break:break-word;vertical-align:top;">'+(i.content||'')+'</div></div>';
+        html+='<div style="font-size:12px;color:#374151;line-height:1.6;text-align:left !important;white-space:pre-wrap !important;word-break:break-word;vertical-align:top;">'+_renderRich(i.content||'─')+'</div></div>';
       });
       html+='</div>';
     });
@@ -4793,7 +4794,7 @@ function cRow(rep,ci,c){
       <select style="width:60px;font-size:12px;" onchange="store.reps['${rep}'].clients[${ci}].type=this.value;updateProductSummary('${rep}');autoSave();refreshActualForecast('${rep}');updateProductSummary('${rep}');renderDashboard();autoSave();\">${tOpts}</select>
     </td>
     ${MONTHS.map((_,i)=>{const v=(c.actual&&c.actual[i])||0;const disp=v?v.toLocaleString('ko-KR'):'';return`<td style="vertical-align:middle;padding:3px 4px;text-align:right;white-space:nowrap;"><input type="text" value="${disp}" style="width:68px;text-align:right;" onfocus="this.value=this.value.replace(/,/g,'')" onblur="const n=parseFloat(this.value.replace(/,/g,''));this.value=n?n.toLocaleString('ko-KR'):'';" onchange="store.reps['${rep}'].clients[${ci}].actual[${i}]=parseFloat(String(this.value).replace(/,/g,''))||0;refreshActualForecast('${rep}')"></td>`;}).join('')}
-    <td class="content-cell" style="vertical-align:middle;padding:3px 4px;min-width:240px;text-align:left;"><div class="rich-ed" contenteditable="true" data-ph="이슈사항..." onmouseup="_showRTB(this)" onpaste="event.preventDefault();var _pt=(event.clipboardData||window.clipboardData).getData('text/plain');document.execCommand('insertText',false,_pt);" oninput="store.reps['${rep}'].clients[${ci}].issue=_sanitizeRich(this.innerHTML);extractIssues();renderIssues();autoSave();" onfocus="this.style.borderColor='#4f7fff'" onblur="this.style.borderColor='#E2E8F0'">${c.issue||''}</div></td>
+    <td class="content-cell" style="vertical-align:middle;padding:3px 4px;min-width:240px;text-align:left;"><div class="rich-ed" contenteditable="true" data-ph="이슈사항..." onmouseup="_showRTB(this)" onkeydown="_ctrlB(event)" onpaste="event.preventDefault();var _pt=(event.clipboardData||window.clipboardData).getData('text/plain');document.execCommand('insertText',false,_pt);" oninput="store.reps['${rep}'].clients[${ci}].issue=_sanitizeRich(this.innerHTML);extractIssues();renderIssues();autoSave();" onfocus="this.style.borderColor='#4f7fff'" onblur="this.style.borderColor='#E2E8F0'">${c.issue||''}</div></td>
     <td style="vertical-align:middle;padding:3px 4px;text-align:center;width:36px;min-width:36px;position:sticky;right:0;background:white;"><button class="del-btn" onclick="delClient('${rep}',${ci})">×</button></td>
   </tr>`;
 }
@@ -4828,7 +4829,7 @@ function aRow(rep,ai,a){
       <input type="text" value="${a.timing||''}" style="width:100%;text-align:center;" onchange="store.reps['${rep}'].activities[${ai}].timing=this.value;autoSave()">
     </td>
     <td style="min-width:240px;vertical-align:top;">
-      <div class="rich-ed" contenteditable="true" data-ph="활동 내용..." onmouseup="_showRTB(this)" onpaste="event.preventDefault();var _pt=(event.clipboardData||window.clipboardData).getData('text/plain');document.execCommand('insertText',false,_pt);" oninput="store.reps['${rep}'].activities[${ai}].content=_sanitizeRich(this.innerHTML);autoSave();" onfocus="this.style.borderColor='#4f7fff'" onblur="this.style.borderColor='#E2E8F0'">${a.content||''}</div>
+      <div class="rich-ed" contenteditable="true" data-ph="활동 내용..." onmouseup="_showRTB(this)" onkeydown="_ctrlB(event)" onpaste="event.preventDefault();var _pt=(event.clipboardData||window.clipboardData).getData('text/plain');document.execCommand('insertText',false,_pt);" oninput="store.reps['${rep}'].activities[${ai}].content=_sanitizeRich(this.innerHTML);autoSave();" onfocus="this.style.borderColor='#4f7fff'" onblur="this.style.borderColor='#E2E8F0'">${a.content||''}</div>
     </td>
     <td style="width:100px;vertical-align:middle;padding:2px 4px;">
       <div style="position:relative;display:block;width:100%;height:28px;">
@@ -5274,7 +5275,7 @@ function renderIssues(){
       +'<td style="text-align:center;font-size:11px;color:#64748B;vertical-align:middle;">'+(i.team||'')+'</td>'
       +'<td style="text-align:center;font-size:12px;font-weight:600;vertical-align:middle;">'+(i.rep||'')+'</td>'
       +'<td style="text-align:center;font-size:12px;vertical-align:middle;">'+(i.client||'')+'</td>'
-      +'<td class="content-cell" style="text-align:left !important;white-space:pre-wrap;word-break:break-word;vertical-align:middle;padding:8px 12px;" style="padding:8px 14px;font-size:12px;color:#374151;text-align:left !important;white-space:pre-wrap !important;word-break:break-word !important;word-wrap:break-word !important;overflow-wrap:break-word !important;vertical-align:top !important;line-height:1.6;">'+(i.content||'')+'</td>'      +'<td style="text-align:center;font-size:11px;color:#374151;vertical-align:middle;">'+(i.regDate||'─')+'</td>'      +'<td style="text-align:center;font-size:11px;color:#374151;vertical-align:middle;">'+(i.dueDate||'─')+'</td>'      +ddayCell
+      +'<td class="content-cell" style="text-align:left !important;white-space:pre-wrap;word-break:break-word;vertical-align:middle;padding:8px 12px;" style="padding:8px 14px;font-size:12px;color:#374151;text-align:left !important;white-space:pre-wrap !important;word-break:break-word !important;word-wrap:break-word !important;overflow-wrap:break-word !important;vertical-align:top !important;line-height:1.6;">'+_renderRich(i.content||'─')+'</td>'      +'<td style="text-align:center;font-size:11px;color:#374151;vertical-align:middle;">'+(i.regDate||'─')+'</td>'      +'<td style="text-align:center;font-size:11px;color:#374151;vertical-align:middle;">'+(i.dueDate||'─')+'</td>'      +ddayCell
       +'<td style="text-align:center;vertical-align:middle;"><span style="display:inline-flex;align-items:center;justify-content:center;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;color:'+sc+';border:1.5px solid '+sc+'60;">'+(sevLabel[i.sev]||i.sev||'')+'</span></td>'
       +'<td style="text-align:center;vertical-align:middle;"><span style="display:inline-flex;align-items:center;justify-content:center;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;color:'+tc+';border:1.5px solid '+tc+'60;">'+(isOpen?'Open':'Closed')+'</span></td>'
       +'</tr>';
@@ -5376,7 +5377,7 @@ function renderPipeline(){
       +'<td style="text-align:center;vertical-align:middle;"><span class="badge '+pc(r.prob)+'">'+(r.prob?(r.prob*100).toFixed(0)+'%':'-')+'</span></td>'
       +'<td style="text-align:center;vertical-align:middle;white-space:nowrap;color:var(--muted);">'+(r.timing||'-')+'</td>'
       +'<td style="text-align:center;vertical-align:middle;"><span style="padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;background:'+stBg+';color:'+stCol+';">'+stLbl+'</span></td>'
-      +'<td class="content-cell" style="font-size:12px;color:#374151;text-align:left !important;white-space:pre-wrap !important;word-break:break-word !important;word-wrap:break-word !important;overflow-wrap:break-word !important;vertical-align:top !important;line-height:1.6;padding:8px 12px;">'+(r.content||'')+'</td>'
+      +'<td class="content-cell" style="font-size:12px;color:#374151;text-align:left !important;white-space:pre-wrap !important;word-break:break-word !important;word-wrap:break-word !important;overflow-wrap:break-word !important;vertical-align:top !important;line-height:1.6;padding:8px 12px;">'+_renderRich(r.content||'─')+'</td>'
       +'</tr>';
   }).join('');
 }
@@ -8783,7 +8784,7 @@ window.renderIssues = function() {
       }
       html += '<td style="text-align:center;vertical-align:middle;padding:9px 8px;font-size:12px;font-weight:700;color:' + d.rc + ';width:80px;">' + (d.firstOfRep ? d.rep : '<span style="color:#D4D8E2;font-size:11px;">└</span>') + '</td>'
         + '<td style="text-align:center;vertical-align:middle;padding:9px 10px;font-size:13px;font-weight:500;color:#374151;">' + (d.iss.client || '-') + '</td>'
-        + '<td style="vertical-align:middle;padding:9px 14px;font-size:13px;color:#374151;line-height:1.6;word-break:keep-all;">' + (d.iss.content || '-') + '</td>'
+        + '<td style="vertical-align:middle;padding:9px 14px;font-size:13px;color:#374151;line-height:1.6;word-break:keep-all;">' +_renderRich(d.iss.content||'─')+ '</td>'
         + '<td style="text-align:center;vertical-align:middle;padding:9px 8px;"><span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;color:' + sm.c + ';background:' + sm.bg + ';border:1px solid ' + sm.bd + ';">' + sm.label + '</span></td>'
         + '<td style="text-align:center;vertical-align:middle;padding:9px 8px;"><span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;color:' + stm.c + ';background:' + stm.bg + ';border:1px solid ' + stm.bd + ';">' + stm.label + '</span></td>';
       tr.innerHTML = html;
@@ -8953,7 +8954,7 @@ window.renderIssues = function() {
         tr.innerHTML =
           '<td style="width:90px;text-align:center;vertical-align:middle;padding:9px 8px;">' + repCell + '</td>'
           + '<td style="width:140px;text-align:center;vertical-align:middle;padding:9px 10px;font-size:13px;font-weight:500;color:#374151;">' + (iss.client || '-') + '</td>'
-          + '<td style="vertical-align:middle;padding:9px 14px;font-size:13px;color:#374151;line-height:1.6;word-break:keep-all;">' + (iss.content || '-') + '</td>'
+          + '<td style="vertical-align:middle;padding:9px 14px;font-size:13px;color:#374151;line-height:1.6;word-break:keep-all;">' +_renderRich(iss.content||'─')+ '</td>'
           + '<td style="width:90px;text-align:center;vertical-align:middle;padding:9px 8px;">'
             + '<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;color:' + sm.c + ';background:' + sm.bg + ';border:1px solid ' + sm.bd + ';">' + sm.label + '</span></td>'
           + '<td style="width:90px;text-align:center;vertical-align:middle;padding:9px 8px;">'
@@ -9658,7 +9659,7 @@ function _iRow(rep, idx, iss){
     +'</td>'
     // 이슈 내용
     +'<td class="content-cell" style="min-width:240px;vertical-align:middle;text-align:left;">'
-      +(canEdit?'<div class="rich-ed" contenteditable="true" data-ph="이슈 내용..." onmouseup="_showRTB(this)" onpaste="event.preventDefault();var _pt=(event.clipboardData||window.clipboardData).getData(\'text/plain\');document.execCommand(\'insertText\',false,_pt);" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" oninput="store.reps[\''+r+'\'].issuesList['+idx+'].content=_sanitizeRich(this.innerHTML);if(typeof extractIssues===\'function\'){extractIssues();renderIssues&&renderIssues();}autoSave&&autoSave();">'+_sanitizeRich(iss.content||'')+'</div>':'<span style="font-size:12px;white-space:pre-wrap;">'+_renderRich(iss.content||'─')+'</span>')
+      +(canEdit?'<div class="rich-ed" contenteditable="true" data-ph="이슈 내용..." onmouseup="_showRTB(this)" onkeydown="_ctrlB(event)" onpaste="event.preventDefault();var _pt=(event.clipboardData||window.clipboardData).getData(\'text/plain\');document.execCommand(\'insertText\',false,_pt);" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" oninput="store.reps[\''+r+'\'].issuesList['+idx+'].content=_sanitizeRich(this.innerHTML);if(typeof extractIssues===\'function\'){extractIssues();renderIssues&&renderIssues();}autoSave&&autoSave();">'+_sanitizeRich(iss.content||'')+'</div>':'<span style="font-size:12px;white-space:pre-wrap;">'+_renderRich(iss.content||'─')+'</span>')
     +'</td>'
     // 등록날짜
     +'<td style="width:110px;vertical-align:middle;padding:2px 4px;text-align:center;">'
@@ -11723,7 +11724,7 @@ function _vRow(rep,idx,v){
   function ta(field,val){
     var safeVal=(typeof _sanitizeRich==='function')?_sanitizeRich(val||''):(val||'');
     if(!canEdit) return '<span style="font-size:12px;color:#374151;padding:2px 4px;display:block;line-height:1.5;white-space:pre-wrap;text-align:left;">'+(typeof _renderRich==='function'?_renderRich(val||'─'):(val||'─'))+'</span>';
-    return '<div class="rich-ed" contenteditable="true" data-ph="내용 입력..." onmouseup="_showRTB(this)" onpaste="event.preventDefault();var _pt=(event.clipboardData||window.clipboardData).getData(\'text/plain\');document.execCommand(\'insertText\',false,_pt);" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" oninput="store.reps[\''+r+'\'].visitLog['+idx+'].'+field+'=_sanitizeRich(this.innerHTML);autoSave&&autoSave();_markVisitLogDirty(\''+r+'\');">'+safeVal+'</div>';
+    return '<div class="rich-ed" contenteditable="true" data-ph="내용 입력..." onmouseup="_showRTB(this)" onkeydown="_ctrlB(event)" onpaste="event.preventDefault();var _pt=(event.clipboardData||window.clipboardData).getData(\'text/plain\');document.execCommand(\'insertText\',false,_pt);" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" oninput="store.reps[\''+r+'\'].visitLog['+idx+'].'+field+'=_sanitizeRich(this.innerHTML);autoSave&&autoSave();_markVisitLogDirty(\''+r+'\');">'+safeVal+'</div>';
   }
   function sel(field, val, opts, colorMap){
     var currVal=(val===undefined||val===null)?'':(val);
