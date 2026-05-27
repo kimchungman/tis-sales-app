@@ -1968,7 +1968,7 @@ window._sanitizeRich=function(h){
       if(t==='b'||t==='strong'||t==='br'){cl(c);}
       else if(t==='span'){
         var s=c.getAttribute('style')||'';
-        if(/^color:\s*#[0-9a-fA-F]{3,8}$/.test(s.trim())){cl(c);}
+        if(/^color:\s*(#[0-9a-fA-F]{3,8}|rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)|rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,[\s\d.]+\))$/i.test(s.trim())){cl(c);}
         else{while(c.firstChild)node.insertBefore(c.firstChild,c);node.removeChild(c);}
       }else if(t==='div'||t==='p'){
         node.insertBefore(document.createElement('br'),c);
