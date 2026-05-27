@@ -1953,77 +1953,104 @@ select._bsl-sel {
   color: #94A3B8;
   pointer-events: none;
 }
-#_rich-bar {
-  display: none;
-  position: fixed;
-  z-index: 99999;
-  background: white;
-  border: 1px solid #E2E8F0;
-  border-radius: 10px;
-  padding: 5px 8px;
-  box-shadow: 0 4px 20px rgba(0,0,0,.14);
-  align-items: center;
-  gap: 4px;
-  user-select: none;
-}
-#_rich-bar button {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  border-radius: 6px;
-  padding: 3px 6px;
-  font-size: 13px;
-  transition: background 0.1s;
-}
-#_rich-bar button:hover { background: #F1F5F9; }
-#_rich-bar .rb-sep { width:1px;height:18px;background:#E2E8F0;flex-shrink:0; }
-#_rich-bar .rb-color {
-  width: 18px; height: 18px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: border-color 0.1s, transform 0.1s;
-}
-#_rich-bar .rb-color:hover { border-color: #64748B; transform: scale(1.15); }
 </style>
+
 <script>
-/* ═══ Rich Editor 핵심 함수 (early init) ═══ */
-window._sanitizeRich = function(h) {
-  if (!h) return '';
-  var d = document.createElement('div');
-  d.innerHTML = h;
-  function clean(node) {
-    var kids = Array.prototype.slice.call(node.childNodes);
-    kids.forEach(function(c) {
-      if (c.nodeType === 3) return;
-      var t = (c.tagName || '').toLowerCase();
-      if (t === 'b' || t === 'strong' || t === 'br') { clean(c); }
-      else if (t === 'span') {
-        var s = c.getAttribute('style') || '';
-        if (/^color:\s*#[0-9a-fA-F]{3,8}$/.test(s.trim())) { clean(c); }
-        else { while (c.firstChild) node.insertBefore(c.firstChild, c); node.removeChild(c); }
-      } else if (t === 'div' || t === 'p') {
-        node.insertBefore(document.createElement('br'), c);
-        while (c.firstChild) node.insertBefore(c.firstChild, c);
+/* ═══ Rich Editor 핵심 함수 ═══ */
+window._sanitizeRich=function(h){
+  if(!h)return'';
+  var d=document.createElement('div');d.innerHTML=h;
+  function cl(node){
+    var kids=Array.prototype.slice.call(node.childNodes);
+    kids.forEach(function(c){
+      if(c.nodeType===3)return;
+      var t=(c.tagName||'').toLowerCase();
+      if(t==='b'||t==='strong'||t==='br'){cl(c);}
+      else if(t==='span'){
+        var s=c.getAttribute('style')||'';
+        if(/^color:\s*#[0-9a-fA-F]{3,8}$/.test(s.trim())){cl(c);}
+        else{while(c.firstChild)node.insertBefore(c.firstChild,c);node.removeChild(c);}
+      }else if(t==='div'||t==='p'){
+        node.insertBefore(document.createElement('br'),c);
+        while(c.firstChild)node.insertBefore(c.firstChild,c);
         node.removeChild(c);
-      } else {
-        node.replaceChild(document.createTextNode(c.textContent || ''), c);
-      }
+      }else{node.replaceChild(document.createTextNode(c.textContent||''),c);}
     });
   }
-  clean(d);
-  return d.innerHTML.replace(/(<br>\s*){3,}/g, '<br><br>');
+  cl(d);return d.innerHTML.replace(/(<br>\s*){3,}/g,'<br><br>');
 };
-window._renderRich = function(text) {
-  if (!text) return '─';
-  if (/<(b|strong|span|br)[\s>]/i.test(text)) return window._sanitizeRich(text);
+window._renderRich=function(text){
+  if(!text)return'\u2500';
+  if(/<(b|strong|span|br)[\s>]/i.test(text))return window._sanitizeRich(text);
   return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
 };
+function _showRTB(el){
+  var s=window.getSelection();
+  var b=document.getElementById('_rtb');
+  if(!b||!s||s.isCollapsed||!s.rangeCount)return;
+  var r=s.getRangeAt(0).getBoundingClientRect();
+  if(!r.width&&!r.height)return;
+  b.style.visibility='hidden';b.style.display='flex';
+  var bw=b.offsetWidth||220,bh=b.offsetHeight||38;
+  var l=r.left+r.width/2-bw/2;
+  l=Math.max(8,Math.min(l,window.innerWidth-bw-8));
+  var t=r.top-bh-8;if(t<8)t=r.bottom+8;
+  b.style.left=Math.round(l)+'px';b.style.top=Math.round(t)+'px';
+  b.style.visibility='visible';
+}
+document.addEventListener('mousedown',function(e){
+  if(!e.target.closest||!e.target.closest('#_rtb')){
+    var b=document.getElementById('_rtb');if(b)b.style.display='none';
+  }
+});
+document.addEventListener('keydown',function(e){
+  if((e.ctrlKey||e.metaKey)&&e.key==='b'){
+    var s=window.getSelection();
+    if(!s||!s.anchorNode)return;
+    var n=s.anchorNode;
+    while(n){if(n.className&&n.className.indexOf('rich-ed')>=0){e.preventDefault();document.execCommand('bold');break;}n=n.parentNode;}
+  }
+});
+
 </script>
 </head>
 <body>
-<!-- Rich Editor Toolbar -->
+<div id="_rtb" style="display:none;position:fixed;z-index:99999;background:#fff;border:1px solid #dde;border-radius:10px;padding:6px 10px;box-shadow:0 4px 20px rgba(0,0,0,.18);gap:5px;">
+  <b style="cursor:pointer;padding:2px 8px;border-radius:5px;font-size:15px;" onmousedown="event.preventDefault();document.execCommand('bold');" title="굵게">B</b>
+  <span style="display:inline-block;width:1px;height:18px;background:#dde;vertical-align:middle;"></span>
+  <i style="cursor:pointer;display:inline-block;width:16px;height:16px;border-radius:50%;background:#DC2626;" onmousedown="event.preventDefault();document.execCommand('foreColor',false,'#DC2626');" title="빨강"></i>
+  <i style="cursor:pointer;display:inline-block;width:16px;height:16px;border-radius:50%;background:#D97706;" onmousedown="event.preventDefault();document.execCommand('foreColor',false,'#D97706');" title="주황"></i>
+  <i style="cursor:pointer;display:inline-block;width:16px;height:16px;border-radius:50%;background:#059669;" onmousedown="event.preventDefault();document.execCommand('foreColor',false,'#059669');" title="초록"></i>
+  <i style="cursor:pointer;display:inline-block;width:16px;height:16px;border-radius:50%;background:#2563EB;" onmousedown="event.preventDefault();document.execCommand('foreColor',false,'#2563EB');" title="파랑"></i>
+  <i style="cursor:pointer;display:inline-block;width:16px;height:16px;border-radius:50%;background:#7C3AED;" onmousedown="event.preventDefault();document.execCommand('foreColor',false,'#7C3AED');" title="보라"></i>
+  <i style="cursor:pointer;display:inline-block;width:16px;height:16px;border-radius:50%;background:#64748B;" onmousedown="event.preventDefault();document.execCommand('foreColor',false,'#64748B');" title="회색"></i>
+  <span style="display:inline-block;width:1px;height:18px;background:#dde;vertical-align:middle;"></span>
+  <span style="cursor:pointer;padding:2px 7px;border-radius:5px;color:#94A3B8;font-size:13px;" onmousedown="event.preventDefault();document.execCommand('removeFormat');" title="서식제거">✕</span>
+</div>
+<script>
+(function(){
+  var bar=null;
+  function getBar(){return bar||(bar=document.getElementById('_rtb'));}
+  function inR(n){while(n){if(n.className&&/\brich-ed\b/.test(n.className))return true;n=n.parentNode;}return false;}
+  function show(){
+    var b=getBar();if(!b)return;
+    var s=window.getSelection();
+    if(!s||s.isCollapsed||!s.rangeCount||!inR(s.anchorNode)){b.style.display='none';return;}
+    var r=s.getRangeAt(0).getBoundingClientRect();
+    if(!r.width&&!r.height){b.style.display='none';return;}
+    b.style.visibility='hidden';b.style.display='flex';
+    var bw=b.offsetWidth||220,bh=b.offsetHeight||38;
+    var l=r.left+r.width/2-bw/2;
+    l=Math.max(8,Math.min(l,window.innerWidth-bw-8));
+    var t=r.top-bh-8;if(t<8)t=r.bottom+8;
+    b.style.left=l+'px';b.style.top=t+'px';b.style.visibility='visible';
+  }
+  document.addEventListener('mouseup',function(e){if(e.target.closest&&e.target.closest('#_rtb'))return;setTimeout(show,80);});
+  document.addEventListener('mousedown',function(e){if(!e.target.closest||!e.target.closest('#_rtb')){var b=getBar();if(b)b.style.display='none';}});
+  document.addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&e.key==='b'){var s=window.getSelection();if(s&&inR(s.anchorNode)){e.preventDefault();document.execCommand('bold');}}});
+})();
+</script>
+
 <div id="_rich-bar" style="display:none;position:fixed;z-index:99999;background:white;border:1px solid #E2E8F0;border-radius:10px;padding:5px 8px;box-shadow:0 4px 20px rgba(0,0,0,.18);align-items:center;gap:4px;">
   <button id="_rb-b" title="굵게 (Ctrl+B)" style="border:none;background:transparent;cursor:pointer;border-radius:6px;padding:3px 8px;font-size:14px;font-weight:900;transition:background 0.1s;"><b>B</b></button>
   <div style="width:1px;height:18px;background:#E2E8F0;flex-shrink:0;"></div>
@@ -4766,7 +4793,7 @@ function cRow(rep,ci,c){
       <select style="width:60px;font-size:12px;" onchange="store.reps['${rep}'].clients[${ci}].type=this.value;updateProductSummary('${rep}');autoSave();refreshActualForecast('${rep}');updateProductSummary('${rep}');renderDashboard();autoSave();\">${tOpts}</select>
     </td>
     ${MONTHS.map((_,i)=>{const v=(c.actual&&c.actual[i])||0;const disp=v?v.toLocaleString('ko-KR'):'';return`<td style="vertical-align:middle;padding:3px 4px;text-align:right;white-space:nowrap;"><input type="text" value="${disp}" style="width:68px;text-align:right;" onfocus="this.value=this.value.replace(/,/g,'')" onblur="const n=parseFloat(this.value.replace(/,/g,''));this.value=n?n.toLocaleString('ko-KR'):'';" onchange="store.reps['${rep}'].clients[${ci}].actual[${i}]=parseFloat(String(this.value).replace(/,/g,''))||0;refreshActualForecast('${rep}')"></td>`;}).join('')}
-    <td class="content-cell" style="vertical-align:middle;padding:3px 4px;min-width:240px;text-align:left;"><div class="rich-ed" contenteditable="true" data-ph="이슈사항..." onpaste="event.preventDefault();var _pt=(event.clipboardData||window.clipboardData).getData('text/plain');document.execCommand('insertText',false,_pt);" oninput="store.reps['${rep}'].clients[${ci}].issue=_sanitizeRich(this.innerHTML);extractIssues();renderIssues();autoSave();" onfocus="this.style.borderColor='#4f7fff'" onblur="this.style.borderColor='#E2E8F0'">${c.issue||''}</div></td>
+    <td class="content-cell" style="vertical-align:middle;padding:3px 4px;min-width:240px;text-align:left;"><div class="rich-ed" contenteditable="true" data-ph="이슈사항..." onmouseup="_showRTB(this)" onpaste="event.preventDefault();var _pt=(event.clipboardData||window.clipboardData).getData('text/plain');document.execCommand('insertText',false,_pt);" oninput="store.reps['${rep}'].clients[${ci}].issue=_sanitizeRich(this.innerHTML);extractIssues();renderIssues();autoSave();" onfocus="this.style.borderColor='#4f7fff'" onblur="this.style.borderColor='#E2E8F0'">${c.issue||''}</div></td>
     <td style="vertical-align:middle;padding:3px 4px;text-align:center;width:36px;min-width:36px;position:sticky;right:0;background:white;"><button class="del-btn" onclick="delClient('${rep}',${ci})">×</button></td>
   </tr>`;
 }
@@ -4801,7 +4828,7 @@ function aRow(rep,ai,a){
       <input type="text" value="${a.timing||''}" style="width:100%;text-align:center;" onchange="store.reps['${rep}'].activities[${ai}].timing=this.value;autoSave()">
     </td>
     <td style="min-width:240px;vertical-align:top;">
-      <div class="rich-ed" contenteditable="true" data-ph="활동 내용..." onpaste="event.preventDefault();var _pt=(event.clipboardData||window.clipboardData).getData('text/plain');document.execCommand('insertText',false,_pt);" oninput="store.reps['${rep}'].activities[${ai}].content=_sanitizeRich(this.innerHTML);autoSave();" onfocus="this.style.borderColor='#4f7fff'" onblur="this.style.borderColor='#E2E8F0'">${a.content||''}</div>
+      <div class="rich-ed" contenteditable="true" data-ph="활동 내용..." onmouseup="_showRTB(this)" onpaste="event.preventDefault();var _pt=(event.clipboardData||window.clipboardData).getData('text/plain');document.execCommand('insertText',false,_pt);" oninput="store.reps['${rep}'].activities[${ai}].content=_sanitizeRich(this.innerHTML);autoSave();" onfocus="this.style.borderColor='#4f7fff'" onblur="this.style.borderColor='#E2E8F0'">${a.content||''}</div>
     </td>
     <td style="width:100px;vertical-align:middle;padding:2px 4px;">
       <div style="position:relative;display:block;width:100%;height:28px;">
@@ -9631,7 +9658,7 @@ function _iRow(rep, idx, iss){
     +'</td>'
     // 이슈 내용
     +'<td class="content-cell" style="min-width:240px;vertical-align:middle;text-align:left;">'
-      +(canEdit?'<div class="rich-ed" contenteditable="true" data-ph="이슈 내용..." onpaste="event.preventDefault();var _pt=(event.clipboardData||window.clipboardData).getData(\'text/plain\');document.execCommand(\'insertText\',false,_pt);" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" oninput="store.reps[\''+r+'\'].issuesList['+idx+'].content=_sanitizeRich(this.innerHTML);if(typeof extractIssues===\'function\'){extractIssues();renderIssues&&renderIssues();}autoSave&&autoSave();">'+_sanitizeRich(iss.content||'')+'</div>':'<span style="font-size:12px;white-space:pre-wrap;">'+_renderRich(iss.content||'─')+'</span>')
+      +(canEdit?'<div class="rich-ed" contenteditable="true" data-ph="이슈 내용..." onmouseup="_showRTB(this)" onpaste="event.preventDefault();var _pt=(event.clipboardData||window.clipboardData).getData(\'text/plain\');document.execCommand(\'insertText\',false,_pt);" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" oninput="store.reps[\''+r+'\'].issuesList['+idx+'].content=_sanitizeRich(this.innerHTML);if(typeof extractIssues===\'function\'){extractIssues();renderIssues&&renderIssues();}autoSave&&autoSave();">'+_sanitizeRich(iss.content||'')+'</div>':'<span style="font-size:12px;white-space:pre-wrap;">'+_renderRich(iss.content||'─')+'</span>')
     +'</td>'
     // 등록날짜
     +'<td style="width:110px;vertical-align:middle;padding:2px 4px;text-align:center;">'
@@ -11696,7 +11723,7 @@ function _vRow(rep,idx,v){
   function ta(field,val){
     var safeVal=(typeof _sanitizeRich==='function')?_sanitizeRich(val||''):(val||'');
     if(!canEdit) return '<span style="font-size:12px;color:#374151;padding:2px 4px;display:block;line-height:1.5;white-space:pre-wrap;text-align:left;">'+(typeof _renderRich==='function'?_renderRich(val||'─'):(val||'─'))+'</span>';
-    return '<div class="rich-ed" contenteditable="true" data-ph="내용 입력..." onpaste="event.preventDefault();var _pt=(event.clipboardData||window.clipboardData).getData(\'text/plain\');document.execCommand(\'insertText\',false,_pt);" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" oninput="store.reps[\''+r+'\'].visitLog['+idx+'].'+field+'=_sanitizeRich(this.innerHTML);autoSave&&autoSave();_markVisitLogDirty(\''+r+'\');">'+safeVal+'</div>';
+    return '<div class="rich-ed" contenteditable="true" data-ph="내용 입력..." onmouseup="_showRTB(this)" onpaste="event.preventDefault();var _pt=(event.clipboardData||window.clipboardData).getData(\'text/plain\');document.execCommand(\'insertText\',false,_pt);" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" oninput="store.reps[\''+r+'\'].visitLog['+idx+'].'+field+'=_sanitizeRich(this.innerHTML);autoSave&&autoSave();_markVisitLogDirty(\''+r+'\');">'+safeVal+'</div>';
   }
   function sel(field, val, opts, colorMap){
     var currVal=(val===undefined||val===null)?'':(val);
@@ -12953,112 +12980,5 @@ async function _startSP(){
 }
 >
 
-<script>
-/* ═══ Rich Editor Toolbar ═══ */
-(function(){
-  var _richTarget=null, _barTimer=null;
 
-  function _inRichEd(node){
-    var el=node;
-    while(el && el!==document.body){
-      if(el.classList && el.classList.contains('rich-ed')) return el;
-      el=el.parentNode;
-    }
-    return null;
-  }
-
-  function _showBar(sel){
-    var bar=document.getElementById('_rich-bar');
-    if(!bar||!sel||!sel.rangeCount) return;
-    var rect=sel.getRangeAt(0).getBoundingClientRect();
-    if(!rect.width && !rect.height) return;
-    // visibility:hidden으로 먼저 표시해서 크기 측정
-    bar.style.visibility='hidden';
-    bar.style.display='flex';
-    var bw=bar.offsetWidth||230, bh=bar.offsetHeight||40;
-    var sx=window.scrollX||window.pageXOffset||0;
-    var sy=window.scrollY||window.pageYOffset||0;
-    var left=Math.max(8, Math.min(rect.left+sx+rect.width/2-bw/2, window.innerWidth+sx-bw-8));
-    var top=rect.top+sy-bh-10;
-    if(rect.top-bh-10<8) top=rect.bottom+sy+8;
-    bar.style.left=Math.round(left)+'px';
-    bar.style.top=Math.round(top)+'px';
-    bar.style.visibility='visible';
-  }
-
-  function _hideBar(){
-    var bar=document.getElementById('_rich-bar');
-    if(bar) bar.style.display='none';
-  }
-
-  function _doCmd(cmd,val){
-    if(_richTarget) _richTarget.focus();
-    document.execCommand(cmd,false,val||null);
-  }
-
-  // 드래그 선택 시 툴바 표시
-  document.addEventListener('mouseup', function(){
-    clearTimeout(_barTimer);
-    _barTimer=setTimeout(function(){
-      var sel=window.getSelection();
-      if(!sel||sel.isCollapsed||!sel.rangeCount){ _hideBar(); return; }
-      var t=_inRichEd(sel.anchorNode);
-      if(!t){ _hideBar(); return; }
-      _richTarget=t;
-      _showBar(sel);
-    },50);
-  });
-
-  // 터치 지원
-  document.addEventListener('touchend', function(){
-    clearTimeout(_barTimer);
-    _barTimer=setTimeout(function(){
-      var sel=window.getSelection();
-      if(!sel||sel.isCollapsed||!sel.rangeCount){ _hideBar(); return; }
-      var t=_inRichEd(sel.anchorNode);
-      if(!t){ _hideBar(); return; }
-      _richTarget=t;
-      _showBar(sel);
-    },100);
-  });
-
-  // 외부 클릭 시 툴바 숨김
-  document.addEventListener('mousedown', function(e){
-    if(e.target.closest && !e.target.closest('#_rich-bar')) _hideBar();
-  });
-
-  document.addEventListener('DOMContentLoaded', function(){
-    var bar=document.getElementById('_rich-bar');
-    if(!bar) return;
-
-    var boldBtn=document.getElementById('_rb-b');
-    if(boldBtn) boldBtn.addEventListener('mousedown',function(e){
-      e.preventDefault(); _doCmd('bold');
-    });
-
-    bar.querySelectorAll('.rb-color').forEach(function(btn){
-      btn.addEventListener('mousedown',function(e){
-        e.preventDefault(); _doCmd('foreColor',btn.dataset.color);
-      });
-    });
-
-    var clrBtn=document.getElementById('_rb-x');
-    if(clrBtn) clrBtn.addEventListener('mousedown',function(e){
-      e.preventDefault();
-      _doCmd('removeFormat');
-      _doCmd('foreColor','#1E293B');
-    });
-
-    bar.addEventListener('mousedown',function(e){ e.preventDefault(); });
-  });
-
-  // Ctrl+B 단축키
-  document.addEventListener('keydown',function(e){
-    if((e.ctrlKey||e.metaKey)&&e.key==='b'){
-      var sel=window.getSelection();
-      if(sel&&_inRichEd(sel.anchorNode)){ e.preventDefault(); _doCmd('bold'); }
-    }
-  });
-})();
-</script>
 </body>
