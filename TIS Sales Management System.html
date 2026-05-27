@@ -11496,7 +11496,7 @@ var _currentVisitTeam = 'all';
 var _visitPeriod    = 'week';
 var _visitRepFilter = [];
 var _visitPage      = 1;
-var _VISIT_PAGE_SIZE = 20;
+var _VISIT_PAGE_SIZE = 50;
 var _visitDateFrom  = '';
 var _visitDateTo    = '';
 
@@ -11996,7 +11996,7 @@ window.renderVisits=function(){
     +'<div style="display:flex;gap:6px;flex-wrap:wrap;">'+repPills+'</div>'
     +'</div>'
     +'<div class="sec-body" style="padding-top:4px;overflow:hidden;">'
-    +'<div style="max-height:480px;overflow-y:auto;overflow-x:auto;border-radius:0 0 10px 10px;">'
+    +'<div style="max-height:calc(100vh - 320px);overflow-y:auto;overflow-x:auto;border-radius:0 0 10px 10px;">'
     +'<table class="dt" style="min-width:900px;width:100%;">'
     +'<thead><tr>'
     +'<th style="background:#F8FAFC;color:#64748B;width:62px;white-space:nowrap;position:sticky;top:0;z-index:5;">팀</th>'
