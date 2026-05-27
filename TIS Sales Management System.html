@@ -7595,7 +7595,9 @@ async function _initSP() {
           var _ap2=document.querySelector('.page.active');
           if(_ap2&&_ap2.id==='page-visits'&&typeof renderVisits==='function') renderVisits();
         }
-      }catch(e){}
+      }catch(e){ console.warn('[sync]',e); }finally{
+        window._syncRunning = false; // 반드시 해제
+      }
     }, 10000);
 
   } catch (err) {
@@ -12527,13 +12529,17 @@ async function _spSyncOtherReps(){
           (myRep&&repName&&(repName.indexOf(myRep)===0||myRep.indexOf(repName)===0));
         if(_isMyRep){
           // savedAt 비교 - SP가 더 최신이면 반영 (관리자 수정 반영)
-          var _spSavedAt = new Date(repData.savedAt||0).getTime();
+          var _myItem=latestByRep[repName];
+          if(!_myItem) return;
+          var _myRawPL=_myItem.Payload||_myItem.payload||'{}';
+          var _myRepData={}; try{_myRepData=JSON.parse(_myRawPL);}catch(_e){}
+          var _spSavedAt = new Date(_myRepData.savedAt||0).getTime();
           var _localSavedAt = new Date((store.reps[myRep]&&store.reps[myRep].savedAt)||0).getTime();
           if(_spSavedAt > _localSavedAt + 5000){ // 5초 이상 차이날 때만
             if(!store.reps[myRep]) store.reps[myRep]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[]};
             // visitLog 보호: repData는 visitLog 제외 저장이므로 덮어쓰기 방지
             var _localVL = store.reps[myRep].visitLog||[];
-            Object.assign(store.reps[myRep], repData);
+            Object.assign(store.reps[myRep], _myRepData);
             if(!store.reps[myRep].visitLog || store.reps[myRep].visitLog.length < _localVL.length){
               store.reps[myRep].visitLog = _localVL;
             }
