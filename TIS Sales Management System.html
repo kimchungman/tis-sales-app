@@ -11742,7 +11742,7 @@ function _vRow(rep,idx,v){
         +'<h3>'+rep+' &mdash; 고객 접점 기록</h3>'
         +(canAdd?'<button class="add-btn" onclick="addVisit(\''+rep+'\')">&#xFF0B; 접점 추가</button>':'')
         +'</div>'
-        +'<div class="sec-body"><div style="overflow-x:auto;overflow-y:auto;max-height:360px;-webkit-overflow-scrolling:touch;">'
+        +'<div class="sec-body"><div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 340px);min-height:300px;-webkit-overflow-scrolling:touch;">'
         +'<table class="dt" style="min-width:max-content;table-layout:auto;">'
         +'<thead style="position:sticky;top:0;z-index:5;"><tr>'
         +'<th style="'+BG+'width:100px;text-align:center;">접점일자</th>'
@@ -12937,3 +12937,113 @@ async function _startSP(){
   -webkit-tap-highlight-color: transparent !important;
 }
 >
+
+<script>
+/* ═══ Rich Editor Toolbar ═══ */
+(function(){
+  var _richTarget=null, _barTimer=null;
+
+  function _inRichEd(node){
+    var el=node;
+    while(el && el!==document.body){
+      if(el.classList && el.classList.contains('rich-ed')) return el;
+      el=el.parentNode;
+    }
+    return null;
+  }
+
+  function _showBar(sel){
+    var bar=document.getElementById('_rich-bar');
+    if(!bar||!sel||!sel.rangeCount) return;
+    var rect=sel.getRangeAt(0).getBoundingClientRect();
+    if(!rect.width && !rect.height) return;
+    // visibility:hidden으로 먼저 표시해서 크기 측정
+    bar.style.visibility='hidden';
+    bar.style.display='flex';
+    var bw=bar.offsetWidth||230, bh=bar.offsetHeight||40;
+    var sx=window.scrollX||window.pageXOffset||0;
+    var sy=window.scrollY||window.pageYOffset||0;
+    var left=Math.max(8, Math.min(rect.left+sx+rect.width/2-bw/2, window.innerWidth+sx-bw-8));
+    var top=rect.top+sy-bh-10;
+    if(rect.top-bh-10<8) top=rect.bottom+sy+8;
+    bar.style.left=Math.round(left)+'px';
+    bar.style.top=Math.round(top)+'px';
+    bar.style.visibility='visible';
+  }
+
+  function _hideBar(){
+    var bar=document.getElementById('_rich-bar');
+    if(bar) bar.style.display='none';
+  }
+
+  function _doCmd(cmd,val){
+    if(_richTarget) _richTarget.focus();
+    document.execCommand(cmd,false,val||null);
+  }
+
+  // 드래그 선택 시 툴바 표시
+  document.addEventListener('mouseup', function(){
+    clearTimeout(_barTimer);
+    _barTimer=setTimeout(function(){
+      var sel=window.getSelection();
+      if(!sel||sel.isCollapsed||!sel.rangeCount){ _hideBar(); return; }
+      var t=_inRichEd(sel.anchorNode);
+      if(!t){ _hideBar(); return; }
+      _richTarget=t;
+      _showBar(sel);
+    },50);
+  });
+
+  // 터치 지원
+  document.addEventListener('touchend', function(){
+    clearTimeout(_barTimer);
+    _barTimer=setTimeout(function(){
+      var sel=window.getSelection();
+      if(!sel||sel.isCollapsed||!sel.rangeCount){ _hideBar(); return; }
+      var t=_inRichEd(sel.anchorNode);
+      if(!t){ _hideBar(); return; }
+      _richTarget=t;
+      _showBar(sel);
+    },100);
+  });
+
+  // 외부 클릭 시 툴바 숨김
+  document.addEventListener('mousedown', function(e){
+    if(e.target.closest && !e.target.closest('#_rich-bar')) _hideBar();
+  });
+
+  document.addEventListener('DOMContentLoaded', function(){
+    var bar=document.getElementById('_rich-bar');
+    if(!bar) return;
+
+    var boldBtn=document.getElementById('_rb-b');
+    if(boldBtn) boldBtn.addEventListener('mousedown',function(e){
+      e.preventDefault(); _doCmd('bold');
+    });
+
+    bar.querySelectorAll('.rb-color').forEach(function(btn){
+      btn.addEventListener('mousedown',function(e){
+        e.preventDefault(); _doCmd('foreColor',btn.dataset.color);
+      });
+    });
+
+    var clrBtn=document.getElementById('_rb-x');
+    if(clrBtn) clrBtn.addEventListener('mousedown',function(e){
+      e.preventDefault();
+      _doCmd('removeFormat');
+      _doCmd('foreColor','#1E293B');
+    });
+
+    bar.addEventListener('mousedown',function(e){ e.preventDefault(); });
+  });
+
+  // Ctrl+B 단축키
+  document.addEventListener('keydown',function(e){
+    if((e.ctrlKey||e.metaKey)&&e.key==='b'){
+      var sel=window.getSelection();
+      if(sel&&_inRichEd(sel.anchorNode)){ e.preventDefault(); _doCmd('bold'); }
+    }
+  });
+})();
+</script>
+</body>
