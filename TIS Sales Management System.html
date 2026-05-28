@@ -105,8 +105,23 @@ function getSelectOpts(field){
 }
 function refreshSelectOptions(){
   if(document.querySelector('.page#page-input.active')){
+    // 현재 활성 v탭 기억 (buildRepInputs 후 복원)
+    var _avTab=null,_avRep=null;
+    document.querySelectorAll('[id^="vtab-contract-"],[id^="vtab-visit-"]').forEach(function(b){
+      var c=b.style.color;
+      if(c==='#0EA5A0'||c==='rgb(14, 165, 160)'){
+        _avTab=b.id.startsWith('vtab-contract-')?'contract':'visit';
+        _avRep=b.id.replace('vtab-contract-','').replace('vtab-visit-','');
+      }
+    });
     window._lastBuiltTeam=null;
     if(typeof buildRepInputs==='function') buildRepInputs();
+    // 활성 v탭 복원 (buildRepInputs DOM 완료 후)
+    if(_avTab&&_avRep){
+      setTimeout(function(){
+        if(typeof window._switchVTab==='function') window._switchVTab(_avRep,_avTab);
+      },150);
+    }
   }
   if(typeof CONTACT_TYPES!=='undefined') CONTACT_TYPES.splice(0,CONTACT_TYPES.length,...getSelectOpts('contactType'));
   if(typeof CONTACT_PURPOSES!=='undefined') CONTACT_PURPOSES.splice(0,CONTACT_PURPOSES.length,...getSelectOpts('contactPurpose'));
@@ -3772,13 +3787,7 @@ function initDashTabs() {
   _buildTeamTabs('dash-team-tabs', 'dash', function(team) {
     if (typeof currentDashTeam !== 'undefined') currentDashTeam = team;
     if (typeof renderDashboard === 'function') renderDashboard();
-  if(id==='contract'&&typeof renderContractDashboard==='function'){
-    // 게스트는 계약 현황 접근 불가
-    if(session&&session.role==='guest'){
-      var _body=document.getElementById('contract-dashboard-body');
-      if(_body)_body.innerHTML='<div style="text-align:center;padding:60px;color:#94A3B8;">접근 권한이 없습니다.</div>';
-    }else renderContractDashboard();
-  }
+
   });
 }
 
@@ -3921,6 +3930,14 @@ function showPage(id,navEl){
     try{ initDashTabs(); }catch(e){}
     try{ if(typeof renderDashboard==='function') renderDashboard(); }catch(e){}
     setTimeout(function(){ try{ renderRepChart(); }catch(e){} }, 100);
+  } else if(id==='contract'){
+    if(typeof renderContractDashboard==='function'){
+      if(typeof TEAMS!=='undefined'&&TEAMS&&TEAMS.length){
+        renderContractDashboard();
+      }else{
+        setTimeout(function(){if(typeof renderContractDashboard==='function')renderContractDashboard();},500);
+      }
+    }
   }
   if(id==='issues'){
     if(typeof renderIssueTeamTabs==='function') renderIssueTeamTabs();
@@ -6600,7 +6617,7 @@ function applyPermissions(){
 
   // 게스트: 대시보드, 고객접점, 파이프라인, 이슈 메뉴만 활성화
   if(isGuest){
-    var guestAllow=["'dashboard'","'visits'","'pipeline'","'issues'"];
+    var guestAllow=["'dashboard'","'visits'","'pipeline'","'issues'","'contract'"];
     document.querySelectorAll('.nav-item').forEach(function(n){
       var oc=n.getAttribute('onclick')||'';
       var allowed=guestAllow.some(function(p){return oc.indexOf(p)>=0;});
@@ -7618,17 +7635,10 @@ async function _initSP() {
         }
       }catch(e){ console.warn('[sync]',e); }finally{
         window._syncRunning = false; // 반드시 해제
-        // 계약 탭이 열려있으면 재렌더
+        // 계약 탭/페이지 재렌더
         try{
-          var _activeContractRep=null;
-          document.querySelectorAll('[id^="vtab-contract-"]').forEach(function(btn){
-            if(btn.style.color==='#0EA5A0'||btn.style.color==='rgb(14, 165, 160)')
-              _activeContractRep=btn.id.replace('vtab-contract-','');
-          });
-          if(_activeContractRep&&typeof _rebuildContractPanel==='function')
-            _rebuildContractPanel(_activeContractRep);
-          var _ap=document.querySelector('.page.active');
-          if(_ap&&_ap.id==='page-contract'&&typeof renderContractDashboard==='function')
+          var _acp=document.querySelector('.page.active');
+          if(_acp&&_acp.id==='page-contract'&&typeof renderContractDashboard==='function')
             renderContractDashboard();
         }catch(_e){}
       }
