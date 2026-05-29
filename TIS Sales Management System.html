@@ -4554,6 +4554,11 @@ function switchInputTeam(team){
   // 현재 활성 vtab 저장 (200ms 후 복원용 - 80ms timeout이 main으로 덮기 전에 저장)
   var _savedVT=(window._activeVTab&&window._activeVTab.tab!=='main')
     ?{rep:window._activeVTab.rep,tab:window._activeVTab.tab}:null;
+  var _bA=document.getElementById('rep-input-area');
+  if(window._lastBuiltTeam===team&&_bA&&_bA.children.length>0){
+    if(_savedVT&&_savedVT.rep&&_savedVT.tab&&typeof window._switchVTab==='function')window._switchVTab(_savedVT.rep,_savedVT.tab);
+    return;
+  }
   currentTeam=team;
   // 팀이 바뀌면 재빌드 강제
   if(window._lastBuiltTeam !== team) window._lastBuiltTeam = null;
@@ -13135,6 +13140,16 @@ function _cFmt(v){if(v===null||v===undefined||v==="")return "—";var n=parseFlo
 function _cFmtInput(el){var r=el.value.replace(/,/g,'').replace(/[^0-9]/g,'');el.value=r?Number(r).toLocaleString('ko-KR'):'';}
 function _cDday(d){if(!d)return null;var a=new Date(d);a.setHours(0,0,0,0);var b=new Date();b.setHours(0,0,0,0);return Math.round((a-b)/86400000);}
 function _cDdayBadge(ds){
+  var n=_cDday(ds);
+  if(n===null)return '<span style="color:#CBD5E1;font-size:11px;">—</span>';
+  if(n<0){
+    var p=Math.abs(n);
+    return '<span style="background:#FEECEC;color:#DC2626;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;">D+'+p+'</span>';
+  }
+  var bg=n<=7?'#FEECEC':n<=30?'#FFF3E0':'#F0FDF4';
+  var cl=n<=7?'#DC2626':n<=30?'#D97706':'#059669';
+  return '<span style="background:'+bg+';color:'+cl+';padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;">D-'+n+'</span>';
+}function _cDdayBadge(ds){
   if(!ds)return '<span style="color:#CBD5E1;">—</span>';
   var n=_cDday(ds);
   if(n===null)return '';
@@ -13556,7 +13571,7 @@ function renderContractDashboard(){
     // 유지보수 갱신 필요
     h+='<div style="background:white;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;flex:1;">';
     h+='<div style="padding:10px 14px;background:linear-gradient(135deg,#E0F7F5,#F0FDFC);border-bottom:1px solid #99F6E440;display:flex;align-items:center;justify-content:space-between;">';
-    h+='<span style="font-size:12px;font-weight:700;color:#0EA5A0;">🔁 유지보수 갱신 필요</span>';
+    h+='<span style="font-size:12px;font-weight:700;color:#0EA5A0;">유지보수 갱신 필요</span>';
     h+='<span style="background:#0EA5A0;color:white;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;">'+maNeed.length+'건</span>';
     h+='</div>';
     if(!maNeed.length){
@@ -13582,7 +13597,7 @@ function renderContractDashboard(){
     // 하자→유지보수 전환 필요
     h+='<div style="background:white;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;flex:1;">';
     h+='<div style="padding:10px 14px;background:linear-gradient(135deg,#F0EBFF,#FAF5FF);border-bottom:1px solid #DDD6FE40;display:flex;align-items:center;justify-content:space-between;">';
-    h+='<span style="font-size:12px;font-weight:700;color:#7C3AED;">⚡ 하자→유지보수 전환</span>';
+    h+='<span style="font-size:12px;font-weight:700;color:#7C3AED;">하자→유지보수 전환</span>';
     h+='<span style="background:#7C3AED;color:white;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;">'+def2ma.length+'건</span>';
     h+='</div>';
     if(!def2ma.length){
@@ -13612,11 +13627,11 @@ function renderContractDashboard(){
     if(urgent.length&&_cDashUrgency!=='expired'){
       h+='<div style="background:white;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;margin-bottom:14px;">';
       h+='<div style="padding:12px 16px;border-bottom:1px solid #F1F5F9;display:flex;align-items:center;justify-content:space-between;">';
-      h+='<span style="font-size:13px;font-weight:700;color:#D97706;">⚡ D-30 이내 주의</span>';
+      h+='<span style="font-size:13px;font-weight:700;color:#D97706;">D-30 이내 주의</span>';
       h+='<span style="font-size:12px;color:#94A3B8;">'+urgent.length+'건</span>';
       h+='</div>';
       h+='<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;min-width:600px;">';
-      h+='<colgroup><col style="width:68px;"><col style="width:86px;"><col style="width:74px;"><col style="width:190px;"><col style="width:64px;"><col style="width:74px;"><col style="width:64px;"><col style="width:68px;"></colgroup>';
+      h+='<colgroup><col style="width:66px;"><col style="width:82px;"><col style="width:68px;"><col style="width:220px;"><col style="width:58px;"><col style="width:68px;"><col style="width:58px;"><col style="width:62px;"></colgroup>';
       var TH2='padding:8px 6px !important;text-align:center !important;font-weight:500;color:#94A3B8;font-size:11px;border-bottom:1px solid #E2E8F0;background:#F8FAFC;white-space:nowrap;';
       h+='<thead><tr>';
       ['담당자','고객사','계약유형','프로젝트','계약D-day','관리유형','관리D-day','상태'].forEach(function(t){h+='<th style="'+TH2+'">'+t+'</th>';});
@@ -13647,7 +13662,7 @@ function renderContractDashboard(){
     } else {
       h+='<div style="overflow-x:auto;max-height:380px;overflow-y:auto;">';
       h+='<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;min-width:820px;">';
-      h+='<colgroup><col style="width:70px;"><col style="width:86px;"><col style="width:76px;"><col style="width:190px;"><col style="width:76px;"><col style="width:64px;"><col style="width:64px;"><col style="width:76px;"><col style="width:64px;"><col style="width:64px;"></colgroup>';
+      h+='<colgroup><col style="width:68px;"><col style="width:82px;"><col style="width:70px;"><col style="width:220px;"><col style="width:70px;"><col style="width:58px;"><col style="width:58px;"><col style="width:70px;"><col style="width:58px;"><col style="width:56px;"></colgroup>';
       var TH3='padding:8px 6px !important;font-weight:500;color:#94A3B8;font-size:11px;border-bottom:2px solid #E2E8F0;text-align:center !important;white-space:nowrap;background:#F8FAFC;';
       h+='<thead style="position:sticky;top:0;z-index:5;"><tr>';
       ['담당자','고객사','계약유형','프로젝트','금액(천)','계약종료','계약D-day','관리유형','관리D-day','상태'].forEach(function(t){h+='<th style="'+TH3+'">'+t+'</th>';});
