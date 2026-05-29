@@ -13498,17 +13498,7 @@ function renderContractDashboard(){
     var lateMA=all.filter(function(c){var isMa=(c.managementType==='유지보수'&&_cDday(c.endDate)!==null&&_cDday(c.endDate)<0);var isDef=(c.managementType==='하자기간'&&_cDday(c.managementEndDate)!==null&&_cDday(c.managementEndDate)<0);return (isMa||isDef)&&c.status!=='종료';}).sort(function(a,b){var da=(a.managementType==='유지보수'?_cDday(a.endDate):_cDday(a.managementEndDate))||0;var db=(b.managementType==='유지보수'?_cDday(b.endDate):_cDday(b.managementEndDate))||0;return da-db;});
     var h='';
     // ── KPI 3개 ──
-    h+='<div class="dash-list-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">';
-    [{l:'전체 계약',v:all.length+'건',c:'#1E293B',bg:'#F8FAFC',bc:'#E2E8F0',oc:''},
-     {l:'유지보수 계약 대상',v:mgtTarget+'건',c:'#0EA5A0',bg:'#F0FDF9',bc:'#99F6E4',oc:''},
-     {l:'유지보수 계약 지연',v:lateMA.length+'건',c:'#DC2626',bg:'#FFF5F5',bc:'#FECACA',oc:''}
-    ].forEach(function(k){
-      h+='<div style="background:'+k.bg+';border:1px solid '+k.bc+';border-radius:8px;padding:7px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">';
-      h+='<span style="font-size:11px;color:#64748B;font-weight:500;white-space:nowrap;">'+k.l+'</span>';
-      h+='<span style="font-size:16px;font-weight:700;color:'+k.c+';white-space:nowrap;">'+k.v+'</span>';
-      h+='</div>';
-    });
-    h+='</div>';
+
     // ── 필터 ──
     function pill(l,oc,isA,col){var bg=isA?(col||'#4f7fff'):'white';var fc=isA?'#fff':(col||'#64748B');var bd=isA?(col||'#4f7fff'):'#E2E8F0';return '<button onclick="'+oc+'" style="padding:4px 11px;border-radius:20px;font-size:11px;font-weight:'+(isA?'700':'500')+';border:1.5px solid '+bd+';background:'+bg+';color:'+fc+';cursor:pointer;white-space:nowrap;">'+l+'</button>';}
 
@@ -13529,7 +13519,7 @@ function renderContractDashboard(){
       if(!items.length){
         s+='<div style="padding:20px;font-size:12px;color:#CBD5E1;text-align:center;">해당 없음</div>';
       } else {
-        s+='<div style="overflow-y:auto;min-height:430px;max-height:520px;">';
+        s+='<div style="overflow-y:auto;min-height:460px;">';
         items.forEach(function(c,i){
           var dv=dateKeyFn(c);
           var badge=makeDayBadge(dv);
