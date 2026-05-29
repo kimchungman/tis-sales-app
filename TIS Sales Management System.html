@@ -13546,28 +13546,28 @@ function renderContractDashboard(){
       return '<span style="display:inline-block;background:'+dc+'18;color:'+dc+';padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;">'+(isExp?'D+':'D-')+p+'</span>';
     }
     function makeList(title,color,items,dateKeyFn){
-      var s='<div style="background:white;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-height:560px;">';
-      s+='<div style="padding:10px 14px;border-bottom:1px solid #F1F5F9;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">';
-      s+='<span style="font-size:12px;font-weight:700;color:'+color+';">'+title+'</span>';
-      s+='<span style="background:'+color+';color:white;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;">'+items.length+'건</span>';
+      var s='<div style="background:white;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-height:420px;">';
+      s+='<div style="padding:12px 16px;border-bottom:1px solid #F1F5F9;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">';
+      s+='<span style="font-size:14px;font-weight:700;color:'+color+';">'+title+'</span>';
+      s+='<span style="background:'+color+';color:white;padding:3px 11px;border-radius:20px;font-size:12px;font-weight:700;">'+items.length+'건</span>';
       s+='</div>';
       if(!items.length){
         s+='<div style="padding:20px;font-size:12px;color:#CBD5E1;text-align:center;">해당 없음</div>';
       } else {
-        s+='<div style="overflow-y:auto;min-height:510px;">';
+        s+='<div style="overflow-y:auto;min-height:370px;">';
         items.forEach(function(c,i){
           var dv=dateKeyFn(c);
           var badge=makeDayBadge(dv);
-          s+='<div style="padding:9px 14px;'+(i>0?'border-top:0.5px solid #F5F7FA;':'')+'">';
+          s+='<div style="padding:10px 16px;'+(i>0?'border-top:0.5px solid #F5F7FA;':'')+'">';
           s+='<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">';
           s+='<div style="flex:1;min-width:0;">';
-          s+='<div style="font-size:12px;font-weight:700;color:#1E293B;margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(c.client||'—')+'</div>';
-          s+='<div style="font-size:11px;color:#4B5563;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.35;">'+(c.projectName||'—')+'</div>';
-          if(c._rep)s+='<div style="font-size:10px;color:#6B7280;margin-top:2px;">'+c._rep+'</div>';
+          s+='<div style="font-size:13px;font-weight:700;color:#1E293B;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(c.client||'—')+'</div>';
+          s+='<div style="font-size:12px;color:#4B5563;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.4;">'+(c.projectName||'—')+'</div>';
+          if(c._rep)s+='<div style="font-size:11px;color:#6B7280;margin-top:2px;">'+c._rep+'</div>';
           s+='</div>';
           s+='<div style="flex-shrink:0;text-align:right;">';
           s+=badge||'<span style="font-size:10px;color:#CBD5E1;">날짜없음</span>';
-          if(dv)s+='<div style="font-size:10px;color:#6B7280;margin-top:2px;white-space:nowrap;">'+dv+'</div>';
+          if(dv)s+='<div style="font-size:11px;color:#6B7280;margin-top:2px;white-space:nowrap;">'+dv+'</div>';
           s+='</div></div></div>';
         });
         s+='</div>';
