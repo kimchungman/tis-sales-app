@@ -13322,12 +13322,24 @@ function _rebuildContractPanel(rep){
   if(!window._cTabFilter)window._cTabFilter={};
   if(!window._cTabFilter[rep])window._cTabFilter[rep]={status:'all',urgency:'all'};
   var tf=window._cTabFilter[rep];
+
+  // 고객사명 정렬: 영문(A-Z) → 한글(ㄱ-ㅎ)
+  function _clientSort(a, b){
+    var na=(a.client||'').trim();
+    var nb=(b.client||'').trim();
+    var aIsKo=/[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(na[0]);
+    var bIsKo=/[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(nb[0]);
+    if(!aIsKo&&bIsKo) return -1;  // 영문 먼저
+    if(aIsKo&&!bIsKo) return 1;
+    return na.localeCompare(nb, aIsKo?'ko':'en');
+  }
   var filteredC=contracts.filter(function(c){
     if(tf.status!=='all'&&c.status!==tf.status)return false;
     if(tf.urgency==='d30'){var dm=Math.min(_cDday(c.endDate)!==null?_cDday(c.endDate):9999,_cDday(c.managementEndDate)!==null?_cDday(c.managementEndDate):9999);if(!(dm>=0&&dm<=30))return false;}
     if(tf.urgency==='expired'){var dm2=Math.min(_cDday(c.endDate)!==null?_cDday(c.endDate):9999,_cDday(c.managementEndDate)!==null?_cDday(c.managementEndDate):9999);if(!(dm2<0))return false;}
     return true;
   });
+  filteredC.sort(_clientSort);
   function fp(label,oc,isA,col){
     var bg=isA?(col||'#4f7fff'):'white';var fc=isA?'#fff':(col||'#64748B');var bd=isA?(col||'#4f7fff'):'#E2E8F0';
     return '<button onclick="'+oc+'" style="padding:4px 11px;border-radius:20px;font-size:11px;font-weight:'+(isA?'700':'500')+';border:1.5px solid '+bd+';background:'+bg+';color:'+fc+';cursor:pointer;white-space:nowrap;">'+label+'</button>';
