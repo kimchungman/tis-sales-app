@@ -13415,24 +13415,11 @@ function _processContractItems(items,yR){
   });
 }
 var _cLoaded={};
-async function _lazyLoadContractData(rep){
+function _lazyLoadContractData(rep){
   var el=document.getElementById('cpl-'+rep);
   if(!el)return;
-  // SP 무관 즉시 현재 store 기준 렌더
+  // store 데이터로 즉시 1회 렌더 (SP fetch 없음 - sync에서 이미 처리)
   _rebuildContractPanel(rep);
-  // SP 연결 시 최신 데이터 로드 (캐시됐어도 store가 sync로 갱신됐을 수 있어 항상 재렌더)
-  if(window._isSPReady){
-    if(!_cLoaded[rep]){
-      _cLoaded[rep]=true;
-      try{
-        var cy=new Date().getFullYear();
-        var res=await _spFetchAll(_lUrl()+'?$select=Id,Title,DataType,DataKey,Payload&$top=500');
-        _processContractItems((res&&res.value)||[],[cy-2,cy-1,cy,cy+1]);
-      }catch(e){console.warn('[contract]',e);}
-    }
-    // 항상 최신 store로 재렌더
-    _rebuildContractPanel(rep);
-  }
 }
 
 // ── 계약 현황 대시보드 ──
@@ -13516,9 +13503,9 @@ function renderContractDashboard(){
      {l:'유지보수 계약 대상',v:mgtTarget+'건',c:'#0EA5A0',bg:'#F0FDF9',bc:'#99F6E4',oc:''},
      {l:'유지보수 계약 지연',v:lateMA.length+'건',c:'#DC2626',bg:'#FFF5F5',bc:'#FECACA',oc:''}
     ].forEach(function(k){
-      h+='<div style="background:'+k.bg+';border:1px solid '+k.bc+';border-radius:8px;padding:8px 12px;">';
-      h+='<div style="font-size:11px;color:#64748B;margin-bottom:2px;font-weight:500;">'+k.l+'</div>';
-      h+='<div style="font-size:18px;font-weight:700;color:'+k.c+';">'+k.v+'</div>';
+      h+='<div style="background:'+k.bg+';border:1px solid '+k.bc+';border-radius:8px;padding:7px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">';
+      h+='<span style="font-size:11px;color:#64748B;font-weight:500;white-space:nowrap;">'+k.l+'</span>';
+      h+='<span style="font-size:16px;font-weight:700;color:'+k.c+';white-space:nowrap;">'+k.v+'</span>';
       h+='</div>';
     });
     h+='</div>';
@@ -13542,7 +13529,7 @@ function renderContractDashboard(){
       if(!items.length){
         s+='<div style="padding:20px;font-size:12px;color:#CBD5E1;text-align:center;">해당 없음</div>';
       } else {
-        s+='<div style="overflow-y:auto;min-height:420px;max-height:480px;">';
+        s+='<div style="overflow-y:auto;min-height:430px;max-height:520px;">';
         items.forEach(function(c,i){
           var dv=dateKeyFn(c);
           var badge=makeDayBadge(dv);
