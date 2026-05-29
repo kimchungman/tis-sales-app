@@ -108,10 +108,13 @@ function refreshSelectOptions(){
     var _saved=window._activeVTab&&window._activeVTab.tab!=='main'?Object.assign({},window._activeVTab):null;
     window._lastBuiltTeam=null;
     if(typeof buildRepInputs==='function') buildRepInputs();
+    // rebuild 후 _lastBuiltTeam 복원 (연속 rebuild 방지)
+    if(typeof currentTeam!=='undefined') window._lastBuiltTeam=currentTeam;
     if(_saved&&_saved.rep&&_saved.tab){
-      setTimeout(function(){
-        if(typeof window._switchVTab==='function') window._switchVTab(_saved.rep,_saved.tab);
-      },300);
+      // 100ms: DOM 안정화 후 1차 복원
+      setTimeout(function(){if(typeof window._switchVTab==='function')window._switchVTab(_saved.rep,_saved.tab);},100);
+      // 400ms: 혹시 다른 타이머가 덮어도 재복원
+      setTimeout(function(){if(typeof window._switchVTab==='function'&&window._activeVTab&&window._activeVTab.tab!==_saved.tab)window._switchVTab(_saved.rep,_saved.tab);},400);
     }
   }
   if(typeof CONTACT_TYPES!=='undefined') CONTACT_TYPES.splice(0,CONTACT_TYPES.length,...getSelectOpts('contactType'));
@@ -8126,9 +8129,17 @@ async function _spLoadSettings() {
     _tabState.visits   = session.team;
     // ★ switchInputTeam 사용: currentTeam, REPS, 팀탭, 담당자탭 전체 갱신
     if(typeof switchInputTeam==='function'){
-      switchInputTeam(session.team);
-      // buildRepInputs 후 권한 재적용
-      if(typeof applyPermissions==='function') setTimeout(applyPermissions, 50);
+      // 팀 동일 && DOM 빌드됨 → switchInputTeam 차단 (불필요한 rebuild/플리커 방지)
+      if(window._lastBuiltTeam!==session.team){
+        switchInputTeam(session.team);
+      } else {
+        // vtab만 복원 (rebuild 없이)
+        var _vt=window._activeVTab;
+        if(_vt&&_vt.tab!=='main'&&_vt.rep&&typeof window._switchVTab==='function'){
+          window._switchVTab(_vt.rep,_vt.tab);
+        }
+        if(typeof applyPermissions==='function') setTimeout(applyPermissions,50);
+      }
     } else {
       if(typeof applyCurrentTeam==='function') applyCurrentTeam(session.team);
       if(typeof buildRepTabs==='function') buildRepTabs();
