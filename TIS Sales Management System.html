@@ -155,7 +155,15 @@ function renderSelectOptsSettings(){
     if(!f.fixed) h+='<button onclick="addSelectOpt(this)" data-field="'+f.key+'" style="padding:3px 10px;border:1.5px dashed #CBD5E1;border-radius:8px;background:transparent;font-size:12px;color:#94A3B8;cursor:pointer;font-family:inherit;">+ 추가</button>';
     h+='</div></div>';
   });
+  // 스크롤 위치 보존
+  var _st=0;
+  var _scrollWrap=el.querySelector('[style*="overflow-y:auto"]')||el.querySelector('[style*="overflow-y: auto"]');
+  if(_scrollWrap)_st=_scrollWrap.scrollTop;
   el.innerHTML=h;
+  if(_st>0){
+    var _nw=el.querySelector('[style*="overflow-y:auto"]')||el.querySelector('[style*="overflow-y: auto"]');
+    if(_nw)_nw.scrollTop=_st;
+  }
 }
 var _soDragField='', _soDragIdx=-1;
 function soStartDrag(e,el){
@@ -11937,7 +11945,13 @@ window._switchVTab=function(rep,tab){
   mp.style.display=isMain?'block':'none';
   vp.style.display=_iv?'block':'none';
   if(cp)cp.style.display=(tab==='contract')?'block':'none';
-  if(tab==='contract'&&typeof _lazyLoadContractData==='function')_lazyLoadContractData(rep);
+  if(tab==='contract'&&typeof _lazyLoadContractData==='function'){
+    // 이미 패널이 보이고 내용 있으면 재빌드 스킵 (깜빡임 방지)
+    var _cplEl=document.getElementById('cpl-'+rep);
+    if(!cp||cp.style.display!=='block'||!_cplEl||!_cplEl.children.length){
+      _lazyLoadContractData(rep);
+    }
+  }
   // 활성 탭 전역 기록 (color 감지 불필요)
   window._activeVTab={rep:rep,tab:tab};
   // visit탭 전환 시 vpanel textarea resize
@@ -13685,28 +13699,45 @@ function _cTimelineView(cs){
 </script>
 
 <script>
-/* ── vtab 워치독 v2: _intendedVTab 기준 복원 ── */
-setInterval(function(){
-  try{
-    // _intendedVTab: 사용자가 마지막으로 명시적으로 선택한 탭
-    // 자동 main 전환은 여기 기록 안 됨 → 신뢰 가능
-    var it=window._intendedVTab;
-    if(!it||!it.rep||it.tab==='main')return;
-    var mp=document.getElementById('mpanel-'+it.rep);
-    if(!mp)return;
-    var cp=document.getElementById('cpanel-'+it.rep);
-    var vp=document.getElementById('vpanel-'+it.rep);
-    // 화면이 올바른지 확인
-    var shouldBeContract=(it.tab==='contract');
-    var shouldBeVisit=(it.tab==='visit');
-    var cpOk=shouldBeContract&&cp&&cp.style.display==='block';
-    var vpOk=shouldBeVisit&&vp&&vp.style.display==='block';
-    var wrong=!cpOk&&!vpOk;
-    if(wrong&&typeof window._switchVTab==='function'){
-      window._switchVTab(it.rep,it.tab);
-    }
-  }catch(e){}
-},150);
+/* ── vtab 워치독 v3: 디바운스 + 스크롤 보존 ── */
+(function(){
+  var _lastFix=0;
+  setInterval(function(){
+    try{
+      var it=window._intendedVTab;
+      if(!it||!it.rep||it.tab==='main')return;
+      var cp=document.getElementById('cpanel-'+it.rep);
+      var vp=document.getElementById('vpanel-'+it.rep);
+      var mp=document.getElementById('mpanel-'+it.rep);
+      if(!mp)return;
+      var cpOk=(it.tab==='contract'&&cp&&cp.style.display==='block');
+      var vpOk=(it.tab==='visit'&&vp&&vp.style.display==='block');
+      if(!cpOk&&!vpOk){
+        var now=Date.now();
+        if(now-_lastFix<1000)return; // 1초에 최대 1회
+        _lastFix=now;
+        // 스크롤 보존
+        var _scrollEl=cp?cp.querySelector('[style*="overflow"]'):null;
+        var _scrollTop=_scrollEl?_scrollEl.scrollTop:0;
+        // mp만 숨기고 cp 보이기 (lazyLoad 없이 직접)
+        if(mp)mp.style.display='none';
+        if(vp)vp.style.display='none';
+        if(cp){cp.style.display='block';}
+        window._activeVTab={rep:it.rep,tab:it.tab};
+        // 스크롤 복원
+        if(_scrollEl&&_scrollTop>0)_scrollEl.scrollTop=_scrollTop;
+        // 버튼 활성화
+        var TEAL='#0EA5A0';
+        ['vtab-main-','vtab-visit-','vtab-contract-'].forEach(function(pfx){
+          var b=document.getElementById(pfx+it.rep);
+          if(b){b.style.color='#94A3B8';b.style.borderBottomColor='transparent';b.style.fontWeight='500';}
+        });
+        var ab=document.getElementById('vtab-'+(it.tab==='contract'?'contract':'visit')+'-'+it.rep);
+        if(ab){ab.style.color=TEAL;ab.style.borderBottomColor=TEAL;ab.style.fontWeight='700';}
+      }
+    }catch(e){}
+  },300);
+})();
 </script>
 <script>
 /* ── 계약 D-DAY 표시 (컨텍스트 반영) ── */
