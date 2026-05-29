@@ -12629,6 +12629,8 @@ async function _spSyncOtherReps(){
         var _cpl=JSON.parse(item.Payload||'{}');
         var _cr=_cpl.rep; var _cyr=parseInt(_cpl.year);
         var _cyNow=new Date().getFullYear();
+        // 내 rep 계약은 스킵 (로컬 store가 최신 - 덮어쓰기 방지)
+        if(_cr&&session&&session.rep&&_cr===session.rep){return;}
         if(_cr&&_cpl.contracts&&Math.abs(_cyr-_cyNow)<=2){
           if(!store.reps[_cr]) store.reps[_cr]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[],contracts:[]};
           if(!store.reps[_cr].contracts) store.reps[_cr].contracts=[];
@@ -12742,6 +12744,8 @@ async function _spLoadAllReps(){
         var _cpl=JSON.parse(item.Payload||'{}');
         var _cr=_cpl.rep; var _cyr=parseInt(_cpl.year);
         var _cyNow=new Date().getFullYear();
+        // 내 rep 계약은 스킵 (로컬 store가 최신 - 덮어쓰기 방지)
+        if(_cr&&session&&session.rep&&_cr===session.rep){return;}
         if(_cr&&_cpl.contracts&&Math.abs(_cyr-_cyNow)<=2){
           if(!store.reps[_cr]) store.reps[_cr]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[],contracts:[]};
           if(!store.reps[_cr].contracts) store.reps[_cr].contracts=[];
@@ -13429,14 +13433,24 @@ function _rebuildContractPanel(rep){
 
 // ── SP 저장 ──
 async function _spSaveContractData(rep){
-  if(!window._isSPReady||!rep)return;
-  var cs=_getContracts(rep);
-  var bY={};
-  cs.forEach(function(c){var yr=c.startDate?parseInt(c.startDate.substr(0,4)):new Date().getFullYear();if(!bY[yr])bY[yr]=[];bY[yr].push(c);});
-  var cy=new Date().getFullYear();if(!bY[cy])bY[cy]=[];
-  for(var yr in bY){
-    var k=_sanitizeDKey(rep+'_'+yr);
-    await _spSaveItem('contract_data',k,{rep:rep,year:parseInt(yr),contracts:bY[yr],savedAt:new Date().toISOString()});
+  if(!rep)return;
+  if(!window._isSPReady){
+    if(typeof showToast==='function')showToast('⚠️ SP 미연결 - 계약 데이터를 저장할 수 없습니다','warn');
+    return;
+  }
+  try{
+    var cs=_getContracts(rep);
+    var bY={};
+    cs.forEach(function(c){var yr=c.startDate?parseInt(c.startDate.substr(0,4)):new Date().getFullYear();if(!bY[yr])bY[yr]=[];bY[yr].push(c);});
+    var cy=new Date().getFullYear();if(!bY[cy])bY[cy]=[];
+    for(var yr in bY){
+      var k=_sanitizeDKey(rep+'_'+yr);
+      await _spSaveItem('contract_data',k,{rep:rep,year:parseInt(yr),contracts:bY[yr],savedAt:new Date().toISOString()});
+    }
+    if(typeof showToast==='function')showToast('✅ 계약 저장 완료');
+  }catch(e){
+    console.error('[contract save]',e);
+    if(typeof showToast==='function')showToast('❌ 계약 저장 실패: '+((e&&e.message)||'오류'),'error');
   }
 }
 function _processContractItems(items,yR){
