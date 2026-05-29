@@ -13311,14 +13311,20 @@ function _rebuildContractPanel(rep){
   var contracts=_getContracts(rep);
   var total=contracts.length;
   var active=contracts.filter(function(c){return c.status==='진행중';}).length;
-  var d7=0,d30=0;
+  var d30=0;
   contracts.forEach(function(c){
     [c.endDate,c.managementEndDate].forEach(function(d){
       var n=_cDday(d);
-      if(n!==null&&n>=0&&n<=7)d7++;
-      else if(n!==null&&n>=0&&n<=30)d30++;
+      if(n!==null&&n>=0&&n<=30)d30++;
     });
   });
+  // 유지보수 계약 지연: 계약D-day 또는 관리D-day가 D+ (만료됨, 미종료)
+  var lateCount=contracts.filter(function(c){
+    if(c.status==='종료')return false;
+    var isMa=(c.managementType==='유지보수'&&_cDday(c.endDate)!==null&&_cDday(c.endDate)<0);
+    var isDef=(c.managementType==='하자기간'&&_cDday(c.managementEndDate)!==null&&_cDday(c.managementEndDate)<0);
+    return isMa||isDef;
+  }).length;
   if(!window._cTabFilter)window._cTabFilter={};
   if(!window._cTabFilter[rep])window._cTabFilter[rep]={status:'all',urgency:'all'};
   var tf=window._cTabFilter[rep];
@@ -13346,7 +13352,7 @@ function _rebuildContractPanel(rep){
   }
   var h='';
   h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">';
-  [{l:'전체',v:total+'건',c:'#1E293B',bg:'#F8FAFC'},{l:'진행중',v:active+'건',c:'#059669',bg:'#F0FDF4'},{l:'D-30 이내',v:d30+'건',c:'#D97706',bg:'#FFFBEB'},{l:'D-7 이내',v:d7+'건',c:'#DC2626',bg:'#FFF5F5'}].forEach(function(k){
+  [{l:'전체',v:total+'건',c:'#1E293B',bg:'#F8FAFC'},{l:'진행중',v:active+'건',c:'#059669',bg:'#F0FDF4'},{l:'D-30 이내',v:d30+'건',c:'#D97706',bg:'#FFFBEB'},{l:'유지보수 계약 지연',v:lateCount+'건',c:'#DC2626',bg:'#FFF5F5'}].forEach(function(k){
     h+='<div style="background:'+k.bg+';border-radius:10px;padding:10px 12px;border:1px solid '+k.c+'20;"><div style="font-size:10px;color:#94A3B8;margin-bottom:3px;">'+k.l+'</div><div style="font-size:20px;font-weight:700;color:'+k.c+';">'+k.v+'</div></div>';
   });
   h+='</div>';
