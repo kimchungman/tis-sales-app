@@ -13230,7 +13230,7 @@ function _rebuildContractPanel(rep){
   // 헤더
   h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">';
   h+='<span style="font-size:13px;font-weight:600;color:#374151;">계약 목록</span>';
-  if(canEdit)h+='<button onclick="showContractModal(\''+rep+'\')" class="add-btn" style="cursor:pointer;">&#xFF0B; 신규 계약 등록</button>';
+  if(canEdit)h+='<button data-rp="'+rep+'" onclick="_cShowNewContract(this.dataset.rp)" class="add-btn" style="cursor:pointer;">&#xFF0B; 신규 계약 등록</button>';
   h+='</div>';
   if(contracts.length===0){
     h+='<div style="text-align:center;padding:48px 20px;color:#94A3B8;font-size:13px;border:1.5px dashed #E2E8F0;border-radius:12px;">등록된 계약이 없습니다.<br><span style="font-size:12px;">위 버튼으로 신규 계약을 등록하세요.</span></div>';
@@ -13547,5 +13547,8 @@ function _cTimelineView(cs){
   return h;
 }
 
+</script>
+<script>
+function _cFmt(v){if(v===null||v===undefined||v==="")return "—";var n=parseFloat(v.toString().replace(/,/g,""));if(isNaN(n))return String(v)||"—";return n.toLocaleString("ko-KR");}
 </script>
 </body>
