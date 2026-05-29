@@ -6350,6 +6350,11 @@ function doRepLogin(rep){
   console.log('[doRepLogin] rep='+rep+' _repTeam='+_repTeam);
   session={role:'rep', rep:rep, team:_repTeam};
   localStorage.setItem('_tisSavedSession', JSON.stringify({role:'rep',rep:rep,team:_repTeam}));
+  // 참가자 변경 시 탭/캐시 초기화 (이전 참가자 상태 제거)
+  window._intendedVTab=null;
+  window._activeVTab=null;
+  window._cPanelHash={};
+  window._lastContractHash=null;
   // 모든 탭을 본인 팀으로 초기화
   _tabState.input    = _repTeam;
   _tabState.issues   = _repTeam;
@@ -6705,6 +6710,12 @@ function applyPermissions(){
       sec.querySelectorAll('input,textarea').forEach(function(el){
         el.readOnly=!own; el.style.background=own?'':'#F8FAFF';
         el.style.color=own?'':'#9CA3AF'; el.style.cursor=own?'':'default';
+      });
+      // contenteditable 요소 (활동내용 등) 편집 제한
+      sec.querySelectorAll('[contenteditable]').forEach(function(el){
+        el.contentEditable=own?'true':'false';
+        el.style.cursor=own?'':'default';
+        el.style.userSelect=own?'':'none';
       });
       sec.querySelectorAll('select').forEach(function(el){
         el.disabled=!own; el.style.opacity=own?'':'0.5';
@@ -13409,9 +13420,9 @@ function _rebuildContractPanel(rep){
   h+='<div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 440px);min-height:180px;border:1px solid #E2E8F0;border-radius:10px;">';
   h+='<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;min-width:860px;">';
   h+='<colgroup>';
-  h+='<col style="width:88px;"><col style="width:88px;"><col style="width:160px;"><col style="width:76px;">';
-  h+='<col style="width:68px;"><col style="width:68px;"><col style="width:70px;">';
-  h+='<col style="width:80px;"><col style="width:68px;"><col style="width:70px;">';
+  h+='<col style="width:86px;"><col style="width:74px;"><col style="width:210px;"><col style="width:72px;">';
+  h+='<col style="width:64px;"><col style="width:64px;"><col style="width:58px;">';
+  h+='<col style="width:76px;"><col style="width:64px;"><col style="width:58px;">';
   h+='<col style="width:74px;">'+(canEdit?'<col style="width:28px;">':'');
   h+='</colgroup>';
   var TH='padding:8px 6px !important;font-weight:600;color:#94A3B8;font-size:11px;border-bottom:2px solid #E2E8F0;text-align:center !important;white-space:nowrap;background:#F8FAFC;';
@@ -13656,7 +13667,7 @@ function renderContractDashboard(){
     else{
       h+='<div class="scroll-list-wrap" style="overflow-x:auto;max-height:400px;overflow-y:auto;">';
       h+='<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;min-width:820px;">';
-      h+='<colgroup><col style="width:68px;"><col style="width:82px;"><col style="width:70px;"><col style="width:220px;"><col style="width:70px;"><col style="width:58px;"><col style="width:58px;"><col style="width:70px;"><col style="width:58px;"><col style="width:56px;"></colgroup>';
+      h+='<colgroup><col style="width:66px;"><col style="width:80px;"><col style="width:68px;"><col style="width:240px;"><col style="width:68px;"><col style="width:56px;"><col style="width:56px;"><col style="width:68px;"><col style="width:56px;"><col style="width:52px;"></colgroup>';
       var TH3='padding:8px 6px !important;font-weight:500;color:#94A3B8;font-size:11px;border-bottom:2px solid #E2E8F0;text-align:center !important;white-space:nowrap;background:#F8FAFC;';
       h+='<thead style="position:sticky;top:0;z-index:5;"><tr>';
       ['담당자','고객사','계약유형','프로젝트','금액(천)','계약종료','계약D-day','관리유형','관리D-day','상태'].forEach(function(t){h+='<th style="'+TH3+'">'+t+'</th>';});
