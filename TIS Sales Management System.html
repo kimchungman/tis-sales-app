@@ -7108,10 +7108,29 @@ function autoSave(){
         window._lastAutoSaveHash = _curHash;
         if(session && session.role==='rep' && session.rep){
           if(typeof _spSaveMyRep==='function') await _spSaveMyRep();
+          // 계약 데이터 변경 시 별도 저장 (rep_data에서 제외되므로)
+          if(typeof _spSaveContractData==='function'){
+            var _cHash=JSON.stringify((store.reps[session.rep]||{}).contracts||[]);
+            if(window._lastContractHash!==_cHash){
+              window._lastContractHash=_cHash;
+              await _spSaveContractData(session.rep);
+            }
+          }
         } else if(session && session.role==='admin') {
           // 관리자: 변경된 모든 rep 저장 (activeRep 의존 제거)
           if(typeof _spSaveChangedReps==='function') await _spSaveChangedReps(data.store.reps);
           if(typeof _spSaveSnap==='function') await _spSaveSnap();
+          // 관리자: 모든 rep 계약 변경분 저장
+          if(typeof _spSaveContractData==='function'){
+            for(var _ar of (REPS||[])){
+              var _ch=JSON.stringify((store.reps[_ar]||{}).contracts||[]);
+              if(!window._lastContractHash)window._lastContractHash={};
+              if(window._lastContractHash[_ar]!==_ch){
+                window._lastContractHash[_ar]=_ch;
+                await _spSaveContractData(_ar);
+              }
+            }
+          }
         } // 게스트: SP 쓰기 없음
         updateSaveIndicator(true);
       }
@@ -13295,6 +13314,8 @@ function saveContractFromModal(rep,cid){
   closeContractModal();
   _rebuildContractPanel(rep);
   _spSaveContractData(rep);
+  // localStorage 백업 + 저장 인디케이터 갱신
+  if(typeof autoSave==='function') autoSave();
 }
 function deleteContractEntry(rep,cid){
   if(!confirm('이 계약을 삭제하시겠습니까?'))return;
@@ -13305,6 +13326,7 @@ function deleteContractEntry(rep,cid){
   closeContractModal();
   _rebuildContractPanel(rep);
   _spSaveContractData(rep);
+  if(typeof autoSave==='function') autoSave();
 }
 
 // ── 계약 패널 렌더 ──
