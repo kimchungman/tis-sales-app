@@ -13487,27 +13487,30 @@ function renderContractDashboard(){
     var filtered=_cApplyFilters(all);
     var body=document.getElementById('contract-dashboard-body');
     if(!body)return;
+    // ── 카운트 ──
     var active=all.filter(function(c){return c.status==='진행중';}).length;
-    var d30=all.filter(function(c){var a=_cDday(c.endDate),b=_cDday(c.managementEndDate);return(a!==null&&a>=0&&a<=30)||(b!==null&&b>=0&&b<=30);}).length;
-    var d7=all.filter(function(c){var a=_cDday(c.endDate),b=_cDday(c.managementEndDate);return(a!==null&&a>=0&&a<=7)||(b!==null&&b>=0&&b<=7);}).length;
+    // 유지보수 계약 대상: 관리유형이 해당없음이 아니고 진행중인 건
+    var mgtTarget=all.filter(function(c){return c.managementType&&c.managementType!=='해당없음'&&c.status==='진행중';}).length;
+    // 유지보수 갱신 필요 (endDate 기준, D-60 이내)
     var maNeed=all.filter(function(c){var d=_cDday(c.endDate);return c.managementType==='유지보수'&&d!==null&&d>=0&&d<=60;});
+    // 하자→유지보수 전환 (managementEndDate 기준, D-60 이내)
     var def2ma=all.filter(function(c){var d=_cDday(c.managementEndDate);return c.managementType==='하자기간'&&d!==null&&d>=0&&d<=60;});
+    // 유지보수 계약 지연
     var lateMA=all.filter(function(c){var isMa=(c.managementType==='유지보수'&&_cDday(c.endDate)!==null&&_cDday(c.endDate)<0);var isDef=(c.managementType==='하자기간'&&_cDday(c.managementEndDate)!==null&&_cDday(c.managementEndDate)<0);return (isMa||isDef)&&c.status!=='종료';}).sort(function(a,b){var da=(a.managementType==='유지보수'?_cDday(a.endDate):_cDday(a.managementEndDate))||0;var db=(b.managementType==='유지보수'?_cDday(b.endDate):_cDday(b.managementEndDate))||0;return da-db;});
-    var thisM=all.filter(function(c){var d1=_cDday(c.endDate),d2=_cDday(c.managementEndDate);return(d1!==null&&d1>=0&&d1<=31)||(d2!==null&&d2>=0&&d2<=31);});
-    var nextM=all.filter(function(c){var d1=_cDday(c.endDate),d2=_cDday(c.managementEndDate);return(d1!==null&&d1>31&&d1<=62)||(d2!==null&&d2>31&&d2<=62);});
     var h='';
-    // ── KPI 4개 ──
-    h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;">';
-    [{l:'전체 계약',v:all.length+'건',c:'#1E293B',bg:'#F8FAFC',bc:'#E2E8F0',fk:'',fv:''},{l:'진행중',v:active+'건',c:'#059669',bg:'#F0FDF4',bc:'#BBF7D0',fk:'status',fv:'진행중'},{l:'D-30 이내',v:d30+'건',c:'#D97706',bg:'#FFFBEB',bc:'#FDE68A',fk:'urgency',fv:'d30'},{l:'D-7 이내',v:d7+'건',c:'#DC2626',bg:'#FFF5F5',bc:'#FECACA',fk:'urgency',fv:'d7'}].forEach(function(k){
-      var isAct=(k.fk==='status'&&_cDashStatus===k.fv)||(k.fk==='urgency'&&_cDashUrgency===k.fv);
-      var oc=k.fk==='status'?"_cSetStatus('"+k.fv+"')":k.fk==='urgency'?"_cSetUrgency('"+k.fv+"')":'';
-      h+='<div '+(oc?'onclick="'+oc+'"':'')+' style="background:'+k.bg+';border:1.5px solid '+(isAct?k.c:k.bc)+';border-radius:12px;padding:13px 16px;'+(oc?'cursor:pointer;':'')+'">';
-      h+='<div style="font-size:11px;color:#94A3B8;margin-bottom:5px;">'+k.l+'</div><div style="font-size:24px;font-weight:700;color:'+k.c+';">'+k.v+'</div>';
-      if(isAct)h+='<div style="font-size:9px;color:'+k.c+';margin-top:3px;font-weight:600;">● 필터 적용중</div>';
+    // ── KPI 3개 ──
+    h+='<div class="dash-list-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">'+
+    [{l:'전체 계약',v:all.length+'건',c:'#1E293B',bg:'#F8FAFC',bc:'#E2E8F0',oc:''},
+     {l:'유지보수 계약 대상',v:mgtTarget+'건',c:'#0EA5A0',bg:'#F0FDF9',bc:'#99F6E4',oc:''},
+     {l:'유지보수 계약 지연',v:lateMA.length+'건',c:'#DC2626',bg:'#FFF5F5',bc:'#FECACA',oc:''}
+    ].forEach(function(k){
+      h+='<div style="background:'+k.bg+';border:1.5px solid '+k.bc+';border-radius:12px;padding:14px 18px;">';
+      h+='<div style="font-size:11px;color:#94A3B8;margin-bottom:6px;">'+k.l+'</div>';
+      h+='<div style="font-size:26px;font-weight:700;color:'+k.c+';">'+k.v+'</div>';
       h+='</div>';
     });
     h+='</div>';
-    // ── 필터 (심플) ──
+    // ── 필터 ──
     function pill(l,oc,isA,col){var bg=isA?(col||'#4f7fff'):'white';var fc=isA?'#fff':(col||'#64748B');var bd=isA?(col||'#4f7fff'):'#E2E8F0';return '<button onclick="'+oc+'" style="padding:4px 11px;border-radius:20px;font-size:11px;font-weight:'+(isA?'700':'500')+';border:1.5px solid '+bd+';background:'+bg+';color:'+fc+';cursor:pointer;white-space:nowrap;">'+l+'</button>';}
     h+='<div style="background:white;border:1px solid #E2E8F0;border-radius:12px;padding:10px 16px;margin-bottom:14px;">';
     h+='<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">';
@@ -13523,45 +13526,38 @@ function renderContractDashboard(){
     types.forEach(function(t){h+=pill(t,"_cSetType('"+t+"')",_cDashType===t,tC[t]||'#64748B');});
     if(_cDashStatus!=='all'||_cDashUrgency!=='all'||_cDashType!=='all')h+='<button onclick="_cClearFilters()" style="margin-left:auto;padding:4px 11px;border-radius:20px;font-size:11px;border:1px dashed #E2E8F0;background:white;color:#94A3B8;cursor:pointer;flex-shrink:0;">× 초기화</button>';
     h+='</div></div>';
-    // ── 처리 필요 항목 (가로 5카드) ──
-    var actionItems=[{l:'이달 만료',n:thisM.length,c:'#DC2626',bg:'#FFF5F5'},{l:'다음달 만료',n:nextM.length,c:'#D97706',bg:'#FFFBEB'},{l:'유지보수 갱신',n:maNeed.length,c:'#0EA5A0',bg:'#F0FDF9'},{l:'하자→유지보수',n:def2ma.length,c:'#7C3AED',bg:'#FAF5FF'},{l:'유지보수 계약 지연',n:lateMA.length,c:'#DC2626',bg:'#FFF5F5'}];
-    h+='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px;">';
-    actionItems.forEach(function(a){
-      h+='<div style="background:'+a.bg+';border:1px solid '+a.c+'20;border-radius:10px;padding:10px 12px;">';
-      h+='<div style="font-size:10px;color:#94A3B8;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+a.l+'</div>';
-      h+='<div style="font-size:20px;font-weight:700;color:'+a.c+';">'+a.n+'건</div>';
-      h+='</div>';
-    });
-    h+='</div>';
+    if(filtered.length!==all.length)h+='<div style="padding:7px 12px;background:#EEF3FF;border-radius:8px;font-size:12px;color:#4f7fff;margin-bottom:12px;">필터: <strong>'+filtered.length+'건</strong> / 전체 '+all.length+'건</div>';
     // ── 3열 고객사 리스트 ──
     function makeDayBadge(dv){
       var dm=_cDday(dv);
-      if(dm===null)return'';
+      if(dm===null||dv===undefined||dv===null||dv==='')return '';
       var isExp=dm<0;var p=Math.abs(dm);
       var dc=isExp?'#DC2626':p<=7?'#DC2626':p<=30?'#D97706':'#0EA5A0';
-      return'<span style="display:inline-block;background:'+dc+'18;color:'+dc+';padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;">'+(isExp?'D+':'D-')+p+'</span>';
+      return '<span style="display:inline-block;background:'+dc+'18;color:'+dc+';padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;">'+(isExp?'D+':'D-')+p+'</span>';
     }
-    function makeList(title,color,items,dateKey){
+    function makeList(title,color,items,dateKeyFn){
       var s='<div style="background:white;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;">';
       s+='<div style="padding:10px 14px;border-bottom:1px solid #F1F5F9;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">';
       s+='<span style="font-size:12px;font-weight:700;color:'+color+';">'+title+'</span>';
       s+='<span style="background:'+color+';color:white;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;">'+items.length+'건</span>';
       s+='</div>';
-      if(!items.length){s+='<div style="padding:16px;font-size:12px;color:#CBD5E1;text-align:center;">해당 없음</div>';}
-      else{
+      if(!items.length){
+        s+='<div style="padding:20px;font-size:12px;color:#CBD5E1;text-align:center;">해당 없음</div>';
+      } else {
         s+='<div style="overflow-y:auto;flex:1;">';
         items.forEach(function(c,i){
-          var dv=dateKey==='endDate'?c.endDate:c.managementEndDate;
-          s+='<div style="padding:10px 14px;'+(i>0?'border-top:0.5px solid #F5F7FA;':'')+'">';
+          var dv=dateKeyFn(c);
+          var badge=makeDayBadge(dv);
+          s+='<div style="padding:9px 14px;'+(i>0?'border-top:0.5px solid #F5F7FA;':'')+'">';
           s+='<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">';
           s+='<div style="flex:1;min-width:0;">';
-          s+='<div style="font-size:12px;font-weight:700;color:#1E293B;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(c.client||'—')+'</div>';
-          s+='<div style="font-size:11px;color:#64748B;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.4;">'+(c.projectName||'—')+'</div>';
+          s+='<div style="font-size:12px;font-weight:700;color:#1E293B;margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(c.client||'—')+'</div>';
+          s+='<div style="font-size:11px;color:#64748B;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.35;">'+(c.projectName||'—')+'</div>';
           if(c._rep)s+='<div style="font-size:10px;color:#CBD5E1;margin-top:2px;">'+c._rep+'</div>';
           s+='</div>';
-          s+='<div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:3px;">';
-          s+=makeDayBadge(dv);
-          if(dv)s+='<span style="font-size:10px;color:#CBD5E1;white-space:nowrap;">'+dv+'</span>';
+          s+='<div style="flex-shrink:0;text-align:right;">';
+          s+=badge||'<span style="font-size:10px;color:#CBD5E1;">날짜없음</span>';
+          if(dv)s+='<div style="font-size:10px;color:#CBD5E1;margin-top:2px;white-space:nowrap;">'+dv+'</div>';
           s+='</div></div></div>';
         });
         s+='</div>';
@@ -13569,18 +13565,23 @@ function renderContractDashboard(){
       s+='</div>';
       return s;
     }
-    h+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;min-height:220px;">';
-    h+=makeList('유지보수 갱신 필요','#0EA5A0',maNeed,'endDate');
-    h+=makeList('하자→유지보수 전환','#7C3AED',def2ma,'managementEndDate');
-    h+=makeList('유지보수 계약 지연','#DC2626',lateMA,'managementEndDate');
+    h+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">';
+    // 최소 5개 항목 높이 (각 항목 약 70px + 헤더 44px)
+    h+='<div style="display:contents;">';
+    h+=makeList('유지보수 갱신 필요','#0EA5A0',maNeed,function(c){return c.endDate;});
+    h+=makeList('하자→유지보수 전환','#7C3AED',def2ma,function(c){return c.managementEndDate;});
+    h+=makeList('유지보수 계약 지연','#DC2626',lateMA,function(c){return c.managementType==='유지보수'?c.endDate:c.managementEndDate;});
     h+='</div>';
+    h+='</div>';
+    // CSS로 리스트 높이 제어 (5개 = 약 394px)
+    h+='<style>#contract-dashboard-body .dash-list-col{min-height:394px;max-height:500px;}</style>';
     // ── 전체 계약 목록 ──
     h+='<div style="background:white;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;">';
     h+='<div style="padding:12px 16px;border-bottom:1px solid #F1F5F9;display:flex;align-items:center;justify-content:space-between;">';
     h+='<span style="font-size:13px;font-weight:700;color:#1E293B;">전체 계약 목록</span><span style="font-size:12px;color:#94A3B8;">'+filtered.length+'건</span></div>';
     if(!filtered.length){h+='<div style="text-align:center;padding:40px;color:#94A3B8;font-size:13px;">조건에 맞는 계약이 없습니다.</div>';}
     else{
-      h+='<div class="scroll-list-wrap" style="overflow-x:auto;max-height:380px;overflow-y:auto;">';
+      h+='<div class="scroll-list-wrap" style="overflow-x:auto;max-height:400px;overflow-y:auto;">';
       h+='<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;min-width:820px;">';
       h+='<colgroup><col style="width:68px;"><col style="width:82px;"><col style="width:70px;"><col style="width:220px;"><col style="width:70px;"><col style="width:58px;"><col style="width:58px;"><col style="width:70px;"><col style="width:58px;"><col style="width:56px;"></colgroup>';
       var TH3='padding:8px 6px !important;font-weight:500;color:#94A3B8;font-size:11px;border-bottom:2px solid #E2E8F0;text-align:center !important;white-space:nowrap;background:#F8FAFC;';
@@ -13609,6 +13610,10 @@ function renderContractDashboard(){
     }
     h+='</div>';
     body.innerHTML=h;
+    // 3열 리스트 높이 통일
+    var listCols=body.querySelectorAll('.dash-list-grid > div');
+    var maxH=394;
+    listCols.forEach(function(el){el.style.minHeight=maxH+'px';el.style.maxHeight='500px';});
     if(_sTop>0){var _nEl=document.querySelector('#contract-dashboard-body .scroll-list-wrap');if(_nEl)_nEl.scrollTop=_sTop;}
   }catch(e){console.warn('[contractDash]',e);}
 }
