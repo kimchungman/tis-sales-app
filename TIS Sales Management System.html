@@ -4528,6 +4528,9 @@ function renderRepChart(){
 
 function switchInputTeam(team){
   console.log('[switchInputTeam] called with:', JSON.stringify(team));
+  // 현재 활성 vtab 저장 (200ms 후 복원용 - 80ms timeout이 main으로 덮기 전에 저장)
+  var _savedVT=(window._activeVTab&&window._activeVTab.tab!=='main')
+    ?{rep:window._activeVTab.rep,tab:window._activeVTab.tab}:null;
   currentTeam=team;
   // 팀이 바뀌면 재빌드 강제
   if(window._lastBuiltTeam !== team) window._lastBuiltTeam = null;
@@ -4571,6 +4574,13 @@ function switchInputTeam(team){
         if(typeof window._switchVTab==='function') window._switchVTab(REPS[0],'main');
       }
     }, 80);
+    // vtab 복원: 80ms에 main으로 리셋된 것을 200ms에 원래 탭으로 복원
+    if(_savedVT&&_savedVT.rep&&_savedVT.tab){
+      setTimeout(function(){
+        if(typeof window._switchVTab==='function')
+          window._switchVTab(_savedVT.rep,_savedVT.tab);
+      },200);
+    }
     // 숨김 select 강제 투명 처리 (CSS specificity 충돌 방어)
     setTimeout(function(){
       document.querySelectorAll('._bsl-sel').forEach(function(el){
