@@ -11905,7 +11905,7 @@ function _vRow(rep,idx,v){
       var _TA='color:#0EA5A0;border-bottom-color:#0EA5A0;font-weight:700;';
       var _TI='color:#94A3B8;';
       var tabBar='<div style="display:flex;gap:0;border-bottom:2px solid #E8EDF5;margin-bottom:16px;">'
-        +'<button id="vtab-main-'+rep+'" onclick="_switchVTab(\''+rep+'\',\'main\')" style="'+_TS+_TA+'">매출 및 프로젝트 현황</button>'
+        +'<button id="vtab-main-'+rep+'" onclick="window._intendedVTab=null;_switchVTab(\''+rep+'\',\'main\')" style="'+_TS+_TA+'">매출 및 프로젝트 현황</button>'
         +'<button id="vtab-visit-'+rep+'" onclick="_switchVTab(\''+rep+'\',\'visit\')" style="'+_TS+_TI+'">고객 접점 기록</button>'
         +'<button id="vtab-contract-'+rep+'" onclick="_switchVTab(\''+rep+'\',\'contract\')" style="'+_TS+_TI+'">계약 관리</button>'
         +'</div>';
@@ -11963,8 +11963,10 @@ window._switchVTab=function(rep,tab){
   });
   var ab=isMain?mb:(_iv?vb:cb);
   if(ab){ ab.style.color=TEAL; ab.style.borderBottomColor=TEAL; ab.style.fontWeight='700'; }
-  // 활성 탭 전역변수로 추적 (color 감지 대신 사용)
   window._activeVTab={rep:rep,tab:tab};
+  // 사용자 의도 탭 추적: main이 아닌 탭으로 전환 시만 업데이트
+  // 자동 main 전환(switchInputTeam 등)은 여기 기록 안 됨
+  if(tab!=='main')window._intendedVTab={rep:rep,tab:tab};
 };
 
 // ════ 팀 탭 ════
@@ -13683,19 +13685,27 @@ function _cTimelineView(cs){
 </script>
 
 <script>
-/* ── vtab 워치독: 잘못 전환시 즉시 복원 ── */
+/* ── vtab 워치독 v2: _intendedVTab 기준 복원 ── */
 setInterval(function(){
   try{
-    var vt=window._activeVTab;
-    if(!vt||!vt.rep||vt.tab==='main')return;
-    var mp=document.getElementById('mpanel-'+vt.rep);
+    // _intendedVTab: 사용자가 마지막으로 명시적으로 선택한 탭
+    // 자동 main 전환은 여기 기록 안 됨 → 신뢰 가능
+    var it=window._intendedVTab;
+    if(!it||!it.rep||it.tab==='main')return;
+    var mp=document.getElementById('mpanel-'+it.rep);
     if(!mp)return;
-    var cp=document.getElementById('cpanel-'+vt.rep);
-    var vp=document.getElementById('vpanel-'+vt.rep);
-    var wrong=(vt.tab==='contract'&&cp&&cp.style.display!=='block'&&mp.style.display!=='none');
-    if(!wrong)wrong=(vt.tab==='visit'&&vp&&vp.style.display!=='block'&&mp.style.display!=='none');
-    if(wrong&&typeof window._switchVTab==='function')window._switchVTab(vt.rep,vt.tab);
+    var cp=document.getElementById('cpanel-'+it.rep);
+    var vp=document.getElementById('vpanel-'+it.rep);
+    // 화면이 올바른지 확인
+    var shouldBeContract=(it.tab==='contract');
+    var shouldBeVisit=(it.tab==='visit');
+    var cpOk=shouldBeContract&&cp&&cp.style.display==='block';
+    var vpOk=shouldBeVisit&&vp&&vp.style.display==='block';
+    var wrong=!cpOk&&!vpOk;
+    if(wrong&&typeof window._switchVTab==='function'){
+      window._switchVTab(it.rep,it.tab);
+    }
   }catch(e){}
-},200);
+},150);
 </script>
 </body>
