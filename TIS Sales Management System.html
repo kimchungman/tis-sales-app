@@ -13189,9 +13189,9 @@ function _cDdayBadge(ds){
   else{txt='D-'+n;bg='#E6F9F0';col='#059669';bd='#05966940';}
   return '<span style="display:inline-flex;align-items:center;justify-content:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;min-width:56px;background:'+bg+';color:'+col+';border:1.5px solid '+bd+';">'+txt+'</span>';
 }
-function _cTypeBadge(t){var m={'신규개발':'#4f7fff','추가개발':'#7C3AED','MA':'#0EA5A0','상품':'#059669','기타':'#94A3B8'};var c=m[t]||'#94A3B8';return '<span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:white;color:'+c+';border:1.5px solid '+c+';">'+(t||'—')+'</span>';}
-function _cMgtBadge(t){var m={'하자기간':'#D97706','유지보수':'#0EA5A0','해당없음':'#94A3B8'};var c=m[t]||'#94A3B8';return '<span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:white;color:'+c+';border:1.5px solid '+c+';">'+(t||'—')+'</span>';}
-function _cStatusBadge(t){var m={'진행중':'#059669','종료':'#94A3B8','협의중':'#4f7fff'};var c=m[t]||'#94A3B8';return '<span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:white;color:'+c+';border:1.5px solid '+c+';">'+(t||'—')+'</span>';}
+function _cTypeBadge(t){var m={'신규개발':'#4f7fff','추가개발':'#7C3AED','MA':'#0EA5A0','상품':'#059669','기타':'#94A3B8'};var c=m[t]||'#94A3B8';return '<span style="display:inline-flex;align-items:center;justify-content:center;min-width:58px;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600;background:white;color:'+c+';border:1.5px solid '+c+';">'+(t||'—')+'</span>';}
+function _cMgtBadge(t){var m={'하자기간':'#D97706','유지보수':'#0EA5A0','해당없음':'#94A3B8'};var c=m[t]||'#94A3B8';return '<span style="display:inline-flex;align-items:center;justify-content:center;min-width:52px;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:700;background:white;color:'+c+';border:1.5px solid '+c+';">'+(t||'—')+'</span>';}
+function _cStatusBadge(t){var m={'진행중':'#059669','종료':'#94A3B8','협의중':'#4f7fff'};var c=m[t]||'#94A3B8';return '<span style="display:inline-flex;align-items:center;justify-content:center;min-width:44px;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600;background:white;color:'+c+';border:1.5px solid '+c+';">'+(t||'—')+'</span>';}
 function _cNewId(){return 'c'+Date.now().toString(36)+Math.random().toString(36).substr(2,4);}
 function _getContracts(rep){
   if(!store.reps[rep])return [];
@@ -13520,9 +13520,9 @@ function renderContractDashboard(){
      {l:'유지보수 계약 대상',v:mgtTarget+'건',c:'#0EA5A0',bg:'#F0FDF9',bc:'#99F6E4',oc:''},
      {l:'유지보수 계약 지연',v:lateMA.length+'건',c:'#DC2626',bg:'#FFF5F5',bc:'#FECACA',oc:''}
     ].forEach(function(k){
-      h+='<div style="background:'+k.bg+';border:1.5px solid '+k.bc+';border-radius:12px;padding:14px 18px;">';
-      h+='<div style="font-size:11px;color:#94A3B8;margin-bottom:6px;">'+k.l+'</div>';
-      h+='<div style="font-size:22px;font-weight:700;color:'+k.c+';">'+k.v+'</div>';
+      h+='<div style="background:'+k.bg+';border:1.5px solid '+k.bc+';border-radius:10px;padding:10px 14px;">';
+      h+='<div style="font-size:11px;color:#94A3B8;margin-bottom:4px;">'+k.l+'</div>';
+      h+='<div style="font-size:20px;font-weight:700;color:'+k.c+';">'+k.v+'</div>';
       h+='</div>';
     });
     h+='</div>';
@@ -13560,7 +13560,7 @@ function renderContractDashboard(){
       if(!items.length){
         s+='<div style="padding:20px;font-size:12px;color:#CBD5E1;text-align:center;">해당 없음</div>';
       } else {
-        s+='<div style="overflow-y:auto;flex:1;">';
+        s+='<div style="overflow-y:auto;min-height:420px;max-height:480px;">';
         items.forEach(function(c,i){
           var dv=dateKeyFn(c);
           var badge=makeDayBadge(dv);
@@ -13590,7 +13590,7 @@ function renderContractDashboard(){
     h+='</div>';
     h+='</div>';
     // CSS로 리스트 높이 제어 (5개 = 약 394px)
-    h+='<style>#contract-dashboard-body .dash-list-col{min-height:394px;max-height:500px;}</style>';
+    
     // ── 전체 계약 목록 ──
     h+='<div style="background:white;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;">';
     h+='<div style="padding:12px 16px;border-bottom:1px solid #F1F5F9;display:flex;align-items:center;justify-content:space-between;">';
@@ -13761,7 +13761,7 @@ function _cMgtDdayBadge(c){
   return _cDdayBadge(c.managementEndDate);
 }
 function _cEndedBadge(){
-  return '<span style="background:#F1F5F9;color:#94A3B8;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;">종료</span>';
+  return '<span style="display:inline-flex;align-items:center;justify-content:center;min-width:44px;background:#F1F5F9;color:#94A3B8;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;">종료</span>';
 }
 </script>
 </body>
