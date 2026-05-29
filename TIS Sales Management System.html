@@ -3535,7 +3535,7 @@ function updateSBWeek(d){
   document.getElementById('sb-dt').textContent=(mon.getMonth()+1)+'/'+mon.getDate()+' ~ '+(fri.getMonth()+1)+'/'+fri.getDate();
 }
 
-const pgMeta={dashboard:['통합 대시보드','경영계획 vs 실적 현황'],input:['영업 진행 현황','담당자별 실적 및 활동 입력'],issues:['이슈 현황','고객사별 이슈 및 리스크'],pipeline:['영업 파이프라인','신규 및 기존 고객 영업 현황'],visits:['고객 접점 현황','고객 접점 기록 대시보드'],export:['엑셀 출력','주간회의 자료 다운로드'],personal:['개인설정','테마 및 글씨 크기 설정'],settings:['설정','담당자 관리 및 회의 날짜 설정'],accesslog:['접속 이력','MS 계정 및 담당자별 접속 현황']};
+const pgMeta={dashboard:['통합 대시보드','경영계획 vs 실적 현황'],input:['영업 진행 현황','담당자별 실적 및 활동 입력'],issues:['이슈 현황','고객사별 이슈 및 리스크'],pipeline:['영업 파이프라인','신규 및 기존 고객 영업 현황'],visits:['고객 접점 현황','고객 접점 기록 대시보드'],contract:['계약 현황','고객사별 계약 및 유지보수 현황'],export:['엑셀 출력','주간회의 자료 다운로드'],personal:['개인설정','테마 및 글씨 크기 설정'],settings:['설정','담당자 관리 및 회의 날짜 설정'],accesslog:['접속 이력','MS 계정 및 담당자별 접속 현황']};
 function switchSettingsTab(tab){
   if(tab==='기본설정'){
     if(typeof renderLayoutSettings==='function') setTimeout(renderLayoutSettings,50);
