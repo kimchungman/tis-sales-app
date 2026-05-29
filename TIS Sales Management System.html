@@ -105,17 +105,16 @@ function getSelectOpts(field){
 }
 function refreshSelectOptions(){
   if(document.querySelector('.page#page-input.active')){
-    var _saved=window._activeVTab&&window._activeVTab.tab!=='main'?Object.assign({},window._activeVTab):null;
-    window._lastBuiltTeam=null;
-    if(typeof buildRepInputs==='function') buildRepInputs();
-    // rebuild 후 _lastBuiltTeam 복원 (연속 rebuild 방지)
-    if(typeof currentTeam!=='undefined') window._lastBuiltTeam=currentTeam;
-    if(_saved&&_saved.rep&&_saved.tab){
-      // 100ms: DOM 안정화 후 1차 복원
-      setTimeout(function(){if(typeof window._switchVTab==='function')window._switchVTab(_saved.rep,_saved.tab);},100);
-      // 400ms: 혹시 다른 타이머가 덮어도 재복원
-      setTimeout(function(){if(typeof window._switchVTab==='function'&&window._activeVTab&&window._activeVTab.tab!==_saved.tab)window._switchVTab(_saved.rep,_saved.tab);},400);
+    var _ivt=window._intendedVTab;
+    var _onNonMain=_ivt&&_ivt.tab&&_ivt.tab!=='main';
+    if(!_onNonMain){
+      // main 탭 상태: 정상 rebuild (select 옵션 포함)
+      window._lastBuiltTeam=null;
+      if(typeof buildRepInputs==='function') buildRepInputs();
+      if(typeof currentTeam!=='undefined') window._lastBuiltTeam=currentTeam;
     }
+    // 계약/방문 탭 활성화 중: DOM 재빌드 스킵 (깜빡임 방지)
+    // select 배열만 갱신 - main 탭 진입 시 자동 반영됨
   }
   if(typeof CONTACT_TYPES!=='undefined') CONTACT_TYPES.splice(0,CONTACT_TYPES.length,...getSelectOpts('contactType'));
   if(typeof CONTACT_PURPOSES!=='undefined') CONTACT_PURPOSES.splice(0,CONTACT_PURPOSES.length,...getSelectOpts('contactPurpose'));
