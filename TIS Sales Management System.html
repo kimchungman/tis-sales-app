@@ -5345,7 +5345,9 @@ function renderIssues(){
     '<span class="iss-filter-chip iss-filter-chip--neutral" onclick="document.getElementById(\'iss-status\').value=\'all\';renderIssues()">전체 '+store.issues.length+'건</span>'
     +'<span class="iss-filter-chip iss-filter-chip--open" onclick="document.getElementById(\'iss-status\').value=\'open\';renderIssues()">Open '+openCnt+'</span>'
     +'<span class="iss-filter-chip iss-filter-chip--closed" onclick="document.getElementById(\'iss-status\').value=\'closed\';renderIssues()">Closed '+closedCnt+'</span>';
-  document.getElementById('iss-list').innerHTML=iss.length?iss.map(i=>{
+  var _issEl=document.getElementById('iss-list');
+  var _issSt=_issEl?_issEl.scrollTop:0;
+  if(_issEl) _issEl.innerHTML=iss.length?iss.map(i=>{
     const isOpen=(i.status||'open')==='open';
     const sevColor={high:'#DC2626',mid:'#D97706',low:'#0EA5A0'};
     const stColor={open:'#DC2626',closed:'#0EA5A0'};
@@ -5371,6 +5373,7 @@ function renderIssues(){
       +'<td style="text-align:center;vertical-align:middle;"><span style="display:inline-flex;align-items:center;justify-content:center;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;color:'+tc+';border:1.5px solid '+tc+'60;">'+(isOpen?'Open':'Closed')+'</span></td>'
       +'</tr>';
   }).join(''):'<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--muted);">⬜ 조건에 맞는 이슈가 없습니다</td></tr>';
+  if(_issSt>0&&_issEl){requestAnimationFrame(function(){requestAnimationFrame(function(){_issEl.scrollTop=_issSt;});});}
   renderDashIssues();
 }
 
@@ -5443,12 +5446,17 @@ function renderPipeline(){
   // 테이블 렌더
   var tbody=document.getElementById('pipe-tbody');
   if(!tbody) return;
+  var _pipeScroll=tbody.closest('[style*="overflow"]')||tbody.closest('.tbl-scroll-wrap')||tbody.parentElement;
+  var _pipeSt=_pipeScroll?_pipeScroll.scrollTop:_savePageScroll();
   if(!rows.length){
     tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--muted);font-size:13px;">조건에 맞는 항목이 없습니다</td></tr>';
     return;
   }
+  var _pipeScrollB=tbody.closest('[style*="overflow"]')||tbody.closest('.tbl-scroll-wrap')||tbody.parentElement;
+  var _pipeStB=_pipeScrollB?_pipeScrollB.scrollTop:_savePageScroll();
   tbody.innerHTML=rows.map(function(r){
     var ri=REPS.indexOf(r.rep);
+  if(typeof _restorePageScroll==='function')_restorePageScroll(_pipeStB);
     var repColor=REP_COLORS[ri]||'#1E5FBE';
     var repBg=repColor+'24';
     var repBorder=repColor+'66';
@@ -7688,17 +7696,28 @@ async function _initSP() {
           var _pid2=_activePage?_activePage.id.replace('page-',''):'';
           var _ipOn=(_pid2==='input');
           // 현재 활성 페이지에만 렌더 실행 (다른 페이지 DOM 건드리지 않음)
+          // 렌더 전 스크롤 위치 저장
+          var _syncScrollEl=document.querySelector('.page.active')||document.body;
+          var _syncSt=_syncScrollEl.scrollTop||window.scrollY||0;
           if(_pid2==='dashboard'&&typeof renderDashboard==='function') renderDashboard();
           if(_pid2==='issues'&&typeof renderIssues==='function') renderIssues();
           if(_pid2==='pipeline'&&typeof renderPipeline==='function') renderPipeline();
           if(_pid2==='visits'){
-            // 날짜 필터 선택 중이면 해당 날짜 뷰 유지, 아니면 전체 렌더
             if(window._visitFilterDate && typeof filterVisitsByDate==='function'){
               filterVisitsByDate(window._visitFilterDate);
             } else if(typeof renderVisits==='function'){
               renderVisits();
             }
           }
+          // 렌더 후 스크롤 복원 (rAF 2중으로 DOM 안정화 후)
+          if(_syncSt>0)(function(el,st){
+            requestAnimationFrame(function(){
+              requestAnimationFrame(function(){
+                if(el&&el!==document.body) el.scrollTop=st;
+                else window.scrollTo(0,st);
+              });
+            });
+          })(_syncScrollEl,_syncSt);
           // 입력 페이지 DOM은 건드리지 않음 - dirty 마킹만
           if(!_ipOn) window._inputPageDirty = true;
           // 계약 현황 페이지
@@ -12336,8 +12355,10 @@ window.filterVisitsByDate=function(dateStr){
     });
   });
   if(!dayVisits.length){ list.innerHTML='<tr><td colspan="8" style="text-align:center;padding:30px;color:#94A3B8;font-size:13px;">'+dateStr+' 접점 기록이 없습니다</td></tr>'; return; }
+  var _visitSt=list.scrollTop||0;
   list.innerHTML=dayVisits.map(function(v){
     var ct=v.contactType||'방문', cp=v.contactPurpose||'';
+  if(_visitSt>0){requestAnimationFrame(function(){requestAnimationFrame(function(){list.scrollTop=_visitSt;});});}
     var tpc=TYPE_COLOR[ct]||'#94A3B8', ppc=PURPOSE_COLOR2[cp]||'#94A3B8';
     return '<tr style="background:white;" onmouseover="this.style.background=\'#F7F9FF\'" onmouseout="this.style.background=\'white\'">'
       +'<td colspan="2" style="text-align:center;padding:10px 8px;font-size:13px;font-weight:700;color:'+v.rc+';">'+v.rep+'</td>'
@@ -13830,6 +13851,34 @@ function _cMgtDdayBadge(c){
 }
 function _cEndedBadge(){
   return '<span style="display:inline-flex;align-items:center;justify-content:center;min-width:44px;background:#F1F5F9;color:#94A3B8;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;">종료</span>';
+}
+</script>
+<script>
+/* ── 스크롤 위치 보존 유틸 ── */
+function _saveScroll(el){
+  if(!el) return 0;
+  return el.scrollTop||0;
+}
+function _restoreScroll(el, st){
+  if(!el||st<=0) return;
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){ el.scrollTop=st; });
+  });
+}
+function _savePageScroll(){
+  // page 컨테이너 또는 window 스크롤 저장
+  var main=document.getElementById('main-content')||document.querySelector('.page.active');
+  return main?main.scrollTop:window.scrollY||0;
+}
+function _restorePageScroll(st){
+  if(st<=0) return;
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
+      var main=document.getElementById('main-content')||document.querySelector('.page.active');
+      if(main&&main.scrollTop!==undefined) main.scrollTop=st;
+      else window.scrollTo(0,st);
+    });
+  });
 }
 </script>
 </body>
