@@ -4649,9 +4649,12 @@ function switchTab(rep,el){
   document.querySelectorAll('.rep-sec').forEach(s=>s.style.display='none');
   const _rsel=document.getElementById('rs-'+rep);
   if(_rsel)_rsel.style.display='block';
-  // 탭 전환 시 항상 '매출 및 프로젝트 현황' 탭으로 초기화
-  // (이전에 '고객 접점 기록' 탭이 열려 있었어도 메인 탭을 보여줌)
-  if(typeof window._switchVTab==='function') window._switchVTab(rep,'main');
+  // _intendedVTab이 이 rep에 설정됐으면 해당 탭 복원, 없으면 main
+  if(typeof window._switchVTab==='function'){
+    var _it=window._intendedVTab;
+    var _targetTab=(_it&&_it.rep===rep&&_it.tab&&_it.tab!=='main')?_it.tab:'main';
+    window._switchVTab(rep,_targetTab);
+  }
   // textarea 자동 높이 - 브라우저 레이아웃 완료 보장
   if(_rsel){
     function _resizeTAs(container){
@@ -7681,6 +7684,12 @@ async function _initSP() {
           var _acp=document.querySelector('.page.active');
           if(_acp&&_acp.id==='page-contract'&&typeof renderContractDashboard==='function')
             renderContractDashboard();
+          // 계약 관리 vtab 활성화 중이면 패널 갱신
+          var _ivt=window._intendedVTab;
+          if(_ivt&&_ivt.tab==='contract'&&_ivt.rep){
+            var _cplE=document.getElementById('cpl-'+_ivt.rep);
+            if(_cplE&&typeof _rebuildContractPanel==='function')_rebuildContractPanel(_ivt.rep);
+          }
         }catch(_e){}
       }
     }, 10000);
@@ -13418,8 +13427,12 @@ var _cLoaded={};
 function _lazyLoadContractData(rep){
   var el=document.getElementById('cpl-'+rep);
   if(!el)return;
-  // store 데이터로 즉시 1회 렌더 (SP fetch 없음 - sync에서 이미 처리)
-  _rebuildContractPanel(rep);
+  // 실제 계약 데이터 렌더됐는지 확인 (placeholder vs 실제 내용)
+  var hasContent=el.querySelector('table,button.add-btn');
+  if(!hasContent){
+    _rebuildContractPanel(rep);
+  }
+  // store 변경 후 10초 sync에서 자동 재렌더됨
 }
 
 // ── 계약 현황 대시보드 ──
