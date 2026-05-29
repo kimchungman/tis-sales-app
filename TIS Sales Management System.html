@@ -13540,6 +13540,7 @@ function renderContractDashboard(){
     var nextM=all.filter(function(c){var d1=_cDday(c.endDate),d2=_cDday(c.managementEndDate);return(d1!==null&&d1>31&&d1<=62)||(d2!==null&&d2>31&&d2<=62);});
     var maNeed=all.filter(function(c){var d=_cDday(c.managementEndDate);return c.managementType==='유지보수'&&d!==null&&d>=0&&d<=60;});
     var def2ma=all.filter(function(c){var d=_cDday(c.managementEndDate);return c.managementType==='하자기간'&&d!==null&&d>=0&&d<=60;});
+    var lateMA=all.filter(function(c){var d=_cDday(c.managementEndDate);return c.managementType==='하자기간'&&d!==null&&d<0&&c.status==='진행중';}).sort(function(a,b){return _cDday(a.managementEndDate)-_cDday(b.managementEndDate);});
     var actionItems=[
       {icon:'🔴',label:'이달 만료',cnt:thisM.length,color:'#DC2626'},
       {icon:'🟡',label:'다음달 만료',cnt:nextM.length,color:'#D97706'},
@@ -13615,6 +13616,31 @@ function renderContractDashboard(){
         h+='<span style="font-size:10px;color:#64748B;white-space:nowrap;">'+(c.managementEndDate||'')+'</span>';
         h+='<span style="background:'+dc+'15;color:'+dc+';padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;">D-'+dm+'</span>';
         h+='</div>';
+      });
+      h+='</div>';
+    }
+    h+='</div>';
+    // 유지보수 미전환 리스트
+    h+='<div style="background:white;border:1.5px solid #FECACA;border-radius:12px;overflow:hidden;flex:none;">';
+    h+='<div style="padding:10px 14px;background:linear-gradient(135deg,#FFF5F5,#FFF0F0);border-bottom:1px solid #FECACA60;display:flex;align-items:center;justify-content:space-between;">';
+    h+='<div><span style="font-size:12px;font-weight:700;color:#DC2626;">유지보수 미전환</span><span style="font-size:10px;color:#94A3B8;margin-left:6px;">하자기간 만료 후 유지보수 미체결</span></div>';
+    h+='<span style="background:#DC2626;color:white;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;">'+lateMA.length+'건</span>';
+    h+='</div>';
+    if(!lateMA.length){
+      h+='<div style="padding:12px 16px;font-size:12px;color:#CBD5E1;text-align:center;">해당 없음 ✓</div>';
+    }else{
+      h+='<div style="max-height:120px;overflow-y:auto;">';
+      lateMA.forEach(function(c,i){
+        var dm=_cDday(c.managementEndDate);
+        var past=Math.abs(dm);
+        h+='<div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;padding:8px 14px;'+(i>0?'border-top:0.5px solid #FEF2F2;':'')+'">'
+          +'<div>'
+          +'<div style="font-size:12px;font-weight:600;color:#1E293B;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(c.client||'—')+'</div>'
+          +'<div style="font-size:10px;color:#94A3B8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(c._rep?c._rep+' · ':'')+( c.projectName||'')+'</div>'
+          +'</div>'
+          +'<span style="font-size:10px;color:#94A3B8;white-space:nowrap;">만료 '+(c.managementEndDate||'')+'</span>'
+          +'<span style="background:#FEECEC;color:#DC2626;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;">D+'+past+'</span>'
+          +'</div>';
       });
       h+='</div>';
     }
