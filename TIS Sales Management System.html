@@ -7672,6 +7672,13 @@ async function _initSP() {
           }
           // 입력 페이지 DOM은 건드리지 않음 - dirty 마킹만
           if(!_ipOn) window._inputPageDirty = true;
+          // 계약 현황 페이지
+          if(_pid2==='contract'&&typeof renderContractDashboard==='function') renderContractDashboard();
+          // 계약 관리 vtab: 데이터 변경 시만 재빌드
+          var _ivt2=window._intendedVTab;
+          if(_ivt2&&_ivt2.tab==='contract'&&_ivt2.rep){
+            if(typeof _rebuildContractPanel==='function') _rebuildContractPanel(_ivt2.rep);
+          }
         } else {
           // 데이터 변경 없어도 visits 페이지면 visitLog 갱신
           var _ap2=document.querySelector('.page.active');
