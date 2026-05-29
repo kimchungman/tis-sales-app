@@ -4573,12 +4573,15 @@ function switchInputTeam(team){
     var _area=document.getElementById('rep-input-area');
     var _alreadyBuilt = _area && _area.children.length>0 && window._lastBuiltTeam===currentTeam;
     if(_alreadyBuilt){
-      // session.rep 탭 직접 선택 (이미 buildRepTabs에서 active 설정됨)
-      var _myRepTab = (session&&session.rep)
-        ? document.querySelector('#rep-tabs .tab[data-rep="'+session.rep+'"]')
-        : document.querySelector('#rep-tabs .tab.active');
-      if(_myRepTab && typeof switchTab==='function'){
-        switchTab(_myRepTab.dataset.rep, _myRepTab);
+      if(_savedVT&&_savedVT.rep&&_savedVT.tab&&typeof window._switchVTab==='function'){
+        window._switchVTab(_savedVT.rep,_savedVT.tab);
+      } else {
+        var _myRepTab=(session&&session.rep)
+          ?document.querySelector('#rep-tabs .tab[data-rep="'+session.rep+'"]')
+          :document.querySelector('#rep-tabs .tab.active');
+        if(_myRepTab&&typeof switchTab==='function'){
+          switchTab(_myRepTab.dataset.rep,_myRepTab);
+        }
       }
       return;
     }
@@ -13613,7 +13616,7 @@ function renderContractDashboard(){
       h+='<span style="font-size:12px;color:#94A3B8;">'+urgent.length+'건</span>';
       h+='</div>';
       h+='<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;min-width:600px;">';
-      h+='<colgroup><col style="width:68px;"><col style="width:88px;"><col style="width:80px;"><col style="width:160px;"><col style="width:70px;"><col style="width:78px;"><col style="width:70px;"><col style="width:70px;"></colgroup>';
+      h+='<colgroup><col style="width:68px;"><col style="width:86px;"><col style="width:74px;"><col style="width:190px;"><col style="width:64px;"><col style="width:74px;"><col style="width:64px;"><col style="width:68px;"></colgroup>';
       var TH2='padding:8px 6px !important;text-align:center !important;font-weight:500;color:#94A3B8;font-size:11px;border-bottom:1px solid #E2E8F0;background:#F8FAFC;white-space:nowrap;';
       h+='<thead><tr>';
       ['담당자','고객사','계약유형','프로젝트','계약D-day','관리유형','관리D-day','상태'].forEach(function(t){h+='<th style="'+TH2+'">'+t+'</th>';});
@@ -13644,7 +13647,7 @@ function renderContractDashboard(){
     } else {
       h+='<div style="overflow-x:auto;max-height:380px;overflow-y:auto;">';
       h+='<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;min-width:820px;">';
-      h+='<colgroup><col style="width:70px;"><col style="width:88px;"><col style="width:80px;"><col style="width:160px;"><col style="width:78px;"><col style="width:68px;"><col style="width:70px;"><col style="width:78px;"><col style="width:70px;"><col style="width:70px;"></colgroup>';
+      h+='<colgroup><col style="width:70px;"><col style="width:86px;"><col style="width:76px;"><col style="width:190px;"><col style="width:76px;"><col style="width:64px;"><col style="width:64px;"><col style="width:76px;"><col style="width:64px;"><col style="width:64px;"></colgroup>';
       var TH3='padding:8px 6px !important;font-weight:500;color:#94A3B8;font-size:11px;border-bottom:2px solid #E2E8F0;text-align:center !important;white-space:nowrap;background:#F8FAFC;';
       h+='<thead style="position:sticky;top:0;z-index:5;"><tr>';
       ['담당자','고객사','계약유형','프로젝트','금액(천)','계약종료','계약D-day','관리유형','관리D-day','상태'].forEach(function(t){h+='<th style="'+TH3+'">'+t+'</th>';});
