@@ -13311,6 +13311,11 @@ function deleteContractEntry(rep,cid){
 function _rebuildContractPanel(rep){
   var el=document.getElementById('cpl-'+rep);
   if(!el)return;
+  // 해시 비교: 데이터 변경 없으면 rebuild 스킵
+  var _newHash=JSON.stringify(_getContracts(rep));
+  if(!window._cPanelHash)window._cPanelHash={};
+  if(window._cPanelHash[rep]===_newHash&&el.querySelector('table'))return;
+  window._cPanelHash[rep]=_newHash;
   var canEdit=(session&&(session.role==='admin'||(session.role==='rep'&&session.rep===rep)));
   var contracts=_getContracts(rep);
   var total=contracts.length;
@@ -13428,7 +13433,7 @@ function _rebuildContractPanel(rep){
   var _cSw=el.querySelector('div[style*="overflow-y:auto"]');
   if(_cSw)_cSt=_cSw.scrollTop;
   el.innerHTML=h;
-  if(_cSt>0){setTimeout(function(){var _s=el.querySelector('div[style*="overflow-y:auto"]');if(_s)_s.scrollTop=_cSt;},0);}
+  if(_cSt>0){requestAnimationFrame(function(){requestAnimationFrame(function(){var _s=el.querySelector('div[style*="overflow-y:auto"]');if(_s)_s.scrollTop=_cSt;});});}
 }
 
 // ── SP 저장 ──
@@ -13448,6 +13453,8 @@ async function _spSaveContractData(rep){
       await _spSaveItem('contract_data',k,{rep:rep,year:parseInt(yr),contracts:bY[yr],savedAt:new Date().toISOString()});
     }
     if(typeof showToast==='function')showToast('✅ 계약 저장 완료');
+    // 저장 후 해시 캐시 갱신 (다음 rebuild가 스킵되지 않도록)
+    if(window._cPanelHash)delete window._cPanelHash[rep];
   }catch(e){
     console.error('[contract save]',e);
     if(typeof showToast==='function')showToast('❌ 계약 저장 실패: '+((e&&e.message)||'오류'),'error');
