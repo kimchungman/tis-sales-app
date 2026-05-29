@@ -13165,7 +13165,7 @@ function _cDdayBadge(ds){
   var n=_cDday(ds);
   if(n===null)return '';
   var txt,bg,col,bd;
-  if(n<0){txt='종료';bg='#F1F5F9';col='#94A3B8';bd='#CBD5E1';}
+  if(n<0){var _p=Math.abs(n);txt='D+'+_p;bg='#FEECEC';col='#DC2626';bd='#DC262640';}
   else if(n===0){txt='TODAY';bg='#DC2626';col='#fff';bd='#DC2626';}
   else if(n<=7){txt='D-'+n;bg='#FEECEC';col='#DC2626';bd='#DC262640';}
   else if(n<=30){txt='D-'+n;bg='#FFF3E0';col='#D97706';bd='#D9770640';}
@@ -13499,7 +13499,7 @@ function renderContractDashboard(){
     var lateMA=all.filter(function(c){var isMa=(c.managementType==='유지보수'&&_cDday(c.endDate)!==null&&_cDday(c.endDate)<0);var isDef=(c.managementType==='하자기간'&&_cDday(c.managementEndDate)!==null&&_cDday(c.managementEndDate)<0);return (isMa||isDef)&&c.status!=='종료';}).sort(function(a,b){var da=(a.managementType==='유지보수'?_cDday(a.endDate):_cDday(a.managementEndDate))||0;var db=(b.managementType==='유지보수'?_cDday(b.endDate):_cDday(b.managementEndDate))||0;return da-db;});
     var h='';
     // ── KPI 3개 ──
-    h+='<div class="dash-list-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">'+
+    h+='<div class="dash-list-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">';
     [{l:'전체 계약',v:all.length+'건',c:'#1E293B',bg:'#F8FAFC',bc:'#E2E8F0',oc:''},
      {l:'유지보수 계약 대상',v:mgtTarget+'건',c:'#0EA5A0',bg:'#F0FDF9',bc:'#99F6E4',oc:''},
      {l:'유지보수 계약 지연',v:lateMA.length+'건',c:'#DC2626',bg:'#FFF5F5',bc:'#FECACA',oc:''}
