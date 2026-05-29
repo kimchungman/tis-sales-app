@@ -13366,10 +13366,10 @@ function _rebuildContractPanel(rep){
       h+='<td style="'+TD+'font-weight:500;">'+_cFmt(c.amount)+'</td>';
       h+='<td style="'+TD+'font-size:11px;color:#64748B;">'+(c.startDate||'—')+'</td>';
       h+='<td style="'+TD+'font-size:11px;color:#64748B;">'+(c.endDate||'—')+'</td>';
-      h+='<td style="'+TD+'">'+_cDdayBadge(c.endDate)+'</td>';
+      h+='<td style="'+TD+'">'+_cContractDdayBadge(c)+'</td>';
       h+='<td style="'+TD+'">'+_cMgtBadge(c.managementType)+'</td>';
       h+='<td style="'+TD+'font-size:11px;color:#64748B;">'+(hasMgt&&c.managementEndDate||'—')+'</td>';
-      h+='<td style="'+TD+'">'+(hasMgt?_cDdayBadge(c.managementEndDate):'<span style="color:#CBD5E1;">—</span>')+'</td>';
+      h+='<td style="'+TD+'">'+_cMgtDdayBadge(c)+'</td>';
       h+='<td style="'+TD+'">'+_cStatusBadge(c.status)+'</td>';
       if(canEdit)h+='<td style="'+TD+'"><span style="color:#CBD5E1;font-size:14px;">✎</span></td>';
       h+='</tr>';
@@ -13508,7 +13508,7 @@ function renderContractDashboard(){
     ].forEach(function(k){
       h+='<div style="background:'+k.bg+';border:1.5px solid '+k.bc+';border-radius:12px;padding:14px 18px;">';
       h+='<div style="font-size:11px;color:#94A3B8;margin-bottom:6px;">'+k.l+'</div>';
-      h+='<div style="font-size:26px;font-weight:700;color:'+k.c+';">'+k.v+'</div>';
+      h+='<div style="font-size:22px;font-weight:700;color:'+k.c+';">'+k.v+'</div>';
       h+='</div>';
     });
     h+='</div>';
@@ -13601,9 +13601,9 @@ function renderContractDashboard(){
         h+='<td style="'+TD3+'text-align:left !important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:#374151;padding-left:8px !important;">'+(c.projectName||'—')+'</td>';
         h+='<td style="'+TD3+'font-weight:500;">'+_cFmt(c.amount)+'</td>';
         h+='<td style="'+TD3+'font-size:11px;color:#94A3B8;">'+(c.endDate||'—')+'</td>';
-        h+='<td style="'+TD3+'">'+_cDdayBadge(c.endDate)+'</td>';
+        h+='<td style="'+TD3+'">'+_cContractDdayBadge(c)+'</td>';
         h+='<td style="'+TD3+'">'+_cMgtBadge(c.managementType)+'</td>';
-        h+='<td style="'+TD3+'">'+(c.managementType&&c.managementType!=='해당없음'?_cDdayBadge(c.managementEndDate):'<span style="color:#CBD5E1;">—</span>')+'</td>';
+        h+='<td style="'+TD3+'">'+_cMgtDdayBadge(c)+'</td>';
         h+='<td style="'+TD3+'">'+_cStatusBadge(c.status)+'</td>';
         h+='</tr>';
         prevC=c.client;
@@ -13707,5 +13707,30 @@ setInterval(function(){
     }
   }catch(e){}
 },150);
+</script>
+<script>
+/* ── 계약 D-DAY 표시 (컨텍스트 반영) ── */
+function _cContractDdayBadge(c){
+  // 상태=종료 → 종료
+  if(c.status==='종료')return _cEndedBadge();
+  // 관리유형=유지보수 → 계약종료일 기준 D+N 계속 카운트 (갱신시그널)
+  if(c.managementType==='유지보수')return _cDdayBadge(c.endDate);
+  // 관리유형=하자기간 또는 해당없음 → endDate 지났으면 종료, 안지났으면 D-N
+  var n=_cDday(c.endDate);
+  if(n===null)return '<span style="color:#CBD5E1;font-size:11px;">—</span>';
+  if(n<0)return _cEndedBadge();
+  return _cDdayBadge(c.endDate);
+}
+function _cMgtDdayBadge(c){
+  // 상태=종료 → 종료
+  if(c.status==='종료')return _cEndedBadge();
+  // 관리유형=해당없음 → —
+  if(!c.managementType||c.managementType==='해당없음')return '<span style="color:#CBD5E1;">—</span>';
+  // 하자기간, 유지보수 → managementEndDate 기준
+  return _cDdayBadge(c.managementEndDate);
+}
+function _cEndedBadge(){
+  return '<span style="background:#F1F5F9;color:#94A3B8;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;">종료</span>';
+}
 </script>
 </body>
