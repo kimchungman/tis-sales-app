@@ -11946,11 +11946,7 @@ window._switchVTab=function(rep,tab){
   vp.style.display=_iv?'block':'none';
   if(cp)cp.style.display=(tab==='contract')?'block':'none';
   if(tab==='contract'&&typeof _lazyLoadContractData==='function'){
-    // 이미 패널이 보이고 내용 있으면 재빌드 스킵 (깜빡임 방지)
-    var _cplEl=document.getElementById('cpl-'+rep);
-    if(!cp||cp.style.display!=='block'||!_cplEl||!_cplEl.children.length){
-      _lazyLoadContractData(rep);
-    }
+    _lazyLoadContractData(rep);
   }
   // 활성 탭 전역 기록 (color 감지 불필요)
   window._activeVTab={rep:rep,tab:tab};
