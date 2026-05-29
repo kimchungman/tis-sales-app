@@ -13402,7 +13402,11 @@ function _rebuildContractPanel(rep){
     prevCl=cl;
   });
   h+='</tbody></table></div>';
+  var _cSt=0;
+  var _cSw=el.querySelector('div[style*="overflow-y:auto"]');
+  if(_cSw)_cSt=_cSw.scrollTop;
   el.innerHTML=h;
+  if(_cSt>0){setTimeout(function(){var _s=el.querySelector('div[style*="overflow-y:auto"]');if(_s)_s.scrollTop=_cSt;},0);}
 }
 
 // ── SP 저장 ──
