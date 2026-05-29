@@ -13462,35 +13462,33 @@ function renderContractDashboard(){
     var body=document.getElementById('contract-dashboard-body');
     if(!body)return;
     var active=all.filter(function(c){return c.status==='진행중';}).length;
-    var amt=all.reduce(function(s,c){return s+(parseFloat((c.amount||'0').toString().replace(/,/g,''))||0);},0);
     var d30=all.filter(function(c){var a=_cDday(c.endDate),b=_cDday(c.managementEndDate);return(a!==null&&a>=0&&a<=30)||(b!==null&&b>=0&&b<=30);}).length;
     var d7=all.filter(function(c){var a=_cDday(c.endDate),b=_cDday(c.managementEndDate);return(a!==null&&a>=0&&a<=7)||(b!==null&&b>=0&&b<=7);}).length;
     var h='';
-    // ── KPI 카드 (독립 영역) ──
-    h+='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px;">';
-    var kpis=[
-      {l:'전체 계약',v:all.length+'건',c:'#1E293B',bg:'#F8FAFC',bc:'#E2E8F0',fk:'',fv:''},
-      {l:'진행중',v:active+'건',c:'#059669',bg:'#F0FDF4',bc:'#BBF7D0',fk:'status',fv:'진행중'},
-      {l:'계약총액',v:(amt>=100000?(amt/100000).toFixed(1)+'억':_cFmt(Math.round(amt))+'천'),c:'#4f7fff',bg:'#EEF3FF',bc:'#C7D7FD',fk:'',fv:''},
-      {l:'D-30 이내',v:d30+'건',c:'#D97706',bg:'#FFFBEB',bc:'#FDE68A',fk:'urgency',fv:'d30'},
-      {l:'D-7 이내',v:d7+'건',c:'#DC2626',bg:'#FFF5F5',bc:'#FECACA',fk:'urgency',fv:'d7'}
-    ];
-    kpis.forEach(function(k){
+
+    // ── KPI 4개 ──
+    h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;">';
+    [{l:'전체 계약',v:all.length+'건',c:'#1E293B',bg:'#F8FAFC',bc:'#E2E8F0',fk:'',fv:''},
+     {l:'진행중',v:active+'건',c:'#059669',bg:'#F0FDF4',bc:'#BBF7D0',fk:'status',fv:'진행중'},
+     {l:'D-30 이내',v:d30+'건',c:'#D97706',bg:'#FFFBEB',bc:'#FDE68A',fk:'urgency',fv:'d30'},
+     {l:'D-7 이내',v:d7+'건',c:'#DC2626',bg:'#FFF5F5',bc:'#FECACA',fk:'urgency',fv:'d7'}
+    ].forEach(function(k){
       var isAct=(k.fk==='status'&&_cDashStatus===k.fv)||(k.fk==='urgency'&&_cDashUrgency===k.fv);
       var oc=k.fk==='status'?"_cSetStatus('"+k.fv+"')":k.fk==='urgency'?"_cSetUrgency('"+k.fv+"')":'';
-      h+='<div '+(oc?'onclick="'+oc+'"':'')+' style="background:'+k.bg+';border:1.5px solid '+(isAct?k.c:k.bc)+';border-radius:12px;padding:13px 15px;'+(oc?'cursor:pointer;transition:all .15s;':'')+'">';
+      h+='<div '+(oc?'onclick="'+oc+'"':'')+' style="background:'+k.bg+';border:1.5px solid '+(isAct?k.c:k.bc)+';border-radius:12px;padding:13px 16px;'+(oc?'cursor:pointer;':'')+'">';
       h+='<div style="font-size:11px;color:#94A3B8;margin-bottom:5px;">'+k.l+'</div>';
-      h+='<div style="font-size:22px;font-weight:700;color:'+k.c+';">'+k.v+'</div>';
-      if(isAct)h+='<div style="font-size:9px;color:'+k.c+';margin-top:2px;font-weight:600;">● 필터 적용중</div>';
+      h+='<div style="font-size:24px;font-weight:700;color:'+k.c+';">'+k.v+'</div>';
+      if(isAct)h+='<div style="font-size:9px;color:'+k.c+';margin-top:3px;font-weight:600;">● 필터 적용중</div>';
       h+='</div>';
     });
     h+='</div>';
-    // ── 필터 (완전 분리된 영역) ──
+
+    // ── 필터 ──
     function pill(label,oc,isA,color){
       var bg=isA?(color||'#4f7fff'):'white';var col=isA?'#fff':(color||'#64748B');var bd=isA?(color||'#4f7fff'):'#E2E8F0';
       return '<button onclick="'+oc+'" style="padding:5px 12px;border-radius:20px;font-size:11px;font-weight:'+(isA?'700':'500')+';border:1.5px solid '+bd+';background:'+bg+';color:'+col+';cursor:pointer;white-space:nowrap;">'+label+'</button>';
     }
-    h+='<div style="background:white;border:1px solid #E2E8F0;border-radius:12px;padding:12px 16px;margin-bottom:14px;">';
+    h+='<div style="background:white;border:1px solid #E2E8F0;border-radius:12px;padding:11px 16px;margin-bottom:14px;">';
     h+='<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">';
     h+='<div style="display:flex;align-items:center;gap:5px;">';
     h+='<span style="font-size:11px;font-weight:700;color:#4f7fff;min-width:28px;">상태</span>';
@@ -13498,16 +13496,14 @@ function renderContractDashboard(){
     h+=pill('진행중',"_cSetStatus('진행중')",_cDashStatus==='진행중','#059669');
     h+=pill('종료',"_cSetStatus('종료')",_cDashStatus==='종료','#94A3B8');
     h+=pill('협의중',"_cSetStatus('협의중')",_cDashStatus==='협의중','#4f7fff');
-    h+='</div>';
-    h+='<div style="width:1px;height:24px;background:#E2E8F0;"></div>';
+    h+='</div><div style="width:1px;height:20px;background:#E2E8F0;"></div>';
     h+='<div style="display:flex;align-items:center;gap:5px;">';
     h+='<span style="font-size:11px;font-weight:700;color:#D97706;min-width:28px;">기간</span>';
     h+=pill('전체',"_cSetUrgency('all')",_cDashUrgency==='all');
     h+=pill('D-7',"_cSetUrgency('d7')",_cDashUrgency==='d7','#DC2626');
     h+=pill('D-30',"_cSetUrgency('d30')",_cDashUrgency==='d30','#D97706');
     h+=pill('만료됨',"_cSetUrgency('expired')",_cDashUrgency==='expired','#94A3B8');
-    h+='</div>';
-    h+='<div style="width:1px;height:24px;background:#E2E8F0;"></div>';
+    h+='</div><div style="width:1px;height:20px;background:#E2E8F0;"></div>';
     var types=getSelectOpts('contractType');
     var tC={'신규개발':'#4f7fff','추가개발':'#7C3AED','MA':'#0EA5A0','상품':'#059669','기타':'#64748B'};
     h+='<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">';
@@ -13516,65 +13512,119 @@ function renderContractDashboard(){
     types.forEach(function(t){h+=pill(t,"_cSetType('"+t+"')",_cDashType===t,tC[t]||'#64748B');});
     h+='</div>';
     if(_cDashStatus!=='all'||_cDashUrgency!=='all'||_cDashType!=='all'){
-      h+='<div style="margin-left:auto;">';
-      h+='<button onclick="_cClearFilters()" style="padding:5px 12px;border-radius:20px;font-size:11px;border:1px dashed #E2E8F0;background:white;color:#94A3B8;cursor:pointer;">× 초기화</button>';
-      h+='</div>';
+      h+='<div style="margin-left:auto;"><button onclick="_cClearFilters()" style="padding:5px 12px;border-radius:20px;font-size:11px;border:1px dashed #E2E8F0;background:white;color:#94A3B8;cursor:pointer;">× 초기화</button></div>';
     }
     h+='</div></div>';
     if(filtered.length!==all.length)h+='<div style="padding:7px 12px;background:#EEF3FF;border-radius:8px;font-size:12px;color:#4f7fff;margin-bottom:12px;">필터: <strong>'+filtered.length+'건</strong> / 전체 '+all.length+'건</div>';
-    // ── 이달 처리 필요 항목 (단일 카드 리스트) ──
+
+    // ── 처리 필요 항목 + 고객사 리스트 ──
     var thisM=all.filter(function(c){var d1=_cDday(c.endDate),d2=_cDday(c.managementEndDate);return(d1!==null&&d1>=0&&d1<=31)||(d2!==null&&d2>=0&&d2<=31);});
     var nextM=all.filter(function(c){var d1=_cDday(c.endDate),d2=_cDday(c.managementEndDate);return(d1!==null&&d1>31&&d1<=62)||(d2!==null&&d2>31&&d2<=62);});
     var maNeed=all.filter(function(c){var d=_cDday(c.managementEndDate);return c.managementType==='유지보수'&&d!==null&&d>=0&&d<=60;});
     var def2ma=all.filter(function(c){var d=_cDday(c.managementEndDate);return c.managementType==='하자기간'&&d!==null&&d>=0&&d<=60;});
-    h+='<div style="background:white;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;margin-bottom:14px;">';
+    var actionItems=[
+      {icon:'🔴',label:'이달 만료',cnt:thisM.length,color:'#DC2626'},
+      {icon:'🟡',label:'다음달 만료',cnt:nextM.length,color:'#D97706'},
+      {icon:'🔁',label:'유지보수 갱신',cnt:maNeed.length,color:'#0EA5A0'},
+      {icon:'⚡',label:'하자→유지보수',cnt:def2ma.length,color:'#7C3AED'}
+    ];
+    h+='<div style="display:grid;grid-template-columns:2fr 3fr;gap:12px;margin-bottom:14px;">';
+
+    // 좌측: 처리 필요 항목 리스트
+    h+='<div style="background:white;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;">';
     h+='<div style="padding:12px 16px;border-bottom:1px solid #F1F5F9;">';
     h+='<span style="font-size:13px;font-weight:700;color:#1E293B;">처리 필요 항목</span>';
-    h+='<span style="font-size:11px;color:#94A3B8;margin-left:8px;">이달~2개월 이내</span>';
+    h+='<span style="font-size:11px;color:#94A3B8;margin-left:8px;">이달~2개월</span>';
     h+='</div>';
-    var actionItems=[
-      {label:'이달 만료',cnt:thisM.length,color:'#DC2626',items:thisM},
-      {label:'다음달 만료',cnt:nextM.length,color:'#D97706',items:nextM},
-      {label:'유지보수 갱신 필요',cnt:maNeed.length,color:'#0EA5A0',items:maNeed},
-      {label:'하자→유지보수 전환',cnt:def2ma.length,color:'#7C3AED',items:def2ma}
-    ];
-    actionItems.forEach(function(a,ai){
-      var hasBorder=ai>0?'border-top:1px solid #F1F5F9;':'';
-      h+='<div style="padding:11px 16px;'+hasBorder+'display:flex;align-items:flex-start;justify-content:space-between;">';
-      h+='<div style="display:flex;align-items:center;gap:10px;flex:1;">';
-      h+='<div style="width:3px;height:36px;background:'+a.color+';border-radius:2px;flex-shrink:0;"></div>';
-      h+='<div style="flex:1;">';
-      h+='<div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:3px;">'+a.label+'</div>';
-      if(a.cnt>0){
-        var preview=a.items.slice(0,2).map(function(c){return (c.client||'—')+(c._rep?' ('+c._rep+')':'');}).join(', ');
-        if(a.cnt>2)preview+=', 외 '+(a.cnt-2)+'건';
-        h+='<div style="font-size:11px;color:#94A3B8;">'+preview+'</div>';
-      }else{
-        h+='<div style="font-size:11px;color:#CBD5E1;">해당 없음</div>';
-      }
-      h+='</div></div>';
-      h+='<div style="background:'+(a.cnt>0?a.color:'#E2E8F0')+';color:'+(a.cnt>0?'white':'#94A3B8')+';padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;flex-shrink:0;margin-left:12px;">'+a.cnt+'건</div>';
+    actionItems.forEach(function(a,i){
+      h+='<div style="display:flex;align-items:center;padding:11px 16px;'+(i>0?'border-top:1px solid #F8FAFC;':'')+'">';
+      h+='<div style="width:3px;height:32px;background:'+a.color+';border-radius:2px;margin-right:12px;flex-shrink:0;"></div>';
+      h+='<div style="flex:1;min-width:0;">';
+      h+='<div style="font-size:12px;font-weight:600;color:#374151;">'+a.icon+' '+a.label+'</div>';
+      h+='</div>';
+      h+='<div style="background:'+(a.cnt>0?a.color+'15':'#F1F5F9')+';border:1px solid '+(a.cnt>0?a.color+'40':'#E2E8F0')+';color:'+(a.cnt>0?a.color:'#94A3B8')+';padding:3px 12px;border-radius:20px;font-size:13px;font-weight:700;flex-shrink:0;">'+a.cnt+'건</div>';
       h+='</div>';
     });
     h+='</div>';
+
+    // 우측: 고객사 리스트 (유지보수 갱신 + 하자→유지보수)
+    h+='<div style="display:flex;flex-direction:column;gap:10px;">';
+
+    // 유지보수 갱신 필요
+    h+='<div style="background:white;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;flex:1;">';
+    h+='<div style="padding:10px 14px;background:linear-gradient(135deg,#E0F7F5,#F0FDFC);border-bottom:1px solid #99F6E440;display:flex;align-items:center;justify-content:space-between;">';
+    h+='<span style="font-size:12px;font-weight:700;color:#0EA5A0;">🔁 유지보수 갱신 필요</span>';
+    h+='<span style="background:#0EA5A0;color:white;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;">'+maNeed.length+'건</span>';
+    h+='</div>';
+    if(!maNeed.length){
+      h+='<div style="padding:14px 16px;font-size:12px;color:#CBD5E1;text-align:center;">해당 없음</div>';
+    } else {
+      h+='<div style="max-height:130px;overflow-y:auto;">';
+      maNeed.forEach(function(c,i){
+        var dm=_cDday(c.managementEndDate);
+        var dc=dm<=7?'#DC2626':dm<=30?'#D97706':'#0EA5A0';
+        h+='<div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;padding:8px 14px;'+(i>0?'border-top:0.5px solid #F1F5F9;':'')+'">';
+        h+='<div>';
+        h+='<div style="font-size:12px;font-weight:600;color:#1E293B;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(c.client||'—')+'</div>';
+        h+='<div style="font-size:10px;color:#94A3B8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(c._rep?c._rep+' · ':'')+(c.projectName||'')+'</div>';
+        h+='</div>';
+        h+='<span style="font-size:10px;color:#64748B;white-space:nowrap;">'+(c.managementEndDate||'')+'</span>';
+        h+='<span style="background:'+dc+'15;color:'+dc+';padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;">D-'+dm+'</span>';
+        h+='</div>';
+      });
+      h+='</div>';
+    }
+    h+='</div>';
+
+    // 하자→유지보수 전환 필요
+    h+='<div style="background:white;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;flex:1;">';
+    h+='<div style="padding:10px 14px;background:linear-gradient(135deg,#F0EBFF,#FAF5FF);border-bottom:1px solid #DDD6FE40;display:flex;align-items:center;justify-content:space-between;">';
+    h+='<span style="font-size:12px;font-weight:700;color:#7C3AED;">⚡ 하자→유지보수 전환</span>';
+    h+='<span style="background:#7C3AED;color:white;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;">'+def2ma.length+'건</span>';
+    h+='</div>';
+    if(!def2ma.length){
+      h+='<div style="padding:14px 16px;font-size:12px;color:#CBD5E1;text-align:center;">해당 없음</div>';
+    } else {
+      h+='<div style="max-height:130px;overflow-y:auto;">';
+      def2ma.forEach(function(c,i){
+        var dm=_cDday(c.managementEndDate);
+        var dc=dm<=7?'#DC2626':dm<=30?'#D97706':'#7C3AED';
+        h+='<div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;padding:8px 14px;'+(i>0?'border-top:0.5px solid #F1F5F9;':'')+'">';
+        h+='<div>';
+        h+='<div style="font-size:12px;font-weight:600;color:#1E293B;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(c.client||'—')+'</div>';
+        h+='<div style="font-size:10px;color:#94A3B8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(c._rep?c._rep+' · ':'')+(c.projectName||'')+'</div>';
+        h+='</div>';
+        h+='<span style="font-size:10px;color:#64748B;white-space:nowrap;">'+(c.managementEndDate||'')+'</span>';
+        h+='<span style="background:'+dc+'15;color:'+dc+';padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;">D-'+dm+'</span>';
+        h+='</div>';
+      });
+      h+='</div>';
+    }
+    h+='</div>';
+    h+='</div>'; // 우측 flex 컨테이너
+    h+='</div>'; // 2컬럼 grid
+
     // ── D-30 주의 목록 ──
     var urgent=filtered.filter(function(c){var a=_cDday(c.endDate),b=_cDday(c.managementEndDate);return(a!==null&&a>=0&&a<=30)||(b!==null&&b>=0&&b<=30);}).sort(function(a,b){var da=Math.min(_cDday(a.endDate)!==null?_cDday(a.endDate):9999,_cDday(a.managementEndDate)!==null?_cDday(a.managementEndDate):9999),db=Math.min(_cDday(b.endDate)!==null?_cDday(b.endDate):9999,_cDday(b.managementEndDate)!==null?_cDday(b.managementEndDate):9999);return da-db;});
     if(urgent.length&&_cDashUrgency!=='expired'){
       h+='<div style="background:white;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;margin-bottom:14px;">';
-      h+='<div style="padding:12px 16px;border-bottom:1px solid #F1F5F9;font-size:13px;font-weight:700;color:#D97706;">⚡ D-30 이내 주의 '+urgent.length+'건</div>';
+      h+='<div style="padding:12px 16px;border-bottom:1px solid #F1F5F9;display:flex;align-items:center;justify-content:space-between;">';
+      h+='<span style="font-size:13px;font-weight:700;color:#D97706;">⚡ D-30 이내 주의</span>';
+      h+='<span style="font-size:12px;color:#94A3B8;">'+urgent.length+'건</span>';
+      h+='</div>';
       h+='<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;min-width:600px;">';
-      h+='<colgroup><col style="width:70px;"><col style="width:90px;"><col style="width:80px;"><col style="width:160px;"><col style="width:76px;"><col style="width:76px;"><col style="width:76px;"><col style="width:76px;"></colgroup>';
+      h+='<colgroup><col style="width:68px;"><col style="width:88px;"><col style="width:80px;"><col style="width:160px;"><col style="width:70px;"><col style="width:78px;"><col style="width:70px;"><col style="width:70px;"></colgroup>';
       var TH2='padding:8px 6px !important;text-align:center !important;font-weight:500;color:#94A3B8;font-size:11px;border-bottom:1px solid #E2E8F0;background:#F8FAFC;white-space:nowrap;';
       h+='<thead><tr>';
       ['담당자','고객사','계약유형','프로젝트','계약D-day','관리유형','관리D-day','상태'].forEach(function(t){h+='<th style="'+TH2+'">'+t+'</th>';});
       h+='</tr></thead><tbody>';
       var TD2='padding:7px 6px !important;text-align:center !important;vertical-align:middle !important;';
-      urgent.forEach(function(c){
+      urgent.forEach(function(c,i){
         h+='<tr style="border-bottom:0.5px solid #F1F5F9;">';
         h+='<td style="'+TD2+'font-weight:600;font-size:11px;">'+c._rep+'</td>';
-        h+='<td style="'+TD2+'font-weight:600;">'+(c.client||'—')+'</td>';
+        h+='<td style="'+TD2+'font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(c.client||'—')+'</td>';
         h+='<td style="'+TD2+'">'+_cTypeBadge(c.contractType)+'</td>';
-        h+='<td style="'+TD2+'text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;padding-left:8px;">'+(c.projectName||'—')+'</td>';
+        h+='<td style="'+TD2+'text-align:left !important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;padding-left:8px !important;">'+(c.projectName||'—')+'</td>';
         h+='<td style="'+TD2+'">'+_cDdayBadge(c.endDate)+'</td>';
         h+='<td style="'+TD2+'">'+_cMgtBadge(c.managementType)+'</td>';
         h+='<td style="'+TD2+'">'+(c.managementType&&c.managementType!=='해당없음'?_cDdayBadge(c.managementEndDate):'<span style="color:#CBD5E1;">—</span>')+'</td>';
@@ -13583,13 +13633,15 @@ function renderContractDashboard(){
       });
       h+='</tbody></table></div></div>';
     }
+
     // ── 전체 계약 목록 ──
     h+='<div style="background:white;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;">';
     h+='<div style="padding:12px 16px;border-bottom:1px solid #F1F5F9;display:flex;align-items:center;justify-content:space-between;">';
     h+='<span style="font-size:13px;font-weight:700;color:#1E293B;">전체 계약 목록</span>';
     h+='<span style="font-size:12px;color:#94A3B8;">'+filtered.length+'건</span></div>';
-    if(!filtered.length){h+='<div style="text-align:center;padding:40px;color:#94A3B8;font-size:13px;">조건에 맞는 계약이 없습니다.</div>';}
-    else{
+    if(!filtered.length){
+      h+='<div style="text-align:center;padding:40px;color:#94A3B8;font-size:13px;">조건에 맞는 계약이 없습니다.</div>';
+    } else {
       h+='<div style="overflow-x:auto;max-height:380px;overflow-y:auto;">';
       h+='<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;min-width:820px;">';
       h+='<colgroup><col style="width:70px;"><col style="width:88px;"><col style="width:80px;"><col style="width:160px;"><col style="width:78px;"><col style="width:68px;"><col style="width:70px;"><col style="width:78px;"><col style="width:70px;"><col style="width:70px;"></colgroup>';
@@ -13605,7 +13657,7 @@ function renderContractDashboard(){
         h+='<td style="'+TD3+'font-weight:600;font-size:11px;color:#374151;">'+c._rep+'</td>';
         h+='<td style="'+TD3+'font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'+(cc?'color:#4f7fff;':'')+'">'+(c.client||'—')+'</td>';
         h+='<td style="'+TD3+'">'+_cTypeBadge(c.contractType)+'</td>';
-        h+='<td style="'+TD3+'text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:#374151;padding-left:8px;">'+(c.projectName||'—')+'</td>';
+        h+='<td style="'+TD3+'text-align:left !important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:#374151;padding-left:8px !important;">'+(c.projectName||'—')+'</td>';
         h+='<td style="'+TD3+'font-weight:500;">'+_cFmt(c.amount)+'</td>';
         h+='<td style="'+TD3+'font-size:11px;color:#94A3B8;">'+(c.endDate||'—')+'</td>';
         h+='<td style="'+TD3+'">'+_cDdayBadge(c.endDate)+'</td>';
