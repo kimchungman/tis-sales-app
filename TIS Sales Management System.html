@@ -2189,14 +2189,14 @@ document.addEventListener('mousedown',function(e){
 .wk-reply-cancel{font-size:11px;color:var(--muted);background:none;border:none;cursor:pointer;padding:4px 8px;}
 .wk-reply-submit{font-size:11px;font-weight:700;color:#fff;background:var(--blue);border:none;border-radius:6px;padding:4px 14px;cursor:pointer;}
 /* 색상 팔레트 */
-.wk-color-palette{position:absolute;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 8px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:300;display:none;gap:4px;flex-wrap:wrap;width:120px;}
+.wk-color-palette{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 10px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:300;display:none;margin-top:5px;}
 .wk-cp{width:18px;height:18px;border-radius:50%;cursor:pointer;border:1.5px solid transparent;}
 .wk-cp:hover{transform:scale(1.2);}
 .wk-mention{background:var(--blue-soft);color:var(--blue);font-weight:700;padding:0 3px;border-radius:3px;}
 /* 알림 */
 .wk-notif-wrap{position:relative;display:inline-block;}
-.wk-notif-btn{height:32px;padding:0 11px;border-radius:20px;background:linear-gradient(135deg,#64748B15,#94A3B815);border:1.5px solid #94A3B840;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .2s;color:#CBD5E1;}
-.wk-notif-btn:hover{background:linear-gradient(135deg,#64748B25,#94A3B825);}
+.wk-notif-btn{height:32px;padding:0 11px;border-radius:20px;background:linear-gradient(135deg,#1E3A5F,#1E3A6E);border:1.5px solid #2D4F8A;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .2s;color:#93C5FD;}
+.wk-notif-btn:hover{background:linear-gradient(135deg,#1E3A6E,#1E4A8A);border-color:#3D5F9A;}
 .wk-notif-label{font-size:11px;font-weight:600;}
 .wk-notif-badge{background:#DC2626;color:#fff;font-size:9px;font-weight:700;border-radius:20px;padding:1px 5px;min-width:16px;text-align:center;line-height:1.4;border:1.5px solid #1E293B;}
 .wk-notif-drop{position:absolute;top:38px;right:0;width:310px;background:var(--card);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.18);z-index:500;overflow:hidden;border:1px solid var(--border);display:none;}
@@ -3265,23 +3265,22 @@ document.addEventListener('mousedown',function(e){
         <span class="wk-fi-role" id="wk-author-role"></span>
       </div>
       <div class="wk-toolbar">
-        <button class="wk-tb" title="굵게" onclick="_wkFmt('bold')"><b>B</b></button>
-        <button class="wk-tb" title="기울임" onclick="_wkFmt('italic')"><i style="font-size:12px;">I</i></button>
-        <button class="wk-tb" title="밑줄" onclick="_wkFmt('underline')"><u>U</u></button>
+        <button class="wk-tb" title="굵게 (Ctrl+B)" onclick="_wkFmt('bold')"><b>B</b></button>
+        <button class="wk-tb" title="기울임 (Ctrl+I)" onclick="_wkFmt('italic')"><i style="font-size:12px;">I</i></button>
+        <button class="wk-tb" title="밑줄 (Ctrl+U)" onclick="_wkFmt('underline')"><u>U</u></button>
         <button class="wk-tb" title="취소선" onclick="_wkFmt('strikeThrough')"><s>S</s></button>
-        <button class="wk-tb" title="글머리" onclick="_wkFmt('insertUnorderedList')">•—</button>
-        <button class="wk-tb" title="번호목록" onclick="_wkFmt('insertOrderedList')">1.</button>
-        <button class="wk-tb color-pick" title="글자색" onclick="_wkToggleColorPalette(event,'text')">A▾</button>
-        <button class="wk-tb color-pick" title="형광펜" onclick="_wkToggleColorPalette(event,'bg')" style="background:linear-gradient(90deg,#FEF08A,#FDE047);border-color:#EAB308;">하이라이트</button>
       </div>
-      <!-- 색상 팔레트 -->
-      <div class="wk-color-palette" id="wk-color-palette" style="display:none;flex-direction:row;">
-        <div class="wk-cp" style="background:#1E293B;" onclick="_wkApplyColor('#1E293B')" title="기본"></div>
-        <div class="wk-cp" style="background:#DC2626;" onclick="_wkApplyColor('#DC2626')" title="빨강"></div>
-        <div class="wk-cp" style="background:#1A56DB;" onclick="_wkApplyColor('#1A56DB')" title="파랑"></div>
-        <div class="wk-cp" style="background:#059669;" onclick="_wkApplyColor('#059669')" title="초록"></div>
-        <div class="wk-cp" style="background:#D97706;" onclick="_wkApplyColor('#D97706')" title="주황"></div>
-        <div class="wk-cp" style="background:#7C3AED;" onclick="_wkApplyColor('#7C3AED')" title="보라"></div>
+      <!-- 드래그 색상 선택 팝업 -->
+      <div class="wk-color-palette" id="wk-color-palette" style="display:none;">
+        <div style="font-size:9px;color:var(--muted);margin-bottom:4px;font-weight:600;">글자색</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+          <div class="wk-cp" style="background:#1E293B;" onclick="_wkApplyColor('#1E293B')" title="기본"></div>
+          <div class="wk-cp" style="background:#DC2626;" onclick="_wkApplyColor('#DC2626')" title="빨강"></div>
+          <div class="wk-cp" style="background:#1A56DB;" onclick="_wkApplyColor('#1A56DB')" title="파랑"></div>
+          <div class="wk-cp" style="background:#059669;" onclick="_wkApplyColor('#059669')" title="초록"></div>
+          <div class="wk-cp" style="background:#D97706;" onclick="_wkApplyColor('#D97706')" title="주황"></div>
+          <div class="wk-cp" style="background:#7C3AED;" onclick="_wkApplyColor('#7C3AED')" title="보라"></div>
+        </div>
       </div>
       <div class="wk-editor" id="wk-editor" contenteditable="true" data-placeholder="보고 또는 지시 내용 입력... (@이름 으로 담당자 언급)"></div>
       <!-- 멘션 팝업 -->
@@ -3717,6 +3716,8 @@ document.addEventListener('DOMContentLoaded',()=>{
         setTimeout(function(){
           if(typeof syncTeamData==='function') syncTeamData();
           if(typeof buildRepTabs==='function') buildRepTabs();
+  // 알림 버튼 헤더에 추가 (주간회의 모듈)
+  setTimeout(function(){ if(typeof _wkBuildNotifBtn==='function') _wkBuildNotifBtn(); }, 500);
           // 입력 페이지 활성 상태일 때만 buildRepInputs 호출 (이중 빌드 방지)
           var _ip=document.getElementById('page-input');
           if(_ip&&_ip.classList.contains('active')&&typeof buildRepInputs==='function') buildRepInputs();
@@ -8004,6 +8005,8 @@ async function _initSP() {
           // 설정 변경됐으면 UI 갱신
           if(JSON.stringify({teams:TEAMS, teamReps:TEAM_REPS}) !== _settingsBefore){
             if(typeof buildRepTabs==='function') buildRepTabs();
+  // 알림 버튼 헤더에 추가 (주간회의 모듈)
+  setTimeout(function(){ if(typeof _wkBuildNotifBtn==='function') _wkBuildNotifBtn(); }, 500);
             if(typeof buildRepBtns==='function') buildRepBtns();
             if(typeof renderRepManage==='function') renderRepManage();
             _changed = true;
@@ -8566,6 +8569,8 @@ async function _spLoadSettings() {
     } else {
       if(typeof applyCurrentTeam==='function') applyCurrentTeam(session.team);
       if(typeof buildRepTabs==='function') buildRepTabs();
+  // 알림 버튼 헤더에 추가 (주간회의 모듈)
+  setTimeout(function(){ if(typeof _wkBuildNotifBtn==='function') _wkBuildNotifBtn(); }, 500);
     }
     // 현재 페이지가 input이면 담당자 탭 즉시 선택 (폴링 제거)
     var _inputPage = document.getElementById('page-input');
@@ -14760,14 +14765,16 @@ async function _wkLoad(){
   if(_wk.loading) return;
   _wk.loading=true;
   try{
-    var thisKey=_wkThisKey();
-    var prevKey=_wkPrevKey();
-    // 이번주 피드
-    var entries=await _wkLoadFeed(thisKey);
+    var mainKey=_wk.weekMode==='last'?_wkLastKey():_wkThisKey();
+    var prevKey=_wk.weekMode==='last'?null:_wkLastKey();
+    // 현재 선택된 주 피드
+    var entries=await _wkLoadFeed(mainKey);
     _wk.entries=entries;
-    // 지난주 피드
+    // 이전 주 피드 (이번주 모드일 때만 지난주 표시)
     if(prevKey){
       _wk.prevEntries=await _wkLoadFeed(prevKey);
+    } else {
+      _wk.prevEntries=[];
     }
     _wkRenderReport();
     _wkRenderFeed();
@@ -14814,8 +14821,8 @@ function _wkRenderContracts(){
         diffVal=mgtDiff; urgency=mgtDiff<0?3:mgtDiff<=7?2:1;
         label=mgtDiff<0?'D+'+Math.abs(mgtDiff):mgtDiff===0?'오늘':'D-'+mgtDiff;
       }
-      // 계약 공백 (만료 후 갱신 없음)
-      else if(diff!==null&&diff<0&&c.managementType!=='유지보수'){
+      // 계약 공백 (만료 후 갱신 없음 - 하자기간 제외)
+      else if(diff!==null&&diff<0&&c.managementType!=='유지보수'&&c.managementType!=='하자기간'){
         type='계약공백';
         diffVal=diff; urgency=3;
         label='D+'+Math.abs(diff);
@@ -14872,7 +14879,7 @@ function _wkRenderVisits(){
       if(d>=weekStart&&d<=weekEnd){
         visits.push({rep:rep, displayName:_wkDisplayName(rep), date:v.date||v.visitDate||'',
           company:v.company||v.client||'', type:v.contactType||v.type||'',
-          purpose:v.contactPurpose||v.purpose||v.memo||''});
+          content:v.content||'', purpose:v.contactPurpose||v.purpose||v.memo||''});
       }
     });
   });
@@ -14884,10 +14891,11 @@ function _wkRenderVisits(){
   }
   el.innerHTML=visits.slice(0,15).map(function(v){
     var dateStr=(v.date||'').slice(5,10).replace('-','.');
+    var visitContent=_wkStripHtml(v.content||v.contactPurpose||v.purpose||v.memo||'');
     return '<div class="wk-row">'
       +'<span class="wk-dt" style="min-width:40px;">'+dateStr+'</span>'
       +'<span class="wk-cli">'+_wkEsc(v.company)+'</span>'
-      +'<span class="wk-cont">'+_wkEsc(v.purpose||v.type||'')+'</span>'
+      +'<span class="wk-cont">'+_wkEsc(visitContent)+'</span>'
       +'<span style="font-size:10px;color:var(--muted);">'+_wkEsc(v.displayName)+'</span>'
       +'</div>';
   }).join('');
@@ -15032,7 +15040,7 @@ function _wkRenderProjects(){
       +'<div class="wk-dot" style="background:'+col+';"></div>'
       +(it.isChecked?'<span style="font-size:9px;background:var(--blue-soft);color:var(--blue);padding:1px 5px;border-radius:20px;font-weight:700;">주간보고</span>':'')
       +'<span class="wk-cli">'+_wkEsc(it.client)+'</span>'
-      +'<span class="wk-cont">'+_wkEsc(it.content)+'</span>'
+      +'<span class="wk-cont">'+_wkEsc(_wkStripHtml(it.content))+'</span>'
       +'<span class="wk-dt">'+dtStr+'</span>'
       +'</div>';
   }).join('');
@@ -15068,7 +15076,7 @@ function _wkRenderIssues(){
     var diffColor=diff<0||diff<=7?'background:#FEE2E2;color:var(--red);':diff<=30?'background:#FEF3C7;color:var(--gold);':'background:var(--bg);color:var(--muted);';
     return '<div class="wk-row">'
       +'<span class="wk-cli">'+_wkEsc(iss.client)+'</span>'
-      +'<span class="wk-cont">'+_wkEsc(iss.content)+'</span>'
+      +'<span class="wk-cont">'+_wkEsc(_wkStripHtml(iss.content))+'</span>'
       +'<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;'+diffColor+'">'+diffStr+'</span>'
       +'</div>';
   }).join('');
@@ -15173,6 +15181,19 @@ function _wkSetupInput(){
     editor.addEventListener('click', function(){
       document.getElementById('wk-mention-popup').style.display='none';
     });
+    // 드래그 후 텍스트 선택 시 색상 팝업
+    function _wkShowColorOnSelect(){
+      var sel=window.getSelection();
+      if(!sel||sel.isCollapsed){
+        document.getElementById('wk-color-palette').style.display='none';
+        return;
+      }
+      var pal=document.getElementById('wk-color-palette');
+      if(pal) pal.style.display='block';
+    }
+    editor.addEventListener('mouseup', _wkShowColorOnSelect);
+    editor.addEventListener('touchend', _wkShowColorOnSelect);
+    editor.addEventListener('keyup', _wkShowColorOnSelect);
   }
 }
 
@@ -15191,6 +15212,11 @@ function _wkGetRoleLabel(){
     return authCfg.repTitles[session.rep];
   }
   return '영업담당';
+}
+
+function _wkStripHtml(html){
+  if(!html) return '';
+  return String(html).replace(/<[^>]*>/g,'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ').replace(/&#\d+;/g,'').trim();
 }
 function _wkRepRoleLabel(rep){
   if(!rep) return '';
@@ -15300,23 +15326,14 @@ window._wkFmt=function(cmd){
   document.execCommand(cmd, false, null);
 };
 
-window._wkToggleColorPalette=function(e, mode){
-  e.stopPropagation();
-  _wk.colorMode=mode;
-  var pal=document.getElementById('wk-color-palette');
-  if(!pal) return;
-  pal.style.display=pal.style.display==='flex'?'none':'flex';
-};
+// _wkToggleColorPalette: 드래그 방식으로 대체
 
 window._wkApplyColor=function(color){
   var editor=document.getElementById('wk-editor');
   if(editor) editor.focus();
-  if(_wk.colorMode==='bg'){
-    document.execCommand('hiliteColor', false, color);
-  } else {
-    document.execCommand('foreColor', false, color);
-  }
-  document.getElementById('wk-color-palette').style.display='none';
+  document.execCommand('foreColor', false, color);
+  var pal=document.getElementById('wk-color-palette');
+  if(pal) pal.style.display='none';
 };
 
 // ── 등록 ──────────────────────────────────────────
@@ -15506,6 +15523,9 @@ document.addEventListener('click', function(e){
   if(!e.target.closest('.wk-input-area')){
     var mp=document.getElementById('wk-mention-popup');
     if(mp) mp.style.display='none';
+  }
+  // 색상 팔레트: 팔레트 외부 클릭 시 닫기
+  if(!e.target.closest('.wk-color-palette')&&!e.target.closest('.wk-editor')){
     var cp=document.getElementById('wk-color-palette');
     if(cp) cp.style.display='none';
   }
