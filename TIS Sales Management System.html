@@ -6701,6 +6701,20 @@ function doRepLogin(rep){
   setTimeout(async function(){
     try{ if(!window._isSPReady&&typeof _initSP==='function') await _initSP(); }catch(e){}
   }, 800);
+  // 로그인 후 알림 로드 (SP 연결 완료 대기)
+  (function _pollNotif(n){
+    var _nm=(session&&session.rep)||(session&&session.guestName)||'';
+    if(!_nm) return;
+    if(window._isSPReady&&typeof _wkLoadNotif==='function'){
+      _wkLoadNotif(_nm).then(function(items){
+        if(window._wk) window._wk.notifications=items||[];
+        if(typeof _wkGenContractNotifs==='function') _wkGenContractNotifs();
+        if(typeof _wkUpdateNotifBadge==='function') _wkUpdateNotifBadge();
+      }).catch(function(){});
+    } else if(n>0){
+      setTimeout(function(){ _pollNotif(n-1); }, 1000);
+    }
+  })(15);
 }function doRepLogin(rep){
   var _repTeam2 = _getRepActualTeam(rep);
   session={role:'rep', rep:rep, team:_repTeam2};
@@ -7934,17 +7948,6 @@ async function _initSP() {
     if (!window._spListId) throw new Error('리스트 없음: ' + _SP_CONFIG.listName);
 
     window._isSPReady = true;
-  // SP 연결 직후 알림 즉시 로드
-  setTimeout(function(){
-    var _nm=(session&&session.rep)||(session&&session.guestName)||'';
-    if(_nm&&typeof _wkLoadNotif==='function'){
-      _wkLoadNotif(_nm).then(function(items){
-        if(window._wk) window._wk.notifications=items||[];
-        if(typeof _wkGenContractNotifs==='function') _wkGenContractNotifs();
-        if(typeof _wkUpdateNotifBadge==='function') _wkUpdateNotifBadge();
-      }).catch(function(){});
-    }
-  }, 500);
     _setSPStatus('connected');
     showToast('✅ SharePoint 연결됨');
 
@@ -14326,7 +14329,8 @@ async function _wkLoadFeed(weekKey){
     var url=_lUrl()+'?$select=Title,DataType,DataKey,Payload&$filter=DataType eq \'weeklyFeed\'&$top=500';
     var res=await _spFetchAll(url);
     var all=[];
-    (res||[]).forEach(function(item){
+    var _items=(res&&res.value)||[];
+    _items.forEach(function(item){
       if(!item.Title||item.Title.indexOf('weeklyFeed_'+weekKey)!==0) return;
       try{
         var d=JSON.parse(item.Payload||'{}');
@@ -14355,8 +14359,9 @@ async function _wkLoadNotif(rep){
     var _ntitle='weeklyNotif_'+_nkey;
     var url=_lUrl()+'?$select=Title,DataType,Payload&$filter=DataType eq \'weeklyNotif\' and Title eq \''+_ntitle+'\'&$top=5';
     var res=await _spFetchAll(url);
-    if(!res||!res.length) return [];
-    var d=JSON.parse((res[0].Payload)||'{}');
+    var _nItems=(res&&res.value)||[];
+    if(!_nItems.length) return [];
+    var d=JSON.parse((_nItems[0].Payload)||'{}');
     return d.items||[];
   }catch(e){ return []; }
 }
@@ -14865,13 +14870,7 @@ function _wkRenderContracts(){
     3:'background:#FEE2E2;color:#DC2626;font-weight:700;'  // 긴급
   };
   el.innerHTML=items.map(function(it){
-    return '<div class="wk-row" style="align-items:center;gap:6px;">'
-      +'<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;'+(typeStyle[it.type]||'')+';white-space:nowrap;flex-shrink:0;">'+it.type+'</span>'
-      +'<span style="font-size:12px;font-weight:700;color:var(--text);width:110px;min-width:110px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+_wkEsc(it.client)+'">'+_wkEsc(it.client)+'</span>'
-      +'<span style="font-size:12px;color:var(--sub);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">'+_wkEsc(it.project)+'</span>'
-      +'<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;'+(labelStyle[it.urgency]||'')+';white-space:nowrap;flex-shrink:0;">'+it.label+'</span>'
-      +'<span style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0;">'+_wkEsc(it.displayName)+'</span>'
-      +'</div>'
+    return '<div class="wk-row" style="align-items:center;gap:6px;">'      +'<span style="font-size:12px;font-weight:700;color:var(--text);width:110px;min-width:110px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+_wkEsc(it.client)+'">'+_wkEsc(it.client)+'</span>'      +'<span style="font-size:11px;color:var(--muted);width:56px;min-width:56px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+_wkEsc(it.displayName)+'</span>'      +'<span style="font-size:12px;color:var(--sub);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">'+_wkEsc(it.project)+'</span>'      +'<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;'+(typeStyle[it.type]||'')+';white-space:nowrap;flex-shrink:0;">'+it.type+'</span>'      +'<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;'+(labelStyle[it.urgency]||'')+';white-space:nowrap;flex-shrink:0;">'+it.label+'</span>'      +'</div>'
   }).join('');
 }
 function _wkRenderVisits(){
@@ -14904,11 +14903,7 @@ function _wkRenderVisits(){
     var dateStr=(v.date||'').slice(5,10).replace('-','.');
     var visitContent=_wkStripHtml(v.content||v.contactPurpose||v.purpose||v.memo||'');
     return '<div class="wk-row">'
-      +'<span style="font-size:11px;color:var(--muted);min-width:42px;flex-shrink:0;">'+dateStr+'</span>'
-      +'<span style="font-size:12px;font-weight:700;color:var(--text);width:120px;min-width:120px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+_wkEsc(v.company)+'">'+_wkEsc(v.company)+'</span>'
-      +'<span style="font-size:12px;color:var(--sub);flex:1;line-height:1.5;white-space:pre-wrap;word-break:break-all;min-width:0;">'+_wkNl2br(visitContent)+'</span>'
-      +'<span style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0;min-width:50px;text-align:right;padding-top:2px;">'+_wkEsc(v.displayName)+'</span>'
-      +'</div>';
+      +'<span style="font-size:11px;color:var(--muted);min-width:42px;flex-shrink:0;">'+dateStr+'</span>'      +'<span style="font-size:12px;font-weight:700;color:var(--text);width:110px;min-width:110px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+_wkEsc(v.company)+'">'+_wkEsc(v.company)+'</span>'      +'<span style="font-size:11px;color:var(--muted);width:56px;min-width:56px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+_wkEsc(v.displayName)+'</span>'      +'<span style="font-size:12px;color:var(--sub);flex:1;line-height:1.5;white-space:pre-wrap;word-break:break-all;min-width:0;">'+_wkNl2br(visitContent)+'</span>'      +'</div>';
   }).join('');
 }
 
@@ -15051,7 +15046,7 @@ function _wkRenderProjects(){
     return;
   }
   el.innerHTML=items.slice(0,10).map(function(it){
-    var dtStr=it.date?it.date.slice(5,10).replace('-','.'):'';    return '<div class="wk-row" style="align-items:flex-start;">'      +'<span style="font-size:12px;font-weight:700;color:var(--text);width:110px;min-width:110px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+_wkEsc(it.client)+'">'+_wkEsc(it.client)+'</span>'      +'<span style="font-size:12px;color:var(--sub);flex:1;line-height:1.5;white-space:pre-wrap;word-break:break-all;min-width:0;">'+_wkNl2br(_wkStripHtml(it.content))+'</span>'      +'<span style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0;padding-top:2px;">'+dtStr+'</span>'      +'<span style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0;min-width:48px;text-align:right;padding-top:2px;">'+_wkEsc(_wkDisplayName(it.rep))+'</span>'      +'</div>';
+    var dtStr=it.date?it.date.slice(5,10).replace('-','.'):'';    return '<div class="wk-row" style="align-items:flex-start;">'      +'<span style="font-size:12px;font-weight:700;color:var(--text);width:110px;min-width:110px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+_wkEsc(it.client)+'">'+_wkEsc(it.client)+'</span>'      +'<span style="font-size:11px;color:var(--muted);width:56px;min-width:56px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+_wkEsc(_wkDisplayName(it.rep))+'</span>'      +'<span style="font-size:12px;color:var(--sub);flex:1;line-height:1.5;white-space:pre-wrap;word-break:break-all;min-width:0;">'+_wkNl2br(_wkStripHtml(it.content))+'</span>'      +'<span style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0;padding-top:2px;margin-left:6px;">'+dtStr+'</span>'      +'</div>';
   }).join('');
 }
 
@@ -15086,7 +15081,7 @@ function _wkRenderIssues(){
     var diff=iss.diff;
     var diffStr=diff<0?'D+'+Math.abs(diff):(diff===999?'—':'D-'+diff);
     var diffColor=diff<0||diff<=7?'background:#FEE2E2;color:var(--red);':diff<=30?'background:#FEF3C7;color:var(--gold);':'background:var(--bg);color:var(--muted);';
-    return '<div class="wk-row" style="align-items:flex-start;">'      +'<span style="font-size:12px;font-weight:700;color:var(--text);width:110px;min-width:110px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+_wkEsc(iss.client)+'">'+_wkEsc(iss.client)+'</span>'      +'<span style="font-size:12px;color:var(--sub);flex:1;line-height:1.5;white-space:pre-wrap;word-break:break-all;min-width:0;">'+_wkNl2br(_wkStripHtml(iss.content))+'</span>'      +'<span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;'+diffColor+';white-space:nowrap;flex-shrink:0;padding-top:2px;">'+diffStr+'</span>'      +'<span style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0;min-width:48px;text-align:right;padding-top:2px;">'+_wkEsc(_wkDisplayName(iss.rep))+'</span>'      +'</div>';
+    return '<div class="wk-row" style="align-items:flex-start;">'      +'<span style="font-size:12px;font-weight:700;color:var(--text);width:110px;min-width:110px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+_wkEsc(iss.client)+'">'+_wkEsc(iss.client)+'</span>'      +'<span style="font-size:11px;color:var(--muted);width:56px;min-width:56px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+_wkEsc(_wkDisplayName(iss.rep))+'</span>'      +'<span style="font-size:12px;color:var(--sub);flex:1;line-height:1.5;white-space:pre-wrap;word-break:break-all;min-width:0;">'+_wkNl2br(_wkStripHtml(iss.content))+'</span>'      +'<span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;'+diffColor+';white-space:nowrap;flex-shrink:0;margin-left:6px;">'+diffStr+'</span>'      +'</div>';
   }).join('');
 }
 
@@ -15656,7 +15651,8 @@ window._wkToggleIssCheck=function(rep,idx,checked){
   var wk=_thisWkKey();
   if(checked) iss.weeklyCheck[wk]=true;
   else delete iss.weeklyCheck[wk];
-  // 기존 앱과 동일: autoSave() → SP 저장
+  // 즉시 SP 저장 (디바운스 없이)
+  if(typeof _spSaveMyRep==='function') _spSaveMyRep();
   if(typeof autoSave==='function') autoSave();
   // 즉시 렌더 (주간회의 탭 열려있을 때)
   if(typeof window._wkRenderReport==='function') window._wkRenderReport();
@@ -15670,6 +15666,8 @@ window._wkToggleActCheck=function(rep,ai,checked){
   var wk=_thisWkKey();
   if(checked) a.weeklyCheck[wk]=true;
   else delete a.weeklyCheck[wk];
+  // 즉시 SP 저장
+  if(typeof _spSaveMyRep==='function') _spSaveMyRep();
   if(typeof autoSave==='function') autoSave();
   // 주간회의 요약 화면 즉시 갱신
   if(document.getElementById('page-weekly')&&
