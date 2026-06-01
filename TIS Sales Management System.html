@@ -1998,6 +1998,20 @@ select._bsl-sel {
   text-align: left !important;
 }
 
+
+/* 회의록 수정/삭제 액션 버튼 */
+.wk-fi-item{padding:10px 36px 10px 12px;border-bottom:0.5px solid var(--border);position:relative;}
+.wk-fi-item.pending{background:#FFFBEB;}
+.wk-ri{position:relative;padding-right:28px;}
+.wk-action-btn{position:absolute;top:10px;right:8px;background:none;border:none;color:transparent;font-size:13px;cursor:pointer;width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;transition:all .15s;padding:0;}
+.wk-fi-item:hover .wk-action-btn,.wk-ri:hover .wk-action-btn{color:var(--muted);}
+.wk-action-btn:hover{background:var(--bg2,#F1F5F9)!important;color:var(--text)!important;}
+.wk-action-menu{position:absolute;top:30px;right:6px;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.1);z-index:300;min-width:100px;padding:3px;display:none;}
+.wk-action-menu.open{display:block;}
+.wk-action-menu button{display:flex;width:100%;padding:6px 10px;background:none;border:none;font-size:12px;color:var(--text);cursor:pointer;border-radius:6px;text-align:left;gap:6px;align-items:center;font-family:inherit;}
+.wk-action-menu button:hover{background:var(--bg2,#F1F5F9);}
+.wk-action-menu button.wk-del-action{color:#DC2626;}
+.wk-action-menu button.wk-del-action:hover{background:#FEF2F2;}
 </style>
 
 <script>
@@ -2164,7 +2178,7 @@ document.addEventListener('mousedown',function(e){
 .wk-mp-team{font-size:9px;color:var(--blue);background:var(--blue-soft);padding:1px 5px;border-radius:20px;margin-left:auto;}
 /* 조회창 */
 .wk-feed-list{flex:1;overflow-y:auto;}
-.wk-fi-item{padding:10px 12px;border-bottom:0.5px solid var(--border);}
+/* wk-fi-item moved to new_css */
 .wk-fi-item.pending{background:#FFFBEB;}
 .wk-fi-meta{display:flex;align-items:center;gap:5px;margin-bottom:5px;flex-wrap:wrap;}
 .wk-fi-n{font-size:12px;font-weight:700;color:var(--text);}
@@ -2230,11 +2244,6 @@ document.addEventListener('mousedown',function(e){
 .wk-chk-cell input[type=checkbox]{margin:0;display:block;margin:0 auto;}
 /* 순번 열 */
 .wk-no-cell{width:40px!important;text-align:center!important;vertical-align:middle!important;}
-</style>
-.wk-edit-btn{background:none;border:none;color:#94A3B8;font-size:11px;cursor:pointer;padding:2px 6px;border-radius:4px;}
-.wk-edit-btn:hover{background:#F1F5F9;color:#4f7fff;}
-.wk-del-btn{background:none;border:none;color:#94A3B8;font-size:11px;cursor:pointer;padding:2px 6px;border-radius:4px;}
-.wk-del-btn:hover{background:#FEE2E2;color:#DC2626;}
 </style>
 </head>
 <body>
@@ -14608,28 +14617,30 @@ function _wkGenContractNotifs(){
     var endD=c.endDate?new Date(c.endDate):null;
     if(!endD) return;
     var diff=Math.round((endD-today)/86400000);
-    var notifId='contract_'+c.id+'_'+diff;
-    // 이미 있는지 확인 (로컬)
+    var notifId='contract_'+c.id;  // 안정적 ID (diff 제외)
+    // 이미 같은 계약 알림 있으면 스킵 (읽음 상태 보존됨)
     if(_wk.notifications.some(function(n){return n.id===notifId;})) return;
+    // 이전에 읽었는지 확인 (diff가 바뀌어도 같은 계약이면 읽음 유지)
+    var _wasRead=_wk.notifications.some(function(n){return n.id.indexOf('contract_'+c.id)===0&&n.read;});
     // 하자기간인 경우 endDate 지나도 정상 (관리기간 중)
     if(c.managementType==='하자기간') return;
     if(diff<=7&&diff>=0){
       _wk.notifications.unshift({
-        id:notifId, type:'contract', read:false, urgent:true,
+        id:notifId, type:'contract', read:_wasRead||false, urgent:true,
         title:'계약 만료 임박',
         msg:'<b>'+c.client+'</b> '+c.projectName+' 만료 <b>D-'+diff+'일</b>. 즉시 갱신 필요',
         targetPage:'contract', time:_wkNowStr()
       });
     } else if(diff<=60&&diff>=0){
       _wk.notifications.unshift({
-        id:notifId, type:'contract', read:false, urgent:false,
+        id:notifId, type:'contract', read:_wasRead||false, urgent:false,
         title:'계약 만료 예정',
         msg:'<b>'+c.client+'</b> '+c.projectName+' 계약 만료 <b>D-'+diff+'일</b>',
         targetPage:'contract', time:_wkNowStr()
       });
     } else if(diff<0&&diff>=-60){
       _wk.notifications.unshift({
-        id:notifId, type:'contract', read:false, urgent:true,
+        id:notifId, type:'contract', read:_wasRead||false, urgent:true,
         title:'계약 공백 발생',
         msg:'<b>'+c.client+'</b> 계약 만료 후 미갱신 (D+'+Math.abs(diff)+'일)',
         targetPage:'contract', time:_wkNowStr()
@@ -15158,8 +15169,11 @@ function _wkEntryHtml(entry){
       +entry.replies.map(function(r,ri){
         var _riOwn=(session&&(session.rep===r.rep||session.role==='admin'));
         var _riEdit=_riOwn
-          ?'<button class="wk-edit-btn" style="font-size:10px;padding:1px 5px;" onclick="_wkEditReply(\''+entry.id+'\','+ri+')">✏️</button>'
-           +'<button class="wk-del-btn" style="font-size:10px;padding:1px 5px;" onclick="_wkDeleteReply(\''+entry.id+'\','+ri+')">🗑</button>'
+          ?'<button class="wk-action-btn" style="top:6px;right:4px;font-size:13px;width:22px;height:22px;" onclick="event.stopPropagation();_wkToggleAction(this)" title="더보기">···</button>'
+           +'<div class="wk-action-menu" id="wk-rmore-'+entry.id+'-'+ri+'">'
+           +'<button onclick="_wkEditReply(\''+entry.id+'\','+ri+');_wkCloseAction()"><span>✏️</span>수정</button>'
+           +'<button class="wk-del-action" onclick="_wkDeleteReply(\''+entry.id+'\','+ri+');_wkCloseAction()"><span>🗑</span>삭제</button>'
+           +'</div>'
           :'';
         return '<div class="wk-ri" id="wk-reply-'+entry.id+'-'+ri+'">'
           +'<div class="wk-ri-meta">'
@@ -15650,6 +15664,19 @@ window._wkRenderFeed=_wkRenderFeed;
 // IIFE 함수 전역 노출
 window._wkLoadNotif=_wkLoadNotif;
 window._wkSaveNotif=_wkSaveNotif;
+// 케밥 메뉴 토글
+window._wkToggleAction=function(btn){
+  var menu=btn.nextElementSibling;
+  if(!menu) return;
+  var isOpen=menu.classList.contains('open');
+  _wkCloseAction();
+  if(!isOpen){ menu.classList.add('open'); }
+};
+window._wkCloseAction=function(){
+  document.querySelectorAll('.wk-action-menu.open').forEach(function(m){ m.classList.remove('open'); });
+};
+// 전체 클릭 시 메뉴 닫기
+document.addEventListener('click',function(){ window._wkCloseAction&&_wkCloseAction(); });
 window._wkSetNotifications=function(items){
   _wk.notifications=items||[];
   _wkGenContractNotifs();
