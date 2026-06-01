@@ -2125,7 +2125,7 @@ document.addEventListener('mousedown',function(e){
 .wk-kd{font-size:11px;margin-top:2px;}
 /* 테이블 */
 .wk-tbl{width:100%;border-collapse:collapse;font-size:12px;}
-.wk-tbl th{background:var(--bg);padding:8px 8px;text-align:center;color:var(--muted);font-weight:700;border-bottom:1.5px solid var(--border);white-space:nowrap;font-size:12px;}
+.wk-tbl th{background:var(--bg);padding:8px 8px;text-align:center !important;color:var(--muted);font-weight:700;border-bottom:1.5px solid var(--border);white-space:nowrap;font-size:12px;}.wk-tbl td{text-align:center !important;vertical-align:middle;}
 .wk-tbl td{padding:8px 8px;text-align:center;border-bottom:0.5px solid var(--border);font-size:12px;}
 .wk-tdl{text-align:center!important;font-weight:700;color:var(--text);}
 /* 프로젝트/이슈 행 */
@@ -6707,9 +6707,9 @@ function doRepLogin(rep){
     if(!_nm) return;
     if(window._isSPReady&&typeof _wkLoadNotif==='function'){
       _wkLoadNotif(_nm).then(function(items){
-        if(window._wk) window._wk.notifications=items||[];
-        if(typeof _wkGenContractNotifs==='function') _wkGenContractNotifs();
-        if(typeof _wkUpdateNotifBadge==='function') _wkUpdateNotifBadge();
+        if(typeof window._wkSetNotifications==='function'){
+          window._wkSetNotifications(items);
+        }
       }).catch(function(){});
     } else if(n>0){
       setTimeout(function(){ _pollNotif(n-1); }, 1000);
@@ -6751,9 +6751,9 @@ function doRepLogin(rep){
     if(!_nm) return;
     if(window._isSPReady && typeof _wkLoadNotif==='function'){
       _wkLoadNotif(_nm).then(function(items){
-        if(window._wk) window._wk.notifications=items||[];
-        if(typeof _wkGenContractNotifs==='function') _wkGenContractNotifs();
-        if(typeof _wkUpdateNotifBadge==='function') _wkUpdateNotifBadge();
+        if(typeof window._wkSetNotifications==='function'){
+          window._wkSetNotifications(items);
+        }
       }).catch(function(){});
     } else if(n>0){
       setTimeout(function(){ _loadNotifOnLogin(n-1); }, 800);
@@ -10200,10 +10200,7 @@ function _iRow(rep, idx, iss){
   var _issChkHtml=canEdit?'<input type="checkbox" class="wk-iss-chk" data-rep="'+r+'" data-idx="'+idx+'" '+(iss.weeklyCheck&&iss.weeklyCheck[_thisWkKey()]?'checked ':'')+' style="width:15px;height:15px;cursor:pointer;accent-color:#1A56DB;" title="주간보고에 포함">'+'&nbsp;':'&nbsp;';
   // :'&nbsp;'; // (위 삼항연산자에 통합)
   return '<tr id="ir-'+rep+'-'+idx+'">'
-    +'<td class="wk-chk-cell">'+_issChkHtml+'</td>'
-    // 순번 열 제거
-    // (활동 테이블과 동일하게 체크박스만)
-    // 고객사
+    +'<td class="wk-chk-cell">'+_issChkHtml+'</td>'    +'<td class="wk-no-cell" style="color:#94A3B8;font-weight:600;font-size:12px;">'+(iss.no||idx+1)+'</td>'    // 고객사
     +'<td style="width:175px;vertical-align:middle;text-align:center;">'
       +(canEdit?'<input type="text" value="'+(iss.client||'')+'" style="width:100%;height:28px;box-sizing:border-box;text-align:center;" onchange="store.reps[\''+r+'\'].issuesList['+idx+'].client=this.value;autoSave&&autoSave()">':'<span style="font-size:12px;">'+( iss.client||'─')+'</span>')
     +'</td>'
@@ -14340,7 +14337,7 @@ async function _wkSaveFeed(weekKey, rep, entries){
 async function _wkLoadFeed(weekKey){
   if(!weekKey||!window._isSPReady) return [];
   try{
-    var url=_lUrl()+'?$select=Title,DataType,DataKey,Payload&$filter=DataType eq \'weeklyFeed\'&$top=500';
+    var url=_lUrl()+'?$select=Title,DataType,DataKey,Payload&$top=500';
     var res=await _spFetchAll(url);
     var all=[];
     var _items=(res&&res.value)||[];
@@ -14371,11 +14368,12 @@ async function _wkLoadNotif(rep){
   try{
     var _nkey=_sanitizeDKey('notif_'+rep);
     var _ntitle='weeklyNotif_'+_nkey;
-    var url=_lUrl()+'?$select=Title,DataType,Payload&$filter=DataType eq \'weeklyNotif\' and Title eq \''+_ntitle+'\'&$top=5';
+    var url=_lUrl()+'?$select=Title,DataType,Payload&$top=500';
     var res=await _spFetchAll(url);
     var _nItems=(res&&res.value)||[];
-    if(!_nItems.length) return [];
-    var d=JSON.parse((_nItems[0].Payload)||'{}');
+    var _notifItem=_nItems.find(function(x){return x.Title===_ntitle;});
+    if(!_notifItem) return [];
+    var d=JSON.parse((_notifItem.Payload)||'{}');
     return d.items||[];
   }catch(e){ return []; }
 }
@@ -14919,8 +14917,7 @@ function _wkRenderVisits(){
   el.innerHTML=visits.slice(0,15).map(function(v){
     var dateStr=(v.date||'').slice(5,10).replace('-','.');
     var visitContent=_wkStripHtml(v.content||v.contactPurpose||v.purpose||v.memo||'');
-    return '<div class="wk-row">'
-      +'<span style="font-size:11px;color:var(--muted);min-width:42px;flex-shrink:0;">'+dateStr+'</span>'      +'<span style="font-size:12px;font-weight:700;color:var(--text);width:110px;min-width:110px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+_wkEsc(v.company)+'">'+_wkEsc(v.company)+'</span>'      +'<span style="font-size:11px;color:var(--muted);width:56px;min-width:56px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+_wkEsc(v.displayName)+'</span>'      +'<span style="font-size:12px;color:var(--sub);flex:1;line-height:1.5;white-space:pre-wrap;word-break:break-all;min-width:0;">'+_wkNl2br(visitContent)+'</span>'      +'</div>';
+    return '<div class="wk-row" style="align-items:center;">'      +'<span style="font-size:12px;font-weight:700;color:var(--text);width:110px;min-width:110px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+_wkEsc(v.company)+'">'+_wkEsc(v.company)+'</span>'      +'<span style="font-size:11px;color:var(--muted);width:56px;min-width:56px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+_wkEsc(v.displayName)+'</span>'      +'<span style="font-size:12px;color:var(--sub);flex:1;line-height:1.5;white-space:pre-wrap;word-break:break-all;min-width:0;">'+_wkNl2br(visitContent)+'</span>'      +'</div>';
   }).join('');
 }
 
@@ -15590,6 +15587,12 @@ function _wkSanitize(html){
 // IIFE 내부 함수 전역 노출
 window._wkRenderReport=_wkRenderReport;
 window._wkRenderFeed=_wkRenderFeed;
+// 외부에서 알림 설정 (window._wk vs 내부 _wk 분리 문제 해결)
+window._wkSetNotifications=function(items){
+  _wk.notifications=items||[];
+  _wkGenContractNotifs();
+  _wkUpdateNotifBadge();
+};
 
 // 전역 클릭: 팝업 닫기
 
