@@ -2199,7 +2199,7 @@ document.addEventListener('mousedown',function(e){
 .wk-notif-btn:hover{background:linear-gradient(135deg,#1E3A6E,#1E4A8A);border-color:#3D5F9A;}
 .wk-notif-label{font-size:11px;font-weight:600;}
 .wk-notif-badge{background:#DC2626;color:#fff;font-size:9px;font-weight:700;border-radius:20px;padding:1px 5px;min-width:16px;text-align:center;line-height:1.4;border:1.5px solid #1E293B;}
-.wk-notif-drop{position:absolute;top:38px;right:0;width:310px;background:var(--card);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.18);z-index:500;overflow:hidden;border:1px solid var(--border);display:none;}
+.wk-notif-drop{position:fixed;top:52px;right:16px;width:320px;background:var(--card);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.18);z-index:9999;overflow:hidden;border:1px solid var(--border);display:none;}
 .wk-nd-head{padding:10px 14px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
 .wk-nd-title{font-size:12px;font-weight:700;color:var(--text);}
 .wk-nd-clear{font-size:10px;color:var(--blue);cursor:pointer;border:none;background:none;}
@@ -2353,7 +2353,24 @@ document.addEventListener('mousedown',function(e){
       <span id="save-indicator"></span>
       <input type="date" id="mtg-date" style="height:32px;width:130px;box-sizing:border-box;padding:0 12px;border-radius:20px;border:1.5px solid #E2E8F0;font-size:12px;font-weight:600;color:#374151;background:white;cursor:pointer;font-family:inherit;transition:all 0.2s;text-align:center;" onfocus="this.style.borderColor='#4f7fff'" onblur="this.style.borderColor='#E2E8F0'">
 
-      <div style="position:relative;display:inline-block;">
+      <button onclick="window.print()" id="print-btn" title="인쇄/PDF" style="display:flex;align-items:center;justify-content:center;gap:6px;height:32px;min-width:90px;box-sizing:border-box;padding:0 12px;border-radius:20px;background:linear-gradient(135deg,#64748B15,#94A3B815);border:1.5px solid #94A3B840;cursor:pointer;transition:all 0.2s;font-family:inherit;" onmouseover="this.style.background='linear-gradient(135deg,#64748B25,#94A3B825)'" onmouseout="this.style.background='linear-gradient(135deg,#64748B15,#94A3B815)'">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          <span style="font-size:12px;font-weight:600;color:#64748B;">인쇄</span>
+        </button>
+        <button id="refresh-btn" onclick="manualRefresh()" title="새로고침" style="display:flex;align-items:center;justify-content:center;gap:6px;height:32px;min-width:90px;box-sizing:border-box;padding:0 12px;border-radius:20px;background:linear-gradient(135deg,#05966915,#10B98115);border:1.5px solid #10B98140;cursor:pointer;transition:all 0.2s;font-family:inherit;" onmouseover="this.style.background='linear-gradient(135deg,#05966925,#10B98125)'" onmouseout="this.style.background='linear-gradient(135deg,#05966915,#10B98115)'">
+          <span id="refresh-icon" style="display:inline-flex;align-items:center;transform-origin:center;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          </span>
+          <span style="font-size:12px;font-weight:600;color:#059669;">동기화</span>
+        </button>
+        <button id="wk-notif-btn-global" onclick="_wkToggleNotif(event)" style="height:32px;display:inline-flex;align-items:center;box-sizing:border-box;padding:0 12px;border-radius:20px;background:linear-gradient(135deg,#1A56DB15,#3B82F615);border:1.5px solid #1A56DB40;cursor:pointer;transition:all 0.2s;font-family:inherit;gap:5px;margin-right:6px;" onmouseover="this.style.background='linear-gradient(135deg,#1A56DB25,#3B82F625)'" onmouseout="this.style.background='linear-gradient(135deg,#1A56DB15,#3B82F615)'">
+          <span style="display:inline-flex;align-items:center;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A56DB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          </span>
+          <span style="font-size:12px;font-weight:600;color:#1A56DB;">알림</span>
+          <span id="wk-notif-badge-global" style="display:none;background:#DC2626;color:#fff;font-size:9px;font-weight:700;border-radius:20px;padding:1px 5px;min-width:16px;text-align:center;line-height:1.4;">0</span>
+        </button>
+        <div style="position:relative;display:inline-block;">
         <button id="access-count-btn" onclick="toggleAccessPopup()" class="tb-btn" style="display:flex;align-items:center;justify-content:center;gap:6px;height:32px;min-width:90px;box-sizing:border-box;padding:0 12px;border-radius:20px;background:linear-gradient(135deg,#1E5FBE15,#4f7fff15);border:1.5px solid #4f7fff40;transition:all 0.2s;" onmouseover="this.style.background='linear-gradient(135deg,#1E5FBE25,#4f7fff25)'" onmouseout="this.style.background='linear-gradient(135deg,#1E5FBE15,#4f7fff15)'">
           <span style="position:relative;display:inline-flex;align-items:center;">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4f7fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -2367,23 +2384,6 @@ document.addEventListener('mousedown',function(e){
           <div id="access-list" style="padding:6px;max-height:400px;overflow-y:auto;"></div>
         </div>
       </div>
-      <button onclick="window.print()" id="print-btn" title="인쇄/PDF" style="display:flex;align-items:center;justify-content:center;gap:6px;height:32px;min-width:90px;box-sizing:border-box;padding:0 12px;border-radius:20px;background:linear-gradient(135deg,#64748B15,#94A3B815);border:1.5px solid #94A3B840;cursor:pointer;transition:all 0.2s;font-family:inherit;" onmouseover="this.style.background='linear-gradient(135deg,#64748B25,#94A3B825)'" onmouseout="this.style.background='linear-gradient(135deg,#64748B15,#94A3B815)'">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-          <span style="font-size:12px;font-weight:600;color:#64748B;">인쇄</span>
-        </button>
-      <button id="wk-notif-btn-global" onclick="_wkToggleNotif(event)" style="height:32px;display:inline-flex;align-items:center;box-sizing:border-box;padding:0 12px;border-radius:20px;background:linear-gradient(135deg,#1A56DB15,#3B82F615);border:1.5px solid #1A56DB40;cursor:pointer;transition:all 0.2s;font-family:inherit;gap:5px;margin-right:6px;" onmouseover="this.style.background='linear-gradient(135deg,#1A56DB25,#3B82F625)'" onmouseout="this.style.background='linear-gradient(135deg,#1A56DB15,#3B82F615)'">
-          <span style="display:inline-flex;align-items:center;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A56DB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-          </span>
-          <span style="font-size:12px;font-weight:600;color:#1A56DB;">알림</span>
-          <span id="wk-notif-badge-global" style="display:none;background:#DC2626;color:#fff;font-size:9px;font-weight:700;border-radius:20px;padding:1px 5px;min-width:16px;text-align:center;line-height:1.4;">0</span>
-        </button>
-        <button id="refresh-btn" onclick="manualRefresh()" title="새로고침" style="display:flex;align-items:center;justify-content:center;gap:6px;height:32px;min-width:90px;box-sizing:border-box;padding:0 12px;border-radius:20px;background:linear-gradient(135deg,#05966915,#10B98115);border:1.5px solid #10B98140;cursor:pointer;transition:all 0.2s;font-family:inherit;" onmouseover="this.style.background='linear-gradient(135deg,#05966925,#10B98125)'" onmouseout="this.style.background='linear-gradient(135deg,#05966915,#10B98115)'">
-          <span id="refresh-icon" style="display:inline-flex;align-items:center;transform-origin:center;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-          </span>
-          <span style="font-size:12px;font-weight:600;color:#059669;">동기화</span>
-        </button>
     </div>
   </div>
   <div class="content">
@@ -14632,7 +14632,7 @@ function _wkRenderNotifDrop(){
   if(!list) return;
   var items=_wk.notifications.slice(0,20);
   if(!items.length){
-    list.innerHTML='<div style="padding:20px;text-align:center;font-size:12px;color:var(--muted);">새로운 알림이 없습니다</div>';
+    list.innerHTML='<div style="padding:20px;text-align:center;">'+'<div style="font-size:24px;margin-bottom:8px;">🔔</div>'+'<div style="font-size:12px;font-weight:600;color:var(--sub);margin-bottom:4px;">새로운 알림이 없습니다</div>'+'<div style="font-size:11px;color:var(--muted);">회의록에서 @이름 으로 담당자를 언급하거나<br>계약 만료가 임박하면 알림이 생성됩니다</div>'+'</div>';
     return;
   }
   list.innerHTML=items.map(function(n){
@@ -14827,15 +14827,13 @@ function _wkRenderContracts(){
         diffVal=diff; urgency=diff<0?3:diff<=7?2:1;
         label=diff<0?'D+'+Math.abs(diff):diff===0?'오늘':'D-'+diff;
       }
-      // 하자→유지보수 전환 필요 (managementEndDate 없으면 endDate 기준)
+      // 하자→유지보수 전환 필요 (모든 하자기간 표시)
       else if(c.managementType==='하자기간'){
-        var _hajaD=mgtEndD||endD; // managementEndDate 없으면 endDate 사용
-        var _hajaDiff=_hajaD?Math.round((_hajaD-today)/86400000):null;
-        if(_hajaDiff!==null&&_hajaDiff<=60){
-          type='전환필요';
-          diffVal=_hajaDiff; urgency=_hajaDiff<0?3:_hajaDiff<=7?2:1;
-          label=_hajaDiff<0?'D+'+Math.abs(_hajaDiff):_hajaDiff===0?'오늘':'D-'+_hajaDiff;
-        }
+        var _hajaD=mgtEndD||endD;
+        var _hajaDiff=_hajaD?Math.round((_hajaD-today)/86400000):0;
+        type='전환필요';
+        diffVal=_hajaDiff; urgency=_hajaDiff<0?3:_hajaDiff<=7?2:1;
+        label=_hajaDiff<0?'D+'+Math.abs(_hajaDiff):_hajaDiff===0?'오늘':'D-'+_hajaDiff;
       }
       // 계약 공백 (만료 후 갱신 없음 - 하자기간 제외)
       else if(diff!==null&&diff<0&&c.managementType!=='유지보수'&&c.managementType!=='하자기간'){
@@ -14910,7 +14908,7 @@ function _wkRenderVisits(){
     return '<div class="wk-row">'
       +'<span class="wk-dt" style="min-width:40px;">'+dateStr+'</span>'
       +'<span class="wk-cli">'+_wkEsc(v.company)+'</span>'
-      +'<span class="wk-cont">'+_wkEsc(visitContent)+'</span>'
+      +'<span class="wk-cont" style="white-space:pre-wrap;">'+_wkNl2br(visitContent)+'</span>'
       +'<span style="font-size:10px;color:var(--muted);">'+_wkEsc(v.displayName)+'</span>'
       +'</div>';
   }).join('');
@@ -15048,15 +15046,10 @@ function _wkRenderProjects(){
       items.push({rep:rep, client:a.client, content:a.content, date:a.updatedAt, isNew:isNew, isChecked:isChecked});
     });
   });
-  // 체크된 것만 필터링 (체크 없으면 전체 표시)
-  var checkedItems=items.filter(function(it){return it.isChecked;});
-  if(checkedItems.length>0){
-    items=checkedItems;
-  } else {
-    items.sort(function(a,b){ return (b.isNew?1:0)-(a.isNew?1:0); });
-  }
+  // 체크된 것만 표시
+  items=items.filter(function(it){return it.isChecked;});
   if(!items.length){
-    el.innerHTML='<div style="font-size:12px;color:var(--muted);padding:8px 0;">이번주 업데이트된 활동 내용이 없습니다</div>';
+    el.innerHTML='<div style="font-size:12px;color:var(--muted);padding:10px 0;">📋 영업활동에서 주간보고에 포함할 항목을 체크해주세요</div>';
     return;
   }
   el.innerHTML=items.slice(0,10).map(function(it){
@@ -15066,7 +15059,7 @@ function _wkRenderProjects(){
       +'<div class="wk-dot" style="background:'+col+';"></div>'
       +(it.isChecked?'<span style="font-size:9px;background:var(--blue-soft);color:var(--blue);padding:1px 5px;border-radius:20px;font-weight:700;">주간보고</span>':'')
       +'<span class="wk-cli">'+_wkEsc(it.client)+'</span>'
-      +'<span class="wk-cont">'+_wkEsc(_wkStripHtml(it.content))+'</span>'
+      +'<span class="wk-cont" style="white-space:pre-wrap;">'+_wkNl2br(_wkStripHtml(it.content))+'</span>'
       +'<span class="wk-dt">'+dtStr+'</span>'
       +'</div>';
   }).join('');
@@ -15090,12 +15083,11 @@ function _wkRenderIssues(){
       issues.push({rep:rep, client:i.client, content:i.content, diff:diff, sev:i.sev||'mid', isChecked:iChecked});
     });
   });
-  // 체크된 것만 (없으면 전체)
-  var checkedIss=issues.filter(function(i){return i.isChecked;});
-  if(checkedIss.length>0){ issues=checkedIss; } else { issues.sort(function(a,b){return a.diff-b.diff;}); }
+  // 체크된 것만
+  issues=issues.filter(function(i){return i.isChecked;});
   if(cnt) cnt.textContent='오픈 '+issues.length+'건';
   if(!issues.length){
-    el.innerHTML='<div style="font-size:11px;color:var(--muted);padding:8px 0;">오픈 이슈가 없습니다</div>';
+    el.innerHTML='<div style="font-size:12px;color:var(--muted);padding:10px 0;">📋 이슈사항에서 주간보고에 포함할 항목을 체크해주세요</div>';
     return;
   }
   el.innerHTML=issues.slice(0,10).map(function(iss){
@@ -15104,7 +15096,7 @@ function _wkRenderIssues(){
     var diffColor=diff<0||diff<=7?'background:#FEE2E2;color:var(--red);':diff<=30?'background:#FEF3C7;color:var(--gold);':'background:var(--bg);color:var(--muted);';
     return '<div class="wk-row">'
       +'<span class="wk-cli">'+_wkEsc(iss.client)+'</span>'
-      +'<span class="wk-cont">'+_wkEsc(_wkStripHtml(iss.content))+'</span>'
+      +'<span class="wk-cont" style="white-space:pre-wrap;">'+_wkNl2br(_wkStripHtml(iss.content))+'</span>'
       +'<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;'+diffColor+'">'+diffStr+'</span>'
       +'</div>';
   }).join('');
@@ -15254,7 +15246,20 @@ function _wkGetRoleLabel(){
 
 function _wkStripHtml(html){
   if(!html) return '';
-  return String(html).replace(/<[^>]*>/g,'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ').replace(/&#\d+;/g,'').trim();
+  // br, div, p 태그를 줄바꿈으로 변환 후 나머지 태그 제거
+  return String(html)
+    .replace(/<br\s*\/?>/gi,'\n')
+    .replace(/<\/p>/gi,'\n').replace(/<\/div>/gi,'\n')
+    .replace(/<[^>]*>/g,'')
+    .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ')
+    .replace(/&#\d+;/g,'')
+    .replace(/\n{3,}/g,'\n\n')
+    .trim();
+}
+// 줄바꿈을 HTML br로 변환 (표시용)
+function _wkNl2br(text){
+  if(!text) return '';
+  return _wkEsc(text).replace(/\n/g,'<br>');
 }
 
 // 현재 선택된 주의 시작/종료 날짜 반환
@@ -15627,6 +15632,10 @@ window._wkToggleIssCheck=function(rep,idx,checked){
   if(checked) iss.weeklyCheck[wk]=true;
   else delete iss.weeklyCheck[wk];
   if(typeof autoSave==='function') autoSave();
+  // 주간회의 요약 화면 즉시 갱신
+  if(document.getElementById('page-weekly')&&
+     document.getElementById('page-weekly').classList.contains('active')&&
+     typeof _wkRenderReport==='function') _wkRenderReport();
 };
 
 window._wkToggleActCheck=function(rep,ai,checked){
@@ -15638,6 +15647,10 @@ window._wkToggleActCheck=function(rep,ai,checked){
   if(checked) a.weeklyCheck[wk]=true;
   else delete a.weeklyCheck[wk];
   if(typeof autoSave==='function') autoSave();
+  // 주간회의 요약 화면 즉시 갱신
+  if(document.getElementById('page-weekly')&&
+     document.getElementById('page-weekly').classList.contains('active')&&
+     typeof _wkRenderReport==='function') _wkRenderReport();
 };
 
 // 이슈 행 체크박스 동적 추가 (onchange 따옴표 충돌 우회)
