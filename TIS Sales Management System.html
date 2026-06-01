@@ -533,7 +533,7 @@ body.font-large {
   border-radius:12px;padding:20px;height:300px!important;
   display:flex;flex-direction:column;}
 .chart-card canvas{flex:1;min-height:0;}
-.card-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;}
+.card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
 .card-title{font-size:14px;font-weight:700;color:var(--text);}
 .card-sub{font-size:12px;color:var(--muted);margin-top:2px;}
 
@@ -2129,7 +2129,7 @@ document.addEventListener('mousedown',function(e){
 .wk-tbl td{padding:8px 8px;text-align:center;border-bottom:0.5px solid var(--border);font-size:12px;}
 .wk-tdl{text-align:center!important;font-weight:700;color:var(--text);}
 /* 프로젝트/이슈 행 */
-.wk-row{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--border);}
+.wk-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--border);}
 .wk-row:last-child{border-bottom:none;}
 .wk-dot{width:6px;height:6px;border-radius:50%;margin-top:3px;flex-shrink:0;}
 .wk-cli{font-size:12px;font-weight:700;color:var(--text);min-width:60px;}
@@ -2204,7 +2204,7 @@ document.addEventListener('mousedown',function(e){
 .wk-nd-title{font-size:12px;font-weight:700;color:var(--text);}
 .wk-nd-clear{font-size:10px;color:var(--blue);cursor:pointer;border:none;background:none;}
 .wk-nd-list{max-height:300px;overflow-y:auto;}
-.wk-nd-item{padding:9px 12px;border-bottom:0.5px solid var(--border);cursor:pointer;display:flex;align-items:flex-start;gap:8px;transition:background .1s;border-left:3px solid var(--red);}
+.wk-nd-item{padding:9px 12px;border-bottom:0.5px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .1s;border-left:3px solid var(--red);}
 .wk-nd-item:hover{background:var(--bg);}
 .wk-nd-item.unread{border-left:3px solid var(--blue);}
 .wk-nd-item.urgent{border-left:3px solid var(--red);}
@@ -6745,6 +6745,20 @@ function doRepLogin(rep){
       try{ if(typeof renderDashboard==='function') renderDashboard(); }catch(e){}
     }catch(e){}
   }, 500);
+  // 로그인 직후 알림 로드 (SP 준비 대기)
+  (function _loadNotifOnLogin(n){
+    var _nm=(session&&session.rep)||(session&&session.guestName)||'';
+    if(!_nm) return;
+    if(window._isSPReady && typeof _wkLoadNotif==='function'){
+      _wkLoadNotif(_nm).then(function(items){
+        if(window._wk) window._wk.notifications=items||[];
+        if(typeof _wkGenContractNotifs==='function') _wkGenContractNotifs();
+        if(typeof _wkUpdateNotifBadge==='function') _wkUpdateNotifBadge();
+      }).catch(function(){});
+    } else if(n>0){
+      setTimeout(function(){ _loadNotifOnLogin(n-1); }, 800);
+    }
+  })(20);
 }
 function tryAdmin(){
   var pw=document.getElementById('adm-pw');
@@ -7120,7 +7134,7 @@ function loadBanner(){
   if(!el)return;
   const b=authCfg.banner;
   if(!b||!b.active||!b.text){el.style.display='none';return;}
-  el.style.cssText='display:inline-flex;align-items:flex-start;gap:6px;padding:5px 12px;border-radius:8px;'
+  el.style.cssText='display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:8px;'
     +'max-width:600px;min-width:160px;flex-shrink:1;'
     +'background:'+(b.bg||'#FEF9C3')+';'
     +'border:1px solid '+((b.bg||'#FEF9C3').replace('#','')>'aaaaaa'?'#E5E7EB':'#D1D5DB')+';';
@@ -10187,8 +10201,8 @@ function _iRow(rep, idx, iss){
   // :'&nbsp;'; // (위 삼항연산자에 통합)
   return '<tr id="ir-'+rep+'-'+idx+'">'
     +'<td class="wk-chk-cell">'+_issChkHtml+'</td>'
-    // 순번
-    +'<td class="wk-no-cell" style="color:#94A3B8;font-weight:600;font-size:12px;">'+(iss.no||idx+1)+'</td>'
+    // 순번 열 제거
+    // (활동 테이블과 동일하게 체크박스만)
     // 고객사
     +'<td style="width:175px;vertical-align:middle;text-align:center;">'
       +(canEdit?'<input type="text" value="'+(iss.client||'')+'" style="width:100%;height:28px;box-sizing:border-box;text-align:center;" onchange="store.reps[\''+r+'\'].issuesList['+idx+'].client=this.value;autoSave&&autoSave()">':'<span style="font-size:12px;">'+( iss.client||'─')+'</span>')
@@ -14010,7 +14024,7 @@ function renderContractDashboard(){
           var dv=dateKeyFn(c);
           var badge=makeDayBadge(dv);
           s+='<div style="padding:10px 16px;'+(i>0?'border-top:0.5px solid #F5F7FA;':'')+'">';
-          s+='<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">';
+          s+='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">';
           s+='<div style="flex:1;min-width:0;">';
           s+='<div style="font-size:13px;font-weight:700;color:#1E293B;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(c.client||'—')+'</div>';
           s+='<div style="font-size:12px;color:#4B5563;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.4;">'+(c.projectName||'—')+'</div>';
@@ -14775,8 +14789,11 @@ window._wkSetView=function(view){
 
 // ── 데이터 로드 ───────────────────────────────────
 async function _wkLoad(){
-  if(_wk.loading) return;
-  _wk.loading=true;
+  // loading 플래그: 재진입 방지 (단, 3초 이상 stuck 시 리셋)
+  if(_wk.loading){
+    if(Date.now()-(_wk.loadingAt||0) < 3000) return;
+  }
+  _wk.loading=true; _wk.loadingAt=Date.now();
   try{
     var mainKey=_wk.weekMode==='last'?_wkLastKey():_wkThisKey();
     var prevKey=_wk.weekMode==='last'?null:_wkLastKey();
@@ -14995,34 +15012,22 @@ function _wkRenderRepTable(){
   var el=document.getElementById('wk-rep-table');
   if(!el) return;
   var _wb2=_wkGetWeekBounds(); var mm=_wb2.mm; var today=new Date();
+  var C='style="text-align:center;padding:8px 6px;"';
   var rows=reps.map(function(rep){
     var rd=store&&store.reps&&store.reps[rep];
-    if(!rd) return '<tr><td class="wk-tdl">'+_wkEsc(_wkDisplayName(rep))+'</td><td colspan="5">—</td></tr>';
-    var plan=parseFloat((rd.plan&&rd.plan[mm])||0);
-    var act=parseFloat((rd.actual&&rd.actual[mm])||0);
-    var rate=plan>0?Math.round(act/plan*100):0;
-    var rateClass=rate>=80?'color:var(--green);font-weight:700;':rate>=60?'color:var(--gold);font-weight:700;':'color:var(--red);font-weight:700;';
-    var contacts=0;
-    var weekStart=_wb2.start; var weekEnd=_wb2.end;
-    (rd.visitLog||[]).forEach(function(v){ var d=new Date(v.date||v.visitDate||''); if(d>=weekStart&&d<=weekEnd) contacts++; });
-    return '<tr>'
-      +'<td style="text-align:center;font-weight:700;color:var(--text);">'+_wkEsc(_wkDisplayName(rep))+'</td>'
-      +'<td style="text-align:center;">'+plan.toLocaleString()+'</td>'
-      +'<td style="text-align:center;color:var(--green);font-weight:700;">'+act.toLocaleString()+'</td>'
-      +'<td style="text-align:center;">'+act.toLocaleString()+'</td>'
-      +'<td style="text-align:center;"><span style="'+rateClass+'">'+rate+'%</span></td>'
-      +'<td style="text-align:center;">'+contacts+'</td></tr>';
+    if(!rd) return '<tr><td style="text-align:center;" colspan="7">'+_wkEsc(_wkDisplayName(rep))+' — 없음</td></tr>';
+    var annPlan=Math.round((rd.plan||[]).reduce(function(a,b){return a+(b||0);},0));
+    var cumAct=Math.round((rd.actual||[]).slice(0,mm+1).reduce(function(a,b){return a+(b||0);},0));
+    var moPlan=Math.round((rd.plan&&rd.plan[mm])||0);
+    var moAct=Math.round((rd.actual&&rd.actual[mm])||0);
+    var shortage=Math.max(0,moPlan-moAct);
+    var rate=moPlan>0?Math.round(moAct/moPlan*100):0;
+    var rC=rate>=100?'color:#059669;font-weight:700;':rate>=80?'color:var(--gold);font-weight:700;':'color:var(--red);font-weight:700;';
+    return '<tr>'      +'<td style="text-align:center;font-weight:700;color:var(--text);padding:8px 6px;">'+_wkEsc(_wkDisplayName(rep))+'</td>'      +'<td '+C+'>'+annPlan.toLocaleString()+'</td>'      +'<td style="text-align:center;padding:8px 6px;color:var(--green);font-weight:700;">'+cumAct.toLocaleString()+'</td>'      +'<td '+C+'>'+moPlan.toLocaleString()+'</td>'      +'<td style="text-align:center;padding:8px 6px;color:var(--blue);font-weight:700;">'+moAct.toLocaleString()+'</td>'      +'<td style="text-align:center;padding:8px 6px;'+(shortage>0?'color:var(--red);':'color:var(--muted);')+'">'+shortage.toLocaleString()+'</td>'      +'<td '+C+'><span style="'+rC+'">'+rate+'%</span></td>'      +'</tr>';
   });
-  el.innerHTML='<table class="wk-tbl" style="text-align:center;"><thead><tr>'
-    +'<th style="text-align:center;min-width:60px;">담당자</th>'
-    +'<th style="text-align:center;">목표(천)</th>'
-    +'<th style="text-align:center;">'+(today.getMonth()+1)+'월 달성</th>'
-    +'<th style="text-align:center;">누계</th>'
-    +'<th style="text-align:center;">달성률</th>'
-    +'<th style="text-align:center;">접점</th>'
-    +'</tr></thead><tbody>'+rows.join('')+'</tbody></table>';
+  var mn=(today.getMonth()+1)+'월';
+  el.innerHTML='<table class="wk-tbl" style="width:100%;border-collapse:collapse;">'    +'<thead><tr>'    +'<th style="text-align:center;padding:8px 6px;">담당자</th>'    +'<th style="text-align:center;padding:8px 6px;">연간목표</th>'    +'<th style="text-align:center;padding:8px 6px;">'+mn+'까지 달성</th>'    +'<th style="text-align:center;padding:8px 6px;">'+mn+' 목표</th>'    +'<th style="text-align:center;padding:8px 6px;">'+mn+' 달성</th>'    +'<th style="text-align:center;padding:8px 6px;">미달금액</th>'    +'<th style="text-align:center;padding:8px 6px;">달성률</th>'    +'</tr></thead>'    +'<tbody>'+rows.join('')+'</tbody></table>';
 }
-
 function _wkRenderProjects(){
   var reps=_wkGetActiveReps();
   var el=document.getElementById('wk-proj-list');
@@ -15046,7 +15051,7 @@ function _wkRenderProjects(){
     return;
   }
   el.innerHTML=items.slice(0,10).map(function(it){
-    var dtStr=it.date?it.date.slice(5,10).replace('-','.'):'';    return '<div class="wk-row" style="align-items:flex-start;">'      +'<span style="font-size:12px;font-weight:700;color:var(--text);width:110px;min-width:110px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+_wkEsc(it.client)+'">'+_wkEsc(it.client)+'</span>'      +'<span style="font-size:11px;color:var(--muted);width:56px;min-width:56px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+_wkEsc(_wkDisplayName(it.rep))+'</span>'      +'<span style="font-size:12px;color:var(--sub);flex:1;line-height:1.5;white-space:pre-wrap;word-break:break-all;min-width:0;">'+_wkNl2br(_wkStripHtml(it.content))+'</span>'      +'<span style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0;padding-top:2px;margin-left:6px;">'+dtStr+'</span>'      +'</div>';
+    var dtStr=it.date?it.date.slice(5,10).replace('-','.'):'';    return '<div class="wk-row" style="align-items:center;">'      +'<span style="font-size:12px;font-weight:700;color:var(--text);width:110px;min-width:110px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+_wkEsc(it.client)+'">'+_wkEsc(it.client)+'</span>'      +'<span style="font-size:11px;color:var(--muted);width:56px;min-width:56px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+_wkEsc(_wkDisplayName(it.rep))+'</span>'      +'<span style="font-size:12px;color:var(--sub);flex:1;line-height:1.5;white-space:pre-wrap;word-break:break-all;min-width:0;">'+_wkNl2br(_wkStripHtml(it.content))+'</span>'      +'<span style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0;padding-top:2px;margin-left:6px;">'+dtStr+'</span>'      +'</div>';
   }).join('');
 }
 
@@ -15077,12 +15082,7 @@ function _wkRenderIssues(){
     el.innerHTML='<div style="font-size:12px;color:var(--muted);padding:10px 0;">📋 이슈사항에서 주간보고에 포함할 항목을 체크해주세요</div>';
     return;
   }
-  el.innerHTML=issues.slice(0,10).map(function(iss){
-    var diff=iss.diff;
-    var diffStr=diff<0?'D+'+Math.abs(diff):(diff===999?'—':'D-'+diff);
-    var diffColor=diff<0||diff<=7?'background:#FEE2E2;color:var(--red);':diff<=30?'background:#FEF3C7;color:var(--gold);':'background:var(--bg);color:var(--muted);';
-    return '<div class="wk-row" style="align-items:flex-start;">'      +'<span style="font-size:12px;font-weight:700;color:var(--text);width:110px;min-width:110px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+_wkEsc(iss.client)+'">'+_wkEsc(iss.client)+'</span>'      +'<span style="font-size:11px;color:var(--muted);width:56px;min-width:56px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+_wkEsc(_wkDisplayName(iss.rep))+'</span>'      +'<span style="font-size:12px;color:var(--sub);flex:1;line-height:1.5;white-space:pre-wrap;word-break:break-all;min-width:0;">'+_wkNl2br(_wkStripHtml(iss.content))+'</span>'      +'<span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;'+diffColor+';white-space:nowrap;flex-shrink:0;margin-left:6px;">'+diffStr+'</span>'      +'</div>';
-  }).join('');
+  el.innerHTML=issues.slice(0,10).map(function(iss){    return '<div class="wk-row" style="align-items:center;">'      +'<span style="font-size:12px;font-weight:700;color:var(--text);width:110px;min-width:110px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+_wkEsc(iss.client)+'">'+_wkEsc(iss.client)+'</span>'      +'<span style="font-size:11px;color:var(--muted);width:56px;min-width:56px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+_wkEsc(_wkDisplayName(iss.rep))+'</span>'      +'<span style="font-size:12px;color:var(--sub);flex:1;line-height:1.5;white-space:pre-wrap;word-break:break-all;min-width:0;">'+_wkNl2br(_wkStripHtml(iss.content))+'</span>'      +'</div>';  }).join('');
 }
 
 // ── 피드 렌더 ─────────────────────────────────────
