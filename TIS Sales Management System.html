@@ -10171,9 +10171,13 @@ function _iRow(rep, idx, iss){
     +(canEdit?'<select class="_bsl-sel" size="1" id="ist-'+rep+'-'+idx+'" onchange="var cm={open:\'#DC2626\',closed:\'#0EA5A0\'};var lm={open:\'Open\',closed:\'Closed\'};var pc=cm[this.value]||\'#CBD5E1\';var sp=this.parentNode.querySelector(\'._bsl\');if(sp){sp.textContent=this.value?lm[this.value]:\'선택\';sp.style.color=pc;sp.style.borderColor=pc+\'60\';}iApplySt(this,this.value);store.reps[\''+r+'\'].issuesList['+idx+'].status=this.value;if(typeof extractIssues===\'function\'){extractIssues();renderIssues&&renderIssues();}autoSave&&autoSave();" style="position:absolute;inset:0;width:100%;height:100%;opacity:0 !important;z-index:2;cursor:pointer;font-family:inherit;">'+stOpts2+'</select>':'')
     +'</div></td>';
 
+  var _issChkHtml=canEdit
+    ?'<input type="checkbox" class="wk-iss-chk" '+(iss.weeklyCheck&&iss.weeklyCheck[_thisWkKey()]?'checked ':'')+' onchange="_wkToggleIssCheck(\''+r+'\','+idx+',this.checked)" style="width:15px;height:15px;cursor:pointer;accent-color:#1A56DB;" title="주간보고에 포함">'
+    :'&nbsp;';
   return '<tr id="ir-'+rep+'-'+idx+'">'
+    +'<td class="wk-chk-cell">'+_issChkHtml+'</td>'
     // 순번
-    +'<td style="text-align:center;color:#94A3B8;font-weight:600;font-size:12px;width:40px;vertical-align:middle;">'+(iss.no||idx+1)+'</td>'
+    +'<td class="wk-no-cell" style="color:#94A3B8;font-weight:600;font-size:12px;">'+(iss.no||idx+1)+'</td>'
     // 고객사
     +'<td style="width:175px;vertical-align:middle;text-align:center;">'
       +(canEdit?'<input type="text" value="'+(iss.client||'')+'" style="width:100%;height:28px;box-sizing:border-box;text-align:center;" onchange="store.reps[\''+r+'\'].issuesList['+idx+'].client=this.value;autoSave&&autoSave()">':'<span style="font-size:12px;">'+( iss.client||'─')+'</span>')
@@ -10244,8 +10248,7 @@ function _iRow(rep, idx, iss){
         +store.reps[rep].issuesList.map(function(iss,i){ return _iRow(rep,i,iss); }).join('')
         +'</tbody></table></div></div></div>';
       sec.insertAdjacentHTML('beforeend', issHTML);
-      // 이슈 행 체크박스 추가
-      setTimeout(function(){ _addIssueCheckboxes(rep); }, 0);
+      // 체크박스는 _iRow에서 직접 생성
       // 초기 select 색상 적용
       (function applyIssColors(){
         (store.reps[rep].issuesList||[]).forEach(function(iss,i){
@@ -10293,7 +10296,7 @@ window.addIssueRow = function(rep){
     tbody.insertAdjacentHTML('beforeend', _iRow(rep, idx, iss));
   }
   if(typeof autoSave==='function') autoSave();
-  setTimeout(function(){ if(typeof _addIssueCheckboxes==='function') _addIssueCheckboxes(rep); }, 0);
+  // 체크박스는 _iRow에서 직접 생성
 };
 
 // ── 이슈 삭제 ──
@@ -14582,21 +14585,21 @@ function _wkGenContractNotifs(){
     var notifId='contract_'+c.id+'_'+diff;
     // 이미 있는지 확인 (로컬)
     if(_wk.notifications.some(function(n){return n.id===notifId;})) return;
-    if(diff<=7&&diff>=0){
+    if(diff!==null&&diff<=60&&diff>=0){
       _wk.notifications.unshift({
         id:notifId, type:'contract', read:false, urgent:true,
         title:'계약 만료 임박',
         msg:'<b>'+c.client+'</b> '+c.projectName+' 계약 만료가 <b>'+diff+'일</b> 남았습니다. 즉시 갱신이 필요합니다.',
         targetPage:'contract', time:_wkNowStr()
       });
-    } else if(diff<=30&&diff>7){
+    // D-30~60 이내 (이미 위에서 처리)
       _wk.notifications.unshift({
         id:notifId, type:'contract', read:false, urgent:false,
         title:'계약 만료 예정',
         msg:'<b>'+c.client+'</b> '+c.projectName+' 계약 만료가 <b>'+diff+'일</b> 남았습니다.',
         targetPage:'contract', time:_wkNowStr()
       });
-    } else if(diff<0){
+    } else if(diff!==null&&diff<0&&diff>=-60){
       _wk.notifications.unshift({
         id:notifId, type:'contract', read:false, urgent:true,
         title:'계약 공백 발생',
@@ -14829,13 +14832,15 @@ function _wkRenderContracts(){
         diffVal=diff; urgency=diff<0?3:diff<=7?2:1;
         label=diff<0?'D+'+Math.abs(diff):diff===0?'오늘':'D-'+diff;
       }
-      // 하자→유지보수 전환 필요 (모든 하자기간 표시)
+      // 하자기간 D-60 이내만 표시
       else if(c.managementType==='하자기간'){
         var _hajaD=mgtEndD||endD;
-        var _hajaDiff=_hajaD?Math.round((_hajaD-today)/86400000):0;
-        type='하자기간';
-        diffVal=_hajaDiff; urgency=_hajaDiff<0?3:_hajaDiff<=7?2:1;
-        label=_hajaDiff<0?'D+'+Math.abs(_hajaDiff):_hajaDiff===0?'오늘':'D-'+_hajaDiff;
+        var _hajaDiff=_hajaD?Math.round((_hajaD-today)/86400000):null;
+        if(_hajaDiff!==null&&_hajaDiff<=60){
+          type='하자기간';
+          diffVal=_hajaDiff; urgency=_hajaDiff<0?3:_hajaDiff<=7?2:1;
+          label=_hajaDiff<0?'D+'+Math.abs(_hajaDiff):_hajaDiff===0?'오늘':'D-'+_hajaDiff;
+        }
       }
       // 계약 공백 (만료 후 갱신 없음 - 하자기간 제외)
       else if(diff!==null&&diff<0&&c.managementType!=='유지보수'&&c.managementType!=='하자기간'){
@@ -14870,12 +14875,12 @@ function _wkRenderContracts(){
   };
   el.innerHTML=items.map(function(it){
     return '<div class="wk-row" style="align-items:center;">'
-      +'<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:20px;'+(typeStyle[it.type]||'')+'white-space:nowrap;">'+it.type+'</span>'
-      +'<span class="wk-cli" style="min-width:50px;">'+_wkEsc(it.client)+'</span>'
-      +'<span class="wk-cont" style="font-size:10px;">'+_wkEsc(it.project)+'</span>'
-      +'<span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:20px;'+(labelStyle[it.urgency]||'')+'white-space:nowrap;">'+it.label+'</span>'
-      +'<span style="font-size:10px;color:var(--muted);">'+_wkEsc(it.displayName)+'</span>'
-      +'</div>';
+    return '<div class="wk-row" style="align-items:center;gap:6px;">'
+      +'<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;'+(typeStyle[it.type]||'')+';white-space:nowrap;flex-shrink:0;">'+it.type+'</span>'
+      +'<span style="font-size:12px;font-weight:700;color:var(--text);width:110px;min-width:110px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+_wkEsc(it.client)+'">'+_wkEsc(it.client)+'</span>'
+      +'<span style="font-size:12px;color:var(--sub);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">'+_wkEsc(it.project)+'</span>'
+      +'<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;'+(labelStyle[it.urgency]||'')+';white-space:nowrap;flex-shrink:0;">'+it.label+'</span>'
+      +'<span style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0;">'+_wkEsc(it.displayName)+'</span>'
   }).join('');
 }
 function _wkRenderVisits(){
