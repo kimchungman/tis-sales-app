@@ -2069,6 +2069,169 @@ document.addEventListener('mousedown',function(e){
 });
 
 </script>
+<style>
+/* ══════════════════════════════════
+   주간회의 요약 스타일
+══════════════════════════════════ */
+#page-weekly{display:none;flex-direction:column;height:100%;}
+#page-weekly.active{display:flex;}
+.wk-tab-wrap{background:var(--card);border-bottom:1px solid var(--border);flex-shrink:0;}
+.wk-team-row,.wk-rep-row{display:flex;overflow-x:auto;padding:0 16px;gap:0;scrollbar-width:none;}
+.wk-team-row::-webkit-scrollbar,.wk-rep-row::-webkit-scrollbar{display:none;}
+.wk-team-tab{padding:9px 14px;font-size:12px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;cursor:pointer;flex-shrink:0;transition:all .15s;}
+.wk-team-tab.on{color:var(--blue);border-bottom-color:var(--blue);}
+.wk-rep-row{padding:6px 12px;gap:5px;border-top:1px solid var(--border);}
+.wk-rep-tab{padding:3px 12px;border-radius:20px;font-size:11px;font-weight:600;border:1.5px solid var(--border);background:var(--card);color:var(--muted);white-space:nowrap;flex-shrink:0;cursor:pointer;transition:all .15s;}
+.wk-rep-tab.on{background:var(--blue);color:#fff;border-color:var(--blue);}
+.wk-week-row{display:flex;gap:5px;padding:6px 14px;background:var(--bg);border-bottom:1px solid var(--border);overflow-x:auto;flex-shrink:0;scrollbar-width:none;}
+.wk-week-row::-webkit-scrollbar{display:none;}
+.wk-wbtn{padding:4px 12px;border-radius:6px;font-size:11px;cursor:pointer;border:1px solid var(--border);background:var(--card);color:var(--muted);white-space:nowrap;flex-shrink:0;font-weight:500;transition:all .15s;}
+.wk-wbtn.on{background:var(--navy);color:#fff;border-color:var(--navy);}
+.wk-wbtn-period{padding:4px 12px;border-radius:6px;font-size:11px;cursor:pointer;border:1.5px solid var(--blue);background:var(--card);color:var(--blue);font-weight:600;flex-shrink:0;}
+.wk-view-tabs{display:flex;background:var(--card);border-bottom:1px solid var(--border);flex-shrink:0;}
+.wk-vtab{flex:1;padding:10px;font-size:12px;font-weight:700;text-align:center;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;letter-spacing:-.2px;transition:all .15s;}
+.wk-vtab.on{color:var(--navy);border-bottom-color:var(--navy);}
+.wk-cnt{background:var(--red);color:#fff;border-radius:20px;padding:1px 5px;font-size:9px;font-weight:700;margin-left:4px;}
+/* 보고서 */
+.wk-report{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;padding-bottom:30px;}
+/* 지난주 회의록 박스 */
+.wk-prev-card{background:#FFFBEB;border:1.5px solid #FCD34D;border-radius:10px;overflow:hidden;}
+.wk-prev-head{padding:8px 12px;background:#FEF3C7;border-bottom:1px solid #FDE68A;display:flex;align-items:center;gap:6px;}
+.wk-prev-title{font-size:11px;font-weight:700;color:#92400E;}
+.wk-prev-sub{font-size:10px;color:#B45309;margin-left:auto;}
+.wk-prev-body{padding:10px 12px;display:flex;flex-direction:column;gap:8px;}
+.wk-pi{background:#fff;border-radius:8px;padding:8px 10px;border:1px solid #FDE68A;}
+.wk-pi.carry{border-color:#FECACA;background:#FFF8F8;}
+.wk-pi-who{display:flex;align-items:center;gap:5px;margin-bottom:4px;flex-wrap:wrap;}
+.wk-pi-name{font-size:11px;font-weight:700;color:#92400E;}
+.wk-pi-time{font-size:9px;color:#D97706;margin-left:auto;}
+.wk-pi-cont{font-size:11px;color:#78350F;line-height:1.55;}
+.wk-pi-reply-wrap{margin-top:5px;padding:5px 8px;background:#FFFBEB;border-radius:6px;border-left:2px solid #FCD34D;display:flex;flex-direction:column;gap:4px;}
+.wk-pi-rw{font-size:10px;font-weight:700;color:#B45309;}
+.wk-pi-rc{font-size:10px;color:#92400E;line-height:1.4;}
+.wk-carry-badge{display:inline-flex;align-items:center;gap:3px;background:#FEE2E2;border:1px solid #FECACA;border-radius:20px;padding:2px 7px;font-size:9px;color:#DC2626;font-weight:700;margin-top:4px;}
+.wk-ans-btn{display:block;width:100%;margin-top:6px;padding:5px;background:var(--blue);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;text-align:center;cursor:pointer;}
+/* 카드 */
+.wk-card{background:var(--card);border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px solid var(--border);}
+.wk-ch{padding:8px 12px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;}
+.wk-ch-t{font-size:12px;font-weight:700;color:var(--text);}
+.wk-ch-s{font-size:10px;color:var(--muted);margin-left:auto;}
+.wk-cb{padding:10px 12px;}
+/* KPI */
+.wk-kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+.wk-kpi{background:var(--bg);border-radius:8px;padding:10px 12px;border:1px solid var(--border);}
+.wk-kl{font-size:10px;color:var(--muted);margin-bottom:3px;}
+.wk-kv{font-size:18px;font-weight:700;color:var(--text);}
+.wk-kd{font-size:10px;margin-top:1px;}
+/* 테이블 */
+.wk-tbl{width:100%;border-collapse:collapse;font-size:11px;}
+.wk-tbl th{background:var(--bg);padding:6px 6px;text-align:center;color:var(--muted);font-weight:600;border-bottom:1.5px solid var(--border);white-space:nowrap;}
+.wk-tbl td{padding:6px 6px;text-align:center;border-bottom:0.5px solid var(--border);}
+.wk-tdl{text-align:left!important;font-weight:700;color:var(--text);}
+/* 프로젝트/이슈 행 */
+.wk-row{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--border);}
+.wk-row:last-child{border-bottom:none;}
+.wk-dot{width:6px;height:6px;border-radius:50%;margin-top:3px;flex-shrink:0;}
+.wk-cli{font-size:11px;font-weight:700;color:var(--text);min-width:55px;}
+.wk-cont{font-size:11px;color:var(--sub);flex:1;line-height:1.4;}
+.wk-dt{font-size:10px;color:var(--muted);white-space:nowrap;}
+/* 회의록 피드 */
+.wk-feed{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+.wk-input-area{padding:10px 12px;background:var(--card);border-bottom:1px solid var(--border);flex-shrink:0;position:relative;}
+.wk-fi-who{display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+.wk-fi-name{font-size:11px;font-weight:700;color:var(--text);}
+.wk-fi-role{font-size:10px;background:var(--blue-soft);color:var(--blue);padding:1px 6px;border-radius:20px;font-weight:600;}
+.wk-toolbar{display:flex;gap:3px;margin-bottom:5px;flex-wrap:wrap;}
+.wk-tb{width:24px;height:24px;border:1px solid var(--border);border-radius:4px;background:var(--card);font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--sub);transition:all .12s;}
+.wk-tb:hover{background:var(--blue-soft);color:var(--blue);border-color:var(--blue);}
+.wk-tb.color-pick{width:auto;padding:0 6px;font-size:10px;font-weight:600;}
+.wk-editor{width:100%;min-height:58px;max-height:140px;overflow-y:auto;border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);outline:none;background:var(--bg);line-height:1.6;transition:border-color .15s;}
+.wk-editor:focus{border-color:var(--blue);background:var(--card);}
+.wk-editor:empty:before{content:attr(data-placeholder);color:var(--muted);pointer-events:none;}
+.wk-fi-foot{display:flex;align-items:center;justify-content:space-between;margin-top:6px;}
+.wk-fi-hint{font-size:10px;color:var(--muted);}
+.wk-submit-btn{height:32px;padding:0 16px;border-radius:20px;font-size:11px;font-weight:700;background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;border:none;cursor:pointer;transition:all .15s;}
+.wk-submit-btn:hover{opacity:.9;}
+/* @ 멘션 팝업 */
+.wk-mention-popup{position:absolute;left:12px;right:12px;background:var(--card);border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.16);z-index:200;border:1px solid var(--border);overflow:hidden;display:none;}
+.wk-mp-head{padding:6px 12px;background:var(--bg);border-bottom:1px solid var(--border);font-size:10px;color:var(--muted);font-weight:600;}
+.wk-mp-list{max-height:180px;overflow-y:auto;}
+.wk-mp-item{padding:8px 12px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:background .1s;}
+.wk-mp-item:hover{background:var(--blue-soft);}
+.wk-mp-av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;}
+.wk-mp-name{font-size:12px;font-weight:700;color:var(--text);}
+.wk-mp-pos{font-size:10px;color:var(--muted);}
+.wk-mp-team{font-size:9px;color:var(--blue);background:var(--blue-soft);padding:1px 5px;border-radius:20px;margin-left:auto;}
+/* 조회창 */
+.wk-feed-list{flex:1;overflow-y:auto;}
+.wk-fi-item{padding:10px 12px;border-bottom:0.5px solid var(--border);}
+.wk-fi-item.pending{background:#FFFBEB;}
+.wk-fi-meta{display:flex;align-items:center;gap:5px;margin-bottom:5px;flex-wrap:wrap;}
+.wk-fi-n{font-size:12px;font-weight:700;color:var(--text);}
+.wk-fi-t{font-size:10px;color:var(--muted);margin-left:auto;}
+.wk-fi-cont{font-size:12px;color:var(--sub);line-height:1.6;background:var(--bg);padding:8px 10px;border-radius:8px;margin-bottom:6px;word-break:break-all;}
+.wk-pend-badge{font-size:10px;background:#FEF3C7;color:#D97706;padding:1px 6px;border-radius:20px;font-weight:600;}
+.wk-done-badge{font-size:10px;background:var(--green-soft);color:var(--green);padding:1px 6px;border-radius:20px;font-weight:600;}
+.wk-role-badge{font-size:9px;padding:1px 5px;border-radius:20px;font-weight:600;}
+.wk-rb-admin{background:var(--blue-soft);color:var(--blue);}
+.wk-rb-rep{background:var(--green-soft);color:var(--green);}
+.wk-rb-guest{background:var(--gold-soft);color:var(--gold);}
+.wk-reply-btn{font-size:11px;color:var(--blue);background:none;border:1px solid #DBEAFE;border-radius:6px;padding:3px 10px;cursor:pointer;font-weight:600;}
+.wk-replies{margin-top:6px;padding-left:14px;border-left:2px solid var(--border);display:flex;flex-direction:column;gap:5px;}
+.wk-ri{background:var(--bg);border-radius:8px;padding:6px 10px;}
+.wk-ri-meta{display:flex;align-items:center;gap:4px;margin-bottom:2px;}
+.wk-ri-n{font-size:11px;font-weight:700;color:var(--text);}
+.wk-ri-t{font-size:9px;color:var(--muted);margin-left:auto;}
+.wk-ri-c{font-size:11px;color:var(--sub);line-height:1.4;word-break:break-all;}
+.wk-reply-input-wrap{margin-top:6px;padding-left:14px;border-left:2px solid var(--blue);}
+.wk-reply-textarea{width:100%;border:1.5px solid var(--blue);border-radius:8px;padding:7px 10px;font-size:11px;color:var(--text);outline:none;background:var(--card);resize:none;font-family:inherit;line-height:1.5;}
+.wk-reply-footer{display:flex;justify-content:flex-end;margin-top:4px;gap:5px;}
+.wk-reply-cancel{font-size:11px;color:var(--muted);background:none;border:none;cursor:pointer;padding:4px 8px;}
+.wk-reply-submit{font-size:11px;font-weight:700;color:#fff;background:var(--blue);border:none;border-radius:6px;padding:4px 14px;cursor:pointer;}
+/* 색상 팔레트 */
+.wk-color-palette{position:absolute;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 8px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:300;display:none;gap:4px;flex-wrap:wrap;width:120px;}
+.wk-cp{width:18px;height:18px;border-radius:50%;cursor:pointer;border:1.5px solid transparent;}
+.wk-cp:hover{transform:scale(1.2);}
+.wk-mention{background:var(--blue-soft);color:var(--blue);font-weight:700;padding:0 3px;border-radius:3px;}
+/* 알림 */
+.wk-notif-wrap{position:relative;display:inline-block;}
+.wk-notif-btn{height:32px;padding:0 11px;border-radius:20px;background:linear-gradient(135deg,#64748B15,#94A3B815);border:1.5px solid #94A3B840;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .2s;color:#CBD5E1;}
+.wk-notif-btn:hover{background:linear-gradient(135deg,#64748B25,#94A3B825);}
+.wk-notif-label{font-size:11px;font-weight:600;}
+.wk-notif-badge{background:#DC2626;color:#fff;font-size:9px;font-weight:700;border-radius:20px;padding:1px 5px;min-width:16px;text-align:center;line-height:1.4;border:1.5px solid #1E293B;}
+.wk-notif-drop{position:absolute;top:38px;right:0;width:310px;background:var(--card);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.18);z-index:500;overflow:hidden;border:1px solid var(--border);display:none;}
+.wk-nd-head{padding:10px 14px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.wk-nd-title{font-size:12px;font-weight:700;color:var(--text);}
+.wk-nd-clear{font-size:10px;color:var(--blue);cursor:pointer;border:none;background:none;}
+.wk-nd-list{max-height:300px;overflow-y:auto;}
+.wk-nd-item{padding:9px 12px;border-bottom:0.5px solid var(--border);cursor:pointer;display:flex;align-items:flex-start;gap:8px;transition:background .1s;}
+.wk-nd-item:hover{background:var(--bg);}
+.wk-nd-item.unread{border-left:3px solid var(--blue);}
+.wk-nd-item.urgent{border-left:3px solid var(--red);}
+.wk-nd-icon{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+.wk-nd-content{flex:1;}
+.wk-nd-msg{font-size:11px;color:var(--sub);line-height:1.4;margin-bottom:2px;}
+.wk-nd-time{font-size:10px;color:var(--muted);}
+.wk-nd-arr{font-size:12px;color:var(--muted);align-self:center;}
+/* 기간 선택 모달 */
+.wk-period-modal{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:600;display:none;align-items:center;justify-content:center;}
+.wk-period-box{background:var(--card);border-radius:12px;padding:20px;width:280px;box-shadow:0 8px 32px rgba(0,0,0,.2);}
+.wk-period-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;}
+.wk-period-row{display:flex;gap:8px;margin-bottom:8px;align-items:center;}
+.wk-period-label{font-size:11px;color:var(--muted);min-width:30px;}
+.wk-period-input{flex:1;border:1.5px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11px;font-family:inherit;outline:none;}
+.wk-period-input:focus{border-color:var(--blue);}
+.wk-period-btns{display:flex;gap:6px;justify-content:flex-end;margin-top:12px;}
+.wk-period-cancel{font-size:11px;color:var(--muted);background:none;border:1px solid var(--border);border-radius:6px;padding:5px 12px;cursor:pointer;}
+.wk-period-ok{font-size:11px;font-weight:700;color:#fff;background:var(--blue);border:none;border-radius:6px;padding:5px 14px;cursor:pointer;}
+<style>
+/* 주간보고 체크박스 열 */
+.wk-chk-cell{width:30px!important;padding:4px!important;text-align:center!important;vertical-align:middle!important;}
+.wk-chk-cell input[type=checkbox]{margin:0;display:block;margin:0 auto;}
+/* 순번 열 */
+.wk-no-cell{width:40px!important;text-align:center!important;vertical-align:middle!important;}
+</style>
+</style>
 </head>
 <body>
 <div id="_rtb" style="display:none;position:fixed;z-index:99999;background:#fff;border:1px solid #dde;border-radius:10px;padding:6px 10px;box-shadow:0 4px 20px rgba(0,0,0,.18);gap:5px;">
@@ -2151,6 +2314,7 @@ document.addEventListener('mousedown',function(e){
   <div class="nav-item" onclick="showPage('pipeline',this)"><svg class="nav-icon" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>영업 파이프라인</div>
   <div class="nav-item" onclick="showPage('issues',this)"><svg class="nav-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>이슈 현황</div>
   <div class="nav-item" onclick="showPage('input',this)"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>영업 진행 현황</div>
+  <div class="nav-item" id="nav-weekly" onclick="showPage('weekly',this)"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="16" y1="14" x2="16" y2="14"/></svg>주간회의 요약</div>
   <div class="nav-item" id="nav-personal" onclick="showPage('personal',this)" style="display:none;"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>개인설정</div>
 <div class="nav-item" id="nav-accesslog" onclick="showPage('accesslog',this)" style="display:none;"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>접속 이력</div>
   <div class="nav-item" id="nav-settings" onclick="onClickSettingsNav(this)" style="display:none;"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>관리자 설정</div>
@@ -3039,6 +3203,130 @@ document.addEventListener('mousedown',function(e){
     </div>
     </div>
   </div>
+<!-- ══════════════ 주간회의 요약 페이지 ══════════════ -->
+<div class="page" id="page-weekly">
+  <!-- 탭 영역 -->
+  <div class="wk-tab-wrap">
+    <div class="wk-team-row" id="wk-team-row"></div>
+    <div class="wk-rep-row" id="wk-rep-row"></div>
+  </div>
+  <!-- 주차 선택 -->
+  <div class="wk-week-row">
+    <div class="wk-wbtn on" id="wk-w-this" onclick="_wkSetWeek('this')">이번주</div>
+    <div class="wk-wbtn" id="wk-w-last" onclick="_wkSetWeek('last')">지난주</div>
+    <div class="wk-wbtn-period" onclick="_wkOpenPeriod()">📅 기간 설정</div>
+  </div>
+  <!-- 보고서 / 회의록 탭 -->
+  <div class="wk-view-tabs">
+    <div class="wk-vtab on" id="wk-vt-report" onclick="_wkSetView('report')">보고서</div>
+    <div class="wk-vtab" id="wk-vt-feed" onclick="_wkSetView('feed')">회의록<span class="wk-cnt" id="wk-pending-cnt" style="display:none;"></span></div>
+  </div>
+  <!-- 보고서 뷰 -->
+  <div id="wk-report-view" class="wk-report">
+    <!-- 지난주 회의록 -->
+    <div id="wk-prev-section"></div>
+    <!-- KPI -->
+    <div class="wk-card">
+      <div class="wk-ch"><span class="wk-ch-t" id="wk-kpi-title">이번달 핵심 지표</span><span class="wk-ch-s" id="wk-kpi-period"></span></div>
+      <div class="wk-cb"><div class="wk-kpi-grid" id="wk-kpi-grid"></div></div>
+    </div>
+    <!-- 담당자별 실적 -->
+    <div class="wk-card">
+      <div class="wk-ch"><span class="wk-ch-t">담당자별 실적</span><span class="wk-ch-s">월 목표 대비</span></div>
+      <div class="wk-cb" style="overflow-x:auto;"><div id="wk-rep-table"></div></div>
+    </div>
+    <!-- 프로젝트 진행현황 -->
+    <div class="wk-card">
+      <div class="wk-ch"><span class="wk-ch-t">프로젝트 진행현황</span><span class="wk-ch-s">이번주 업데이트</span></div>
+      <div class="wk-cb" id="wk-proj-list"></div>
+    </div>
+    <!-- 이슈 현황 -->
+    <div class="wk-card">
+      <div class="wk-ch"><span class="wk-ch-t">이슈 현황</span><span class="wk-ch-s" id="wk-iss-cnt"></span></div>
+      <div class="wk-cb" id="wk-iss-list"></div>
+    </div>
+    <!-- 고객 접점 현황 -->
+    <div class="wk-card">
+      <div class="wk-ch"><span class="wk-ch-t">이번 주 고객 접점</span><span class="wk-ch-s" id="wk-visit-cnt"></span></div>
+      <div class="wk-cb" id="wk-visit-list"></div>
+    </div>
+    <!-- 계약 주요 현황 -->
+    <div class="wk-card">
+      <div class="wk-ch"><span class="wk-ch-t">계약 주요 현황</span><span class="wk-ch-s" id="wk-contract-cnt"></span></div>
+      <div class="wk-cb" id="wk-contract-list"></div>
+    </div>
+  </div>
+  <!-- 회의록 뷰 -->
+  <div id="wk-feed-view" class="wk-feed" style="display:none;">
+    <!-- 입력창 -->
+    <div class="wk-input-area" id="wk-input-area">
+      <div class="wk-fi-who">
+        <span class="wk-fi-name" id="wk-author-name"></span>
+        <span class="wk-fi-role" id="wk-author-role"></span>
+      </div>
+      <div class="wk-toolbar">
+        <button class="wk-tb" title="굵게" onclick="_wkFmt('bold')"><b>B</b></button>
+        <button class="wk-tb" title="기울임" onclick="_wkFmt('italic')"><i style="font-size:12px;">I</i></button>
+        <button class="wk-tb" title="밑줄" onclick="_wkFmt('underline')"><u>U</u></button>
+        <button class="wk-tb" title="취소선" onclick="_wkFmt('strikeThrough')"><s>S</s></button>
+        <button class="wk-tb" title="글머리" onclick="_wkFmt('insertUnorderedList')">•—</button>
+        <button class="wk-tb" title="번호목록" onclick="_wkFmt('insertOrderedList')">1.</button>
+        <button class="wk-tb color-pick" title="글자색" onclick="_wkToggleColorPalette(event,'text')">A▾</button>
+        <button class="wk-tb color-pick" title="형광펜" onclick="_wkToggleColorPalette(event,'bg')" style="background:linear-gradient(90deg,#FEF08A,#FDE047);border-color:#EAB308;">하이라이트</button>
+      </div>
+      <!-- 색상 팔레트 -->
+      <div class="wk-color-palette" id="wk-color-palette" style="display:none;flex-direction:row;">
+        <div class="wk-cp" style="background:#1E293B;" onclick="_wkApplyColor('#1E293B')" title="기본"></div>
+        <div class="wk-cp" style="background:#DC2626;" onclick="_wkApplyColor('#DC2626')" title="빨강"></div>
+        <div class="wk-cp" style="background:#1A56DB;" onclick="_wkApplyColor('#1A56DB')" title="파랑"></div>
+        <div class="wk-cp" style="background:#059669;" onclick="_wkApplyColor('#059669')" title="초록"></div>
+        <div class="wk-cp" style="background:#D97706;" onclick="_wkApplyColor('#D97706')" title="주황"></div>
+        <div class="wk-cp" style="background:#7C3AED;" onclick="_wkApplyColor('#7C3AED')" title="보라"></div>
+      </div>
+      <div class="wk-editor" id="wk-editor" contenteditable="true" data-placeholder="보고 또는 지시 내용 입력... (@이름 으로 담당자 언급)"></div>
+      <!-- 멘션 팝업 -->
+      <div class="wk-mention-popup" id="wk-mention-popup">
+        <div class="wk-mp-head">@ 담당자 선택</div>
+        <div class="wk-mp-list" id="wk-mp-list"></div>
+      </div>
+      <div class="wk-fi-foot">
+        <span class="wk-fi-hint">@ 입력으로 담당자 언급</span>
+        <button class="wk-submit-btn" onclick="_wkSubmitEntry()">등록</button>
+      </div>
+    </div>
+    <!-- 조회창 -->
+    <div class="wk-feed-list" id="wk-feed-list"></div>
+  </div>
+</div>
+
+<!-- 알림 드롭다운 (전역 - 헤더에 있음) -->
+<div class="wk-notif-drop" id="wk-notif-drop">
+  <div class="wk-nd-head">
+    <span class="wk-nd-title">🔔 알림</span>
+    <button class="wk-nd-clear" onclick="_wkMarkAllRead()">모두 읽음</button>
+  </div>
+  <div class="wk-nd-list" id="wk-notif-list"></div>
+</div>
+
+<!-- 기간 설정 모달 -->
+<div class="wk-period-modal" id="wk-period-modal">
+  <div class="wk-period-box">
+    <div class="wk-period-title">📅 기간 설정</div>
+    <div class="wk-period-row">
+      <span class="wk-period-label">시작</span>
+      <input type="date" class="wk-period-input" id="wk-period-from">
+    </div>
+    <div class="wk-period-row">
+      <span class="wk-period-label">종료</span>
+      <input type="date" class="wk-period-input" id="wk-period-to">
+    </div>
+    <div class="wk-period-btns">
+      <button class="wk-period-cancel" onclick="_wkClosePeriod()">취소</button>
+      <button class="wk-period-ok" onclick="_wkApplyPeriod()">조회</button>
+    </div>
+  </div>
+</div>
+
 <script>
 
 const MONTHS=['4월','5월','6월','7월','8월','9월','10월','11월','12월','1월','2월','3월'];
@@ -3542,7 +3830,7 @@ function updateSBWeek(d){
   document.getElementById('sb-dt').textContent=(mon.getMonth()+1)+'/'+mon.getDate()+' ~ '+(fri.getMonth()+1)+'/'+fri.getDate();
 }
 
-const pgMeta={dashboard:['통합 대시보드','경영계획 vs 실적 현황'],input:['영업 진행 현황','담당자별 실적 및 활동 입력'],issues:['이슈 현황','고객사별 이슈 및 리스크'],pipeline:['영업 파이프라인','신규 및 기존 고객 영업 현황'],visits:['고객 접점 현황','고객 접점 기록 대시보드'],contract:['계약 현황','고객사별 계약 및 유지보수 현황'],export:['엑셀 출력','주간회의 자료 다운로드'],personal:['개인설정','테마 및 글씨 크기 설정'],settings:['설정','담당자 관리 및 회의 날짜 설정'],accesslog:['접속 이력','MS 계정 및 담당자별 접속 현황']};
+const pgMeta={dashboard:['통합 대시보드','경영계획 vs 실적 현황'],weekly:['주간회의 요약','주간 영업 현황 보고 및 회의록'],input:['영업 진행 현황','담당자별 실적 및 활동 입력'],issues:['이슈 현황','고객사별 이슈 및 리스크'],pipeline:['영업 파이프라인','신규 및 기존 고객 영업 현황'],visits:['고객 접점 현황','고객 접점 기록 대시보드'],contract:['계약 현황','고객사별 계약 및 유지보수 현황'],export:['엑셀 출력','주간회의 자료 다운로드'],personal:['개인설정','테마 및 글씨 크기 설정'],settings:['설정','담당자 관리 및 회의 날짜 설정'],accesslog:['접속 이력','MS 계정 및 담당자별 접속 현황']};
 function switchSettingsTab(tab){
   if(tab==='기본설정'){
     if(typeof renderLayoutSettings==='function') setTimeout(renderLayoutSettings,50);
@@ -3910,10 +4198,16 @@ function showPage(id,navEl){
   if(typeof closeMobileMenu==="function") closeMobileMenu();
   // ── 페이지별 탭 초기화 (매번 호출 보장) ──
   if(id==='input'){
-      // rep 모드: _lastBuiltTeam 유지 (재빌드 스킵 최적화)
-    // admin/guest: 항상 리셋 (다른 담당자 최신 데이터 보장)
+    // admin/guest: 항상 리셋
     if(!session || session.role !== 'rep'){
       window._lastBuiltTeam = null;
+    }
+    // 이전 담당자와 다르면 DOM 즉시 비우기 (이중 안전망)
+    if(window._lastBuiltTeam && session && session.team &&
+       window._lastBuiltTeam !== session.team){
+      var _rAreaSP=document.getElementById('rep-input-area');
+      if(_rAreaSP) _rAreaSP.innerHTML='';
+      window._lastBuiltTeam=null;
     }
     APP.domReady=false; APP.autoDone=false;  // 페이지 진입 초기화
     window._inputPageDirty=false; // 진입 시 dirty 초기화
@@ -3926,6 +4220,26 @@ function showPage(id,navEl){
     initInputTabs();
 
     if(typeof applyPermissions==='function') applyPermissions();
+    // 200ms 후 강제 보정: buildRepInputs 완료 후 올바른 담당자 섹션 확인
+    (function(){
+      var _corrRep=(session&&session.rep)?session.rep:null;
+      if(!_corrRep) return;
+      setTimeout(function(){
+        var _pg=document.getElementById('page-input');
+        if(!_pg||!_pg.classList.contains('active')) return;
+        // 현재 보이는 rep-sec 확인
+        var _visible=document.querySelector('.rep-sec[style*="display: block"],.rep-sec[style*="display:block"]');
+        if(_visible&&_visible.id!=='rs-'+_corrRep){
+          // 잘못된 섹션 보임 → 강제 수정
+          document.querySelectorAll('.rep-sec').forEach(function(s){s.style.display='none';});
+          var _ms=document.getElementById('rs-'+_corrRep);
+          if(_ms)_ms.style.display='block';
+          document.querySelectorAll('#rep-tabs .tab').forEach(function(t){t.classList.remove('active');});
+          var _mt=document.querySelector('#rep-tabs .tab[data-rep="'+_corrRep+'"]');
+          if(_mt)_mt.classList.add('active');
+        }
+      }, 200);
+    })();
     APP.domReady=true;
     checkReady();
   } else if(id==='issues'){
@@ -4022,6 +4336,7 @@ function showPage(id,navEl){
     if(_ps) _ps.textContent=pgMeta[id][1];
   }
   if(id==='export')buildExpPreview();
+  if(id==='weekly'&&typeof _initWeeklyPage==='function') _initWeeklyPage();
 }
 
 
@@ -4610,7 +4925,11 @@ function switchInputTeam(team){
       if(_savedVT&&_savedVT.rep&&_savedVT.tab&&typeof window._switchVTab==='function'){
         window._switchVTab(_savedVT.rep,_savedVT.tab);
       } else {
-        var activeTab=document.querySelector('#rep-tabs .tab.active')||document.querySelector('#rep-tabs .tab');
+        // session.rep 직접 사용 (activeTab 의존 제거 - 다른 담당자 탭이 active일 수 있음)
+        var _targetRep=(session&&session.rep&&REPS.indexOf(session.rep)>=0)?session.rep:(REPS[0]||'');
+        var activeTab=_targetRep
+          ?document.querySelector('#rep-tabs .tab[data-rep="'+_targetRep+'"]')
+          :document.querySelector('#rep-tabs .tab.active');
         if(activeTab&&typeof switchTab==='function'){
           switchTab(activeTab.dataset.rep||activeTab.textContent.trim(),activeTab);
         } else if(REPS&&REPS[0]&&typeof switchTab==='function'){
@@ -4778,7 +5097,8 @@ function buildRepInputs(){
       <div class="sec-head"><h3>${rep} — 영업활동</h3><button class="add-btn" onclick="addActivity('${rep}')">＋ 추가</button></div>
       <div class="sec-body"><div style="overflow-x:auto;overflow-y:auto;max-height:380px;-webkit-overflow-scrolling:touch;"><table class="dt" style="min-width:max-content;table-layout:auto;">
         <thead style="position:sticky;top:0;z-index:5;"><tr>
-          <th style="width:40px;white-space:nowrap;background:#F8FAFC;">순번</th>
+          <th class="wk-chk-cell" style="background:#F8FAFC;white-space:nowrap;" title="주간보고 포함">📋</th>
+          <th class="wk-no-cell" style="background:#F8FAFC;white-space:nowrap;">순번</th>
           <th style="width:90px;white-space:nowrap;background:#F8FAFC;">구분</th>
           <th style="width:175px;white-space:nowrap;background:#F8FAFC;">고객사</th>
           <th style="width:160px;white-space:nowrap;background:#F8FAFC;">제품</th>
@@ -4896,8 +5216,11 @@ function aRow(rep,ai,a){
   const tOpts=types.map(t=>`<option${a.type===t?' selected':''}>${t}</option>`).join('');
   const progList=getSelectOpts('activityProgress');
   const progOpts='<option value="" disabled'+((!a.progress||a.progress==='')?'selected':'')+' style="text-align:center">선택</option>'+progList.map(p=>`<option style="text-align:center"${(a.progress||'')===p?' selected':''}>${p}</option>`).join('');
+  var _isOwn=(typeof session!=='undefined'&&session&&session.rep===rep)||(typeof session!=='undefined'&&session&&session.role==='admin');
+  var _wkChecked=a.weeklyCheck&&a.weeklyCheck[_thisWkKey()]?'checked':'';
   return`<tr>
-    <td style="text-align:center;color:var(--muted);font-weight:600;font-size:12px;width:40px;vertical-align:middle;">${a.no||ai+1}</td>
+    <td class="wk-chk-cell">${_isOwn?`<input type="checkbox" class="wk-act-chk" ${_wkChecked} onchange="_wkToggleActCheck('${rep}',${ai},this.checked)" style="width:15px;height:15px;cursor:pointer;accent-color:#1A56DB;" title="주간보고에 포함">`:'&nbsp;'}</td>
+    <td class="wk-no-cell" style="color:var(--muted);font-weight:600;font-size:12px;">${a.no||ai+1}</td>
     <td style="width:90px;vertical-align:middle;">
       <select style="width:100%;height:30px;box-sizing:border-box;" onchange="store.reps['${rep}'].activities[${ai}].type=this.value;autoSave()">${tOpts}</select>
     </td>
@@ -6358,11 +6681,17 @@ function doRepLogin(rep){
   console.log('[doRepLogin] rep='+rep+' _repTeam='+_repTeam);
   session={role:'rep', rep:rep, team:_repTeam};
   localStorage.setItem('_tisSavedSession', JSON.stringify({role:'rep',rep:rep,team:_repTeam}));
-  // 참가자 변경 시 탭/캐시 초기화 (이전 참가자 상태 제거)
+  // 참가자 변경 시 탭/캐시 초기화 (이전 참가자 상태 완전 제거)
   window._intendedVTab=null;
   window._activeVTab=null;
   window._cPanelHash={};
   window._lastContractHash=null;
+  window._lastBuiltTeam=null;
+  window._inputPageDirty=true;
+  if(typeof activeRep!=='undefined') activeRep=null;
+  // rep-input-area 즉시 비우기 (이전 담당자 내용 노출 원천 차단)
+  var _rArea=document.getElementById('rep-input-area');
+  if(_rArea) _rArea.innerHTML='';
   // 모든 탭을 본인 팀으로 초기화
   _tabState.input    = _repTeam;
   _tabState.issues   = _repTeam;
@@ -6673,7 +7002,7 @@ function applyPermissions(){
 
   // 게스트: 대시보드, 고객접점, 파이프라인, 이슈 메뉴만 활성화
   if(isGuest){
-    var guestAllow=["'dashboard'","'visits'","'pipeline'","'issues'","'contract'"];
+    var guestAllow=["'dashboard'","'visits'","'pipeline'","'issues'","'contract'","'weekly'"];
     document.querySelectorAll('.nav-item').forEach(function(n){
       var oc=n.getAttribute('onclick')||'';
       var allowed=guestAllow.some(function(p){return oc.indexOf(p)>=0;});
@@ -7689,6 +8018,8 @@ async function _initSP() {
         }
         // 공동편집: 다른 담당자 데이터만 동기화
         var _changed = await _spSyncOtherReps();
+          // 새 이슈 감지 → 팀장 알림 (sync 후 체크)
+          if(_changed&&typeof _wkCheckNewIssues==='function') setTimeout(_wkCheckNewIssues, 500);
         await _spLoadHistList();
         try{ if(typeof updateAccessDisplay==='function') updateAccessDisplay(); }catch(_e){}
         if(_changed){
@@ -7696,9 +8027,10 @@ async function _initSP() {
           var _pid2=_activePage?_activePage.id.replace('page-',''):'';
           var _ipOn=(_pid2==='input');
           // 현재 활성 페이지에만 렌더 실행 (다른 페이지 DOM 건드리지 않음)
-          // 렌더 전 스크롤 위치 저장
-          var _syncScrollEl=document.querySelector('.page.active')||document.body;
-          var _syncSt=_syncScrollEl.scrollTop||window.scrollY||0;
+          // 렌더 전 스크롤 위치 저장 (페이지 내 실제 스크롤 컨테이너 우선)
+          var _activePg=document.querySelector('.page.active');
+          var _syncScrollEl=(_activePg&&_activePg.querySelector('[style*="overflow-y:auto"],[style*="overflow-y: auto"]'))||_activePg||document.body;
+          var _syncSt=_syncScrollEl.scrollTop||(_activePg?_activePg.scrollTop:0)||window.scrollY||0;
           if(_pid2==='dashboard'&&typeof renderDashboard==='function') renderDashboard();
           if(_pid2==='issues'&&typeof renderIssues==='function') renderIssues();
           if(_pid2==='pipeline'&&typeof renderPipeline==='function') renderPipeline();
@@ -7722,6 +8054,17 @@ async function _initSP() {
           if(!_ipOn) window._inputPageDirty = true;
           // 계약 현황 페이지
           if(_pid2==='contract'&&typeof renderContractDashboard==='function') renderContractDashboard();
+          if(_pid2==='weekly'&&typeof _syncWeeklyFeed==='function') _syncWeeklyFeed();
+          // 월요일 미답변 이월 알림 (SP 연결 후 최초 1회)
+  if(typeof _wkCheckCarryOver==='function') _wkCheckCarryOver();
+  // 알림 배지는 모든 페이지에서 갱신
+          if(session&&session.rep&&typeof _wkLoadNotif==='function'){
+            _wkLoadNotif(session.rep).then(function(notifs){
+              if(window._wk) window._wk.notifications=notifs;
+              if(typeof _wkGenContractNotifs==='function') _wkGenContractNotifs();
+              if(typeof _wkUpdateNotifBadge==='function') _wkUpdateNotifBadge();
+            }).catch(function(){});
+          }
           // 계약 관리 vtab: 데이터 변경 시만 재빌드
           var _ivt2=window._intendedVTab;
           if(_ivt2&&_ivt2.tab==='contract'&&_ivt2.rep){
@@ -7730,22 +8073,14 @@ async function _initSP() {
         } else {
           // 데이터 변경 없어도 visits 페이지면 visitLog 갱신
           var _ap2=document.querySelector('.page.active');
-          if(_ap2&&_ap2.id==='page-visits'&&typeof renderVisits==='function') renderVisits();
+          if(_ap2&&_ap2.id==='page-visits'&&typeof renderVisits==='function'){
+            var _vSt2=_ap2.scrollTop||0;
+            renderVisits();
+            if(_vSt2>0){(function(el,st){requestAnimationFrame(function(){requestAnimationFrame(function(){el.scrollTop=st;});});})(_ap2,_vSt2);}
+          }
         }
       }catch(e){ console.warn('[sync]',e); }finally{
-        window._syncRunning = false; // 반드시 해제
-        // 계약 탭/페이지 재렌더
-        try{
-          var _acp=document.querySelector('.page.active');
-          if(_acp&&_acp.id==='page-contract'&&typeof renderContractDashboard==='function')
-            renderContractDashboard();
-          // 계약 관리 vtab 활성화 중이면 패널 갱신
-          var _ivt=window._intendedVTab;
-          if(_ivt&&_ivt.tab==='contract'&&_ivt.rep){
-            var _cplE=document.getElementById('cpl-'+_ivt.rep);
-            if(_cplE&&typeof _rebuildContractPanel==='function')_rebuildContractPanel(_ivt.rep);
-          }
-        }catch(_e){}
+        window._syncRunning = false;
       }
     }, 10000);
 
@@ -7771,7 +8106,23 @@ async function _initSP() {
     if(errMsg.includes('redirect') || errMsg.includes('reply') || errMsg.includes('AADSTS')){
       showToast('Azure redirect URI 등록 필요. 현재URL: ' + window.location.href.split('?')[0], 'warn');
     } else {
-      showToast('SP 연결 실패: ' + errMsg, 'warn');
+      showToast('SP 연결 실패 - 30초 후 자동 재시도합니다.', 'warn');
+      // 네트워크 오류: 30초 후 자동 재연결 시도 (최대 3회)
+      if(!window._spRetryCount) window._spRetryCount=0;
+      window._spRetryCount++;
+      if(window._spRetryCount<=3){
+        setTimeout(async function(){
+          if(!window._isSPReady&&typeof _initSP==='function'){
+            showToast('SP 재연결 시도 중... ('+window._spRetryCount+'/3)','warn');
+            try{ await _initSP(); window._spRetryCount=0; }catch(e){}
+          }
+        }, 30000);
+      } else {
+        // 3회 실패 → 로그인 창
+        window._spRetryCount=0;
+        showToast('SP 연결 실패. 다시 로그인해주세요.','warn');
+        setTimeout(function(){if(typeof openAuth==='function')openAuth();},2000);
+      }
     }
   }
 }
@@ -9878,7 +10229,8 @@ function _iRow(rep, idx, iss){
         +'<div class="sec-body"><div style="overflow-x:auto;overflow-y:auto;max-height:320px;-webkit-overflow-scrolling:touch;">'
         +'<table class="dt" style="min-width:max-content;table-layout:auto;">'
         +'<thead style="position:sticky;top:0;z-index:5;background:#F8FAFC;"><tr>'
-        +'<th style="width:40px;background:#F8FAFC;">순번</th>'
+        +'<th class="wk-chk-cell" style="background:#F8FAFC;" title="주간보고">📋</th>'
+        +'<th class="wk-no-cell" style="background:#F8FAFC;">순번</th>'
         +'<th style="width:175px;text-align:center;">고객사</th>'
         +'<th style="min-width:240px;text-align:center;">이슈 내용</th>'
         +'<th style="width:110px;text-align:center;">등록날짜</th>'
@@ -9891,6 +10243,8 @@ function _iRow(rep, idx, iss){
         +store.reps[rep].issuesList.map(function(iss,i){ return _iRow(rep,i,iss); }).join('')
         +'</tbody></table></div></div></div>';
       sec.insertAdjacentHTML('beforeend', issHTML);
+      // 이슈 행 체크박스 추가
+      setTimeout(function(){ _addIssueCheckboxes(rep); }, 0);
       // 초기 select 색상 적용
       (function applyIssColors(){
         (store.reps[rep].issuesList||[]).forEach(function(iss,i){
@@ -9938,6 +10292,7 @@ window.addIssueRow = function(rep){
     tbody.insertAdjacentHTML('beforeend', _iRow(rep, idx, iss));
   }
   if(typeof autoSave==='function') autoSave();
+  setTimeout(function(){ if(typeof _addIssueCheckboxes==='function') _addIssueCheckboxes(rep); }, 0);
 };
 
 // ── 이슈 삭제 ──
@@ -13878,6 +14233,1358 @@ function _restorePageScroll(st){
       if(main&&main.scrollTop!==undefined) main.scrollTop=st;
       else window.scrollTo(0,st);
     });
+  });
+}
+</script>
+
+<script>
+/* ══════════════════════════════════════════════════
+   주간회의 요약 — 완전 독립 모듈
+══════════════════════════════════════════════════ */
+(function(){
+'use strict';
+
+// ── 상태 ──────────────────────────────────────────
+var _wk = {
+  weekMode: 'this',        // 'this' | 'last' | 'period'
+  periodFrom: null,
+  periodTo: null,
+  activeTeam: 'all',
+  activeRep: 'all',
+  view: 'report',          // 'report' | 'feed'
+  entries: [],             // 이번주 피드 항목
+  prevEntries: [],         // 지난주 피드 항목
+  notifications: [],       // 알림 목록
+  scrollReport: 0,         // 보고서 스크롤 위치
+  scrollFeed: 0,           // 피드 스크롤 위치
+  colorMode: 'text',       // 색상 팔레트 모드
+  replyingTo: null,        // 현재 답변 중인 entry id
+  initialized: false,
+  loading: false,
+};
+
+// ── 주차 계산 ──────────────────────────────────────
+function _wkGetWeekKey(date){
+  var d=new Date(date||Date.now());
+  d.setHours(0,0,0,0);
+  d.setDate(d.getDate()+3-(d.getDay()+6)%7);
+  var week1=new Date(d.getFullYear(),0,4);
+  var wn=1+Math.round(((d-week1)/86400000-3+(week1.getDay()+6)%7)/7);
+  return d.getFullYear()+'-W'+(wn<10?'0':'')+wn;
+}
+function _wkThisKey(){ return _wkGetWeekKey(new Date()); }
+function _wkLastKey(){
+  var d=new Date(); d.setDate(d.getDate()-7);
+  return _wkGetWeekKey(d);
+}
+function _wkCurrentKeys(){
+  if(_wk.weekMode==='this') return [_wkThisKey()];
+  if(_wk.weekMode==='last') return [_wkLastKey()];
+  // period
+  var keys=[]; var d=new Date(_wk.periodFrom);
+  var end=new Date(_wk.periodTo);
+  while(d<=end){ keys.push(_wkGetWeekKey(d)); d.setDate(d.getDate()+7); }
+  return [...new Set(keys)];
+}
+function _wkPrevKey(){
+  // 이번주 기준에서 지난주
+  if(_wk.weekMode==='this') return _wkLastKey();
+  return null;
+}
+
+// ── SP 저장/로드 ───────────────────────────────────
+async function _wkSaveFeed(weekKey, rep, entries){
+  if(!window._isSPReady||!weekKey||!rep) return;
+  try{
+    var key=_sanitizeDKey(weekKey+'_'+rep);
+    await _spSaveItem('weeklyFeed', key, {week:weekKey, rep:rep, entries:entries, savedAt:new Date().toISOString()});
+  }catch(e){ console.warn('[wk save]',e); }
+}
+
+async function _wkLoadFeed(weekKey){
+  if(!window._isSPReady||!weekKey) return [];
+  try{
+    var url=_lUrl()+'?$select=Title,DataType,DataKey,Payload&$filter=DataType eq \'weeklyFeed\'&$top=500';
+    var res=await _spFetchAll(url);
+    var all=[];
+    var _items=res||[];
+    _items.forEach(function(item){
+      if(!item.Title||item.Title.indexOf('weeklyFeed_'+weekKey)!==0) return;
+      try{
+        var d=JSON.parse(item.Payload||'{}');
+        if(d.entries&&Array.isArray(d.entries)) all=all.concat(d.entries);
+      }catch(e){}
+    });
+    // ID 기준 중복 제거, 시간순 정렬
+    var seen={};
+    all=all.filter(function(e){ if(seen[e.id]) return false; seen[e.id]=true; return true; });
+    all.sort(function(a,b){ return (a.time||'').localeCompare(b.time||''); });
+    return all;
+  }catch(e){ console.warn('[wk load]',e); return []; }
+}
+
+async function _wkSaveNotif(rep, items){
+  if(!window._isSPReady||!rep) return;
+  try{
+    var key=_sanitizeDKey('notif_'+rep);
+    await _spSaveItem('weeklyNotif', key, {rep:rep, items:items, savedAt:new Date().toISOString()});
+  }catch(e){ console.warn('[wk notif save]',e); }
+}
+
+async function _wkLoadNotif(rep){
+  if(!window._isSPReady||!rep) return [];
+  try{
+    var _nkey=_sanitizeDKey('notif_'+rep);
+    var _ntitle='weeklyNotif_'+_nkey;
+    var url=_lUrl()+'?$select=Title,DataType,Payload&$filter=DataType eq \'weeklyNotif\' and Title eq \''+_ntitle+'\'&$top=5';
+    var res=await _spFetchAll(url);
+    if(!res||!res.length) return [];
+    var d=JSON.parse((res[0].Payload)||'{}');
+    return d.items||[];
+  }catch(e){ return []; }
+}
+
+// ── 알림 생성 ──────────────────────────────────────
+function _wkGenId(){
+  return Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+}
+
+async function _wkCreateNotifs(entry){
+  // 1. 언급된 담당자 알림
+  var text=entry.text||'';
+  var mentioned=[];
+  var allReps=(typeof REPS!=='undefined'?REPS:[]);
+  var guests=(typeof authCfg!=='undefined'&&authCfg.guestAllowList)?authCfg.guestAllowList.map(function(g){return g.name||g;}):[];
+  var allNames=allReps.concat(guests);
+  allNames.forEach(function(name){
+    if(!name||name===entry.rep) return;
+    // @이름 형식으로만 감지 (이름만 있으면 false positive 방지)
+    if(text.indexOf('@'+name)>=0){
+      if(mentioned.indexOf(name)<0) mentioned.push(name);
+    }
+  });
+  for(var i=0;i<mentioned.length;i++){
+    var target=mentioned[i];
+    var items=await _wkLoadNotif(target);
+    items.unshift({
+      id:_wkGenId(), type:'mention', read:false,
+      title:'회의록에서 언급되었습니다',
+      msg:'<b>'+entry.displayName+'</b>님이 회의록에서 회원님을 언급했습니다',
+      targetPage:'weekly', weekKey:_wkThisKey(),
+      entryId:entry.id, time:_wkNowStr()
+    });
+    items=items.slice(0,50);
+    await _wkSaveNotif(target, items);
+  }
+  // 2. 답변 알림 (reply 등록 시 원글 작성자에게)
+}
+
+
+// ── 팀장 찾기 (직책 '팀장' 기준) ──────────────────
+function _wkGetTeamLeaders(team){
+  var reps=(team&&typeof TEAM_REPS!=='undefined'&&TEAM_REPS[team])
+    ||(typeof REPS!=='undefined'?REPS:[]);
+  return reps.filter(function(rep){
+    var title=(typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[rep])||'';
+    return title==='팀장';
+  });
+}
+function _wkAllLeaders(){
+  var all=[];
+  if(typeof TEAMS!=='undefined') TEAMS.forEach(function(t){
+    _wkGetTeamLeaders(t).forEach(function(r){ if(all.indexOf(r)<0) all.push(r); });
+  });
+  if(!all.length) _wkGetTeamLeaders(null).forEach(function(r){ if(all.indexOf(r)<0) all.push(r); });
+  return all;
+}
+
+
+// ── 새 이슈 감지 → 팀장 알림 ──────────────────────
+(function(){
+var _wkLastIssueCnts={};
+window._wkCheckNewIssues=async function(){
+  if(!window._isSPReady||!session) return;
+  var myRep=session.rep;
+  var myTitle=(typeof authCfg!=='undefined'&&authCfg.repTitles&&myRep&&authCfg.repTitles[myRep])||'';
+  // 팀장이 아니면 스킵
+  if(myTitle!=='팀장') return;
+  // 모든 담당자 이슈 수 체크
+  var allReps=(typeof REPS!=='undefined'?REPS:[]);
+  var newIssues=[];
+  allReps.forEach(function(rep){
+    if(rep===myRep) return;
+    var iss=(store&&store.reps&&store.reps[rep]&&store.reps[rep].issuesList)||[];
+    var openIss=iss.filter(function(i){return i.status==='open'&&i.client;});
+    var prevCnt=_wkLastIssueCnts[rep]||0;
+    if(openIss.length>prevCnt){
+      // 새로 추가된 이슈
+      var newOnes=openIss.slice(prevCnt);
+      newOnes.forEach(function(i){
+        newIssues.push({rep:rep, issue:i});
+      });
+    }
+    _wkLastIssueCnts[rep]=openIss.length;
+  });
+  if(!newIssues.length) return;
+  // 팀장 알림 생성
+  var items=await _wkLoadNotif(myRep);
+  newIssues.forEach(function(ni){
+    items.unshift({
+      id:_wkGenId(), type:'issue', read:false, urgent:false,
+      msg:'<b>'+_wkEsc(_wkDisplayName(ni.rep))+'</b>님이 새 이슈를 등록했습니다'
+        +(ni.issue.client?' — <b>'+_wkEsc(ni.issue.client)+'</b>':''),
+      targetPage:'issues', time:_wkNowStr()
+    });
+  });
+  items=items.slice(0,50);
+  await _wkSaveNotif(myRep, items);
+  _wk.notifications=items;
+  _wkUpdateNotifBadge();
+};
+})();
+
+// ── 새 이슈 등록 → 팀장 알림 ──────────────────────
+window._wkNotifyNewIssue=async function(rep, issue){
+  if(!window._isSPReady) return;
+  // 해당 rep의 팀 찾기
+  var repTeam='';
+  if(typeof TEAM_REPS!=='undefined'){
+    Object.keys(TEAM_REPS).forEach(function(t){
+      if((TEAM_REPS[t]||[]).indexOf(rep)>=0) repTeam=t;
+    });
+  }
+  var leaders=_wkGetTeamLeaders(repTeam||null);
+  // 팀장이 없으면 전체 팀장
+  if(!leaders.length) leaders=_wkAllLeaders();
+  for(var i=0;i<leaders.length;i++){
+    var leader=leaders[i];
+    if(leader===rep) continue; // 본인이 팀장이면 스킵
+    var items=await _wkLoadNotif(leader);
+    items.unshift({
+      id:_wkGenId(), type:'issue', read:false, urgent:false,
+      msg:'<b>'+_wkEsc(_wkDisplayName(rep))+'</b>님이 새 이슈를 등록했습니다'
+        +(issue&&issue.client?' — <b>'+_wkEsc(issue.client)+'</b>':''),
+      targetPage:'issues', time:_wkNowStr()
+    });
+    items=items.slice(0,50);
+    await _wkSaveNotif(leader, items);
+  }
+};
+
+// ── 미답변 이월 알림 (월요일 접속 시 체크) ──────────
+window._wkCheckCarryOver=async function(){
+  if(!window._isSPReady||!session||!session.rep) return;
+  var today=new Date();
+  // 월요일(1)에만 실행
+  if(today.getDay()!==1) return;
+  // 이미 오늘 체크했으면 스킵
+  var checkKey='wk_carrycheck_'+today.toISOString().slice(0,10);
+  if(sessionStorage.getItem(checkKey)) return;
+  sessionStorage.setItem(checkKey,'1');
+  // 지난주 피드 로드
+  var prevKey=_wkLastKey();
+  var prevEntries=await _wkLoadFeed(prevKey);
+  // 내가 받아야 할 미답변 항목 찾기 (내게 @언급된 것 중 미답변)
+  var myRep=session.rep;
+  var unanswered=prevEntries.filter(function(e){
+    if(!e.text) return false;
+    // 내가 @언급됐는지
+    var mentioned=e.text.indexOf('@'+myRep)>=0;
+    // 답변 없음
+    var noReply=!e.replies||!e.replies.length;
+    // 내가 작성한 글은 제외
+    return mentioned&&noReply&&e.rep!==myRep;
+  });
+  if(!unanswered.length) return;
+  // 알림 생성
+  var items=await _wkLoadNotif(myRep);
+  unanswered.forEach(function(e){
+    items.unshift({
+      id:_wkGenId(), type:'carryover', read:false, urgent:false,
+      msg:'지난주 회의록에서 회원님에게 요청된 <b>미답변 항목 '+unanswered.length+'건</b>이 있습니다. 이번주에 답변해주세요.',
+      targetPage:'weekly', weekKey:prevKey, time:_wkNowStr()
+    });
+  });
+  // 중복 제거 (같은 메시지 타입)
+  var seen={}; items=items.filter(function(n){
+    var k=n.type+'_'+n.weekKey; if(seen[k]) return false; seen[k]=true; return true;
+  });
+  items=items.slice(0,50);
+  await _wkSaveNotif(myRep, items);
+  _wk.notifications=items;
+  _wkUpdateNotifBadge();
+};
+
+async function _wkCreateReplyNotif(entry, replyRep){
+  if(!entry||!entry.rep||entry.rep===replyRep) return;
+  var target=entry.rep;
+  var items=await _wkLoadNotif(target);
+  items.unshift({
+    id:_wkGenId(), type:'reply', read:false,
+    title:'회의록에 답변이 등록되었습니다',
+    msg:'<b>'+_wkDisplayName(replyRep)+'</b>님이 회원님의 회의록에 답변을 달았습니다',
+    targetPage:'weekly', weekKey:_wkThisKey(),
+    entryId:entry.id, time:_wkNowStr()
+  });
+  items=items.slice(0,50);
+  await _wkSaveNotif(target, items);
+}
+
+// ── 계약 만료 알림 생성 ────────────────────────────
+function _wkGenContractNotifs(){
+  if(!session||!session.rep) return;
+  var rep=session.rep;
+  var contracts=(typeof _getContracts==='function')?_getContracts(rep):[];
+  if(!contracts.length) return;
+  var today=new Date(); today.setHours(0,0,0,0);
+  contracts.forEach(function(c){
+    if(c.status==='종료') return;
+    var endD=c.endDate?new Date(c.endDate):null;
+    if(!endD) return;
+    var diff=Math.round((endD-today)/86400000);
+    var notifId='contract_'+c.id+'_'+diff;
+    // 이미 있는지 확인 (로컬)
+    if(_wk.notifications.some(function(n){return n.id===notifId;})) return;
+    if(diff<=7&&diff>=0){
+      _wk.notifications.unshift({
+        id:notifId, type:'contract', read:false, urgent:true,
+        title:'계약 만료 임박',
+        msg:'<b>'+c.client+'</b> '+c.projectName+' 계약 만료가 <b>'+diff+'일</b> 남았습니다. 즉시 갱신이 필요합니다.',
+        targetPage:'contract', time:_wkNowStr()
+      });
+    } else if(diff<=30&&diff>7){
+      _wk.notifications.unshift({
+        id:notifId, type:'contract', read:false, urgent:false,
+        title:'계약 만료 예정',
+        msg:'<b>'+c.client+'</b> '+c.projectName+' 계약 만료가 <b>'+diff+'일</b> 남았습니다.',
+        targetPage:'contract', time:_wkNowStr()
+      });
+    } else if(diff<0){
+      _wk.notifications.unshift({
+        id:notifId, type:'contract', read:false, urgent:true,
+        title:'계약 공백 발생',
+        msg:'<b>'+c.client+'</b> 계약 만료 후 갱신이 되지 않았습니다. (D+'+Math.abs(diff)+')',
+        targetPage:'contract', time:_wkNowStr()
+      });
+    }
+  });
+  _wk.notifications=_wk.notifications.slice(0,50);
+  _wkUpdateNotifBadge();
+}
+
+// ── 알림 배지 업데이트 ─────────────────────────────
+function _wkUpdateNotifBadge(){
+  var cnt=_wk.notifications.filter(function(n){return !n.read;}).length;
+  var badge=document.getElementById('wk-notif-badge-global');
+  if(badge){ badge.textContent=cnt; badge.style.display=cnt>0?'':'none'; }
+}
+
+// ── 헤더 알림 버튼 빌드 (최초 1회) ──────────────────
+function _wkBuildNotifBtn(){
+  if(document.getElementById('wk-notif-btn-global')) return;
+  // 기존 헤더 우측에 삽입
+  var topRight=document.querySelector('.top-right,.header-right,[class*="top-right"]');
+  if(!topRight){
+    // print-btn 왼쪽에 삽입
+    var pb=document.getElementById('print-btn');
+    if(pb&&pb.parentNode){
+      var wrap=document.createElement('div');
+      wrap.className='wk-notif-wrap';
+      wrap.style.cssText='position:relative;display:inline-block;';
+      wrap.innerHTML='<button class="wk-notif-btn" id="wk-notif-btn-global" onclick="_wkToggleNotif(event)">'
+        +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>'
+        +'<span class="wk-notif-label">알림</span>'
+        +'<span class="wk-notif-badge" id="wk-notif-badge-global" style="display:none;">0</span>'
+        +'</button>';
+      pb.parentNode.insertBefore(wrap, pb);
+    }
+  }
+}
+
+window._wkToggleNotif=function(e){
+  e.stopPropagation();
+  var drop=document.getElementById('wk-notif-drop');
+  if(!drop) return;
+  var showing=drop.style.display==='block';
+  drop.style.display=showing?'none':'block';
+  if(!showing) _wkRenderNotifDrop();
+};
+
+function _wkRenderNotifDrop(){
+  var list=document.getElementById('wk-notif-list');
+  if(!list) return;
+  var items=_wk.notifications.slice(0,20);
+  if(!items.length){
+    list.innerHTML='<div style="padding:20px;text-align:center;font-size:12px;color:var(--muted);">새로운 알림이 없습니다</div>';
+    return;
+  }
+  list.innerHTML=items.map(function(n){
+    var icon=n.type==='mention'?'💬':n.type==='reply'?'↩':n.type==='contract'?'📋':'⚠️';
+    var iconBg=n.type==='contract'?'background:#FEE2E2;':n.type==='mention'?'background:var(--blue-soft);':'background:var(--green-soft);';
+    return '<div class="wk-nd-item'+(n.read?'':' unread')+(n.urgent?' urgent':'')+'" onclick="_wkClickNotif(\''+n.id+'\')">'
+      +'<div class="wk-nd-icon" style="'+iconBg+'">'+icon+'</div>'
+      +'<div class="wk-nd-content">'
+        +'<div class="wk-nd-msg">'+n.msg+'</div>'
+        +'<div class="wk-nd-time">'+n.targetPage+'으로 이동 · '+n.time+'</div>'
+      +'</div>'
+      +'<span class="wk-nd-arr">›</span>'
+      +'</div>';
+  }).join('');
+}
+
+window._wkClickNotif=function(id){
+  var n=_wk.notifications.find(function(x){return x.id===id;});
+  if(!n) return;
+  n.read=true;
+  _wkUpdateNotifBadge();
+  document.getElementById('wk-notif-drop').style.display='none';
+  // 페이지 이동
+  var target=n.targetPage||'weekly';
+  var navEl=document.querySelector('[onclick*="showPage(\''+target+'\'"]');
+  if(typeof showPage==='function') showPage(target, navEl);
+};
+
+window._wkMarkAllRead=function(){
+  _wk.notifications.forEach(function(n){n.read=true;});
+  _wkUpdateNotifBadge();
+  _wkRenderNotifDrop();
+};
+
+// ── 팀/담당자 탭 빌드 ─────────────────────────────
+function _wkBuildTeamTabs(){
+  var row=document.getElementById('wk-team-row');
+  if(!row) return;
+  var teams=(typeof TEAMS!=='undefined'&&TEAMS&&TEAMS.length)?TEAMS:[];
+  var html='<div class="wk-team-tab'+((_wk.activeTeam==='all')?' on':'')+'" onclick="_wkSetTeam(\'all\')">사업부 전체</div>';
+  teams.forEach(function(t){
+    html+='<div class="wk-team-tab'+((_wk.activeTeam===t)?' on':'')+'" onclick="_wkSetTeam(\''+t+'\')">'+t+'</div>';
+  });
+  row.innerHTML=html;
+}
+
+function _wkBuildRepTabs(){
+  var row=document.getElementById('wk-rep-row');
+  if(!row) return;
+  var reps=_wkFilteredReps();
+  var html='<div class="wk-rep-tab'+((_wk.activeRep==='all')?' on':'')+'" onclick="_wkSetRep(\'all\')">전체</div>';
+  reps.forEach(function(r){
+    html+='<div class="wk-rep-tab'+((_wk.activeRep===r)?' on':'')+'" onclick="_wkSetRep(\''+r+'\')">'+_wkDisplayName(r)+'</div>';
+  });
+  row.innerHTML=html;
+}
+
+function _wkFilteredReps(){
+  var allReps=(typeof REPS!=='undefined'&&REPS)?REPS:[];
+  if(_wk.activeTeam==='all') return allReps;
+  return (typeof TEAM_REPS!=='undefined'&&TEAM_REPS[_wk.activeTeam])||[];
+}
+
+function _wkDisplayName(rep){
+  if(!rep) return '';
+  if(typeof getRepDisplayName==='function') return getRepDisplayName(rep);
+  return rep;
+}
+
+// ── 주차 설정 ──────────────────────────────────────
+window._wkSetWeek=function(mode){
+  _wk.weekMode=mode;
+  ['this','last'].forEach(function(m){
+    var el=document.getElementById('wk-w-'+m);
+    if(el) el.classList.toggle('on', m===mode);
+  });
+  _wkLoad();
+};
+
+window._wkOpenPeriod=function(){
+  var m=document.getElementById('wk-period-modal');
+  if(m){ m.style.display='flex'; }
+};
+window._wkClosePeriod=function(){
+  var m=document.getElementById('wk-period-modal');
+  if(m) m.style.display='none';
+};
+window._wkApplyPeriod=function(){
+  var f=document.getElementById('wk-period-from');
+  var t=document.getElementById('wk-period-to');
+  if(!f||!t||!f.value||!t.value) return;
+  _wk.weekMode='period';
+  _wk.periodFrom=f.value;
+  _wk.periodTo=t.value;
+  ['this','last'].forEach(function(m){
+    var el=document.getElementById('wk-w-'+m);
+    if(el) el.classList.remove('on');
+  });
+  _wkClosePeriod();
+  _wkLoad();
+};
+
+// ── 팀/담당자 설정 ────────────────────────────────
+window._wkSetTeam=function(team){
+  _wk.activeTeam=team;
+  _wk.activeRep='all';
+  _wkBuildTeamTabs();
+  _wkBuildRepTabs();
+  _wkRenderReport();
+  _wkRenderFeed();
+};
+window._wkSetRep=function(rep){
+  _wk.activeRep=rep;
+  _wkBuildRepTabs();
+  _wkRenderReport();
+  _wkRenderFeed();
+};
+
+// ── 뷰 전환 ───────────────────────────────────────
+window._wkSetView=function(view){
+  _wk.view=view;
+  var rp=document.getElementById('wk-report-view');
+  var fp=document.getElementById('wk-feed-view');
+  var vtr=document.getElementById('wk-vt-report');
+  var vtf=document.getElementById('wk-vt-feed');
+  if(rp) rp.style.display=(view==='report')?'flex':'none';
+  if(fp) fp.style.display=(view==='feed')?'flex':'none';
+  if(vtr) vtr.classList.toggle('on', view==='report');
+  if(vtf) vtf.classList.toggle('on', view==='feed');
+  // 스크롤 복원
+  if(view==='report'){
+    var rv=document.getElementById('wk-report-view');
+    if(rv&&_wk.scrollReport>0) requestAnimationFrame(function(){ rv.scrollTop=_wk.scrollReport; });
+  } else {
+    var fl=document.getElementById('wk-feed-list');
+    if(fl&&_wk.scrollFeed>0) requestAnimationFrame(function(){ fl.scrollTop=_wk.scrollFeed; });
+  }
+};
+
+// ── 데이터 로드 ───────────────────────────────────
+async function _wkLoad(){
+  if(_wk.loading) return;
+  _wk.loading=true;
+  try{
+    var thisKey=_wkThisKey();
+    var prevKey=_wkPrevKey();
+    // 이번주 피드
+    var entries=await _wkLoadFeed(thisKey);
+    _wk.entries=entries;
+    // 지난주 피드
+    if(prevKey){
+      _wk.prevEntries=await _wkLoadFeed(prevKey);
+    }
+    _wkRenderReport();
+    _wkRenderFeed();
+    _wkUpdatePendingCnt();
+  }catch(e){ console.warn('[wk load]',e); }
+  _wk.loading=false;
+}
+
+// ── 보고서 렌더 ───────────────────────────────────
+function _wkRenderReport(){
+  _wkRenderPrevSection();
+  _wkRenderKPI();
+  _wkRenderRepTable();
+  _wkRenderProjects();
+  _wkRenderIssues();
+  _wkRenderVisits();
+  _wkRenderContracts();
+}
+function _wkRenderContracts(){
+  var el=document.getElementById('wk-contract-list');
+  var cnt=document.getElementById('wk-contract-cnt');
+  if(!el) return;
+  var reps=_wkGetActiveReps();
+  var today=new Date(); today.setHours(0,0,0,0);
+  var items=[];
+  reps.forEach(function(rep){
+    var contracts=(typeof _getContracts==='function')?_getContracts(rep):[];
+    contracts.forEach(function(c){
+      if(c.status==='종료') return;
+      var endD=c.endDate?new Date(c.endDate):null;
+      var mgtEndD=c.managementEndDate?new Date(c.managementEndDate):null;
+      var diff=endD?Math.round((endD-today)/86400000):null;
+      var mgtDiff=mgtEndD?Math.round((mgtEndD-today)/86400000):null;
+      var type=null; var urgency=0; var diffVal=null; var label='';
+      // 유지보수 갱신 필요 (D-60 이내)
+      if(c.managementType==='유지보수'&&diff!==null&&diff<=60){
+        type='갱신필요';
+        diffVal=diff; urgency=diff<0?3:diff<=7?2:1;
+        label=diff<0?'D+'+Math.abs(diff):diff===0?'오늘':'D-'+diff;
+      }
+      // 하자→유지보수 전환 필요 (mgtEndD D-60 이내)
+      else if(c.managementType==='하자기간'&&mgtDiff!==null&&mgtDiff<=60){
+        type='전환필요';
+        diffVal=mgtDiff; urgency=mgtDiff<0?3:mgtDiff<=7?2:1;
+        label=mgtDiff<0?'D+'+Math.abs(mgtDiff):mgtDiff===0?'오늘':'D-'+mgtDiff;
+      }
+      // 계약 공백 (만료 후 갱신 없음)
+      else if(diff!==null&&diff<0&&c.managementType!=='유지보수'){
+        type='계약공백';
+        diffVal=diff; urgency=3;
+        label='D+'+Math.abs(diff);
+      }
+      if(!type) return;
+      items.push({
+        rep:rep, displayName:_wkDisplayName(rep),
+        client:c.client||'', project:c.projectName||c.project||'',
+        type:type, label:label, urgency:urgency, diffVal:diffVal
+      });
+    });
+  });
+  // 긴급도 순 정렬
+  items.sort(function(a,b){ return b.urgency-a.urgency||(a.diffVal||0)-(b.diffVal||0); });
+  if(cnt) cnt.textContent=items.length+'건';
+  if(!items.length){
+    el.innerHTML='<div style="font-size:11px;color:var(--muted);padding:8px 0;">주의가 필요한 계약 항목이 없습니다 ✅</div>';
+    return;
+  }
+  var typeStyle={
+    '갱신필요':'background:#FEF3C7;color:#D97706;',
+    '전환필요':'background:#DBEAFE;color:#1A56DB;',
+    '계약공백':'background:#FEE2E2;color:#DC2626;'
+  };
+  var labelStyle={
+    1:'background:#FEF3C7;color:#D97706;',   // 주의
+    2:'background:#FEE2E2;color:#DC2626;',   // 경고
+    3:'background:#FEE2E2;color:#DC2626;font-weight:700;'  // 긴급
+  };
+  el.innerHTML=items.map(function(it){
+    return '<div class="wk-row" style="align-items:center;">'
+      +'<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:20px;'+(typeStyle[it.type]||'')+'white-space:nowrap;">'+it.type+'</span>'
+      +'<span class="wk-cli" style="min-width:50px;">'+_wkEsc(it.client)+'</span>'
+      +'<span class="wk-cont" style="font-size:10px;">'+_wkEsc(it.project)+'</span>'
+      +'<span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:20px;'+(labelStyle[it.urgency]||'')+'white-space:nowrap;">'+it.label+'</span>'
+      +'<span style="font-size:10px;color:var(--muted);">'+_wkEsc(it.displayName)+'</span>'
+      +'</div>';
+  }).join('');
+}
+function _wkRenderVisits(){
+  var el=document.getElementById('wk-visit-list');
+  var cnt=document.getElementById('wk-visit-cnt');
+  if(!el) return;
+  var reps=_wkGetActiveReps();
+  var today=new Date();
+  var weekStart=new Date(today); weekStart.setDate(today.getDate()-today.getDay()+1); weekStart.setHours(0,0,0,0);
+  var weekEnd=new Date(weekStart); weekEnd.setDate(weekStart.getDate()+6); weekEnd.setHours(23,59,59,999);
+  var visits=[];
+  reps.forEach(function(rep){
+    var rd=store&&store.reps&&store.reps[rep];
+    if(!rd) return;
+    (rd.visitLog||[]).forEach(function(v){
+      var d=new Date(v.date||v.visitDate||'');
+      if(d>=weekStart&&d<=weekEnd){
+        visits.push({rep:rep, displayName:_wkDisplayName(rep), date:v.date||v.visitDate||'',
+          company:v.company||v.client||'', type:v.contactType||v.type||'',
+          purpose:v.contactPurpose||v.purpose||v.memo||''});
+      }
+    });
+  });
+  visits.sort(function(a,b){ return (b.date||'').localeCompare(a.date||''); });
+  if(cnt) cnt.textContent='총 '+visits.length+'회';
+  if(!visits.length){
+    el.innerHTML='<div style="font-size:11px;color:var(--muted);padding:8px 0;">이번주 접점 기록이 없습니다</div>';
+    return;
+  }
+  el.innerHTML=visits.slice(0,15).map(function(v){
+    var dateStr=(v.date||'').slice(5,10).replace('-','.');
+    return '<div class="wk-row">'
+      +'<span class="wk-dt" style="min-width:40px;">'+dateStr+'</span>'
+      +'<span class="wk-cli">'+_wkEsc(v.company)+'</span>'
+      +'<span class="wk-cont">'+_wkEsc(v.purpose||v.type||'')+'</span>'
+      +'<span style="font-size:10px;color:var(--muted);">'+_wkEsc(v.displayName)+'</span>'
+      +'</div>';
+  }).join('');
+}
+
+function _wkRenderPrevSection(){
+  var el=document.getElementById('wk-prev-section');
+  if(!el) return;
+  var entries=_wk.prevEntries;
+  var prevKey=_wkPrevKey();
+  if(!entries||!entries.length||!prevKey){ el.innerHTML=''; return; }
+  var prevLabel=prevKey.replace('W','주 ').replace('-','년 ')+'차';
+  var h='<div class="wk-prev-card">'
+    +'<div class="wk-prev-head"><span>📌</span><span class="wk-prev-title">지난주 회의 내용 ('+prevLabel+')</span></div>'
+    +'<div class="wk-prev-body">';
+  entries.forEach(function(entry){
+    var hasUnreplied=!entry.replies||!entry.replies.length;
+    h+='<div class="wk-pi'+(hasUnreplied?' carry':'')+'">'
+      +'<div class="wk-pi-who">'
+        +'<span class="wk-pi-name">'+_wkEsc(entry.displayName||entry.rep)+'</span>'
+        +'<span class="wk-role-badge '+(entry.role==='admin'?'wk-rb-admin':'wk-rb-rep')+'">'+_wkEsc(entry.roleLabel||'')+'</span>'
+        +'<span class="wk-pi-time">'+_wkEsc(entry.time||'')+'</span>'
+      +'</div>'
+      +'<div class="wk-pi-cont">'+_wkSanitize(entry.text||'')+'</div>';
+    if(entry.replies&&entry.replies.length){
+      h+='<div class="wk-pi-reply-wrap">';
+      entry.replies.forEach(function(r){
+        h+='<div><span class="wk-pi-rw">↩ '+_wkEsc(r.displayName||r.rep)+' '+_wkEsc(r.time||'')+'</span>'
+          +'<div class="wk-pi-rc">'+_wkSanitize(r.text||'')+'</div></div>';
+      });
+      h+='</div>';
+    } else {
+      h+='<span class="wk-carry-badge">↗ 미답변 이월</span>';
+      h+='<button class="wk-ans-btn" onclick="_wkSetView(\'feed\')">↩ 이번주 답변하기</button>';
+    }
+    h+='</div>';
+  });
+  h+='</div></div>';
+  el.innerHTML=h;
+}
+
+function _wkRenderKPI(){
+  var reps=_wkGetActiveReps();
+  var today=new Date();
+  var weekStart=new Date(today); weekStart.setDate(today.getDate()-today.getDay()+1); weekStart.setHours(0,0,0,0);
+  var weekEnd=new Date(weekStart); weekEnd.setDate(weekStart.getDate()+6); weekEnd.setHours(23,59,59,999);
+  var mm=today.getMonth();
+  // 이번주 매출 합계
+  var weekSales=0, contacts=0, expiringSoon=0, openIssues=0;
+  reps.forEach(function(rep){
+    var rd=store&&store.reps&&store.reps[rep];
+    if(!rd) return;
+    // 이번주 매출 (이번달 actual)
+    var act=rd.actual&&rd.actual[mm]?parseFloat(rd.actual[mm])||0:0;
+    weekSales+=act;
+    // 접점 (이번주 visitLog)
+    var vl=rd.visitLog||[];
+    vl.forEach(function(v){
+      var d=new Date(v.date||v.visitDate||'');
+      if(d>=weekStart&&d<=weekEnd) contacts++;
+    });
+    // 만료 임박 (D-30)
+    var contracts=(typeof _getContracts==='function')?_getContracts(rep):[];
+    contracts.forEach(function(c){
+      if(c.status==='종료') return;
+      var d=c.endDate?new Date(c.endDate):null;
+      if(!d) return;
+      var diff=Math.round((d-today)/86400000);
+      if(diff>=0&&diff<=30) expiringSoon++;
+    });
+    // 이슈
+    var iss=rd.issuesList||[];
+    iss.forEach(function(i){ if(i.status==='open') openIssues++; });
+  });
+  var g=document.getElementById('wk-kpi-grid');
+  var p=document.getElementById('wk-kpi-period');
+  var _mm=today.getMonth()+1;
+  if(p) p.textContent=today.getFullYear()+'년 '+_mm+'월';
+  if(!g) return;
+  g.innerHTML=[
+    {l:(today.getMonth()+1)+'월 달성 매출',v:weekSales.toLocaleString()+'<span style="font-size:10px;color:var(--muted);">천</span>',d:''},
+    {l:'고객 접점',v:contacts+'<span style="font-size:10px;color:var(--muted);">회</span>',d:''},
+    {l:'만료 임박',v:'<span style="color:var(--red);">'+expiringSoon+'<span style="font-size:10px;">건</span></span>',d:'<span style="color:var(--muted);">D-30 이내</span>'},
+    {l:'오픈 이슈',v:'<span style="color:var(--gold);">'+openIssues+'<span style="font-size:10px;">건</span></span>',d:''},
+  ].map(function(k){
+    return '<div class="wk-kpi"><div class="wk-kl">'+k.l+'</div><div class="wk-kv">'+k.v+'</div><div class="wk-kd">'+k.d+'</div></div>';
+  }).join('');
+}
+
+function _wkRenderRepTable(){
+  var reps=_wkGetActiveReps();
+  var el=document.getElementById('wk-rep-table');
+  if(!el) return;
+  var today=new Date(); var mm=today.getMonth();
+  var rows=reps.map(function(rep){
+    var rd=store&&store.reps&&store.reps[rep];
+    if(!rd) return '<tr><td class="wk-tdl">'+_wkEsc(_wkDisplayName(rep))+'</td><td colspan="5">—</td></tr>';
+    var plan=parseFloat((rd.plan&&rd.plan[mm])||0);
+    var act=parseFloat((rd.actual&&rd.actual[mm])||0);
+    var rate=plan>0?Math.round(act/plan*100):0;
+    var rateClass=rate>=80?'color:var(--green);font-weight:700;':rate>=60?'color:var(--gold);font-weight:700;':'color:var(--red);font-weight:700;';
+    var contacts=0;
+    var weekStart=new Date(today); weekStart.setDate(today.getDate()-today.getDay()+1); weekStart.setHours(0,0,0,0);
+    var weekEnd=new Date(weekStart); weekEnd.setDate(weekStart.getDate()+6);
+    (rd.visitLog||[]).forEach(function(v){ var d=new Date(v.date||v.visitDate||''); if(d>=weekStart&&d<=weekEnd) contacts++; });
+    return '<tr><td class="wk-tdl">'+_wkEsc(_wkDisplayName(rep))+'</td>'
+      +'<td>'+plan.toLocaleString()+'</td>'
+      +'<td style="color:var(--green);font-weight:700;">'+act.toLocaleString()+'</td>'
+      +'<td>'+act.toLocaleString()+'</td>'
+      +'<td><span style="'+rateClass+'">'+rate+'%</span></td>'
+      +'<td>'+contacts+'</td></tr>';
+  });
+  el.innerHTML='<table class="wk-tbl"><thead><tr><th style="text-align:left;">담당자</th><th>목표(천)</th><th>'+(today.getMonth()+1)+'월 달성</th><th>누계</th><th>달성률</th><th>접점</th></tr></thead><tbody>'+rows.join('')+'</tbody></table>';
+}
+
+function _wkRenderProjects(){
+  var reps=_wkGetActiveReps();
+  var el=document.getElementById('wk-proj-list');
+  if(!el) return;
+  var weekStart=new Date(); weekStart.setDate(weekStart.getDate()-weekStart.getDay()+1); weekStart.setHours(0,0,0,0);
+  var items=[];
+  reps.forEach(function(rep){
+    var rd=store&&store.reps&&store.reps[rep];
+    if(!rd) return;
+    (rd.activities||[]).forEach(function(a){
+      if(!a.content||!a.client) return;
+      var isNew=a.updatedAt&&new Date(a.updatedAt)>=weekStart;
+      var isChecked=a.weeklyCheck&&a.weeklyCheck[_wkThisKey()];
+      items.push({rep:rep, client:a.client, content:a.content, date:a.updatedAt, isNew:isNew, isChecked:isChecked});
+    });
+  });
+  // 체크된 것 먼저, 이번주 수정 순
+  items.sort(function(a,b){ return (b.isChecked?2:b.isNew?1:0)-(a.isChecked?2:a.isNew?1:0); });
+  if(!items.length){
+    el.innerHTML='<div style="font-size:11px;color:var(--muted);padding:8px 0;">이번주 업데이트된 활동 내용이 없습니다</div>';
+    return;
+  }
+  el.innerHTML=items.slice(0,10).map(function(it){
+    var col=it.isChecked?'var(--blue)':it.isNew?'var(--green)':'var(--muted)';
+    var dtStr=it.date?it.date.slice(5,10).replace('-','.'):'';
+    return '<div class="wk-row">'
+      +'<div class="wk-dot" style="background:'+col+';"></div>'
+      +(it.isChecked?'<span style="font-size:9px;background:var(--blue-soft);color:var(--blue);padding:1px 5px;border-radius:20px;font-weight:700;">주간보고</span>':'')
+      +'<span class="wk-cli">'+_wkEsc(it.client)+'</span>'
+      +'<span class="wk-cont">'+_wkEsc(it.content)+'</span>'
+      +'<span class="wk-dt">'+dtStr+'</span>'
+      +'</div>';
+  }).join('');
+}
+
+function _wkRenderIssues(){
+  var reps=_wkGetActiveReps();
+  var el=document.getElementById('wk-iss-list');
+  var cnt=document.getElementById('wk-iss-cnt');
+  if(!el) return;
+  var today=new Date(); today.setHours(0,0,0,0);
+  var issues=[];
+  reps.forEach(function(rep){
+    var rd=store&&store.reps&&store.reps[rep];
+    if(!rd) return;
+    (rd.issuesList||[]).forEach(function(i){
+      if(i.status!=='open') return;
+      var due=i.dueDate?new Date(i.dueDate):null;
+      var diff=due?Math.round((due-today)/86400000):999;
+      var iChecked=i.weeklyCheck&&i.weeklyCheck[_wkThisKey()];
+      issues.push({rep:rep, client:i.client, content:i.content, diff:diff, sev:i.sev||'mid', isChecked:iChecked});
+    });
+  });
+  issues.sort(function(a,b){ return (b.isChecked?1000:0)-(a.isChecked?1000:0)||(a.diff-b.diff); });
+  if(cnt) cnt.textContent='오픈 '+issues.length+'건';
+  if(!issues.length){
+    el.innerHTML='<div style="font-size:11px;color:var(--muted);padding:8px 0;">오픈 이슈가 없습니다</div>';
+    return;
+  }
+  el.innerHTML=issues.slice(0,10).map(function(iss){
+    var diff=iss.diff;
+    var diffStr=diff<0?'D+'+Math.abs(diff):(diff===999?'—':'D-'+diff);
+    var diffColor=diff<0||diff<=7?'background:#FEE2E2;color:var(--red);':diff<=30?'background:#FEF3C7;color:var(--gold);':'background:var(--bg);color:var(--muted);';
+    return '<div class="wk-row">'
+      +'<span class="wk-cli">'+_wkEsc(iss.client)+'</span>'
+      +'<span class="wk-cont">'+_wkEsc(iss.content)+'</span>'
+      +'<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;'+diffColor+'">'+diffStr+'</span>'
+      +'</div>';
+  }).join('');
+}
+
+// ── 피드 렌더 ─────────────────────────────────────
+function _wkRenderFeed(){
+  var list=document.getElementById('wk-feed-list');
+  if(!list) return;
+  // 스크롤 저장
+  var savedScroll=list.scrollTop||0;
+  var entries=_wk.entries;
+  // 담당자 필터
+  if(_wk.activeRep!=='all'){
+    entries=entries.filter(function(e){ return e.rep===_wk.activeRep; });
+  }
+  if(!entries.length){
+    list.innerHTML='<div style="padding:30px 12px;text-align:center;color:var(--muted);font-size:12px;">'
+      +'<div style="font-size:24px;margin-bottom:6px;">📋</div>'
+      +'이번주 회의록이 비어있습니다<br><span style="font-size:10px;">위 입력창에서 내용을 작성해주세요</span>'
+      +'</div>';
+    return;
+  }
+  list.innerHTML=entries.map(function(entry){ return _wkEntryHtml(entry); }).join('');
+  // 스크롤 복원
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){ list.scrollTop=savedScroll; });
+  });
+  _wkUpdatePendingCnt();
+}
+
+function _wkEntryHtml(entry){
+  var pending=!entry.replies||!entry.replies.length;
+  var repliesHtml='';
+  if(entry.replies&&entry.replies.length){
+    repliesHtml='<div class="wk-replies">'
+      +entry.replies.map(function(r){
+        return '<div class="wk-ri">'
+          +'<div class="wk-ri-meta">'
+            +'<span class="wk-ri-n">'+_wkEsc(r.displayName||r.rep)+'</span>'
+            +'<span class="wk-role-badge '+(r.role==='admin'?'wk-rb-admin':'wk-rb-rep')+'">'+_wkEsc(r.roleLabel||'')+'</span>'
+            +'<span class="wk-ri-t">'+_wkEsc(r.time||'')+'</span>'
+          +'</div>'
+          +'<div class="wk-ri-c">'+_wkSanitize(r.text||'')+'</div>'
+          +'</div>';
+      }).join('')
+      +'</div>';
+  }
+  return '<div class="wk-fi-item'+(pending?' pending':'')+'" id="wk-entry-'+entry.id+'">'
+    +'<div class="wk-fi-meta">'
+      +'<span class="wk-fi-n">'+_wkEsc(entry.displayName||entry.rep)+'</span>'
+      +'<span class="wk-role-badge '+(entry.role==='admin'?'wk-rb-admin':entry.role==='guest'?'wk-rb-guest':'wk-rb-rep')+'">'+_wkEsc(entry.roleLabel||'')+'</span>'
+      +(pending?'<span class="wk-pend-badge">미답변</span>':'<span class="wk-done-badge">답변완료</span>')
+      +'<span class="wk-fi-t">'+_wkEsc(entry.time||'')+'</span>'
+    +'</div>'
+    +'<div class="wk-fi-cont">'+_wkSanitize(entry.text||'')+'</div>'
+    +repliesHtml
+    +'<div style="margin-top:5px;">'
+      +'<button class="wk-reply-btn" onclick="_wkToggleReply(\''+entry.id+'\')">↩ 답변하기</button>'
+    +'</div>'
+    +'<div class="wk-reply-input-wrap" id="wk-reply-wrap-'+entry.id+'" style="display:none;">'
+      +'<textarea class="wk-reply-textarea" id="wk-reply-ta-'+entry.id+'" rows="2" placeholder="답변 입력..."></textarea>'
+      +'<div class="wk-reply-footer">'
+        +'<button class="wk-reply-cancel" onclick="_wkToggleReply(\''+entry.id+'\')">취소</button>'
+        +'<button class="wk-reply-submit" onclick="_wkSubmitReply(\''+entry.id+'\')">답변 등록</button>'
+      +'</div>'
+    +'</div>'
+    +'</div>';
+}
+
+function _wkUpdatePendingCnt(){
+  var cnt=_wk.entries.filter(function(e){return !e.replies||!e.replies.length;}).length;
+  var el=document.getElementById('wk-pending-cnt');
+  if(el){ el.textContent=cnt; el.style.display=cnt>0?'':'none'; }
+}
+
+// ── 입력창 설정 ───────────────────────────────────
+function _wkSetupInput(){
+  // 작성자 표시
+  var nameEl=document.getElementById('wk-author-name');
+  var roleEl=document.getElementById('wk-author-role');
+  if(nameEl&&session){
+    if(session.role==='admin'){
+      nameEl.textContent='관리자';
+      if(roleEl) roleEl.textContent='관리자';
+    } else if(session.role==='guest'){
+      var _gn=session.guestName||'게스트';
+      nameEl.textContent=_gn;
+      if(roleEl) roleEl.textContent='게스트';
+    } else {
+      nameEl.textContent=_wkDisplayName(session.rep)||session.rep||'담당자';
+      if(roleEl) roleEl.textContent=_wkGetRoleLabel();
+    }
+  }
+  // 멘션 팝업 빌드
+  _wkBuildMentionPopup();
+  // 에디터 이벤트
+  var editor=document.getElementById('wk-editor');
+  if(editor){
+    editor.addEventListener('keyup', _wkCheckMention);
+    editor.addEventListener('input', _wkCheckMention);
+    editor.addEventListener('click', function(){
+      document.getElementById('wk-mention-popup').style.display='none';
+    });
+  }
+}
+
+function _wkGetMyName(){
+  // 게스트: guestName, 담당자: rep, 관리자: '관리자'
+  if(!session) return '알 수 없음';
+  if(session.role==='admin') return '관리자';
+  if(session.role==='guest') return session.guestName||'게스트';
+  return session.rep||'알 수 없음';
+}
+function _wkGetRoleLabel(){
+  if(!session) return '';
+  if(session.role==='admin') return '관리자';
+  if(session.role==='guest') return '게스트';
+  if(session.rep&&typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[session.rep]){
+    return authCfg.repTitles[session.rep];
+  }
+  return '영업담당';
+}
+function _wkRepRoleLabel(rep){
+  if(!rep) return '';
+  if(typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[rep]){
+    return authCfg.repTitles[rep];
+  }
+  return '영업담당';
+}
+
+function _wkBuildMentionPopup(){
+  var list=document.getElementById('wk-mp-list');
+  if(!list) return;
+  var allReps=(typeof REPS!=='undefined'?REPS:[]);
+  var guests=(typeof authCfg!=='undefined'&&authCfg.guestAllowList)?authCfg.guestAllowList.map(function(g){return g.name||g;}):[];
+  var all=allReps.concat(guests.filter(function(g){return allReps.indexOf(g)<0;}));
+  var myName=session&&(session.rep||'');
+  var colors=['#1A56DB','#059669','#7C3AED','#D97706','#DC2626','#0EA5A0'];
+  list.innerHTML=all.map(function(name,i){
+    var team=''; var title='';
+    if(typeof TEAM_REPS!=='undefined'){
+      Object.keys(TEAM_REPS).forEach(function(t){ if((TEAM_REPS[t]||[]).indexOf(name)>=0) team=t; });
+    }
+    title=(typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[name])||'영업담당';
+    var initials=name.charAt(0);
+    var color=colors[i%colors.length];
+    return '<div class="wk-mp-item" onmousedown="event.preventDefault()" onclick="_wkSelectMention(\''+name+'\')" style="cursor:pointer">'
+      +'<div class="wk-mp-av" style="background:'+color+';">'+initials+'</div>'
+      +'<div><div class="wk-mp-name">'+_wkEsc(name)+'</div><div class="wk-mp-pos">'+_wkEsc(title||'영업대표')+'</div></div>'
+      +(team?'<span class="wk-mp-team">'+_wkEsc(team.replace('팀',''))+'</span>':'')
+      +'</div>';
+  }).join('');
+}
+
+function _wkCheckMention(){
+  var editor=document.getElementById('wk-editor');
+  if(!editor) return;
+  var popup=document.getElementById('wk-mention-popup');
+  var raw=editor.innerText||'';
+  var atIdx=raw.lastIndexOf('@');
+  if(atIdx>=0){
+    var afterAt=raw.slice(atIdx+1);
+    if(!afterAt.includes(' ')&&!afterAt.includes('\n')){
+      // @ 입력 시 팝업 재빌드 (신규 담당자/게스트 자동 반영)
+      _wkBuildMentionPopup();
+      _wkFilterMentionPopup(afterAt.toLowerCase());
+      if(popup) popup.style.display='block';
+      return;
+    }
+  }
+  if(popup) popup.style.display='none';
+}
+
+function _wkFilterMentionPopup(query){
+  var items=document.querySelectorAll('.wk-mp-item');
+  items.forEach(function(el){
+    var name=(el.querySelector('.wk-mp-name')||{}).textContent||'';
+    el.style.display=(!query||name.indexOf(query)>=0)?'':'none';
+  });
+}
+
+window._wkSelectMention=function(name){
+  var popup=document.getElementById('wk-mention-popup');
+  if(popup) popup.style.display='none';
+  var editor=document.getElementById('wk-editor');
+  if(!editor) return;
+  // innerHTML span 분리 후 마지막 @ 교체 (모바일/PC 공용)
+  var ihtml=editor.innerHTML||'';
+  var mentionHtml='<span class="wk-mention" contenteditable="false">@'+_wkEsc(name)+'</span> ';
+  // 기존 mention span 보존하며 분리
+  var spanRe=/<span[^>]*>[^<]*<\/span>/g;
+  var spans=ihtml.match(spanRe)||[];
+  var parts=ihtml.split(spanRe);
+  // 마지막 텍스트 조각에서 @ 및 이후 필터 텍스트 제거 후 멘션 삽입
+  var last=parts[parts.length-1];
+  var ai=last.lastIndexOf('@');
+  if(ai>=0){
+    var tail=last.slice(ai+1);
+    // 공백 전까지 제거 (필터 텍스트)
+    var sp=tail.search(/[\s ]/);
+    var rest=sp>=0?tail.slice(sp):'';
+    parts[parts.length-1]=last.slice(0,ai)+mentionHtml+rest;
+  } else {
+    parts[parts.length-1]=last+mentionHtml;
+  }
+  // 재조합
+  var rebuilt='';
+  for(var pi=0;pi<parts.length;pi++){
+    rebuilt+=parts[pi];
+    if(pi<spans.length) rebuilt+=spans[pi];
+  }
+  editor.innerHTML=rebuilt;
+  // 커서 맨 끝으로
+  editor.focus();
+  try{
+    var rng=document.createRange();
+    var sel=window.getSelection();
+    rng.selectNodeContents(editor);
+    rng.collapse(false);
+    if(sel){sel.removeAllRanges();sel.addRange(rng);}
+  }catch(e){}
+};
+
+// ── 서식 도구 ─────────────────────────────────────
+window._wkFmt=function(cmd){
+  var editor=document.getElementById('wk-editor');
+  if(editor) editor.focus();
+  document.execCommand(cmd, false, null);
+};
+
+window._wkToggleColorPalette=function(e, mode){
+  e.stopPropagation();
+  _wk.colorMode=mode;
+  var pal=document.getElementById('wk-color-palette');
+  if(!pal) return;
+  pal.style.display=pal.style.display==='flex'?'none':'flex';
+};
+
+window._wkApplyColor=function(color){
+  var editor=document.getElementById('wk-editor');
+  if(editor) editor.focus();
+  if(_wk.colorMode==='bg'){
+    document.execCommand('hiliteColor', false, color);
+  } else {
+    document.execCommand('foreColor', false, color);
+  }
+  document.getElementById('wk-color-palette').style.display='none';
+};
+
+// ── 등록 ──────────────────────────────────────────
+window._wkSubmitEntry=async function(){
+  var editor=document.getElementById('wk-editor');
+  if(!editor) return;
+  var text=editor.innerHTML.trim();
+  var plain=(editor.innerText||'').trim();
+  if(!plain) return;
+  // HTML 정제
+  text=_wkSanitize(text);
+  var now=new Date();
+  var entry={
+    id:_wkGenId(),
+    rep:_wkGetMyName(),
+    displayName:(session&&session.role==='rep')?_wkDisplayName(session.rep)||_wkGetMyName():_wkGetMyName(),
+    role:session&&session.role||'guest',
+    roleLabel:_wkGetRoleLabel(),  // 실제 직책 // 실제 직책(차장/팀장 등)
+    text:text,
+    time:now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0'),
+    replies:[],
+  };
+  // 로컬 추가
+  _wk.entries.push(entry);
+  // 에디터 클리어
+  editor.innerHTML='';
+  // SP 저장
+  var weekKey=_wkThisKey();
+  var myRep=_wkGetMyName();
+  // 내 이름의 entries만 저장 (충돌 방지)
+  var myEntries=_wk.entries.filter(function(e){return e.rep===myRep;});
+  await _wkSaveFeed(weekKey, myRep, myEntries);
+  // 알림 생성
+  await _wkCreateNotifs(entry);
+  // 렌더
+  _wkRenderFeed();
+  if(typeof showToast==='function') showToast('✅ 등록되었습니다');
+  // 스크롤 최하단
+  setTimeout(function(){
+    var fl=document.getElementById('wk-feed-list');
+    if(fl) fl.scrollTop=fl.scrollHeight;
+  }, 100);
+};
+
+// ── 답변 ──────────────────────────────────────────
+window._wkToggleReply=function(entryId){
+  var wrap=document.getElementById('wk-reply-wrap-'+entryId);
+  if(!wrap) return;
+  var isOpen=wrap.style.display!=='none';
+  // 다른 답변창 닫기
+  document.querySelectorAll('[id^="wk-reply-wrap-"]').forEach(function(el){ el.style.display='none'; });
+  if(!isOpen){ wrap.style.display='block'; var ta=document.getElementById('wk-reply-ta-'+entryId); if(ta) ta.focus(); }
+};
+
+window._wkSubmitReply=async function(entryId){
+  var ta=document.getElementById('wk-reply-ta-'+entryId);
+  if(!ta||!ta.value.trim()) return;
+  var text=ta.value.trim();
+  var entry=_wk.entries.find(function(e){return e.id===entryId;});
+  if(!entry) return;
+  if(!entry.replies) entry.replies=[];
+  var now=new Date();
+  var reply={
+    rep:session&&session.rep||'게스트',
+    displayName:_wkDisplayName(session&&session.rep)||'게스트',
+    role:session&&session.role||'guest',
+    roleLabel:_wkGetRoleLabel(),
+    text:_wkSanitize(text),
+    time:now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0'),
+  };
+  entry.replies.push(reply);
+  ta.value='';
+  document.getElementById('wk-reply-wrap-'+entryId).style.display='none';
+  // SP 저장 (답변 포함한 내 항목 + 원글 rep 항목 업데이트)
+  var weekKey=_wkThisKey();
+  var myRep=session&&session.rep||'guest';
+  var myEntries=_wk.entries.filter(function(e){return e.rep===myRep;});
+  var entryRep=entry.rep;
+  // 원글 rep의 entries도 업데이트 (답변 포함)
+  if(entryRep!==myRep){
+    var repEntries=_wk.entries.filter(function(e){return e.rep===entryRep;});
+    await _wkSaveFeed(weekKey, entryRep, repEntries);
+  }
+  await _wkSaveFeed(weekKey, myRep, myEntries);
+  // 답변 알림
+  await _wkCreateReplyNotif(entry, myRep);
+  _wkRenderFeed();
+  if(typeof showToast==='function') showToast('✅ 답변이 등록되었습니다');
+};
+
+// ── sync (10초) ───────────────────────────────────
+window._syncWeeklyFeed=async function(){
+  if(_wk.loading) return;
+  // 스크롤 저장
+  var rv=document.getElementById('wk-report-view');
+  var fl=document.getElementById('wk-feed-list');
+  if(rv) _wk.scrollReport=rv.scrollTop||0;
+  if(fl) _wk.scrollFeed=fl.scrollTop||0;
+  var weekKey=_wkThisKey();
+  var entries=await _wkLoadFeed(weekKey);
+  // 변경 있으면 렌더
+  if(JSON.stringify(entries)!==JSON.stringify(_wk.entries)){
+    _wk.entries=entries;
+    if(_wk.view==='feed') _wkRenderFeed();
+    _wkUpdatePendingCnt();
+  }
+  // 알림 로드
+  var _myN=_wkGetMyName();
+  if(session&&_myN&&_myN!=='알 수 없음'){
+    var notifs=await _wkLoadNotif(_myN);
+    _wk.notifications=notifs;
+    _wkGenContractNotifs();
+    _wkUpdateNotifBadge();
+  }
+};
+
+// ── 초기화 ────────────────────────────────────────
+window._initWeeklyPage=function(){
+  _wkBuildTeamTabs();
+  _wkBuildRepTabs();
+  _wkSetupInput();
+  _wkSetView(_wk.view);
+  // 담당자 모드: 본인 팀으로 기본 필터
+  if(session&&session.role==='rep'&&session.team){
+    if(_wk.activeTeam==='all'){} // 전체 유지
+  }
+  _wkLoad();
+  // 알림 버튼 빌드
+  _wkBuildNotifBtn();
+  // 계약 알림 체크
+  _wkGenContractNotifs();
+  // 월요일 미답변 이월 알림 체크
+  setTimeout(function(){ if(typeof _wkCheckCarryOver==='function') _wkCheckCarryOver(); }, 3000);
+};
+
+// ── 유틸 ──────────────────────────────────────────
+function _wkGetActiveReps(){
+  var reps=_wkFilteredReps();
+  if(!reps.length) reps=(typeof REPS!=='undefined'?REPS:[]);
+  if(_wk.activeRep!=='all') return reps.filter(function(r){return r===_wk.activeRep;});
+  return reps;
+}
+
+function _wkNowStr(){
+  var now=new Date();
+  return now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+}
+
+function _wkEsc(s){
+  if(!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+var _wkAllowedTags=/^(b|i|u|s|strong|em|ul|ol|li|p|br|div|span|blockquote)$/i;
+function _wkSanitize(html){
+  if(!html) return '';
+  // span style에서 color, background-color만 허용
+  html=html.replace(/<(\/?)([\w]+)([^>]*)>/g, function(m,slash,tag,attrs){
+    if(!_wkAllowedTags.test(tag)) return '';
+    if(tag.toLowerCase()==='span'){
+      var style=attrs.match(/style\s*=\s*["']([^"']*)["']/);
+      if(style){
+        // style 파싱은 아래 parts로 처리
+        var allowed=''; var parts=(style[1]||'').split(';');
+        parts.forEach(function(p){
+          var kv=p.trim().split(':'); if(kv.length<2) return;
+          var k=kv[0].trim().toLowerCase();
+          if(k==='color'||k==='background-color'||k==='font-weight'||k==='text-decoration')
+            allowed+=kv[0].trim()+':'+kv.slice(1).join(':').trim()+';';
+        });
+        return '<'+slash+tag+(allowed?' style="'+allowed+'"':'')+' class="wk-mention">';
+      }
+      var cls=attrs.match(/class\s*=\s*["']([^"']*)["']/);
+      if(cls&&cls[1].indexOf('wk-mention')>=0) return '<'+slash+tag+' class="wk-mention">';
+    }
+    return '<'+slash+tag+'>';
+  });
+  return html;
+}
+
+// 전역 클릭: 팝업 닫기
+document.addEventListener('click', function(e){
+  if(!e.target.closest('#wk-notif-btn-global')&&!e.target.closest('#wk-notif-drop')){
+    var drop=document.getElementById('wk-notif-drop');
+    if(drop) drop.style.display='none';
+  }
+  if(!e.target.closest('.wk-input-area')){
+    var mp=document.getElementById('wk-mention-popup');
+    if(mp) mp.style.display='none';
+    var cp=document.getElementById('wk-color-palette');
+    if(cp) cp.style.display='none';
+  }
+});
+
+// 보고서 스크롤 추적
+document.addEventListener('scroll', function(e){
+  var rv=document.getElementById('wk-report-view');
+  var fl=document.getElementById('wk-feed-list');
+  if(rv&&e.target===rv) _wk.scrollReport=rv.scrollTop;
+  if(fl&&e.target===fl) _wk.scrollFeed=fl.scrollTop;
+}, true);
+
+})();
+
+
+// 주간보고 체크 주차 키
+function _getWkKey(date){
+  var d=new Date(date||Date.now());
+  d.setHours(0,0,0,0);
+  d.setDate(d.getDate()+3-(d.getDay()+6)%7);
+  var w1=new Date(d.getFullYear(),0,4);
+  var wn=1+Math.round(((d-w1)/86400000-3+(w1.getDay()+6)%7)/7);
+  return d.getFullYear()+'-W'+(wn<10?'0':'')+wn;
+}
+function _thisWkKey(){ return _getWkKey(new Date()); }
+
+// 주간보고 활동 체크 토글
+
+// 주간보고 이슈 체크 토글
+window._wkToggleIssCheck=function(rep,idx,checked){
+  var rd=store&&store.reps&&store.reps[rep];
+  if(!rd||!rd.issuesList||!rd.issuesList[idx]) return;
+  var iss=rd.issuesList[idx];
+  if(!iss.weeklyCheck) iss.weeklyCheck={};
+  var wk=_thisWkKey();
+  if(checked) iss.weeklyCheck[wk]=true;
+  else delete iss.weeklyCheck[wk];
+  if(typeof autoSave==='function') autoSave();
+};
+
+window._wkToggleActCheck=function(rep,ai,checked){
+  var rd=store&&store.reps&&store.reps[rep];
+  if(!rd||!rd.activities||!rd.activities[ai]) return;
+  var a=rd.activities[ai];
+  if(!a.weeklyCheck) a.weeklyCheck={};
+  var wk=_thisWkKey();
+  if(checked) a.weeklyCheck[wk]=true;
+  else delete a.weeklyCheck[wk];
+  if(typeof autoSave==='function') autoSave();
+};
+
+// 이슈 행 체크박스 동적 추가 (onchange 따옴표 충돌 우회)
+function _addIssueCheckboxes(rep){
+  var tbody=document.getElementById('it-'+rep);
+  if(!tbody) return;
+  var isOwn=(typeof session!=='undefined'&&session&&(session.role==='admin'||(session.role==='rep'&&session.rep===rep)));
+  var rows=tbody.querySelectorAll('tr');
+  var rd=store&&store.reps&&store.reps[rep];
+  if(!rd||!rd.issuesList) return;
+  rows.forEach(function(tr,i){
+    // 첫 td가 이미 체크박스면 스킵
+    if(tr.querySelector('.wk-iss-chk')) return;
+    var td=document.createElement('td');
+    td.className='wk-chk-cell';
+    if(isOwn){
+      var chk=document.createElement('input');
+      chk.type='checkbox';
+      chk.className='wk-iss-chk';
+      chk.style.cssText='width:15px;height:15px;cursor:pointer;accent-color:#1A56DB;';
+      chk.title='주간보고에 포함';
+      var iss=rd.issuesList[i];
+      if(iss&&iss.weeklyCheck&&iss.weeklyCheck[_thisWkKey()]) chk.checked=true;
+      (function(rep2,idx){ chk.onchange=function(){ _wkToggleIssCheck(rep2,idx,this.checked); }; })(rep,i);
+      td.appendChild(chk);
+    } else {
+      td.innerHTML='&nbsp;';
+    }
+    tr.insertBefore(td, tr.firstChild);
   });
 }
 </script>
