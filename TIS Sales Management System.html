@@ -6706,11 +6706,12 @@ function doRepLogin(rep){
     var _nm=(session&&session.rep)||(session&&session.guestName)||'';
     if(!_nm) return;
     if(window._isSPReady&&typeof _wkLoadNotif==='function'){
-      _wkLoadNotif(_nm).then(function(items){
-        if(typeof window._wkSetNotifications==='function'){
-          window._wkSetNotifications(items);
-        }
-      }).catch(function(){});
+      var _notifFn=window._wkLoadNotif||_wkLoadNotif;
+      if(typeof _notifFn==='function'){
+        _notifFn(_nm).then(function(items){
+          if(typeof window._wkSetNotifications==='function') window._wkSetNotifications(items);
+        }).catch(function(){});
+      }
     } else if(n>0){
       setTimeout(function(){ _pollNotif(n-1); }, 1000);
     }
@@ -6749,12 +6750,13 @@ function doRepLogin(rep){
   (function _loadNotifOnLogin(n){
     var _nm=(session&&session.rep)||(session&&session.guestName)||'';
     if(!_nm) return;
-    if(window._isSPReady && typeof _wkLoadNotif==='function'){
-      _wkLoadNotif(_nm).then(function(items){
-        if(typeof window._wkSetNotifications==='function'){
-          window._wkSetNotifications(items);
-        }
-      }).catch(function(){});
+    if(window._isSPReady && (typeof window._wkLoadNotif==='function'||typeof _wkLoadNotif==='function')){
+      var _notifFn=window._wkLoadNotif||_wkLoadNotif;
+      if(typeof _notifFn==='function'){
+        _notifFn(_nm).then(function(items){
+          if(typeof window._wkSetNotifications==='function') window._wkSetNotifications(items);
+        }).catch(function(){});
+      }
     } else if(n>0){
       setTimeout(function(){ _loadNotifOnLogin(n-1); }, 800);
     }
@@ -10256,8 +10258,8 @@ function _iRow(rep, idx, iss){
         +'<div class="sec-body"><div style="overflow-x:auto;overflow-y:auto;max-height:320px;-webkit-overflow-scrolling:touch;">'
         +'<table class="dt" style="min-width:max-content;table-layout:auto;">'
         +'<thead style="position:sticky;top:0;z-index:5;background:#F8FAFC;"><tr>'
-        +'<th class="wk-chk-cell" style="background:#F8FAFC;" title="주간보고">📋</th>'
-        +'<th class="wk-no-cell" style="background:#F8FAFC;">순번</th>'
+        +'<th class="wk-chk-cell" style="background:#F8FAFC;white-space:nowrap;" title="주간보고 포함">📋</th>'
+        +'<th class="wk-no-cell" style="background:#F8FAFC;white-space:nowrap;">No</th>'
         +'<th style="width:175px;text-align:center;">고객사</th>'
         +'<th style="min-width:240px;text-align:center;">이슈 내용</th>'
         +'<th style="width:110px;text-align:center;">등록날짜</th>'
@@ -14787,18 +14789,22 @@ window._wkSetView=function(view){
 
 // ── 데이터 로드 ───────────────────────────────────
 async function _wkLoad(){
-  // loading 플래그: 재진입 방지 (단, 3초 이상 stuck 시 리셋)
+  // loading 플래그
   if(_wk.loading){
     if(Date.now()-(_wk.loadingAt||0) < 3000) return;
   }
   _wk.loading=true; _wk.loadingAt=Date.now();
+  // 기존 데이터 즉시 렌더 (딜레이 없이)
+  _wkRenderReport();
+  _wkRenderFeed();
   try{
     var mainKey=_wk.weekMode==='last'?_wkLastKey():_wkThisKey();
     var prevKey=_wk.weekMode==='last'?null:_wkLastKey();
-    // 현재 선택된 주 피드
     var entries=await _wkLoadFeed(mainKey);
-    _wk.entries=entries;
-    // 이전 주 피드 (이번주 모드일 때만 지난주 표시)
+    // SP에서 가져온 데이터가 있으면 갱신
+    if(entries.length>0 || _wk.entries.length===0){
+      _wk.entries=entries;
+    }
     if(prevKey){
       _wk.prevEntries=await _wkLoadFeed(prevKey);
     } else {
@@ -15587,7 +15593,9 @@ function _wkSanitize(html){
 // IIFE 내부 함수 전역 노출
 window._wkRenderReport=_wkRenderReport;
 window._wkRenderFeed=_wkRenderFeed;
-// 외부에서 알림 설정 (window._wk vs 내부 _wk 분리 문제 해결)
+// IIFE 함수 전역 노출
+window._wkLoadNotif=_wkLoadNotif;
+window._wkSaveNotif=_wkSaveNotif;
 window._wkSetNotifications=function(items){
   _wk.notifications=items||[];
   _wkGenContractNotifs();
