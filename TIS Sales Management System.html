@@ -10256,12 +10256,12 @@ function _iRow(rep, idx, iss){
         +'<div class="sec-head"><h3>'+rep+' — 이슈사항</h3>'
         +'<button class="add-btn" onclick="addIssueRow(\''+rep+'\')">&#xFF0B; 추가</button></div>'
         +'<div class="sec-body"><div style="overflow-x:auto;overflow-y:auto;max-height:320px;-webkit-overflow-scrolling:touch;">'
-        +'<table class="dt" style="min-width:max-content;table-layout:auto;">'
+        +'<table class="dt" style="min-width:max-content;table-layout:fixed;width:100%;">'        +'<colgroup>'        +'<col style="width:30px;">'        +'<col style="width:40px;">'        +'<col style="width:175px;">'        +'<col style="min-width:280px;">'        +'<col style="width:110px;">'        +'<col style="width:130px;">'        +'<col style="width:100px;">'        +'<col style="width:100px;">'        +'<col style="width:34px;">'        +'</colgroup>'
         +'<thead style="position:sticky;top:0;z-index:5;background:#F8FAFC;"><tr>'
         +'<th class="wk-chk-cell" style="background:#F8FAFC;white-space:nowrap;" title="주간보고 포함">📋</th>'
         +'<th class="wk-no-cell" style="background:#F8FAFC;white-space:nowrap;">No</th>'
         +'<th style="width:175px;text-align:center;">고객사</th>'
-        +'<th style="min-width:240px;text-align:center;">이슈 내용</th>'
+        +'<th style="min-width:280px;text-align:center;">이슈 내용</th>'
         +'<th style="width:110px;text-align:center;">등록날짜</th>'
         +'<th style="width:130px;text-align:center;">기한날짜</th>'
         +'<th style="width:100px;text-align:center;">중요도</th>'
@@ -12341,7 +12341,7 @@ function _vRow(rep,idx,v){
         +(canAdd?'<button class="add-btn" onclick="addVisit(\''+rep+'\')">&#xFF0B; 접점 추가</button>':'')
         +'</div>'
         +'<div class="sec-body"><div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 340px);min-height:300px;-webkit-overflow-scrolling:touch;">'
-        +'<table class="dt" style="min-width:max-content;table-layout:auto;">'
+        +'<table class="dt" style="min-width:max-content;table-layout:fixed;width:100%;">'        +'<colgroup>'        +'<col style="width:30px;">'        +'<col style="width:40px;">'        +'<col style="width:175px;">'        +'<col style="min-width:280px;">'        +'<col style="width:110px;">'        +'<col style="width:130px;">'        +'<col style="width:100px;">'        +'<col style="width:100px;">'        +'<col style="width:34px;">'        +'</colgroup>'
         +'<thead style="position:sticky;top:0;z-index:5;"><tr>'
         +'<th style="'+BG+'width:100px;text-align:center;">접점일자</th>'
         +'<th style="'+BG+'width:160px;text-align:center;">고객사명</th>'
@@ -14393,7 +14393,7 @@ async function _wkCreateNotifs(entry){
   var guests=(typeof authCfg!=='undefined'&&authCfg.guestAllowList)?authCfg.guestAllowList.map(function(g){return g.name||g;}):[];
   var allNames=allReps.concat(guests);
   allNames.forEach(function(name){
-    if(!name||name===entry.rep) return;
+    if(!name) return; // 자신 멘션도 허용 (팀원들에게 알림)
     // @이름 감지 (mention span 포함)
     var _plainText=text.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ');
     var _spanText=text; // mention span에서도 감지
