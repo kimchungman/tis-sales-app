@@ -15044,7 +15044,7 @@ function _wkRenderProjects(){
     (rd.activities||[]).forEach(function(a){
       if(!a.content||!a.client) return;
       var isNew=a.updatedAt&&new Date(a.updatedAt)>=weekStart;
-      var isChecked=a.weeklyCheck&&a.weeklyCheck[_wkThisKey()];
+      var isChecked=a.weeklyCheck&&a.weeklyCheck[_wkSelectedKey()];
       items.push({rep:rep, client:a.client, content:a.content, date:a.updatedAt, isNew:isNew, isChecked:isChecked});
     });
   });
@@ -15077,7 +15077,7 @@ function _wkRenderIssues(){
   var el=document.getElementById('wk-iss-list');
   var cnt=document.getElementById('wk-iss-cnt');
   if(!el) return;
-  var today=new Date(); today.setHours(0,0,0,0);
+  var _wbi=_wkGetWeekBounds(); var today=new Date(_wbi.start); today.setHours(0,0,0,0);
   var issues=[];
   reps.forEach(function(rep){
     var rd=store&&store.reps&&store.reps[rep];
@@ -15086,7 +15086,7 @@ function _wkRenderIssues(){
       if(i.status!=='open') return;
       var due=i.dueDate?new Date(i.dueDate):null;
       var diff=due?Math.round((due-today)/86400000):999;
-      var iChecked=i.weeklyCheck&&i.weeklyCheck[_wkThisKey()];
+      var iChecked=i.weeklyCheck&&i.weeklyCheck[_wkSelectedKey()];
       issues.push({rep:rep, client:i.client, content:i.content, diff:diff, sev:i.sev||'mid', isChecked:iChecked});
     });
   });
@@ -15272,6 +15272,12 @@ function _wkGetWeekBounds(){
   return {start:weekStart, end:weekEnd, mm:weekStart.getMonth()};
 }
 
+
+// 현재 선택된 주차 키 (이번주/지난주 모드 반영)
+function _wkSelectedKey(){
+  if(typeof _wk!=='undefined'&&_wk.weekMode==='last') return _wkLastKey();
+  return _wkThisKey();
+}
 function _wkRepRoleLabel(rep){
   if(!rep) return '';
   if(typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[rep]){
