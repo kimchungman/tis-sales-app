@@ -14572,6 +14572,8 @@ function _wkGenContractNotifs(){
   var contracts=(typeof _getContracts==='function')?_getContracts(rep):[];
   if(!contracts.length) return;
   var today=new Date(); today.setHours(0,0,0,0);
+  // 기존 계약 알림 초기화 (중복 방지)
+  _wk.notifications=_wk.notifications.filter(function(n){return n.type!=='contract';});
   contracts.forEach(function(c){
     if(c.status==='종료') return;
     var endD=c.endDate?new Date(c.endDate):null;
@@ -14831,7 +14833,7 @@ function _wkRenderContracts(){
       else if(c.managementType==='하자기간'){
         var _hajaD=mgtEndD||endD;
         var _hajaDiff=_hajaD?Math.round((_hajaD-today)/86400000):0;
-        type='전환필요';
+        type='하자기간';
         diffVal=_hajaDiff; urgency=_hajaDiff<0?3:_hajaDiff<=7?2:1;
         label=_hajaDiff<0?'D+'+Math.abs(_hajaDiff):_hajaDiff===0?'오늘':'D-'+_hajaDiff;
       }
@@ -14858,7 +14860,7 @@ function _wkRenderContracts(){
   }
   var typeStyle={
     '갱신필요':'background:#FEF3C7;color:#D97706;',
-    '전환필요':'background:#DBEAFE;color:#1A56DB;',
+    '하자기간':'background:#DBEAFE;color:#1A56DB;',
     '계약공백':'background:#FEE2E2;color:#DC2626;'
   };
   var labelStyle={
@@ -14906,10 +14908,10 @@ function _wkRenderVisits(){
     var dateStr=(v.date||'').slice(5,10).replace('-','.');
     var visitContent=_wkStripHtml(v.content||v.contactPurpose||v.purpose||v.memo||'');
     return '<div class="wk-row">'
-      +'<span class="wk-dt" style="min-width:40px;">'+dateStr+'</span>'
-      +'<span class="wk-cli">'+_wkEsc(v.company)+'</span>'
-      +'<span class="wk-cont" style="white-space:pre-wrap;">'+_wkNl2br(visitContent)+'</span>'
-      +'<span style="font-size:10px;color:var(--muted);">'+_wkEsc(v.displayName)+'</span>'
+      +'<span style="font-size:11px;color:var(--muted);min-width:42px;flex-shrink:0;">'+dateStr+'</span>'
+      +'<span style="font-size:12px;font-weight:700;color:var(--text);width:120px;min-width:120px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+_wkEsc(v.company)+'">'+_wkEsc(v.company)+'</span>'
+      +'<span style="font-size:12px;color:var(--sub);flex:1;line-height:1.5;white-space:pre-wrap;word-break:break-all;min-width:0;">'+_wkNl2br(visitContent)+'</span>'
+      +'<span style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0;margin-left:6px;">'+_wkEsc(v.displayName)+'</span>'
       +'</div>';
   }).join('');
 }
@@ -15058,9 +15060,9 @@ function _wkRenderProjects(){
     return '<div class="wk-row">'
       +'<div class="wk-dot" style="background:'+col+';"></div>'
       +(it.isChecked?'<span style="font-size:9px;background:var(--blue-soft);color:var(--blue);padding:1px 5px;border-radius:20px;font-weight:700;">주간보고</span>':'')
-      +'<span class="wk-cli">'+_wkEsc(it.client)+'</span>'
-      +'<span class="wk-cont" style="white-space:pre-wrap;">'+_wkNl2br(_wkStripHtml(it.content))+'</span>'
-      +'<span class="wk-dt">'+dtStr+'</span>'
+      +'<span style="font-size:12px;font-weight:700;color:var(--text);width:120px;min-width:120px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+_wkEsc(it.client)+'">'+_wkEsc(it.client)+'</span>'
+      +'<span style="font-size:12px;color:var(--sub);flex:1;line-height:1.5;white-space:pre-wrap;word-break:break-all;min-width:0;">'+_wkNl2br(_wkStripHtml(it.content))+'</span>'
+      +'<span style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0;margin-left:6px;">'+dtStr+'</span>'
       +'</div>';
   }).join('');
 }
@@ -15095,9 +15097,9 @@ function _wkRenderIssues(){
     var diffStr=diff<0?'D+'+Math.abs(diff):(diff===999?'—':'D-'+diff);
     var diffColor=diff<0||diff<=7?'background:#FEE2E2;color:var(--red);':diff<=30?'background:#FEF3C7;color:var(--gold);':'background:var(--bg);color:var(--muted);';
     return '<div class="wk-row">'
-      +'<span class="wk-cli">'+_wkEsc(iss.client)+'</span>'
-      +'<span class="wk-cont" style="white-space:pre-wrap;">'+_wkNl2br(_wkStripHtml(iss.content))+'</span>'
-      +'<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;'+diffColor+'">'+diffStr+'</span>'
+      +'<span style="font-size:12px;font-weight:700;color:var(--text);width:120px;min-width:120px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+_wkEsc(iss.client)+'">'+_wkEsc(iss.client)+'</span>'
+      +'<span style="font-size:12px;color:var(--sub);flex:1;line-height:1.5;white-space:pre-wrap;word-break:break-all;min-width:0;">'+_wkNl2br(_wkStripHtml(iss.content))+'</span>'
+      +'<span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;'+diffColor+';white-space:nowrap;flex-shrink:0;margin-left:6px;">'+diffStr+'</span>'
       +'</div>';
   }).join('');
 }
@@ -15528,10 +15530,17 @@ window._initWeeklyPage=function(){
     if(_wk.activeTeam==='all'){} // 전체 유지
   }
   _wkLoad();
-  // 알림 버튼 빌드
-  _wkBuildNotifBtn();
-  // 계약 알림 체크
-  _wkGenContractNotifs();
+  // 알림 즉시 로드 후 계약 알림 체크
+  var _myN2=_wkGetMyName();
+  if(_myN2&&_myN2!=='알 수 없음'){
+    _wkLoadNotif(_myN2).then(function(items){
+      _wk.notifications=items||[];
+      _wkGenContractNotifs();
+      _wkUpdateNotifBadge();
+    }).catch(function(){ _wkGenContractNotifs(); });
+  } else {
+    _wkGenContractNotifs();
+  }
   // 월요일 미답변 이월 알림 체크
   setTimeout(function(){ if(typeof _wkCheckCarryOver==='function') _wkCheckCarryOver(); }, 3000);
 };
@@ -15580,6 +15589,10 @@ function _wkSanitize(html){
   });
   return html;
 }
+
+// IIFE 내부 함수 전역 노출
+window._wkRenderReport=_wkRenderReport;
+window._wkRenderFeed=_wkRenderFeed;
 
 // 전역 클릭: 팝업 닫기
 document.addEventListener('click', function(e){
