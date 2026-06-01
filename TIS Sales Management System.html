@@ -3712,17 +3712,7 @@ document.addEventListener('DOMContentLoaded',()=>{
         setTimeout(function(){
           if(typeof syncTeamData==='function') syncTeamData();
           if(typeof buildRepTabs==='function') buildRepTabs();
-  // 로그인 직후 알림 로드
-  setTimeout(function(){
-    var _loginName=(session&&session.rep)||(session&&session.guestName)||'';
-    if(_loginName&&typeof _wkLoadNotif==='function'){
-      _wkLoadNotif(_loginName).then(function(items){
-        if(window._wk) window._wk.notifications=items||[];
-        if(typeof _wkGenContractNotifs==='function') _wkGenContractNotifs();
-        if(typeof _wkUpdateNotifBadge==='function') _wkUpdateNotifBadge();
-      }).catch(function(){});
-    }
-  }, 1500);
+
           // 입력 페이지 활성 상태일 때만 buildRepInputs 호출 (이중 빌드 방지)
           var _ip=document.getElementById('page-input');
           if(_ip&&_ip.classList.contains('active')&&typeof buildRepInputs==='function') buildRepInputs();
@@ -7944,6 +7934,17 @@ async function _initSP() {
     if (!window._spListId) throw new Error('리스트 없음: ' + _SP_CONFIG.listName);
 
     window._isSPReady = true;
+  // SP 연결 직후 알림 즉시 로드
+  setTimeout(function(){
+    var _nm=(session&&session.rep)||(session&&session.guestName)||'';
+    if(_nm&&typeof _wkLoadNotif==='function'){
+      _wkLoadNotif(_nm).then(function(items){
+        if(window._wk) window._wk.notifications=items||[];
+        if(typeof _wkGenContractNotifs==='function') _wkGenContractNotifs();
+        if(typeof _wkUpdateNotifBadge==='function') _wkUpdateNotifBadge();
+      }).catch(function(){});
+    }
+  }, 500);
     _setSPStatus('connected');
     showToast('✅ SharePoint 연결됨');
 
@@ -8010,17 +8011,7 @@ async function _initSP() {
           // 설정 변경됐으면 UI 갱신
           if(JSON.stringify({teams:TEAMS, teamReps:TEAM_REPS}) !== _settingsBefore){
             if(typeof buildRepTabs==='function') buildRepTabs();
-  // 로그인 직후 알림 로드
-  setTimeout(function(){
-    var _loginName=(session&&session.rep)||(session&&session.guestName)||'';
-    if(_loginName&&typeof _wkLoadNotif==='function'){
-      _wkLoadNotif(_loginName).then(function(items){
-        if(window._wk) window._wk.notifications=items||[];
-        if(typeof _wkGenContractNotifs==='function') _wkGenContractNotifs();
-        if(typeof _wkUpdateNotifBadge==='function') _wkUpdateNotifBadge();
-      }).catch(function(){});
-    }
-  }, 1500);
+
             if(typeof buildRepBtns==='function') buildRepBtns();
             if(typeof renderRepManage==='function') renderRepManage();
             _changed = true;
@@ -8583,17 +8574,7 @@ async function _spLoadSettings() {
     } else {
       if(typeof applyCurrentTeam==='function') applyCurrentTeam(session.team);
       if(typeof buildRepTabs==='function') buildRepTabs();
-  // 로그인 직후 알림 로드
-  setTimeout(function(){
-    var _loginName=(session&&session.rep)||(session&&session.guestName)||'';
-    if(_loginName&&typeof _wkLoadNotif==='function'){
-      _wkLoadNotif(_loginName).then(function(items){
-        if(window._wk) window._wk.notifications=items||[];
-        if(typeof _wkGenContractNotifs==='function') _wkGenContractNotifs();
-        if(typeof _wkUpdateNotifBadge==='function') _wkUpdateNotifBadge();
-      }).catch(function(){});
-    }
-  }, 1500);
+
     }
     // 현재 페이지가 input이면 담당자 탭 즉시 선택 (폴링 제거)
     var _inputPage = document.getElementById('page-input');
@@ -14662,6 +14643,10 @@ window._wkClickNotif=function(id){
   if(!n) return;
   n.read=true;
   _wkUpdateNotifBadge();
+  _wkRenderNotifDrop();
+  // SP에 읽음 상태 저장
+  var _myN=_wkGetMyName();
+  if(_myN&&_myN!=='알 수 없음') _wkSaveNotif(_myN, _wk.notifications);
   document.getElementById('wk-notif-drop').style.display='none';
   // 페이지 이동
   var target=n.targetPage||'weekly';
@@ -14673,6 +14658,9 @@ window._wkMarkAllRead=function(){
   _wk.notifications.forEach(function(n){n.read=true;});
   _wkUpdateNotifBadge();
   _wkRenderNotifDrop();
+  // SP에 읽음 상태 저장
+  var _myN=_wkGetMyName();
+  if(_myN&&_myN!=='알 수 없음') _wkSaveNotif(_myN, _wk.notifications);
 };
 
 // ── 팀/담당자 탭 빌드 ─────────────────────────────
@@ -14883,6 +14871,7 @@ function _wkRenderContracts(){
       +'<span style="font-size:12px;color:var(--sub);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">'+_wkEsc(it.project)+'</span>'
       +'<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;'+(labelStyle[it.urgency]||'')+';white-space:nowrap;flex-shrink:0;">'+it.label+'</span>'
       +'<span style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0;">'+_wkEsc(it.displayName)+'</span>'
+      +'</div>'
   }).join('');
 }
 function _wkRenderVisits(){
@@ -14918,7 +14907,7 @@ function _wkRenderVisits(){
       +'<span style="font-size:11px;color:var(--muted);min-width:42px;flex-shrink:0;">'+dateStr+'</span>'
       +'<span style="font-size:12px;font-weight:700;color:var(--text);width:120px;min-width:120px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+_wkEsc(v.company)+'">'+_wkEsc(v.company)+'</span>'
       +'<span style="font-size:12px;color:var(--sub);flex:1;line-height:1.5;white-space:pre-wrap;word-break:break-all;min-width:0;">'+_wkNl2br(visitContent)+'</span>'
-      +'<span style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0;margin-left:6px;">'+_wkEsc(v.displayName)+'</span>'
+      +'<span style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0;min-width:50px;text-align:right;padding-top:2px;">'+_wkEsc(v.displayName)+'</span>'
       +'</div>';
   }).join('');
 }
@@ -15062,15 +15051,7 @@ function _wkRenderProjects(){
     return;
   }
   el.innerHTML=items.slice(0,10).map(function(it){
-    var col=it.isChecked?'var(--blue)':it.isNew?'var(--green)':'var(--muted)';
-    var dtStr=it.date?it.date.slice(5,10).replace('-','.'):'';
-    return '<div class="wk-row">'
-      +'<div class="wk-dot" style="background:'+col+';"></div>'
-      +(it.isChecked?'<span style="font-size:9px;background:var(--blue-soft);color:var(--blue);padding:1px 5px;border-radius:20px;font-weight:700;">주간보고</span>':'')
-      +'<span style="font-size:12px;font-weight:700;color:var(--text);width:120px;min-width:120px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+_wkEsc(it.client)+'">'+_wkEsc(it.client)+'</span>'
-      +'<span style="font-size:12px;color:var(--sub);flex:1;line-height:1.5;white-space:pre-wrap;word-break:break-all;min-width:0;">'+_wkNl2br(_wkStripHtml(it.content))+'</span>'
-      +'<span style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0;margin-left:6px;">'+dtStr+'</span>'
-      +'</div>';
+    var dtStr=it.date?it.date.slice(5,10).replace('-','.'):'';    return '<div class="wk-row" style="align-items:flex-start;">'      +'<span style="font-size:12px;font-weight:700;color:var(--text);width:110px;min-width:110px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+_wkEsc(it.client)+'">'+_wkEsc(it.client)+'</span>'      +'<span style="font-size:12px;color:var(--sub);flex:1;line-height:1.5;white-space:pre-wrap;word-break:break-all;min-width:0;">'+_wkNl2br(_wkStripHtml(it.content))+'</span>'      +'<span style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0;padding-top:2px;">'+dtStr+'</span>'      +'<span style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0;min-width:48px;text-align:right;padding-top:2px;">'+_wkEsc(_wkDisplayName(it.rep))+'</span>'      +'</div>';
   }).join('');
 }
 
@@ -15091,7 +15072,7 @@ function _wkRenderIssues(){
       var _selWk=_wkSelectedKey();
       // store에서 직접 확인 (autoSave → SP → sync 로 최신 유지)
       var iChecked=!!(i.weeklyCheck&&i.weeklyCheck[_selWk]);
-      issues.push({rep:rep, client:i.client, content:i.content, diff:diff, sev:i.sev||'mid', isChecked:iChecked});
+      issues.push({rep:rep, client:i.client||'─', content:i.content, diff:diff, sev:i.sev||'mid', isChecked:iChecked});
     });
   });
   // 체크된 것만
@@ -15105,11 +15086,7 @@ function _wkRenderIssues(){
     var diff=iss.diff;
     var diffStr=diff<0?'D+'+Math.abs(diff):(diff===999?'—':'D-'+diff);
     var diffColor=diff<0||diff<=7?'background:#FEE2E2;color:var(--red);':diff<=30?'background:#FEF3C7;color:var(--gold);':'background:var(--bg);color:var(--muted);';
-    return '<div class="wk-row">'
-      +'<span style="font-size:12px;font-weight:700;color:var(--text);width:120px;min-width:120px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+_wkEsc(iss.client)+'">'+_wkEsc(iss.client)+'</span>'
-      +'<span style="font-size:12px;color:var(--sub);flex:1;line-height:1.5;white-space:pre-wrap;word-break:break-all;min-width:0;">'+_wkNl2br(_wkStripHtml(iss.content))+'</span>'
-      +'<span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;'+diffColor+';white-space:nowrap;flex-shrink:0;margin-left:6px;">'+diffStr+'</span>'
-      +'</div>';
+    return '<div class="wk-row" style="align-items:flex-start;">'      +'<span style="font-size:12px;font-weight:700;color:var(--text);width:110px;min-width:110px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+_wkEsc(iss.client)+'">'+_wkEsc(iss.client)+'</span>'      +'<span style="font-size:12px;color:var(--sub);flex:1;line-height:1.5;white-space:pre-wrap;word-break:break-all;min-width:0;">'+_wkNl2br(_wkStripHtml(iss.content))+'</span>'      +'<span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;'+diffColor+';white-space:nowrap;flex-shrink:0;padding-top:2px;">'+diffStr+'</span>'      +'<span style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0;min-width:48px;text-align:right;padding-top:2px;">'+_wkEsc(_wkDisplayName(iss.rep))+'</span>'      +'</div>';
   }).join('');
 }
 
@@ -15532,7 +15509,11 @@ window._syncWeeklyFeed=async function(){
   var _myN=_wkGetMyName();
   if(session&&_myN&&_myN!=='알 수 없음'){
     var notifs=await _wkLoadNotif(_myN);
+    // 기존 읽음 상태 보존 (read=true인 항목 유지)
+    var _readSet={};
+    _wk.notifications.forEach(function(n){if(n.read) _readSet[n.id]=true;});
     _wk.notifications=notifs||[];
+    _wk.notifications.forEach(function(n){if(_readSet[n.id]) n.read=true;});
     _wkGenContractNotifs();
     if(true){
       _wkUpdateNotifBadge();
