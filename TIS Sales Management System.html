@@ -2140,7 +2140,7 @@ document.addEventListener('mousedown',function(e){
 /* 테이블 */
 .wk-tbl{width:100%;border-collapse:collapse;font-size:12px;}
 .wk-tbl th{background:var(--bg);padding:8px 8px;text-align:center !important;color:var(--muted);font-weight:700;border-bottom:1.5px solid var(--border);white-space:nowrap;font-size:12px;}.wk-tbl td{text-align:center !important;vertical-align:middle;}
-.wk-tbl td{padding:8px 8px;text-align:center;border-bottom:0.5px solid var(--border);font-size:12px;}
+.wk-tbl td{padding:8px 8px;text-align:center !important;vertical-align:middle !important;border-bottom:0.5px solid var(--border);font-size:12px;}
 .wk-tdl{text-align:center!important;font-weight:700;color:var(--text);}
 /* 프로젝트/이슈 행 */
 .wk-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--border);}
@@ -5228,7 +5228,7 @@ function aRow(rep,ai,a){
   var _isOwn=(typeof session!=='undefined'&&session&&session.rep===rep)||(typeof session!=='undefined'&&session&&session.role==='admin');
   var _wkChecked=a.weeklyCheck&&a.weeklyCheck[_thisWkKey()]?'checked':'';
   return`<tr>
-    <td class="wk-chk-cell">${_isOwn?`<input type="checkbox" class="wk-act-chk" ${_wkChecked} onchange="_wkToggleActCheck('${rep}',${ai},this.checked)" style="width:15px;height:15px;cursor:pointer;accent-color:#1A56DB;" title="주간보고에 포함">`:'&nbsp;'}</td>
+    <td class="wk-chk-cell">${_isOwn?`<input type="checkbox" class="wk-act-chk" ${_wkChecked} onchange="_wkToggleActCheck('${rep}',${ai},this.checked)" style="width:15px;height:15px;cursor:pointer;accent-color:#1A56DB;vertical-align:middle;display:block;" title="주간보고에 포함">`:'&nbsp;'}</td>
     <td class="wk-no-cell" style="color:var(--muted);font-weight:600;font-size:12px;">${a.no||ai+1}</td>
     <td style="width:90px;vertical-align:middle;">
       <select style="width:100%;height:30px;box-sizing:border-box;" onchange="store.reps['${rep}'].activities[${ai}].type=this.value;autoSave()">${tOpts}</select>
@@ -8081,13 +8081,21 @@ async function _initSP() {
           if(_pid2==='pipeline'&&typeof renderPipeline==='function') renderPipeline();
           // 입력 페이지: 스크롤 위치 보존 후 재렌더
           if(_pid2==='input'&&typeof buildRepInputs==='function'){
+            // 스크롤 저장: 섹션별 + 페이지 전체
             var _iSections=document.querySelectorAll('.page.active .sec-body');
             var _iScrolls=[].map.call(_iSections,function(el){return el.scrollTop;});
+            var _iScrollIds=[].map.call(_iSections,function(el){return el.id||'';});
+            var _iPageScroll=(document.querySelector('.page.active')||{}).scrollTop||0;
             buildRepInputs();
-            requestAnimationFrame(function(){
-              var _newSections=document.querySelectorAll('.page.active .sec-body');
-              _newSections.forEach(function(el,i){ if(_iScrolls[i]>0) el.scrollTop=_iScrolls[i]; });
-            });
+            // DOM 완전 렌더 후 스크롤 복원 (300ms)
+            setTimeout(function(){
+              _iScrollIds.forEach(function(id,i){
+                var el=id?document.getElementById(id):document.querySelectorAll('.page.active .sec-body')[i];
+                if(el&&_iScrolls[i]>0) el.scrollTop=_iScrolls[i];
+              });
+              var _ap=document.querySelector('.page.active');
+              if(_ap&&_iPageScroll>0) _ap.scrollTop=_iPageScroll;
+            }, 300);
           }
           if(_pid2==='visits'){
             if(window._visitFilterDate && typeof filterVisitsByDate==='function'){
@@ -10234,7 +10242,7 @@ function _iRow(rep, idx, iss){
     +'</div></td>';
 
   // 체크박스: data 속성으로 이벤트 위임 (onchange 이스케이프 문제 회피)
-  var _issChkHtml=canEdit?'<input type="checkbox" class="wk-iss-chk" data-rep="'+r+'" data-idx="'+idx+'" '+(iss.weeklyCheck&&iss.weeklyCheck[_thisWkKey()]?'checked ':'')+' style="width:15px;height:15px;cursor:pointer;accent-color:#1A56DB;" title="주간보고에 포함">'+'&nbsp;':'&nbsp;';
+  var _issChkHtml=canEdit?'<input type="checkbox" class="wk-iss-chk" data-rep="'+r+'" data-idx="'+idx+'" '+(iss.weeklyCheck&&iss.weeklyCheck[_thisWkKey()]?'checked ':'')+' style="width:15px;height:15px;cursor:pointer;accent-color:#1A56DB;vertical-align:middle;display:block;" title="주간보고에 포함">'+'&nbsp;':'&nbsp;';
   // :'&nbsp;'; // (위 삼항연산자에 통합)
   return '<tr id="ir-'+rep+'-'+idx+'">'
     +'<td class="wk-chk-cell" style="display:table-cell;vertical-align:middle;text-align:center;">'+_issChkHtml+'</td>'    +'<td class="wk-no-cell" style="color:#94A3B8;font-weight:600;font-size:12px;">'+(iss.no||idx+1)+'</td>'    // 고객사
@@ -14365,6 +14373,7 @@ async function _wkSaveFeed(weekKey, rep, entries){
   try{
     var key=_sanitizeDKey(weekKey+'_'+rep);
     await _spSaveItem('weeklyFeed', key, {week:weekKey, rep:rep, entries:entries, savedAt:new Date().toISOString()});
+    _wk.lastSaveAt=Date.now(); // 저장 완료 시각 기록
   }catch(e){
     console.warn('[wk feed save error]',e);
     if(typeof showToast==='function') showToast('⚠️ 회의록 저장 실패 - 네트워크를 확인해주세요');
@@ -15565,10 +15574,12 @@ window._syncWeeklyFeed=async function(){
   var entries=await _wkLoadFeed(weekKey);
   // 변경 있으면 렌더
   var changed=JSON.stringify(entries)!==JSON.stringify(_wk.entries);
-  if(changed){
+  // 최근 5초 이내 저장했으면 SP 데이터로 덮어쓰지 않음 (삭제/수정 보호)
+  var _recentSave=_wk.lastSaveAt&&(Date.now()-_wk.lastSaveAt<5000);
+  if(changed && !_recentSave){
     _wk.entries=entries;
     if(_wk.view==='feed') _wkRenderFeed();
-    else _wkRenderReport(); // 보고서도 갱신
+    else _wkRenderReport();
     _wkUpdatePendingCnt();
   }
   // 알림 로드 (매번 최신 데이터)
