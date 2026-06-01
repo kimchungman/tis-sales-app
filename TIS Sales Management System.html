@@ -2204,7 +2204,7 @@ document.addEventListener('mousedown',function(e){
 .wk-nd-title{font-size:12px;font-weight:700;color:var(--text);}
 .wk-nd-clear{font-size:10px;color:var(--blue);cursor:pointer;border:none;background:none;}
 .wk-nd-list{max-height:300px;overflow-y:auto;}
-.wk-nd-item{padding:9px 12px;border-bottom:0.5px solid var(--border);cursor:pointer;display:flex;align-items:flex-start;gap:8px;transition:background .1s;}
+.wk-nd-item{padding:9px 12px;border-bottom:0.5px solid var(--border);cursor:pointer;display:flex;align-items:flex-start;gap:8px;transition:background .1s;border-left:3px solid var(--red);}
 .wk-nd-item:hover{background:var(--bg);}
 .wk-nd-item.unread{border-left:3px solid var(--blue);}
 .wk-nd-item.urgent{border-left:3px solid var(--red);}
@@ -2379,7 +2379,7 @@ document.addEventListener('mousedown',function(e){
           <span style="font-size:12px;font-weight:600;color:#1E5FBE;">접속</span>
           <span id="access-count-num" style="background:#4f7fff;color:white;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;min-width:18px;text-align:center;">0</span>
         </button>
-        <div id="access-popup" class="tb-dropdown" style="display:none;position:absolute;top:calc(100% + 8px);left:0;right:auto;min-width:240px;z-index:9999;">
+        <div id="access-popup" class="tb-dropdown" style="display:none;position:absolute;top:calc(100% + 8px);right:0;left:auto;min-width:280px;z-index:9999;">
           <div class="tb-dropdown-head">오늘 접속 현황</div>
           <div id="access-list" style="padding:6px;max-height:400px;overflow-y:auto;"></div>
         </div>
@@ -10171,9 +10171,9 @@ function _iRow(rep, idx, iss){
     +(canEdit?'<select class="_bsl-sel" size="1" id="ist-'+rep+'-'+idx+'" onchange="var cm={open:\'#DC2626\',closed:\'#0EA5A0\'};var lm={open:\'Open\',closed:\'Closed\'};var pc=cm[this.value]||\'#CBD5E1\';var sp=this.parentNode.querySelector(\'._bsl\');if(sp){sp.textContent=this.value?lm[this.value]:\'선택\';sp.style.color=pc;sp.style.borderColor=pc+\'60\';}iApplySt(this,this.value);store.reps[\''+r+'\'].issuesList['+idx+'].status=this.value;if(typeof extractIssues===\'function\'){extractIssues();renderIssues&&renderIssues();}autoSave&&autoSave();" style="position:absolute;inset:0;width:100%;height:100%;opacity:0 !important;z-index:2;cursor:pointer;font-family:inherit;">'+stOpts2+'</select>':'')
     +'</div></td>';
 
-  var _issChkHtml=canEdit
-    ?'<input type="checkbox" class="wk-iss-chk" '+(iss.weeklyCheck&&iss.weeklyCheck[_thisWkKey()]?'checked ':'')+' onchange="_wkToggleIssCheck(\''+r+'\','+idx+',this.checked)" style="width:15px;height:15px;cursor:pointer;accent-color:#1A56DB;" title="주간보고에 포함">'
-    :'&nbsp;';
+  // 체크박스: data 속성으로 이벤트 위임 (onchange 이스케이프 문제 회피)
+  var _issChkHtml=canEdit?'<input type="checkbox" class="wk-iss-chk" data-rep="'+r+'" data-idx="'+idx+'" '+(iss.weeklyCheck&&iss.weeklyCheck[_thisWkKey()]?'checked ':'')+' style="width:15px;height:15px;cursor:pointer;accent-color:#1A56DB;" title="주간보고에 포함">'+'&nbsp;':'&nbsp;';
+  // :'&nbsp;'; // (위 삼항연산자에 통합)
   return '<tr id="ir-'+rep+'-'+idx+'">'
     +'<td class="wk-chk-cell">'+_issChkHtml+'</td>'
     // 순번
@@ -14305,11 +14305,21 @@ async function _wkSaveFeed(weekKey, rep, entries){
     localStorage.setItem(lsKey, JSON.stringify({week:weekKey,rep:rep,entries:entries,savedAt:new Date().toISOString()}));
   }catch(e){}
   // SP 저장 (연결된 경우)
-  if(!window._isSPReady) return;
+  if(!window._isSPReady){
+    // SP 미연결 시 경고 (최초 1회)
+    if(!window._wkSpWarnShown){
+      window._wkSpWarnShown=true;
+      if(typeof showToast==='function') showToast('⚠️ SP 미연결: 회의록이 본인 기기에만 저장됩니다', 'warn');
+    }
+    return;
+  }
   try{
     var key=_sanitizeDKey(weekKey+'_'+rep);
     await _spSaveItem('weeklyFeed', key, {week:weekKey, rep:rep, entries:entries, savedAt:new Date().toISOString()});
-  }catch(e){ console.warn('[wk save]',e); }
+  }catch(e){
+    console.warn('[wk save]',e);
+    if(typeof showToast==='function') showToast('⚠️ 회의록 저장 실패. 네트워크를 확인해주세요');
+  }
 }
 
 async function _wkLoadFeed(weekKey){
@@ -14396,8 +14406,10 @@ async function _wkCreateNotifs(entry){
   var allNames=allReps.concat(guests);
   allNames.forEach(function(name){
     if(!name||name===entry.rep) return;
-    // @이름 형식으로만 감지 (이름만 있으면 false positive 방지)
-    if(text.indexOf('@'+name)>=0){
+    // @이름 감지 (mention span 포함)
+    var _plainText=text.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ');
+    var _spanText=text; // mention span에서도 감지
+    if(_plainText.indexOf('@'+name)>=0||_spanText.indexOf('>@'+name+'<')>=0){
       if(mentioned.indexOf(name)<0) mentioned.push(name);
     }
   });
@@ -14585,25 +14597,27 @@ function _wkGenContractNotifs(){
     var notifId='contract_'+c.id+'_'+diff;
     // 이미 있는지 확인 (로컬)
     if(_wk.notifications.some(function(n){return n.id===notifId;})) return;
-    if(diff!==null&&diff<=60&&diff>=0){
+    // 하자기간인 경우 endDate 지나도 정상 (관리기간 중)
+    if(c.managementType==='하자기간') return;
+    if(diff<=7&&diff>=0){
       _wk.notifications.unshift({
         id:notifId, type:'contract', read:false, urgent:true,
         title:'계약 만료 임박',
-        msg:'<b>'+c.client+'</b> '+c.projectName+' 계약 만료가 <b>'+diff+'일</b> 남았습니다. 즉시 갱신이 필요합니다.',
+        msg:'<b>'+c.client+'</b> '+c.projectName+' 만료 <b>D-'+diff+'일</b>. 즉시 갱신 필요',
         targetPage:'contract', time:_wkNowStr()
       });
-    // D-30~60 이내 (이미 위에서 처리)
+    } else if(diff<=60&&diff>=0){
       _wk.notifications.unshift({
         id:notifId, type:'contract', read:false, urgent:false,
         title:'계약 만료 예정',
-        msg:'<b>'+c.client+'</b> '+c.projectName+' 계약 만료가 <b>'+diff+'일</b> 남았습니다.',
+        msg:'<b>'+c.client+'</b> '+c.projectName+' 계약 만료 <b>D-'+diff+'일</b>',
         targetPage:'contract', time:_wkNowStr()
       });
-    } else if(diff!==null&&diff<0&&diff>=-60){
+    } else if(diff<0&&diff>=-60){
       _wk.notifications.unshift({
         id:notifId, type:'contract', read:false, urgent:true,
         title:'계약 공백 발생',
-        msg:'<b>'+c.client+'</b> 계약 만료 후 갱신이 되지 않았습니다. (D+'+Math.abs(diff)+')',
+        msg:'<b>'+c.client+'</b> 계약 만료 후 미갱신 (D+'+Math.abs(diff)+'일)',
         targetPage:'contract', time:_wkNowStr()
       });
     }
@@ -14874,7 +14888,6 @@ function _wkRenderContracts(){
     3:'background:#FEE2E2;color:#DC2626;font-weight:700;'  // 긴급
   };
   el.innerHTML=items.map(function(it){
-    return '<div class="wk-row" style="align-items:center;">'
     return '<div class="wk-row" style="align-items:center;gap:6px;">'
       +'<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;'+(typeStyle[it.type]||'')+';white-space:nowrap;flex-shrink:0;">'+it.type+'</span>'
       +'<span style="font-size:12px;font-weight:700;color:var(--text);width:110px;min-width:110px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+_wkEsc(it.client)+'">'+_wkEsc(it.client)+'</span>'
@@ -15086,7 +15099,17 @@ function _wkRenderIssues(){
       if(i.status!=='open') return;
       var due=i.dueDate?new Date(i.dueDate):null;
       var diff=due?Math.round((due-today)/86400000):999;
-      var iChecked=i.weeklyCheck&&i.weeklyCheck[_wkSelectedKey()];
+      var _selWk=_wkSelectedKey();
+      var _issIdx=(rd.issuesList||[]).indexOf(i);
+      // store에서 먼저 확인
+      var iChecked=!!(i.weeklyCheck&&i.weeklyCheck[_selWk]);
+      // localStorage 백업 확인 (정확한 인덱스 기반)
+      if(!iChecked&&_issIdx>=0){
+        try{
+          var _lsChk=JSON.parse(localStorage.getItem('wkIssChk_'+rep)||'{}');
+          if(_lsChk[_issIdx+'_'+_selWk]) iChecked=true;
+        }catch(e){}
+      }
       issues.push({rep:rep, client:i.client, content:i.content, diff:diff, sev:i.sev||'mid', isChecked:iChecked});
     });
   });
@@ -15434,17 +15457,24 @@ window._wkSubmitEntry=async function(){
   _wk.entries.push(entry);
   // 에디터 클리어
   editor.innerHTML='';
-  // SP 저장
+  // SP + localStorage 저장
   var weekKey=_wkThisKey();
   var myRep=_wkGetMyName();
-  // 내 이름의 entries만 저장 (충돌 방지)
   var myEntries=_wk.entries.filter(function(e){return e.rep===myRep;});
-  await _wkSaveFeed(weekKey, myRep, myEntries);
-  // 알림 생성
-  await _wkCreateNotifs(entry);
+  try{
+    await _wkSaveFeed(weekKey, myRep, myEntries);
+  }catch(e){ console.warn('[wk submit save]',e); }
+  // 알림 생성 (@멘션)
+  try{ await _wkCreateNotifs(entry); }catch(e){}
   // 렌더
   _wkRenderFeed();
-  if(typeof showToast==='function') showToast('✅ 등록되었습니다');
+  if(typeof showToast==='function'){
+    if(window._isSPReady){
+      showToast('✅ 등록 완료 (동기화됨)');
+    } else {
+      showToast('⚠️ 등록됨 (SP 미연결 - 다른 기기에서 안 보일 수 있음)');
+    }
+  }
   // 스크롤 최하단
   setTimeout(function(){
     var fl=document.getElementById('wk-feed-list');
@@ -15506,21 +15536,26 @@ window._syncWeeklyFeed=async function(){
   var fl=document.getElementById('wk-feed-list');
   if(rv) _wk.scrollReport=rv.scrollTop||0;
   if(fl) _wk.scrollFeed=fl.scrollTop||0;
-  var weekKey=_wkThisKey();
+  // 현재 주차에 맞는 feed 로드
+  var weekKey=_wk.weekMode==='last'?_wkLastKey():_wkThisKey();
   var entries=await _wkLoadFeed(weekKey);
   // 변경 있으면 렌더
-  if(JSON.stringify(entries)!==JSON.stringify(_wk.entries)){
+  var changed=JSON.stringify(entries)!==JSON.stringify(_wk.entries);
+  if(changed){
     _wk.entries=entries;
     if(_wk.view==='feed') _wkRenderFeed();
+    else _wkRenderReport(); // 보고서도 갱신
     _wkUpdatePendingCnt();
   }
-  // 알림 로드
+  // 알림 로드 (매번 최신 데이터)
   var _myN=_wkGetMyName();
   if(session&&_myN&&_myN!=='알 수 없음'){
     var notifs=await _wkLoadNotif(_myN);
-    _wk.notifications=notifs;
+    _wk.notifications=notifs||[];
     _wkGenContractNotifs();
-    _wkUpdateNotifBadge();
+    if(true){
+      _wkUpdateNotifBadge();
+    }
   }
 };
 
@@ -15600,6 +15635,16 @@ window._wkRenderReport=_wkRenderReport;
 window._wkRenderFeed=_wkRenderFeed;
 
 // 전역 클릭: 팝업 닫기
+
+// 이슈 체크박스 이벤트 위임 (이스케이프 문제 없는 방식)
+document.addEventListener('change', function(e){
+  var chk=e.target;
+  if(!chk.classList||!chk.classList.contains('wk-iss-chk')) return;
+  var rep=chk.getAttribute('data-rep');
+  var idx=parseInt(chk.getAttribute('data-idx'));
+  if(rep&&!isNaN(idx)) _wkToggleIssCheck(rep, idx, chk.checked);
+});
+
 document.addEventListener('click', function(e){
   if(!e.target.closest('#wk-notif-btn-global')&&!e.target.closest('#wk-notif-drop')){
     var drop=document.getElementById('wk-notif-drop');
@@ -15649,11 +15694,18 @@ window._wkToggleIssCheck=function(rep,idx,checked){
   var wk=_thisWkKey();
   if(checked) iss.weeklyCheck[wk]=true;
   else delete iss.weeklyCheck[wk];
+  // localStorage 백업 (sync 덮어씀 방지, 인덱스 기반)
+  try{
+    var _wkChkKey='wkIssChk_'+rep;
+    var _existing=JSON.parse(localStorage.getItem(_wkChkKey)||'{}');
+    var _lsIdxKey=idx+'_'+wk;
+    if(checked) _existing[_lsIdxKey]=true;
+    else delete _existing[_lsIdxKey];
+    localStorage.setItem(_wkChkKey, JSON.stringify(_existing));
+  }catch(e){}
   if(typeof autoSave==='function') autoSave();
-  // 주간회의 요약 화면 즉시 갱신
-  if(document.getElementById('page-weekly')&&
-     document.getElementById('page-weekly').classList.contains('active')&&
-     typeof _wkRenderReport==='function') _wkRenderReport();
+  // 즉시 렌더
+  if(typeof window._wkRenderReport==='function') window._wkRenderReport();
 };
 
 window._wkToggleActCheck=function(rep,ai,checked){
