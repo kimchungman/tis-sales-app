@@ -2116,7 +2116,7 @@ document.addEventListener('mousedown',function(e){
 .wk-ch{padding:10px 14px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;}
 .wk-ch-t{font-size:13px;font-weight:700;color:var(--text);}
 .wk-ch-s{font-size:11px;color:var(--muted);margin-left:auto;}
-.wk-cb{padding:12px 14px;}
+.wk-cb{padding:12px 14px;}.wk-cb#wk-contract-list{display:flex;flex-direction:column;gap:5px;}
 /* KPI */
 .wk-kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
 .wk-kpi{background:var(--bg);border-radius:8px;padding:12px 14px;border:1px solid var(--border);}
@@ -3712,8 +3712,17 @@ document.addEventListener('DOMContentLoaded',()=>{
         setTimeout(function(){
           if(typeof syncTeamData==='function') syncTeamData();
           if(typeof buildRepTabs==='function') buildRepTabs();
-  // 알림 버튼 헤더에 추가 (주간회의 모듈)
-  setTimeout(function(){ if(typeof _wkBuildNotifBtn==='function') _wkBuildNotifBtn(); }, 500);
+  // 로그인 직후 알림 로드
+  setTimeout(function(){
+    var _loginName=(session&&session.rep)||(session&&session.guestName)||'';
+    if(_loginName&&typeof _wkLoadNotif==='function'){
+      _wkLoadNotif(_loginName).then(function(items){
+        if(window._wk) window._wk.notifications=items||[];
+        if(typeof _wkGenContractNotifs==='function') _wkGenContractNotifs();
+        if(typeof _wkUpdateNotifBadge==='function') _wkUpdateNotifBadge();
+      }).catch(function(){});
+    }
+  }, 1500);
           // 입력 페이지 활성 상태일 때만 buildRepInputs 호출 (이중 빌드 방지)
           var _ip=document.getElementById('page-input');
           if(_ip&&_ip.classList.contains('active')&&typeof buildRepInputs==='function') buildRepInputs();
@@ -8001,8 +8010,17 @@ async function _initSP() {
           // 설정 변경됐으면 UI 갱신
           if(JSON.stringify({teams:TEAMS, teamReps:TEAM_REPS}) !== _settingsBefore){
             if(typeof buildRepTabs==='function') buildRepTabs();
-  // 알림 버튼 헤더에 추가 (주간회의 모듈)
-  setTimeout(function(){ if(typeof _wkBuildNotifBtn==='function') _wkBuildNotifBtn(); }, 500);
+  // 로그인 직후 알림 로드
+  setTimeout(function(){
+    var _loginName=(session&&session.rep)||(session&&session.guestName)||'';
+    if(_loginName&&typeof _wkLoadNotif==='function'){
+      _wkLoadNotif(_loginName).then(function(items){
+        if(window._wk) window._wk.notifications=items||[];
+        if(typeof _wkGenContractNotifs==='function') _wkGenContractNotifs();
+        if(typeof _wkUpdateNotifBadge==='function') _wkUpdateNotifBadge();
+      }).catch(function(){});
+    }
+  }, 1500);
             if(typeof buildRepBtns==='function') buildRepBtns();
             if(typeof renderRepManage==='function') renderRepManage();
             _changed = true;
@@ -8565,8 +8583,17 @@ async function _spLoadSettings() {
     } else {
       if(typeof applyCurrentTeam==='function') applyCurrentTeam(session.team);
       if(typeof buildRepTabs==='function') buildRepTabs();
-  // 알림 버튼 헤더에 추가 (주간회의 모듈)
-  setTimeout(function(){ if(typeof _wkBuildNotifBtn==='function') _wkBuildNotifBtn(); }, 500);
+  // 로그인 직후 알림 로드
+  setTimeout(function(){
+    var _loginName=(session&&session.rep)||(session&&session.guestName)||'';
+    if(_loginName&&typeof _wkLoadNotif==='function'){
+      _wkLoadNotif(_loginName).then(function(items){
+        if(window._wk) window._wk.notifications=items||[];
+        if(typeof _wkGenContractNotifs==='function') _wkGenContractNotifs();
+        if(typeof _wkUpdateNotifBadge==='function') _wkUpdateNotifBadge();
+      }).catch(function(){});
+    }
+  }, 1500);
     }
     // 현재 페이지가 input이면 담당자 탭 즉시 선택 (폴링 제거)
     var _inputPage = document.getElementById('page-input');
@@ -12209,7 +12236,7 @@ function addIssueRow(rep){
   if(!store.reps[rep].issuesList) store.reps[rep].issuesList=[];
   var idx=store.reps[rep].issuesList.length;
   var today=new Date().toISOString().split('T')[0];
-  store.reps[rep].issuesList.push({client:'',content:'',sev:'',status:'',regDate:today,dueDate:''});
+  store.reps[rep].issuesList.push({client:'',content:'',sev:'',status:'open',regDate:today,dueDate:''});
   var tbody=document.getElementById('it-'+rep);
   if(tbody) tbody.insertAdjacentHTML('beforeend',_iRow(rep,idx,store.reps[rep].issuesList[idx]));
   autoSave&&autoSave();
@@ -14299,69 +14326,41 @@ function _wkPrevKey(){
 // ── SP 저장/로드 ───────────────────────────────────
 async function _wkSaveFeed(weekKey, rep, entries){
   if(!weekKey||!rep) return;
-  // localStorage 항상 저장 (폴백 + 빠른 로드)
-  try{
-    var lsKey='wkFeed_'+weekKey+'_'+rep;
-    localStorage.setItem(lsKey, JSON.stringify({week:weekKey,rep:rep,entries:entries,savedAt:new Date().toISOString()}));
-  }catch(e){}
-  // SP 저장 (연결된 경우)
   if(!window._isSPReady){
-    // SP 미연결 시 경고 (최초 1회)
-    if(!window._wkSpWarnShown){
-      window._wkSpWarnShown=true;
-      if(typeof showToast==='function') showToast('⚠️ SP 미연결: 회의록이 본인 기기에만 저장됩니다', 'warn');
-    }
+    if(typeof showToast==='function') showToast('⚠️ SP 미연결 - 저장할 수 없습니다. 동기화 버튼을 눌러주세요');
     return;
   }
   try{
     var key=_sanitizeDKey(weekKey+'_'+rep);
     await _spSaveItem('weeklyFeed', key, {week:weekKey, rep:rep, entries:entries, savedAt:new Date().toISOString()});
   }catch(e){
-    console.warn('[wk save]',e);
-    if(typeof showToast==='function') showToast('⚠️ 회의록 저장 실패. 네트워크를 확인해주세요');
+    console.warn('[wk feed save error]',e);
+    if(typeof showToast==='function') showToast('⚠️ 회의록 저장 실패 - 네트워크를 확인해주세요');
   }
 }
 
 async function _wkLoadFeed(weekKey){
-  if(!weekKey) return [];
-  var all=[];
-  // localStorage 먼저 로드 (SP 미연결 시에도 동작)
+  if(!weekKey||!window._isSPReady) return [];
   try{
-    for(var k in localStorage){
-      if(k.indexOf('wkFeed_'+weekKey+'_')===0){
-        try{
-          var ld=JSON.parse(localStorage.getItem(k)||'{}');
-          if(ld.entries&&Array.isArray(ld.entries)) all=all.concat(ld.entries);
-        }catch(e){}
-      }
-    }
-  }catch(e){}
-  // SP 연결 시 병합
-  if(window._isSPReady){
-    try{
-      var url=_lUrl()+'?$select=Title,DataType,DataKey,Payload&$filter=DataType eq \'weeklyFeed\'&$top=500';
-      var res=await _spFetchAll(url);
-      var _items=res||[];
-      _items.forEach(function(item){
-        if(!item.Title||item.Title.indexOf('weeklyFeed_'+weekKey)!==0) return;
-        try{
-          var d=JSON.parse(item.Payload||'{}');
-          if(d.entries&&Array.isArray(d.entries)) all=all.concat(d.entries);
-        }catch(e){}
-      });
-    }catch(e){ console.warn('[wk load SP]',e); }
-  }
-  var seen={};
-  all=all.filter(function(e){ if(seen[e.id]) return false; seen[e.id]=true; return true; });
-  all.sort(function(a,b){ return (a.time||'').localeCompare(b.time||''); });
-  return all;
+    var url=_lUrl()+'?$select=Title,DataType,DataKey,Payload&$filter=DataType eq \'weeklyFeed\'&$top=500';
+    var res=await _spFetchAll(url);
+    var all=[];
+    (res||[]).forEach(function(item){
+      if(!item.Title||item.Title.indexOf('weeklyFeed_'+weekKey)!==0) return;
+      try{
+        var d=JSON.parse(item.Payload||'{}');
+        if(d.entries&&Array.isArray(d.entries)) all=all.concat(d.entries);
+      }catch(e){}
+    });
+    var seen={};
+    all=all.filter(function(e){ if(seen[e.id]) return false; seen[e.id]=true; return true; });
+    all.sort(function(a,b){ return (a.time||'').localeCompare(b.time||''); });
+    return all;
+  }catch(e){ console.warn('[wk load]',e); return []; }
 }
 
 async function _wkSaveNotif(rep, items){
-  if(!rep) return;
-  // localStorage 항상 저장
-  try{ localStorage.setItem('wkNotif_'+rep, JSON.stringify({rep:rep,items:items})); }catch(e){}
-  if(!window._isSPReady) return;
+  if(!rep||!window._isSPReady) return;
   try{
     var key=_sanitizeDKey('notif_'+rep);
     await _spSaveItem('weeklyNotif', key, {rep:rep, items:items, savedAt:new Date().toISOString()});
@@ -14369,27 +14368,16 @@ async function _wkSaveNotif(rep, items){
 }
 
 async function _wkLoadNotif(rep){
-  if(!rep) return [];
-  var items=[];
-  // localStorage 먼저
+  if(!rep||!window._isSPReady) return [];
   try{
-    var ls=localStorage.getItem('wkNotif_'+rep);
-    if(ls){ var ld=JSON.parse(ls); items=ld.items||[]; }
-  }catch(e){}
-  // SP 연결 시 병합
-  if(window._isSPReady){
-    try{
-      var _nkey=_sanitizeDKey('notif_'+rep);
-      var _ntitle='weeklyNotif_'+_nkey;
-      var url=_lUrl()+'?$select=Title,DataType,Payload&$filter=DataType eq \'weeklyNotif\' and Title eq \''+_ntitle+'\'&$top=5';
-      var res=await _spFetchAll(url);
-      if(res&&res.length){
-        var spD=JSON.parse((res[0].Payload)||'{}');
-        if((spD.items||[]).length>0) items=spD.items;
-      }
-    }catch(e){}
-  }
-  return items;
+    var _nkey=_sanitizeDKey('notif_'+rep);
+    var _ntitle='weeklyNotif_'+_nkey;
+    var url=_lUrl()+'?$select=Title,DataType,Payload&$filter=DataType eq \'weeklyNotif\' and Title eq \''+_ntitle+'\'&$top=5';
+    var res=await _spFetchAll(url);
+    if(!res||!res.length) return [];
+    var d=JSON.parse((res[0].Payload)||'{}');
+    return d.items||[];
+  }catch(e){ return []; }
 }
 
 // ── 알림 생성 ──────────────────────────────────────
@@ -14623,8 +14611,9 @@ function _wkGenContractNotifs(){
     }
   });
   _wk.notifications=_wk.notifications.slice(0,50);
-  // localStorage에 저장
-  if(session&&session.rep){try{localStorage.setItem('wkNotif_'+_wkGetMyName(),JSON.stringify({rep:_wkGetMyName(),items:_wk.notifications}));}catch(e){}}
+  // SP에 저장 (계약 알림)
+  var _myN3=_wkGetMyName();
+  if(_myN3&&_myN3!=='알 수 없음') _wkSaveNotif(_myN3, _wk.notifications);
   _wkUpdateNotifBadge();
 }
 
@@ -15096,20 +15085,12 @@ function _wkRenderIssues(){
     var rd=store&&store.reps&&store.reps[rep];
     if(!rd) return;
     (rd.issuesList||[]).forEach(function(i){
-      if(i.status!=='open') return;
+      if(i.status==='closed') return; // closed만 제외, 미설정('')/open 모두 포함
       var due=i.dueDate?new Date(i.dueDate):null;
       var diff=due?Math.round((due-today)/86400000):999;
       var _selWk=_wkSelectedKey();
-      var _issIdx=(rd.issuesList||[]).indexOf(i);
-      // store에서 먼저 확인
+      // store에서 직접 확인 (autoSave → SP → sync 로 최신 유지)
       var iChecked=!!(i.weeklyCheck&&i.weeklyCheck[_selWk]);
-      // localStorage 백업 확인 (정확한 인덱스 기반)
-      if(!iChecked&&_issIdx>=0){
-        try{
-          var _lsChk=JSON.parse(localStorage.getItem('wkIssChk_'+rep)||'{}');
-          if(_lsChk[_issIdx+'_'+_selWk]) iChecked=true;
-        }catch(e){}
-      }
       issues.push({rep:rep, client:i.client, content:i.content, diff:diff, sev:i.sev||'mid', isChecked:iChecked});
     });
   });
@@ -15694,17 +15675,9 @@ window._wkToggleIssCheck=function(rep,idx,checked){
   var wk=_thisWkKey();
   if(checked) iss.weeklyCheck[wk]=true;
   else delete iss.weeklyCheck[wk];
-  // localStorage 백업 (sync 덮어씀 방지, 인덱스 기반)
-  try{
-    var _wkChkKey='wkIssChk_'+rep;
-    var _existing=JSON.parse(localStorage.getItem(_wkChkKey)||'{}');
-    var _lsIdxKey=idx+'_'+wk;
-    if(checked) _existing[_lsIdxKey]=true;
-    else delete _existing[_lsIdxKey];
-    localStorage.setItem(_wkChkKey, JSON.stringify(_existing));
-  }catch(e){}
+  // 기존 앱과 동일: autoSave() → SP 저장
   if(typeof autoSave==='function') autoSave();
-  // 즉시 렌더
+  // 즉시 렌더 (주간회의 탭 열려있을 때)
   if(typeof window._wkRenderReport==='function') window._wkRenderReport();
 };
 
