@@ -2231,6 +2231,10 @@ document.addEventListener('mousedown',function(e){
 /* 순번 열 */
 .wk-no-cell{width:40px!important;text-align:center!important;vertical-align:middle!important;}
 </style>
+.wk-edit-btn{background:none;border:none;color:#94A3B8;font-size:11px;cursor:pointer;padding:2px 6px;border-radius:4px;}
+.wk-edit-btn:hover{background:#F1F5F9;color:#4f7fff;}
+.wk-del-btn{background:none;border:none;color:#94A3B8;font-size:11px;cursor:pointer;padding:2px 6px;border-radius:4px;}
+.wk-del-btn:hover{background:#FEE2E2;color:#DC2626;}
 </style>
 </head>
 <body>
@@ -8059,8 +8063,23 @@ async function _initSP() {
           var _syncScrollEl=(_activePg&&_activePg.querySelector('[style*="overflow-y:auto"],[style*="overflow-y: auto"]'))||_activePg||document.body;
           var _syncSt=_syncScrollEl.scrollTop||(_activePg?_activePg.scrollTop:0)||window.scrollY||0;
           if(_pid2==='dashboard'&&typeof renderDashboard==='function') renderDashboard();
-          if(_pid2==='issues'&&typeof renderIssues==='function') renderIssues();
+          if(_pid2==='issues'&&typeof renderIssues==='function'){
+            var _issScroll=document.querySelector('.sec-body');
+            var _issSt=_issScroll?_issScroll.scrollTop:0;
+            renderIssues();
+            if(_issSt>0) requestAnimationFrame(function(){ if(_issScroll) _issScroll.scrollTop=_issSt; });
+          }
           if(_pid2==='pipeline'&&typeof renderPipeline==='function') renderPipeline();
+          // 입력 페이지: 스크롤 위치 보존 후 재렌더
+          if(_pid2==='input'&&typeof buildRepInputs==='function'){
+            var _iSections=document.querySelectorAll('.page.active .sec-body');
+            var _iScrolls=[].map.call(_iSections,function(el){return el.scrollTop;});
+            buildRepInputs();
+            requestAnimationFrame(function(){
+              var _newSections=document.querySelectorAll('.page.active .sec-body');
+              _newSections.forEach(function(el,i){ if(_iScrolls[i]>0) el.scrollTop=_iScrolls[i]; });
+            });
+          }
           if(_pid2==='visits'){
             if(window._visitFilterDate && typeof filterVisitsByDate==='function'){
               filterVisitsByDate(window._visitFilterDate);
@@ -8109,6 +8128,13 @@ async function _initSP() {
       }catch(e){ console.warn('[sync]',e); }finally{
         window._syncRunning = false;
       }
+      // weekly 페이지는 _changed 여부와 무관하게 항상 동기화
+      try{
+        var _ap_wk=document.querySelector('.page.active');
+        if(_ap_wk&&_ap_wk.id==='page-weekly'&&typeof _syncWeeklyFeed==='function'){
+          _syncWeeklyFeed();
+        }
+      }catch(e){}
     }, 10000);
 
   } catch (err) {
@@ -10202,7 +10228,7 @@ function _iRow(rep, idx, iss){
   var _issChkHtml=canEdit?'<input type="checkbox" class="wk-iss-chk" data-rep="'+r+'" data-idx="'+idx+'" '+(iss.weeklyCheck&&iss.weeklyCheck[_thisWkKey()]?'checked ':'')+' style="width:15px;height:15px;cursor:pointer;accent-color:#1A56DB;" title="주간보고에 포함">'+'&nbsp;':'&nbsp;';
   // :'&nbsp;'; // (위 삼항연산자에 통합)
   return '<tr id="ir-'+rep+'-'+idx+'">'
-    +'<td class="wk-chk-cell">'+_issChkHtml+'</td>'    +'<td class="wk-no-cell" style="color:#94A3B8;font-weight:600;font-size:12px;">'+(iss.no||idx+1)+'</td>'    // 고객사
+    +'<td class="wk-chk-cell" style="display:table-cell;vertical-align:middle;text-align:center;">'+_issChkHtml+'</td>'    +'<td class="wk-no-cell" style="color:#94A3B8;font-weight:600;font-size:12px;">'+(iss.no||idx+1)+'</td>'    // 고객사
     +'<td style="width:175px;vertical-align:middle;text-align:center;">'
       +(canEdit?'<input type="text" value="'+(iss.client||'')+'" style="width:100%;height:28px;box-sizing:border-box;text-align:center;" onchange="store.reps[\''+r+'\'].issuesList['+idx+'].client=this.value;autoSave&&autoSave()">':'<span style="font-size:12px;">'+( iss.client||'─')+'</span>')
     +'</td>'
@@ -14789,27 +14815,32 @@ window._wkSetView=function(view){
 
 // ── 데이터 로드 ───────────────────────────────────
 async function _wkLoad(){
-  // loading 플래그
   if(_wk.loading){
     if(Date.now()-(_wk.loadingAt||0) < 3000) return;
   }
   _wk.loading=true; _wk.loadingAt=Date.now();
-  // 기존 데이터 즉시 렌더 (딜레이 없이)
-  _wkRenderReport();
-  _wkRenderFeed();
+  var mainKey=_wk.weekMode==='last'?_wkLastKey():_wkThisKey();
+  // sessionStorage 캐시로 즉시 표시
   try{
-    var mainKey=_wk.weekMode==='last'?_wkLastKey():_wkThisKey();
+    var _cached=sessionStorage.getItem('wk_entries_'+mainKey);
+    if(_cached&&_wk.entries.length===0){
+      _wk.entries=JSON.parse(_cached);
+      _wkRenderReport();
+      _wkRenderFeed();
+    } else {
+      _wkRenderReport();
+      _wkRenderFeed();
+    }
+  }catch(e){}
+  try{
     var prevKey=_wk.weekMode==='last'?null:_wkLastKey();
     var entries=await _wkLoadFeed(mainKey);
-    // SP에서 가져온 데이터가 있으면 갱신
-    if(entries.length>0 || _wk.entries.length===0){
+    if(entries.length>0||_wk.entries.length===0){
       _wk.entries=entries;
+      try{ sessionStorage.setItem('wk_entries_'+mainKey, JSON.stringify(entries)); }catch(e){}
     }
-    if(prevKey){
-      _wk.prevEntries=await _wkLoadFeed(prevKey);
-    } else {
-      _wk.prevEntries=[];
-    }
+    if(prevKey){ _wk.prevEntries=await _wkLoadFeed(prevKey); }
+    else { _wk.prevEntries=[]; }
     _wkRenderReport();
     _wkRenderFeed();
     _wkUpdatePendingCnt();
@@ -15116,29 +15147,41 @@ function _wkRenderFeed(){
 
 function _wkEntryHtml(entry){
   var pending=!entry.replies||!entry.replies.length;
+  var _isOwn=(session&&(session.rep===entry.rep||session.role==='admin'));
+  var _editBtns=_isOwn
+    ?'<button class="wk-edit-btn" onclick="_wkEditEntry(\''+entry.id+'\')">✏️ 수정</button>'
+     +'<button class="wk-del-btn" onclick="_wkDeleteEntry(\''+entry.id+'\')">🗑 삭제</button>'
+    :'';
   var repliesHtml='';
   if(entry.replies&&entry.replies.length){
     repliesHtml='<div class="wk-replies">'
-      +entry.replies.map(function(r){
-        return '<div class="wk-ri">'
+      +entry.replies.map(function(r,ri){
+        var _riOwn=(session&&(session.rep===r.rep||session.role==='admin'));
+        var _riEdit=_riOwn
+          ?'<button class="wk-edit-btn" style="font-size:10px;padding:1px 5px;" onclick="_wkEditReply(\''+entry.id+'\','+ri+')">✏️</button>'
+           +'<button class="wk-del-btn" style="font-size:10px;padding:1px 5px;" onclick="_wkDeleteReply(\''+entry.id+'\','+ri+')">🗑</button>'
+          :'';
+        return '<div class="wk-ri" id="wk-reply-'+entry.id+'-'+ri+'">'
           +'<div class="wk-ri-meta">'
             +'<span class="wk-ri-n">'+_wkEsc(r.displayName||r.rep)+'</span>'
             +'<span class="wk-role-badge '+(r.role==='admin'?'wk-rb-admin':'wk-rb-rep')+'">'+_wkEsc(r.roleLabel||'')+'</span>'
             +'<span class="wk-ri-t">'+_wkEsc(r.time||'')+'</span>'
+            +_riEdit
           +'</div>'
-          +'<div class="wk-ri-c">'+_wkSanitize(r.text||'')+'</div>'
+          +'<div class="wk-ri-c" id="wk-reply-cont-'+entry.id+'-'+ri+'">'+_wkSanitize(r.text||'')+'</div>'
           +'</div>';
       }).join('')
       +'</div>';
   }
-  return '<div class="wk-fi-item'+(pending?' pending':'')+'" id="wk-entry-'+entry.id+'">'
+  return '<div class="wk-fi-item'+(pending?' pending':'')+(entry._editing?' editing':'')+'" id="wk-entry-'+entry.id+'">'
     +'<div class="wk-fi-meta">'
       +'<span class="wk-fi-n">'+_wkEsc(entry.displayName||entry.rep)+'</span>'
       +'<span class="wk-role-badge '+(entry.role==='admin'?'wk-rb-admin':entry.role==='guest'?'wk-rb-guest':'wk-rb-rep')+'">'+_wkEsc(entry.roleLabel||'')+'</span>'
       +(pending?'<span class="wk-pend-badge">미답변</span>':'<span class="wk-done-badge">답변완료</span>')
       +'<span class="wk-fi-t">'+_wkEsc(entry.time||'')+'</span>'
+      +_editBtns
     +'</div>'
-    +'<div class="wk-fi-cont">'+_wkSanitize(entry.text||'')+'</div>'
+    +'<div class="wk-fi-cont" id="wk-entry-cont-'+entry.id+'">'+_wkSanitize(entry.text||'')+'</div>'
     +repliesHtml
     +'<div style="margin-top:5px;">'
       +'<button class="wk-reply-btn" onclick="_wkToggleReply(\''+entry.id+'\')">↩ 답변하기</button>'
@@ -15152,7 +15195,6 @@ function _wkEntryHtml(entry){
     +'</div>'
     +'</div>';
 }
-
 function _wkUpdatePendingCnt(){
   var cnt=_wk.entries.filter(function(e){return !e.replies||!e.replies.length;}).length;
   var el=document.getElementById('wk-pending-cnt');
@@ -15422,6 +15464,11 @@ window._wkSubmitEntry=async function(){
   }catch(e){ console.warn('[wk submit save]',e); }
   // 알림 생성 (@멘션)
   try{ await _wkCreateNotifs(entry); }catch(e){}
+  // 멘션 후 즉시 배지 갱신
+  var _myN=_wkGetMyName();
+  if(_myN&&_myN!=='알 수 없음'){
+    _wkLoadNotif(_myN).then(function(items){ _wk.notifications=items||[]; _wkGenContractNotifs(); _wkUpdateNotifBadge(); }).catch(function(){});
+  }
   // 렌더
   _wkRenderFeed();
   if(typeof showToast==='function'){
@@ -15478,8 +15525,15 @@ window._wkSubmitReply=async function(entryId){
     await _wkSaveFeed(weekKey, entryRep, repEntries);
   }
   await _wkSaveFeed(weekKey, myRep, myEntries);
-  // 답변 알림
+  // 답변 알림 + 즉시 배지 갱신
   await _wkCreateReplyNotif(entry, myRep);
+  var _myN2=_wkGetMyName();
+  if(_myN2&&_myN2!=='알 수 없음'){
+    _wkLoadNotif(_myN2).then(function(items){
+      _wk.notifications=items||[];
+      _wkUpdateNotifBadge();
+    }).catch(function(){});
+  }
   _wkRenderFeed();
   if(typeof showToast==='function') showToast('✅ 답변이 등록되었습니다');
 };
@@ -15600,6 +15654,105 @@ window._wkSetNotifications=function(items){
   _wk.notifications=items||[];
   _wkGenContractNotifs();
   _wkUpdateNotifBadge();
+};
+
+// ── 회의록/답변 수정·삭제 ─────────────────────────
+window._wkEditEntry=function(entryId){
+  var entry=_wk.entries.find(function(e){return e.id===entryId;});
+  if(!entry) return;
+  var cont=document.getElementById('wk-entry-cont-'+entryId);
+  if(!cont) return;
+  cont.innerHTML='<div class="rich-ed" contenteditable="true" id="wk-edit-ta-'+entryId
+    +'" style="min-height:60px;padding:8px;border:1.5px solid #4f7fff;border-radius:6px;'
+    +'font-size:13px;line-height:1.5;outline:none;background:var(--bg);">'
+    +_wkSanitize(entry.text||'')+'</div>'
+    +'<div style="margin-top:6px;display:flex;gap:6px;">'
+    +'<button class="wk-reply-submit" data-id="'+entryId
+    +'" onclick="window._wkSaveEntry(this.dataset.id)">저장</button>'
+    +'<button class="wk-reply-cancel" data-id="'+entryId
+    +'" onclick="window._wkCancelEntry(this.dataset.id)">취소</button>'
+    +'</div>';
+};
+window._wkCancelEntry=function(entryId){
+  var entry=_wk.entries.find(function(e){return e.id===entryId;});
+  if(!entry) return;
+  var cont=document.getElementById('wk-entry-cont-'+entryId);
+  if(cont) cont.innerHTML=_wkSanitize(entry.text||'');
+};
+window._wkSaveEntry=async function(entryId){
+  var entry=_wk.entries.find(function(e){return e.id===entryId;});
+  if(!entry) return;
+  var ed=document.getElementById('wk-edit-ta-'+entryId);
+  if(!ed) return;
+  var newText=_wkSanitize(ed.innerHTML);
+  if(!newText.trim()) return;
+  entry.text=newText; entry.editedAt=new Date().toISOString();
+  var wk=_wkThisKey(); var myRep=_wkGetMyName();
+  try{ await _wkSaveFeed(wk,myRep,_wk.entries.filter(function(e){return e.rep===myRep;})); }catch(e){}
+  try{ await _wkCreateNotifs(entry); }catch(e){}
+  var _myN=_wkGetMyName();
+  if(_myN&&_myN!=='알 수 없음') _wkLoadNotif(_myN).then(function(items){ _wk.notifications=items||[]; _wkGenContractNotifs(); _wkUpdateNotifBadge(); }).catch(function(){});
+  _wkRenderFeed();
+  if(typeof showToast==='function') showToast('✅ 수정되었습니다');
+};
+window._wkDeleteEntry=async function(entryId){
+  if(!confirm('이 회의록을 삭제하시겠습니까?')) return;
+  var idx=_wk.entries.findIndex(function(e){return e.id===entryId;});
+  if(idx<0) return;
+  _wk.entries.splice(idx,1);
+  var wk=_wkThisKey(); var myRep=_wkGetMyName();
+  try{ await _wkSaveFeed(wk,myRep,_wk.entries.filter(function(e){return e.rep===myRep;})); }catch(e){}
+  _wkRenderFeed();
+  if(typeof showToast==='function') showToast('🗑 삭제되었습니다');
+};
+window._wkEditReply=function(entryId,ri){
+  var entry=_wk.entries.find(function(e){return e.id===entryId;});
+  if(!entry||!entry.replies||!entry.replies[ri]) return;
+  var cont=document.getElementById('wk-reply-cont-'+entryId+'-'+ri);
+  if(!cont) return;
+  var r=entry.replies[ri];
+  cont.innerHTML='<textarea id="wk-redit-'+entryId+'-'+ri+'" rows="2" '
+    +'style="width:100%;box-sizing:border-box;padding:6px;border:1.5px solid #4f7fff;border-radius:6px;font-size:12px;resize:vertical;">'
+    +_wkEsc(_wkStripHtml(r.text||''))+'</textarea>'
+    +'<div style="margin-top:4px;display:flex;gap:6px;">'
+    +'<button class="wk-reply-submit" style="font-size:11px;" data-eid="'+entryId+'" data-ri="'+ri
+    +'" onclick="window._wkSaveReply(this.dataset.eid,+this.dataset.ri)">저장</button>'
+    +'<button class="wk-reply-cancel" style="font-size:11px;" data-eid="'+entryId+'" data-ri="'+ri
+    +'" onclick="window._wkCancelReply(this.dataset.eid,+this.dataset.ri)">취소</button>'
+    +'</div>';
+  var ta=document.getElementById('wk-redit-'+entryId+'-'+ri);
+  if(ta) ta.focus();
+};
+window._wkCancelReply=function(entryId,ri){
+  var entry=_wk.entries.find(function(e){return e.id===entryId;});
+  if(!entry||!entry.replies||!entry.replies[ri]) return;
+  var cont=document.getElementById('wk-reply-cont-'+entryId+'-'+ri);
+  if(cont) cont.innerHTML=_wkSanitize(entry.replies[ri].text||'');
+};
+window._wkSaveReply=async function(entryId,ri){
+  var entry=_wk.entries.find(function(e){return e.id===entryId;});
+  if(!entry||!entry.replies||!entry.replies[ri]) return;
+  var ta=document.getElementById('wk-redit-'+entryId+'-'+ri);
+  if(!ta||!ta.value.trim()) return;
+  entry.replies[ri].text=_wkSanitize(ta.value);
+  entry.replies[ri].editedAt=new Date().toISOString();
+  var wk=_wkThisKey(); var eRep=entry.rep; var myRep=_wkGetMyName();
+  if(eRep!==myRep) try{ await _wkSaveFeed(wk,eRep,_wk.entries.filter(function(e){return e.rep===eRep;})); }catch(e){}
+  try{ await _wkSaveFeed(wk,myRep,_wk.entries.filter(function(e){return e.rep===myRep;})); }catch(e){}
+  try{ await _wkCreateReplyNotif(entry,myRep); }catch(e){}
+  _wkRenderFeed();
+  if(typeof showToast==='function') showToast('✅ 답변이 수정되었습니다');
+};
+window._wkDeleteReply=async function(entryId,ri){
+  if(!confirm('이 답변을 삭제하시겠습니까?')) return;
+  var entry=_wk.entries.find(function(e){return e.id===entryId;});
+  if(!entry||!entry.replies) return;
+  entry.replies.splice(ri,1);
+  var wk=_wkThisKey(); var eRep=entry.rep; var myRep=_wkGetMyName();
+  if(eRep!==myRep) try{ await _wkSaveFeed(wk,eRep,_wk.entries.filter(function(e){return e.rep===eRep;})); }catch(e){}
+  try{ await _wkSaveFeed(wk,myRep,_wk.entries.filter(function(e){return e.rep===myRep;})); }catch(e){}
+  _wkRenderFeed();
+  if(typeof showToast==='function') showToast('🗑 답변이 삭제되었습니다');
 };
 
 // 전역 클릭: 팝업 닫기
