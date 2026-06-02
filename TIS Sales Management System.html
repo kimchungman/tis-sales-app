@@ -2310,7 +2310,6 @@ document.addEventListener('mousedown',function(e){
       <div style="width:44px;height:44px;background:#4f7fff;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
         <span style="color:white;font-size:15px;font-weight:900;letter-spacing:-0.5px;">TIS</span>
       </div>
-  <div id="banner-bar"></div>
       <!-- 텍스트 -->
       <div style="line-height:1.2;">
         <div style="font-size:10px;font-weight:600;color:#6b8ac9;letter-spacing:0.02em;margin-bottom:3px;">TIS · Business Development</div>
@@ -2370,7 +2369,7 @@ document.addEventListener('mousedown',function(e){
       <span id="sp-status" style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:500;cursor:default;transition:all 0.2s;"></span>
       <span id="save-indicator" style="display:none;"></span>
       <div style="width:1px;height:18px;background:#E5E7EB;flex-shrink:0;"></div>
-      <input type="date" id="mtg-date" style="height:30px;width:120px;box-sizing:border-box;padding:0 8px;border-radius:6px;border:0.5px solid #E5E7EB;font-size:12px;font-weight:500;color:#374151;background:white;cursor:pointer;font-family:inherit;transition:border-color 0.15s;" onfocus="this.style.borderColor='#4f7fff'" onblur="this.style.borderColor='#E5E7EB'">
+      <input type="date" id="mtg-date" style="height:30px;width:104px;box-sizing:border-box;padding:0 4px;border-radius:6px;border:0.5px solid #E5E7EB;font-size:12px;font-weight:500;color:#374151;background:white;cursor:pointer;font-family:inherit;transition:border-color 0.15s;text-align:center;" onfocus="this.style.borderColor='#4f7fff'" onblur="this.style.borderColor='#E5E7EB'">
 
 
         <button id="refresh-btn" onclick="manualRefresh()" title="동기화" style="display:flex;align-items:center;justify-content:center;gap:5px;height:30px;padding:0 10px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;cursor:pointer;transition:all 0.15s;font-family:inherit;" onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='#fff'">
@@ -2401,6 +2400,7 @@ document.addEventListener('mousedown',function(e){
     </div>
   </div>
   
+  <div id="banner-bar" style="display:none;"></div>
   <div class="content">
 
   <!-- DASHBOARD -->
@@ -7156,11 +7156,10 @@ let saveTimer = null;
 // ══ 배너 공지 ══
 window._dismissBanner=function(){
   var b=authCfg&&authCfg.banner;
-  if(!b) return;
-  var _id=b.id||(b.text||'').slice(0,20);
-  try{ localStorage.setItem('_tis_banner_dismissed',_id); }catch(e){}
+  var _id=(b&&b.deployedAt)||'dismissed';
+  try{ localStorage.setItem('_tis_banner_dismissed', _id); }catch(e){}
   var el=document.getElementById('banner-bar');
-  if(el) el.style.display='none';
+  if(el){ el.style.display='none'; el.innerHTML=''; }
 };
 
 function loadBanner(){
@@ -7168,16 +7167,20 @@ function loadBanner(){
   if(!el) return;
   var b=authCfg&&authCfg.banner;
   if(!b||!b.active||!b.text){ el.style.display='none'; return; }
-  var _bid=b.id||(b.text||'').slice(0,20);
-  var _dis=''; try{ _dis=localStorage.getItem('_tis_banner_dismissed')||'';}catch(e){}
-  if(_dis===_bid){ el.style.display='none'; return; }
-  var _bg=b.bg||'#EFF6FF'; var _tc=b.color||'#1E40AF';
-  el.style.cssText='display:flex;align-items:center;gap:8px;padding:8px 12px;margin:0 16px 8px;border-radius:7px;background:'+_bg+';border:0.5px solid #BFDBFE;';
-  el.innerHTML='<span style="font-size:13px;flex-shrink:0;">📢</span>'
-    +'<span style="font-size:12px;font-weight:500;color:'+_tc+';flex:1;line-height:1.5;word-break:keep-all;">'+(b.text||'')+'</span>'
-    +'<span style="background:#DBEAFE;color:#1E3A8A;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;white-space:nowrap;">공지</span>'
-    +'<button onclick="_dismissBanner()" style="background:none;border:none;cursor:pointer;color:#93C5FD;font-size:16px;padding:0 3px;line-height:1;">×</button>';
+  var _stored=''; try{ _stored=localStorage.getItem('_tis_banner_dismissed')||''; }catch(e){}
+  var _cur=(b.deployedAt)||'';
+  if(_stored && _stored===_cur){ el.style.display='none'; return; }
+  var _bg=b.bg||'#EFF6FF';
+  var _tc=b.color||'#1E40AF';
+  el.style.cssText='display:flex;align-items:center;gap:8px;padding:8px 12px;'
+    +'background:'+_bg+';border-bottom:0.5px solid #BFDBFE;';
+  el.innerHTML='<span style="font-size:13px;flex-shrink:0;padding-left:16px;">📢</span>'
+    +'<span style="font-size:12px;font-weight:500;color:'+_tc+';flex:1;line-height:1.5;word-break:keep-all;padding:0 8px;">'+(b.text||'')+'</span>'
+    +'<span style="background:#DBEAFE;color:#1E3A8A;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;white-space:nowrap;flex-shrink:0;">공지</span>'
+    +'<button onclick="_dismissBanner()" title="닫기" style="background:none;border:none;cursor:pointer;color:#93C5FD;font-size:18px;padding:0 12px 0 8px;line-height:1;flex-shrink:0;">×</button>';
 }
+
+
 function deployBanner(){
   var _be=document.getElementById('cfg-banner-editor');
   var _bt=document.getElementById('cfg-banner-text');
@@ -7188,7 +7191,7 @@ function deployBanner(){
   const weight=(document.getElementById('cfg-banner-weight')||{}).value||'400';
   const color=(document.getElementById('cfg-banner-color')||{}).value||'#1E293B';
   const bg=(document.getElementById('cfg-banner-bg')||{}).value||'#EFF6FF';
-  authCfg.banner={text,font,size,weight,color,bg,scheduledAt:_schedAt,active:true};
+  authCfg.banner={text,font,size,weight,color,bg,scheduledAt:_schedAt,active:true,deployedAt:new Date().toISOString()};
   saveAuthCfg();
   loadBanner();
   showToast('✅ 공지가 배포됐습니다.');
