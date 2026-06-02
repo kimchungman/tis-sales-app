@@ -4335,18 +4335,38 @@ function showPage(id,navEl){
       var cfg=document.getElementById('cfg-date');if(cfg&&!cfg.value){var md=document.getElementById('mtg-date');if(md)cfg.value=md.value;}
     },50);
   }
+  // 현재 페이지 스크롤 저장
+  if(!window._pageScrollMap) window._pageScrollMap={};
+  var _curPg=document.querySelector('.page.active');
+  if(_curPg){
+    window._pageScrollMap[_curPg.id]=_curPg.scrollTop||0;
+    _curPg.querySelectorAll('.sec-body').forEach(function(sb,si){
+      if(!window._pageScrollMap[_curPg.id+'_sb']) window._pageScrollMap[_curPg.id+'_sb']=[];
+      window._pageScrollMap[_curPg.id+'_sb'][si]=sb.scrollTop||0;
+    });
+  }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(function(n){
     n.classList.remove('active');
-    n.style.background=''; // inline 스타일 초기화
+    n.style.background='';
     n.style.color='';
   });
-  // 모든 페이지 숨기기
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');p.style.display='none';});
   var _pg=document.getElementById('page-'+id);
   if(!_pg) return;
   _pg.classList.add('active');
   _pg.style.display='block';
+  // 돌아올 때 스크롤 복원
+  var _savedPgScroll=window._pageScrollMap&&window._pageScrollMap[_pg.id]||0;
+  if(_savedPgScroll>0) requestAnimationFrame(function(){ _pg.scrollTop=_savedPgScroll; });
+  var _savedSbScrolls=window._pageScrollMap&&window._pageScrollMap[_pg.id+'_sb']||[];
+  if(_savedSbScrolls.length){
+    setTimeout(function(){
+      _pg.querySelectorAll('.sec-body').forEach(function(sb,si){
+        if(_savedSbScrolls[si]>0) sb.scrollTop=_savedSbScrolls[si];
+      });
+    }, 100);
+  }
   if(navEl)navEl.classList.add('active');
   if(pgMeta[id]){
     var _pt=document.getElementById('pg-title');
@@ -8089,23 +8109,33 @@ async function _initSP() {
             if(_issSt>0) requestAnimationFrame(function(){ if(_issScroll) _issScroll.scrollTop=_issSt; });
           }
           if(_pid2==='pipeline'&&typeof renderPipeline==='function') renderPipeline();
-          // 입력 페이지: buildRepInputs는 스크롤 보존 후 호출
+          // 입력 페이지: buildRepInputs는 사용자가 main 탭일 때만 실행
           if(_pid2==='input'&&typeof buildRepInputs==='function'){
-            var _inpPage=document.querySelector('.page.active');
-            var _secBodies=_inpPage?[].slice.call(_inpPage.querySelectorAll('.sec-body')):[];
-            var _savedScrolls=_secBodies.map(function(el){return {el:el,top:el.scrollTop};});
-            var _pageTop=_inpPage?_inpPage.scrollTop:0;
-            buildRepInputs();
-            // 500ms 후 복원 (override 체인 완전 완료 보장)
-            setTimeout(function(){
-              _savedScrolls.forEach(function(s){ if(s.top>0) s.el.scrollTop=s.top; });
-              if(_inpPage&&_pageTop>0) _inpPage.scrollTop=_pageTop;
-              // 새로 생성된 섹션도 복원 (DOM 재생성 시)
-              var _newBodies=_inpPage?[].slice.call(_inpPage.querySelectorAll('.sec-body')):[];
-              _newBodies.forEach(function(el,i){
-                if(_savedScrolls[i]&&_savedScrolls[i].top>0) el.scrollTop=_savedScrolls[i].top;
-              });
-            }, 500);
+            var _curVTab=window._activeVTab;
+            // 사용자가 non-main 탭 사용 중이면 DOM 재빌드 완전 건너뜀 (탭 이동 방지)
+            if(_curVTab&&_curVTab.tab&&_curVTab.tab!=='main'){
+              // 데이터는 store에 이미 반영됨 - UI만 유지
+            } else {
+              var _inpPage=document.querySelector('.page.active');
+              var _secBodies=_inpPage?[].slice.call(_inpPage.querySelectorAll('.sec-body')):[];
+              var _savedScrolls=_secBodies.map(function(el){return {el:el,top:el.scrollTop};});
+              var _pageTop=_inpPage?_inpPage.scrollTop:0;
+              var _savedVT2=_curVTab?{rep:_curVTab.rep,tab:_curVTab.tab}:null;
+              buildRepInputs();
+              setTimeout(function(){
+                // 탭 복원
+                if(_savedVT2&&typeof window._switchVTab==='function'){
+                  window._switchVTab(_savedVT2.rep,_savedVT2.tab);
+                }
+                // 스크롤 복원
+                var _newBodies=_inpPage?[].slice.call(_inpPage.querySelectorAll('.sec-body')):[];
+                _newBodies.forEach(function(el,i){
+                  var _st=_savedScrolls[i]?_savedScrolls[i].top:0;
+                  if(_st>0) el.scrollTop=_st;
+                });
+                if(_inpPage&&_pageTop>0) _inpPage.scrollTop=_pageTop;
+              }, 500);
+            }
           }
           if(_pid2==='visits'){
             if(window._visitFilterDate && typeof filterVisitsByDate==='function'){
@@ -8139,7 +8169,8 @@ async function _initSP() {
             }).catch(function(){});
           }
           // 계약 관리 vtab: 데이터 변경 시만 재빌드
-          var _ivt2=window._intendedVTab;
+          // 계약 패널만 부분 업데이트 (탭 이동 없음)
+          var _ivt2=window._activeVTab||window._intendedVTab;
           if(_ivt2&&_ivt2.tab==='contract'&&_ivt2.rep){
             if(typeof _rebuildContractPanel==='function') _rebuildContractPanel(_ivt2.rep);
           }
@@ -12766,7 +12797,12 @@ window.renderVisits=function(){
     +'</table></div>'+pagination+'</div></div>';
 };
 
-window.changeVisitCalMonth=function(delta){ _visitCalDate.setMonth(_visitCalDate.getMonth()+delta); renderVisits(); };
+window.changeVisitCalMonth=function(delta){
+  if(!_visitCalDate||!(_visitCalDate instanceof Date)) _visitCalDate=new Date();
+  var _newM=_visitCalDate.getMonth()+delta;
+  _visitCalDate=new Date(_visitCalDate.getFullYear(), _newM, 1);
+  if(typeof renderVisits==='function') renderVisits();
+};
 
 window.filterVisitsByDate=function(dateStr){
   window._visitFilterDate = dateStr; // 날짜 필터 상태 유지
@@ -14703,10 +14739,12 @@ function _wkGenContractNotifs(){
     var endD=c.endDate?new Date(c.endDate):null;
     if(!endD) return;
     var diff=Math.round((endD-today)/86400000);
-    var notifId='contract_'+c.id;  // 안정적 ID (diff 제외)
-    // 이미 같은 계약 알림 있으면 스킵 (읽음 상태 보존됨)
+    var notifId='contract_'+c.id;
+    // 사용자가 삭제한 알림은 재생성 안 함
+    var _delCheck=typeof _wkGetDeletedNotifIds==='function'?_wkGetDeletedNotifIds():{};
+    if(_delCheck[notifId]) return;
+    // 이미 같은 계약 알림 있으면 스킵
     if(_wk.notifications.some(function(n){return n.id===notifId;})) return;
-    // 이전에 읽었는지 확인 (diff가 바뀌어도 같은 계약이면 읽음 유지)
     var _wasRead=!!_contractReadMap['contract_'+c.id];
     // 하자기간인 경우 endDate 지나도 정상 (관리기간 중)
     if(c.managementType==='하자기간') return;
