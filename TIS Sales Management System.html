@@ -2399,6 +2399,7 @@ document.addEventListener('mousedown',function(e){
       </div>
     </div>
   </div>
+  
   <div class="content">
 
   <!-- DASHBOARD -->
@@ -3085,7 +3086,7 @@ document.addEventListener('mousedown',function(e){
             </div>
             <div>
               <label style="font-size:11px;color:var(--muted);">배경색</label>
-              <input id="cfg-banner-bg" type="color" value="#FEF9C3" style="width:100%;height:35px;border:1px solid var(--border);border-radius:7px;padding:2px;margin-top:4px;">
+              <input id="cfg-banner-bg" type="color" value="#EFF6FF" style="width:100%;height:35px;border:1px solid var(--border);border-radius:7px;padding:2px;margin-top:4px;">
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap;padding:10px 12px;background:#F8FAFC;border-radius:8px;border:1px solid var(--border);">
@@ -4656,7 +4657,7 @@ function renderDashIssues(){
       if(!teamIssues.length) return;
       html+='<div style="margin-bottom:14px;"><div style="font-size:12px;font-weight:700;color:#0A1628;background:#EFF6FF;padding:6px 12px;border-radius:8px;margin-bottom:8px;">📂 '+team+'</div>';
       teamIssues.forEach(function(i){
-        var b=i.sev==='high'?'<span style="background:#FEE2E2;color:#DC2626;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;">🔴 높음</span>':'<span style="background:#FEF9C3;color:#D97706;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;">🟡 중간</span>';
+        var b=i.sev==='high'?'<span style="background:#FEE2E2;color:#DC2626;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;">🔴 높음</span>':'<span style="background:#EFF6FF;color:#D97706;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;">🟡 중간</span>';
         html+='<div style="background:white;border:1px solid #F1F5F9;border-radius:8px;padding:10px 12px;margin-bottom:6px;">';
         html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'+b+'<strong style="font-size:12px;">'+(i.client||i.rep||'')+'</strong><span style="font-size:11px;color:#94A3B8;">│ '+i.rep+'</span></div>';
         html+='<div style="font-size:12px;color:#374151;line-height:1.6;text-align:left !important;white-space:pre-wrap !important;word-break:break-word;vertical-align:top;">'+_renderRich(i.content||'─')+'</div></div>';
@@ -4671,7 +4672,7 @@ function renderDashIssues(){
       var color=typeof getRepColor==='function'?getRepColor(rep):'#1E5FBE';
       html+='<div style="margin-bottom:14px;"><div style="font-size:12px;font-weight:700;background:#F8FAFF;border-left:3px solid '+color+';padding:6px 12px;border-radius:0 8px 8px 0;margin-bottom:8px;">'+rep+'</div>';
       repIssues.forEach(function(i){
-        var b=i.sev==='high'?'<span style="background:#FEE2E2;color:#DC2626;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;">🔴 높음</span>':'<span style="background:#FEF9C3;color:#D97706;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;">🟡 중간</span>';
+        var b=i.sev==='high'?'<span style="background:#FEE2E2;color:#DC2626;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;">🔴 높음</span>':'<span style="background:#EFF6FF;color:#D97706;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;">🟡 중간</span>';
         html+='<div style="background:white;border:1px solid #F1F5F9;border-radius:8px;padding:10px 12px;margin-bottom:6px;">';
         html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'+b+'<strong style="font-size:12px;">'+(i.client||'')+'</strong></div>';
         html+='<div style="font-size:12px;color:#374151;line-height:1.6;text-align:left !important;white-space:pre-wrap !important;word-break:break-word;vertical-align:top;">'+_renderRich(i.content||'─')+'</div></div>';
@@ -7161,7 +7162,7 @@ function deployBanner(){
   const size=(document.getElementById('cfg-banner-size')||{}).value||'12px';
   const weight=(document.getElementById('cfg-banner-weight')||{}).value||'400';
   const color=(document.getElementById('cfg-banner-color')||{}).value||'#1E293B';
-  const bg=(document.getElementById('cfg-banner-bg')||{}).value||'#FEF9C3';
+  const bg=(document.getElementById('cfg-banner-bg')||{}).value||'#EFF6FF';
   authCfg.banner={text,font,size,weight,color,bg,scheduledAt:_schedAt,active:true};
   saveAuthCfg();
   loadBanner();
@@ -7181,8 +7182,8 @@ function loadBanner(){
   if(!b||!b.active||!b.text){el.style.display='none';return;}
   el.style.cssText='display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:8px;'
     +'max-width:600px;min-width:160px;flex-shrink:1;'
-    +'background:'+(b.bg||'#FEF9C3')+';'
-    +'border:1px solid '+((b.bg||'#FEF9C3').replace('#','')>'aaaaaa'?'#E5E7EB':'#D1D5DB')+';';
+    +'background:'+(b.bg||'#EFF6FF')+';'
+    +'border:1px solid '+((b.bg||'#EFF6FF').replace('#','')>'aaaaaa'?'#E5E7EB':'#D1D5DB')+';';
   // 최대 2줄: -webkit-line-clamp 사용
   el.innerHTML='<span style="font-size:13px;flex-shrink:0;margin-top:1px;">📢</span>'
     +'<span style="font-size:13px;font-weight:500;color:#1E293B;line-height:1.5;'
@@ -7396,7 +7397,7 @@ document.addEventListener('click',function(ev){
   if(pop&&pop.style.display!=='none'&&!pop.contains(ev.target)&&btn&&!btn.contains(ev.target)){
     pop.style.display='none';
   }
-});
+}, true); // capture=true: stopPropagation 우회
 
 
 function applyTheme(t){
