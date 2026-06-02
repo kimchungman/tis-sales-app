@@ -2244,6 +2244,10 @@ document.addEventListener('mousedown',function(e){
 .wk-chk-cell input[type=checkbox]{margin:0;display:block;margin:0 auto;}
 /* 순번 열 */
 .wk-no-cell{width:40px!important;text-align:center!important;vertical-align:middle!important;}
+.wk-act-wrap{position:relative;display:inline-flex;align-items:center;margin-left:auto;flex-shrink:0;}
+.wk-act-trigger{background:none;border:none;color:#94A3B8;font-size:18px;font-weight:700;cursor:pointer;width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;transition:background .15s;padding:0;}
+.wk-act-trigger:hover{background:#F1F5F9;color:#374151;}
+.wk-act-sm{width:22px;height:22px;font-size:15px;}
 </style>
 </head>
 <body>
@@ -10299,7 +10303,7 @@ function _iRow(rep, idx, iss){
         +'<div class="sec-head"><h3>'+rep+' — 이슈사항</h3>'
         +'<button class="add-btn" onclick="addIssueRow(\''+rep+'\')">&#xFF0B; 추가</button></div>'
         +'<div class="sec-body"><div style="overflow-x:auto;overflow-y:auto;max-height:320px;-webkit-overflow-scrolling:touch;">'
-        +'<table class="dt" style="min-width:max-content;table-layout:fixed;width:100%;">'        +'<colgroup>'        +'<col style="width:30px;">'        +'<col style="width:40px;">'        +'<col style="width:175px;">'        +'<col style="min-width:280px;">'        +'<col style="width:110px;">'        +'<col style="width:130px;">'        +'<col style="width:100px;">'        +'<col style="width:100px;">'        +'<col style="width:34px;">'        +'</colgroup>'
+        +'<table class="dt" style="min-width:max-content;width:100%;">'
         +'<thead style="position:sticky;top:0;z-index:5;background:#F8FAFC;"><tr>'
         +'<th class="wk-chk-cell" style="background:#F8FAFC;white-space:nowrap;" title="주간보고 포함">📋</th>'
         +'<th class="wk-no-cell" style="background:#F8FAFC;white-space:nowrap;">No</th>'
@@ -12384,7 +12388,7 @@ function _vRow(rep,idx,v){
         +(canAdd?'<button class="add-btn" onclick="addVisit(\''+rep+'\')">&#xFF0B; 접점 추가</button>':'')
         +'</div>'
         +'<div class="sec-body"><div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 340px);min-height:300px;-webkit-overflow-scrolling:touch;">'
-        +'<table class="dt" style="min-width:max-content;table-layout:fixed;width:100%;">'        +'<colgroup>'        +'<col style="width:30px;">'        +'<col style="width:40px;">'        +'<col style="width:175px;">'        +'<col style="min-width:280px;">'        +'<col style="width:110px;">'        +'<col style="width:130px;">'        +'<col style="width:100px;">'        +'<col style="width:100px;">'        +'<col style="width:34px;">'        +'</colgroup>'
+        +'<table class="dt" style="min-width:max-content;width:100%;">'
         +'<thead style="position:sticky;top:0;z-index:5;"><tr>'
         +'<th style="'+BG+'width:100px;text-align:center;">접점일자</th>'
         +'<th style="'+BG+'width:160px;text-align:center;">고객사명</th>'
@@ -14367,13 +14371,20 @@ function _wkPrevKey(){
 async function _wkSaveFeed(weekKey, rep, entries){
   if(!weekKey||!rep) return;
   if(!window._isSPReady){
-    if(typeof showToast==='function') showToast('⚠️ SP 미연결 - 저장할 수 없습니다. 동기화 버튼을 눌러주세요');
+    if(typeof showToast==='function') showToast('⚠️ SP 미연결 - 저장할 수 없습니다.');
     return;
   }
   try{
     var key=_sanitizeDKey(weekKey+'_'+rep);
+    var _lockKey='weeklyFeed_'+key;
+    // 잠금 해제 대기 (최대 5초) - 진행 중인 저장 완료 후 저장
+    var _waited=0;
+    while(window._spSaveLocks&&window._spSaveLocks[_lockKey]&&_waited<5000){
+      await new Promise(function(r){ setTimeout(r,100); });
+      _waited+=100;
+    }
     await _spSaveItem('weeklyFeed', key, {week:weekKey, rep:rep, entries:entries, savedAt:new Date().toISOString()});
-    _wk.lastSaveAt=Date.now(); // 저장 완료 시각 기록
+    _wk.lastSaveAt=Date.now();
   }catch(e){
     console.warn('[wk feed save error]',e);
     if(typeof showToast==='function') showToast('⚠️ 회의록 저장 실패 - 네트워크를 확인해주세요');
@@ -14385,14 +14396,24 @@ async function _wkLoadFeed(weekKey){
   try{
     var url=_lUrl()+'?$select=Title,DataType,DataKey,Payload&$top=500';
     var res=await _spFetchAll(url);
-    var all=[];
     var _items=(res&&res.value)||[];
+    // rep별 최신 savedAt 기준으로 1건만 사용 (중복 SP 아이템 방지)
+    var _repLatest={};
     _items.forEach(function(item){
       if(!item.Title||item.Title.indexOf('weeklyFeed_'+weekKey)!==0) return;
       try{
         var d=JSON.parse(item.Payload||'{}');
-        if(d.entries&&Array.isArray(d.entries)) all=all.concat(d.entries);
+        var _rep=d.rep||'';
+        if(!_rep) return;
+        if(!_repLatest[_rep]||(d.savedAt||'')>(_repLatest[_rep].savedAt||'')){
+          _repLatest[_rep]=d;
+        }
       }catch(e){}
+    });
+    var all=[];
+    Object.keys(_repLatest).forEach(function(rep){
+      var d=_repLatest[rep];
+      if(d.entries&&Array.isArray(d.entries)) all=all.concat(d.entries);
     });
     var seen={};
     all=all.filter(function(e){ if(seen[e.id]) return false; seen[e.id]=true; return true; });
@@ -15174,47 +15195,56 @@ function _wkEntryHtml(entry){
   var pending=!entry.replies||!entry.replies.length;
   var _isOwn=(session&&(session.rep===entry.rep||session.role==='admin'));
   var _eid=entry.id;
-  var _editBtns=_isOwn
-    ?'<button class="wk-action-btn" onclick="event.stopPropagation();_wkToggleAction(this)" title="메뉴">···</button>'     +'<div class="wk-action-menu" id="wk-am-'+_eid+'">'     +'<button onclick="_wkEditEntry(\''+_eid+'\');_wkCloseAction()">수정</button>'     +'<button class="wk-del-action" onclick="_wkDeleteEntry(\''+_eid+'\');_wkCloseAction()">삭제</button>'     +'</div>'
+  var _actionMenu=_isOwn
+    ?('<div class="wk-act-wrap">'
+     +'<button class="wk-act-trigger" onclick="event.stopPropagation();_wkToggleAction(this)" title="수정/삭제">&#8942;</button>'
+     +'<div class="wk-action-menu" id="wk-am-'+_eid+'">'
+     +'<button onclick="_wkEditEntry(\'' +_eid+ '\');_wkCloseAction()">수정</button>'
+     +'<button class="wk-del-action" onclick="_wkDeleteEntry(\'' +_eid+ '\');_wkCloseAction()">삭제</button>'
+     +'</div></div>')
     :'';
   var repliesHtml='';
   if(entry.replies&&entry.replies.length){
     repliesHtml='<div class="wk-replies">'
       +entry.replies.map(function(r,ri){
         var _riOwn=(session&&(session.rep===r.rep||session.role==='admin'));
-        var _riEdit=_riOwn
-          ?'<button class="wk-action-btn" style="top:6px;right:4px;width:20px;height:20px;font-size:12px;" onclick="event.stopPropagation();_wkToggleAction(this)" title="메뉴">···</button>'           +'<div class="wk-action-menu" id="wk-ram-'+entry.id+'-'+ri+'">'           +'<button onclick="_wkEditReply(\''+entry.id+'\','+ri+');_wkCloseAction()">수정</button>'           +'<button class="wk-del-action" onclick="_wkDeleteReply(\''+entry.id+'\','+ri+');_wkCloseAction()">삭제</button>'           +'</div>'
+        var _eid2=entry.id;
+        var _riMenu=_riOwn
+          ?('<div class="wk-act-wrap" style="margin-left:4px;">'
+           +'<button class="wk-act-trigger wk-act-sm" onclick="event.stopPropagation();_wkToggleAction(this)" title="수정/삭제">&#8942;</button>'
+           +'<div class="wk-action-menu" id="wk-ram-'+_eid2+'-'+ri+'">'
+           +'<button onclick="_wkEditReply(\'' +_eid2+ '\','+ri+');_wkCloseAction()">수정</button>'
+           +'<button class="wk-del-action" onclick="_wkDeleteReply(\'' +_eid2+ '\','+ri+');_wkCloseAction()">삭제</button>'
+           +'</div></div>')
           :'';
-        return '<div class="wk-ri" id="wk-reply-'+entry.id+'-'+ri+'">'
+        return '<div class="wk-ri" id="wk-reply-'+_eid2+'-'+ri+'">'
           +'<div class="wk-ri-meta">'
             +'<span class="wk-ri-n">'+_wkEsc(r.displayName||r.rep)+'</span>'
-            +'<span class="wk-role-badge '+(r.role==='admin'?'wk-rb-admin':'wk-rb-rep')+'">'+_wkEsc(r.roleLabel||'')+'</span>'
             +'<span class="wk-ri-t">'+_wkEsc(r.time||'')+'</span>'
-            +_riEdit
+            +_riMenu
           +'</div>'
-          +'<div class="wk-ri-c" id="wk-reply-cont-'+entry.id+'-'+ri+'">'+_wkSanitize(r.text||'')+'</div>'
+          +'<div class="wk-ri-c" id="wk-reply-cont-'+_eid2+'-'+ri+'">'+_wkSanitize(r.text||'')+'</div>'
           +'</div>';
       }).join('')
       +'</div>';
   }
-  return '<div class="wk-fi-item'+(pending?' pending':'')+(entry._editing?' editing':'')+'" id="wk-entry-'+entry.id+'">'
+  return '<div class="wk-fi-item'+(pending?' pending':'')+'" id="wk-entry-'+entry.id+'">'
     +'<div class="wk-fi-meta">'
       +'<span class="wk-fi-n">'+_wkEsc(entry.displayName||entry.rep)+'</span>'
-      +'<span class="wk-role-badge '+(entry.role==='admin'?'wk-rb-admin':entry.role==='guest'?'wk-rb-guest':'wk-rb-rep')+'">'+_wkEsc(entry.roleLabel||'')+'</span>'
-      +(pending?'<span class="wk-pend-badge">미답변</span>':'<span class="wk-done-badge">답변완료</span>')
+      +(pending?'<span class="wk-pend-badge">&#128337; 미답변</span>':'<span class="wk-done-badge">&#10003; 답변완료</span>')
       +'<span class="wk-fi-t">'+_wkEsc(entry.time||'')+'</span>'
-      +_editBtns
+      +_actionMenu
     +'</div>'
     +'<div class="wk-fi-cont" id="wk-entry-cont-'+entry.id+'">'+_wkSanitize(entry.text||'')+'</div>'
     +repliesHtml
     +'<div style="margin-top:5px;">'
-      +'<button class="wk-reply-btn" onclick="_wkToggleReply(\''+entry.id+'\')">↩ 답변하기</button>'
+      +'<button class="wk-reply-btn" onclick="_wkToggleReply(\'' +entry.id+ '\')">&#8617; 답변하기</button>'
     +'</div>'
     +'<div class="wk-reply-input-wrap" id="wk-reply-wrap-'+entry.id+'" style="display:none;">'
       +'<textarea class="wk-reply-textarea" id="wk-reply-ta-'+entry.id+'" rows="2" placeholder="답변 입력..."></textarea>'
       +'<div class="wk-reply-footer">'
-        +'<button class="wk-reply-cancel" onclick="_wkToggleReply(\''+entry.id+'\')">취소</button>'
-        +'<button class="wk-reply-submit" onclick="_wkSubmitReply(\''+entry.id+'\')">답변 등록</button>'
+        +'<button class="wk-reply-cancel" onclick="_wkToggleReply(\'' +entry.id+ '\')">취소</button>'
+        +'<button class="wk-reply-submit" onclick="_wkSubmitReply(\'' +entry.id+ '\')">답변 등록</button>'
       +'</div>'
     +'</div>'
     +'</div>';
@@ -15739,13 +15769,16 @@ window._wkDeleteEntry=async function(entryId){
   var idx=_wk.entries.findIndex(function(e){return e.id===entryId;});
   if(idx<0) return;
   _wk.entries.splice(idx,1);
-  _wk.lastSaveAt=Date.now(); // 삭제 즉시 보호 시작
+  _wk.lastSaveAt=Date.now();
+  _wkRenderFeed(); // 즉시 화면 반영
   var wk=_wkThisKey(); var myRep=_wkGetMyName();
+  var _filtered=_wk.entries.filter(function(e){return e.rep===myRep;});
   try{
-    await _wkSaveFeed(wk,myRep,_wk.entries.filter(function(e){return e.rep===myRep;}));
-    _wk.lastSaveAt=Date.now(); // 저장 완료 후 갱신
+    await _wkSaveFeed(wk,myRep,_filtered);
+    _wk.lastSaveAt=Date.now();
+    // sessionStorage 캐시도 즉시 갱신
+    try{ sessionStorage.setItem('wk_entries_'+wk, JSON.stringify(_wk.entries)); }catch(e){}
   }catch(e){ console.warn('[delete]',e); }
-  _wkRenderFeed();
   if(typeof showToast==='function') showToast('삭제되었습니다');
 };
 window._wkEditReply=function(entryId,ri){
@@ -15791,11 +15824,14 @@ window._wkDeleteReply=async function(entryId,ri){
   var entry=_wk.entries.find(function(e){return e.id===entryId;});
   if(!entry||!entry.replies) return;
   entry.replies.splice(ri,1);
+  _wk.lastSaveAt=Date.now();
+  _wkRenderFeed(); // 즉시 화면 반영
   var wk=_wkThisKey(); var eRep=entry.rep; var myRep=_wkGetMyName();
-  if(eRep!==myRep) try{ await _wkSaveFeed(wk,eRep,_wk.entries.filter(function(e){return e.rep===eRep;})); }catch(e){}
-  try{ await _wkSaveFeed(wk,myRep,_wk.entries.filter(function(e){return e.rep===myRep;})); }catch(e){}
-  _wkRenderFeed();
-  if(typeof showToast==='function') showToast('🗑 답변이 삭제되었습니다');
+  try{ await _wkSaveFeed(wk,eRep,_wk.entries.filter(function(e){return e.rep===eRep;})); }catch(e){}
+  if(eRep!==myRep) try{ await _wkSaveFeed(wk,myRep,_wk.entries.filter(function(e){return e.rep===myRep;})); }catch(e){}
+  _wk.lastSaveAt=Date.now();
+  try{ sessionStorage.setItem('wk_entries_'+wk, JSON.stringify(_wk.entries)); }catch(e){}
+  if(typeof showToast==='function') showToast('답변이 삭제되었습니다');
 };
 
 // 전역 클릭: 팝업 닫기
