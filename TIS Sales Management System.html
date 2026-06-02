@@ -14452,11 +14452,43 @@ async function _wkLoadNotif(rep){
     var url=_lUrl()+'?$select=Title,DataType,Payload&$top=500';
     var res=await _spFetchAll(url);
     var _nItems=(res&&res.value)||[];
-    var _notifItem=_nItems.find(function(x){return x.Title===_ntitle;});
-    if(!_notifItem) return [];
-    var d=JSON.parse((_notifItem.Payload)||'{}');
-    return d.items||[];
+    // 동일 title 중 savedAt 최신 아이템 선택
+    var _matching=_nItems.filter(function(x){return x.Title===_ntitle;});
+    if(!_matching.length) return [];
+    _matching.sort(function(a,b){
+      try{
+        var sa=JSON.parse(a.Payload||'{}').savedAt||'';
+        var sb=JSON.parse(b.Payload||'{}').savedAt||'';
+        return sb.localeCompare(sa);
+      }catch(e){return 0;}
+    });
+    var d=JSON.parse((_matching[0].Payload)||'{}');
+    var items=d.items||[];
+    // 삭제된 ID 필터링 (세션 내 즉시 반영)
+    var _deleted=_wkGetDeletedNotifIds();
+    if(Object.keys(_deleted).length){
+      items=items.filter(function(n){return !_deleted[n.id];});
+    }
+    return items;
   }catch(e){ return []; }
+}
+
+function _wkGetDeletedNotifIds(){
+  try{ return JSON.parse(sessionStorage.getItem('wk_del_notifs')||'{}'); }catch(e){ return {}; }
+}
+function _wkAddDeletedNotifId(id){
+  try{
+    var d=_wkGetDeletedNotifIds();
+    d[id]=Date.now();
+    sessionStorage.setItem('wk_del_notifs',JSON.stringify(d));
+  }catch(e){}
+}
+function _wkClearDeletedNotifId(id){
+  try{
+    var d=_wkGetDeletedNotifIds();
+    delete d[id];
+    sessionStorage.setItem('wk_del_notifs',JSON.stringify(d));
+  }catch(e){}
 }
 
 // ── 알림 생성 ──────────────────────────────────────
@@ -14774,19 +14806,22 @@ window._wkMarkAllRead=function(){
 };
 
 window._wkDeleteNotif=async function(id){
+  _wkAddDeletedNotifId(id); // 즉시 세션에 기록 (어디서 로드해도 필터됨)
   _wk.notifications=_wk.notifications.filter(function(n){return n.id!==id;});
-  _wk.lastNotifSaveAt=Date.now(); // 즉시 보호
+  _wk.lastNotifSaveAt=Date.now();
   _wkUpdateNotifBadge();
   _wkRenderNotifDrop();
   var _myN=_wkGetMyName();
   if(_myN&&_myN!=='알 수 없음'){
     await _wkSaveNotif(_myN, _wk.notifications);
-    _wk.lastNotifSaveAt=Date.now(); // 저장 완료 후 갱신
+    _wk.lastNotifSaveAt=Date.now();
   }
 };
 
 window._wkDeleteAllNotif=async function(){
   if(!confirm('모든 알림을 삭제하시겠습니까?')) return;
+  // 모든 현재 알림 ID를 삭제 목록에 기록
+  _wk.notifications.forEach(function(n){ _wkAddDeletedNotifId(n.id); });
   _wk.notifications=[];
   _wk.lastNotifSaveAt=Date.now();
   _wkUpdateNotifBadge();
@@ -15670,7 +15705,8 @@ window._syncWeeklyFeed=async function(){
       var notifs=await _wkLoadNotif(_myN);
       var _readSet={};
       _wk.notifications.forEach(function(n){if(n.read) _readSet[n.id]=true;});
-      _wk.notifications=notifs||[];
+      var _deleted2=_wkGetDeletedNotifIds();
+      _wk.notifications=(notifs||[]).filter(function(n){return !_deleted2[n.id];});
       _wk.notifications.forEach(function(n){if(_readSet[n.id]) n.read=true;});
     }
     _wkGenContractNotifs();
@@ -15771,7 +15807,9 @@ window._wkCloseAction=function(){
 // 전체 클릭 시 메뉴 닫기
 document.addEventListener('click',function(){ window._wkCloseAction&&_wkCloseAction(); });
 window._wkSetNotifications=function(items){
-  _wk.notifications=items||[];
+  var _deleted=_wkGetDeletedNotifIds();
+  var _filtered=(items||[]).filter(function(n){return !_deleted[n.id];});
+  _wk.notifications=_filtered;
   _wkGenContractNotifs();
   _wkUpdateNotifBadge();
 };
