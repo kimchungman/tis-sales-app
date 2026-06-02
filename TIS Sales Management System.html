@@ -307,7 +307,7 @@ body{font-family:var(--font-family,'Noto Sans KR',sans-serif);background:var(--b
 .btn-primary:hover{background:#1650a0;}
 .btn-outline{background:white;color:var(--navy);border:1px solid var(--border);}
 .btn-outline:hover{background:var(--light);}
-.content{padding:var(--content-padding,22px 26px 60px);}
+.content{padding:var(--content-padding,22px 26px 60px);}.content.banner-on{padding-top:calc(var(--banner-h,40px) + 22px);}
 .page{display:none;}.page.active{display:block;}
 .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
 .kpi-card{background:var(--card);border:1px solid var(--border);border-radius:var(--card-radius,12px);padding:18px;position:relative;overflow:hidden;}
@@ -491,10 +491,11 @@ body.font-large {
 .tb-icon-btn svg{width:15px;height:15px;stroke:currentColor;fill:none;
   stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
 #banner-bar{
-  background:linear-gradient(90deg,var(--primary-s),transparent);
-  border:1px solid var(--primary-b);border-radius:var(--radius-sm);
-  padding:5px 12px;font-size:12px;font-weight:600;color:var(--primary);
-  display:none;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  display:none;
+  position:fixed;top:48px;left:var(--sidebar-width,220px);right:0;
+  z-index:150;align-items:center;gap:8px;padding:8px 16px;
+  border-bottom:0.5px solid #BFDBFE;
+  box-shadow:0 2px 8px rgba(0,0,0,0.06);}
 #sp-status{font-size:11px;font-weight:600;letter-spacing:0.02em;padding:3px 8px;
   border-radius:99px;background:var(--light);}
 #save-indicator{font-size:12px;color:var(--muted);}
@@ -7160,24 +7161,37 @@ window._dismissBanner=function(){
   try{ localStorage.setItem('_tis_banner_dismissed', _id); }catch(e){}
   var el=document.getElementById('banner-bar');
   if(el){ el.style.display='none'; el.innerHTML=''; }
+  document.querySelector('.content')&&document.querySelector('.content').classList.remove('banner-on');
 };
 
 function loadBanner(){
   var el=document.getElementById('banner-bar');
   if(!el) return;
   var b=authCfg&&authCfg.banner;
-  if(!b||!b.active||!b.text){ el.style.display='none'; return; }
+  if(!b||!b.active||!b.text){
+    el.style.display='none';
+    document.querySelector('.content')&&document.querySelector('.content').classList.remove('banner-on');
+    return;
+  }
   var _stored=''; try{ _stored=localStorage.getItem('_tis_banner_dismissed')||''; }catch(e){}
   var _cur=(b.deployedAt)||'';
-  if(_stored && _stored===_cur){ el.style.display='none'; return; }
+  if(_stored && _stored===_cur){
+    el.style.display='none';
+    document.querySelector('.content')&&document.querySelector('.content').classList.remove('banner-on');
+    return;
+  }
   var _bg=b.bg||'#EFF6FF';
   var _tc=b.color||'#1E40AF';
-  el.style.cssText='display:flex;align-items:center;gap:8px;padding:8px 12px;'
-    +'background:'+_bg+';border-bottom:0.5px solid #BFDBFE;';
-  el.innerHTML='<span style="font-size:13px;flex-shrink:0;padding-left:16px;">📢</span>'
-    +'<span style="font-size:12px;font-weight:500;color:'+_tc+';flex:1;line-height:1.5;word-break:keep-all;padding:0 8px;">'+(b.text||'')+'</span>'
+  el.style.cssText='display:flex;align-items:center;gap:8px;padding:8px 16px;'
+    +'background:'+_bg+';border-bottom:0.5px solid rgba(0,0,0,0.06);';
+  el.innerHTML=
+    '<span style="font-size:14px;flex-shrink:0;">📢</span>'
+    +'<span style="font-size:12px;font-weight:500;color:'+_tc+';flex:1;line-height:1.5;word-break:keep-all;">'+(b.text||'')+'</span>'
     +'<span style="background:#DBEAFE;color:#1E3A8A;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;white-space:nowrap;flex-shrink:0;">공지</span>'
-    +'<button onclick="_dismissBanner()" title="닫기" style="background:none;border:none;cursor:pointer;color:#93C5FD;font-size:18px;padding:0 12px 0 8px;line-height:1;flex-shrink:0;">×</button>';
+    +'<button onclick="_dismissBanner()" title="닫기" style="background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:18px;padding:0 4px;line-height:1;flex-shrink:0;">×</button>';
+  var _bh=el.offsetHeight||40;
+  document.documentElement.style.setProperty('--banner-h', _bh+'px');
+  document.querySelector('.content')&&document.querySelector('.content').classList.add('banner-on');
 }
 
 
