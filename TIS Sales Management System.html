@@ -5201,9 +5201,12 @@ function buildRepInputs(){
 
     // 담당자 모드: 초기 진입 시에만 본인 탭으로 자동 이동
     if(session && session.role==='rep' && session.rep && window._autoTabPending){
-      window._autoTabPending = false; // 1회만 실행
+      window._autoTabPending = false;
       var _myRep  = session.rep;
       var _myTeam = session.team || currentTeam || '';
+      // 다른 담당자 탭을 사용자가 직접 선택했으면 강제 이동 안 함
+      var _userChoseOther = (typeof activeRep!=='undefined' && activeRep && activeRep !== _myRep);
+      if(_userChoseOther) return; // 다른 담당자 보는 중 - 유지
       // ① 팀 탭 활성화
       document.querySelectorAll('#input-team-tabs .tis-tab').forEach(function(t){
         t.classList.toggle('active', t.getAttribute('data-tab')===_myTeam);
@@ -5213,9 +5216,13 @@ function buildRepInputs(){
       document.querySelectorAll('.rep-sec').forEach(function(s){ s.style.display='none'; });
       var _myTab = document.querySelector('#rep-tabs .tab[data-rep="'+_myRep+'"]');
       if(_myTab){ _myTab.classList.add('active'); activeRep=_myRep; }
-      // ③ 담당자 내용 표시 (이미 area.innerHTML 직후 표시됨, 탭 상태만 확인)
       var _mySec = document.getElementById('rs-'+_myRep);
       if(_mySec && _mySec.style.display!=='block'){ _mySec.style.display='block'; }
+      // vtab 복원 (main 강제 방지)
+      var _savedVtab=window._activeVTab;
+      if(_savedVtab&&_savedVtab.rep===_myRep&&_savedVtab.tab&&_savedVtab.tab!=='main'){
+        if(typeof window._switchVTab==='function') window._switchVTab(_myRep, _savedVtab.tab);
+      }
       if(typeof applyPermissions==='function') applyPermissions();
     }
   }));
@@ -8112,8 +8119,9 @@ async function _initSP() {
           // 입력 페이지: buildRepInputs는 사용자가 main 탭일 때만 실행
           if(_pid2==='input'&&typeof buildRepInputs==='function'){
             var _curVTab=window._activeVTab;
-            // 사용자가 non-main 탭 사용 중이면 DOM 재빌드 완전 건너뜀 (탭 이동 방지)
-            if(_curVTab&&_curVTab.tab&&_curVTab.tab!=='main'){
+            var _onOtherRep=(typeof activeRep!=='undefined'&&activeRep&&session&&session.rep&&activeRep!==session.rep);
+            // non-main 탭이거나 다른 담당자 탭 보는 중 → DOM 재빌드 건너뜀
+            if((_curVTab&&_curVTab.tab&&_curVTab.tab!=='main')||_onOtherRep){
               // 데이터는 store에 이미 반영됨 - UI만 유지
             } else {
               var _inpPage=document.querySelector('.page.active');
@@ -12801,6 +12809,10 @@ window.changeVisitCalMonth=function(delta){
   if(!_visitCalDate||!(_visitCalDate instanceof Date)) _visitCalDate=new Date();
   var _newM=_visitCalDate.getMonth()+delta;
   _visitCalDate=new Date(_visitCalDate.getFullYear(), _newM, 1);
+  // 날짜 선택 필터 해제 (월 이동 시 전체 월 표시)
+  window._visitFilterDate='';
+  var fi=document.getElementById('visit-filter-info');
+  if(fi) fi.textContent='';
   if(typeof renderVisits==='function') renderVisits();
 };
 
