@@ -4316,7 +4316,15 @@ function showPage(id,navEl){
       if(typeof renderColWidthGrid==='function') renderColWidthGrid();
       if(typeof renderColClientGrid==='function') renderColClientGrid();
       if(typeof renderColActivityGrid==='function') renderColActivityGrid();
-      if(authCfg.banner){var b=authCfg.banner;var bt=document.getElementById('cfg-banner-text');if(bt)bt.value=b.text||'';}
+      if(authCfg.banner){
+  var b=authCfg.banner;
+  var bt=document.getElementById('cfg-banner-text');
+  if(bt) bt.value=b.text||'';
+  var be=document.getElementById('cfg-banner-editor');
+  if(be) be.innerHTML=b.text||'';
+  var bbg=document.getElementById('cfg-banner-bg');
+  if(bbg&&b.bg) bbg.value=b.bg;
+}
       if(authCfg.popup){var p=authCfg.popup;var pt=document.getElementById('cfg-popup-title');if(pt)pt.value=p.title||'';
       // 권한관리 초기값
       var gpw=document.getElementById('cfg-guest-pw');if(gpw)gpw.value=authCfg.guestPw||'';
@@ -7222,6 +7230,8 @@ function deployBanner(){
   var _schedAt=(document.getElementById('cfg-banner-schedule')||{}).value||'';
   authCfg.banner={text:text,font:font,size:size,weight:weight,color:color,bg:bg,scheduledAt:_schedAt,active:true,deployedAt:new Date().toISOString()};
   saveAuthCfg();
+  // 새 배포 시 내 dismiss 초기화 (관리자 본인도 다시 보이게)
+  try{ localStorage.removeItem('_tis_banner_dismissed'); }catch(e){}
   loadBanner();
   showToast('✅ 공지가 배포됐습니다.');
 }
