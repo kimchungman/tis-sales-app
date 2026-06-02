@@ -107,14 +107,12 @@ function refreshSelectOptions(){
   if(document.querySelector('.page#page-input.active')){
     var _ivt=window._intendedVTab;
     var _onNonMain=_ivt&&_ivt.tab&&_ivt.tab!=='main';
-    if(!_onNonMain){
-      // main 탭 상태: 정상 rebuild (select 옵션 포함)
-      window._lastBuiltTeam=null;
+    // 다른 담당자 탭 보는 중이면 rebuild 완전 스킵
+    var _viewingOther=(typeof activeRep!=='undefined'&&activeRep&&typeof session!=='undefined'&&session&&session.rep&&activeRep!==session.rep);
+    if(!_onNonMain && !_viewingOther){
+      // _lastBuiltTeam 리셋 없이 rebuild (SP race condition 방지)
       if(typeof buildRepInputs==='function') buildRepInputs();
-      if(typeof currentTeam!=='undefined') window._lastBuiltTeam=currentTeam;
     }
-    // 계약/방문 탭 활성화 중: DOM 재빌드 스킵 (깜빡임 방지)
-    // select 배열만 갱신 - main 탭 진입 시 자동 반영됨
   }
   if(typeof CONTACT_TYPES!=='undefined') CONTACT_TYPES.splice(0,CONTACT_TYPES.length,...getSelectOpts('contactType'));
   if(typeof CONTACT_PURPOSES!=='undefined') CONTACT_PURPOSES.splice(0,CONTACT_PURPOSES.length,...getSelectOpts('contactPurpose'));
@@ -8087,8 +8085,13 @@ async function _initSP() {
           }
           // 배너/팝업 항상 갱신 (authCfg 업데이트됐으므로)
           try{ if(typeof loadBanner==='function') loadBanner(); }catch(e){}
-          // 선택박스 옵션 갱신
-          try{ if(typeof refreshSelectOptions==='function') refreshSelectOptions(); }catch(e){}
+          // 선택박스 배열만 갱신 (DOM rebuild 없이 - 탭이동 방지)
+          try{
+            if(typeof CONTACT_TYPES!=='undefined'&&typeof getSelectOpts==='function')
+              CONTACT_TYPES.splice(0,CONTACT_TYPES.length,...getSelectOpts('contactType'));
+            if(typeof CONTACT_PURPOSES!=='undefined'&&typeof getSelectOpts==='function')
+              CONTACT_PURPOSES.splice(0,CONTACT_PURPOSES.length,...getSelectOpts('contactPurpose'));
+          }catch(e){}
           try{ if(typeof renderSelectOptsSettings==='function') renderSelectOptsSettings(); }catch(e){}
           try{ if(typeof renderGuestAllowList==='function') renderGuestAllowList(); }catch(e){}
 
