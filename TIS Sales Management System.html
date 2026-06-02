@@ -12933,17 +12933,17 @@ document.addEventListener('app:ready', function(){
     var repTab = document.querySelector('#rep-tabs .tab[data-rep="'+myRep+'"]');
     if(repTab){
       APP.autoDone=true;
-      window._autoTabPending = true;
+      // (navigation 시에만 설정)
       repTab.click();
       if(typeof applyPermissions==='function') applyPermissions();
     } else {
       // rep 탭 미생성 시 buildRepInputs 완료 후 처리
-      window._autoTabPending = true;
+      // (navigation 시에만 설정)
     }
   } else {
     // 다른 팀이면 switchInputTeam 호출 후 rep 탐색
     if(typeof switchInputTeam==='function') switchInputTeam(myTeam);
-    window._autoTabPending = true;
+    // (navigation 시에만 설정)
     document.querySelectorAll('#input-team-tabs .tis-tab').forEach(function(t){
       t.classList.toggle('active', t.getAttribute('data-tab')===myTeam);
     });
