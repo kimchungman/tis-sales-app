@@ -7153,6 +7153,15 @@ function applyPermissions(){
 let saveTimer = null;
 
 // ══ 배너 공지 ══
+window._dismissBanner=function(){
+  var b=authCfg&&authCfg.banner;
+  if(!b) return;
+  var _id=b.id||(b.text||'').slice(0,20);
+  try{ localStorage.setItem('_tis_banner_dismissed',_id); }catch(e){}
+  var el=document.getElementById('banner-bar');
+  if(el) el.style.display='none';
+};
+
 function deployBanner(){
   var _be=document.getElementById('cfg-banner-editor');
   var _bt=document.getElementById('cfg-banner-text');
@@ -7175,21 +7184,7 @@ function hideBanner(){
   if(el) el.style.display='none';
   showToast('공지가 숨겨졌습니다.');
 }
-function loadBanner(){
-  const el=document.getElementById('banner-bar');
-  if(!el)return;
-  const b=authCfg.banner;
-  if(!b||!b.active||!b.text){el.style.display='none';return;}
-  el.style.cssText='display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:8px;'
-    +'max-width:600px;min-width:160px;flex-shrink:1;'
-    +'background:'+(b.bg||'#EFF6FF')+';'
-    +'border:1px solid '+((b.bg||'#EFF6FF').replace('#','')>'aaaaaa'?'#E5E7EB':'#D1D5DB')+';';
-  // 최대 2줄: -webkit-line-clamp 사용
-  el.innerHTML='<span style="font-size:13px;flex-shrink:0;margin-top:1px;">📢</span>'
-    +'<span style="font-size:13px;font-weight:500;color:#1E293B;line-height:1.5;'
-    +'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;'
-    +'word-break:keep-all;">'+b.text+'</span>';
-}
+// loadBanner → window._dismissBanner 위에 정의됨
 
 // ══ 팝업 공지 ══
 function deployPopup(){
@@ -16111,4 +16106,20 @@ function _addIssueCheckboxes(rep){
     <div class="wk-cp" style="background:#7C3AED;" onmousedown="event.preventDefault();_wkApplyColor('#7C3AED')" title="보라"></div>
   </div>
 </div>
-</body>
+</bodyfunction loadBanner(){
+  var el=document.getElementById('banner-bar');
+  if(!el) return;
+  var b=authCfg&&authCfg.banner;
+  if(!b||!b.active||!b.text){ el.style.display='none'; return; }
+  var _bid=b.id||(b.text||'').slice(0,20);
+  var _dis=''; try{ _dis=localStorage.getItem('_tis_banner_dismissed')||''; }catch(e){}
+  if(_dis===_bid){ el.style.display='none'; return; }
+  var _bg=b.bg||'#EFF6FF';
+  var _tc=b.color||'#1E40AF';
+  el.style.cssText='display:flex;align-items:center;gap:8px;padding:8px 12px;margin:0 16px 8px;border-radius:7px;flex-shrink:0;background:'+_bg+';border:0.5px solid #BFDBFE;';
+  el.innerHTML='<span style="font-size:13px;flex-shrink:0;">📢</span>'
+    +'<span style="font-size:12px;font-weight:500;color:'+_tc+';flex:1;line-height:1.5;word-break:keep-all;">'+(b.text||'')+'</span>'
+    +'<span style="background:#DBEAFE;color:#1E3A8A;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;white-space:nowrap;flex-shrink:0;">공지</span>'
+    +'<button onclick="_dismissBanner()" style="background:none;border:none;cursor:pointer;color:#93C5FD;font-size:16px;padding:0 3px;line-height:1;">×</button>';
+}
+>
