@@ -8687,19 +8687,24 @@ async function _spLoadSettings() {
       if(typeof buildRepTabs==='function') buildRepTabs();
 
     }
-    // 현재 페이지가 input이면 담당자 탭 즉시 선택 (폴링 제거)
+    // 현재 페이지가 input이면 담당자 탭 선택
+    // 단, 사용자가 다른 담당자 탭을 직접 보는 중이면 유지
     var _inputPage = document.getElementById('page-input');
     if(_inputPage && _inputPage.classList.contains('active') && session && session.rep){
-      var _rt2 = _inputPage.querySelector('.tab[data-rep="'+session.rep+'"]');
-      if(_rt2){
-        _rt2.click();
-        if(typeof applyPermissions==='function') setTimeout(applyPermissions, 50);
-      } else {
-        // DOM 미생성 시 1회만 재시도 (100ms 후)
-        setTimeout(function(){
-          var _rt3 = document.querySelector('#rep-tabs .tab[data-rep="'+session.rep+'"]');
-          if(_rt3) _rt3.click();
-        }, 100);
+      var _isViewingOther = (typeof activeRep!=='undefined' && activeRep && activeRep !== session.rep);
+      if(!_isViewingOther){
+        var _rt2 = _inputPage.querySelector('.tab[data-rep="'+session.rep+'"]');
+        if(_rt2){
+          _rt2.click();
+          if(typeof applyPermissions==='function') setTimeout(applyPermissions, 50);
+        } else {
+          setTimeout(function(){
+            var _isStillViewingOther=(typeof activeRep!=='undefined'&&activeRep&&activeRep!==session.rep);
+            if(_isStillViewingOther) return;
+            var _rt3 = document.querySelector('#rep-tabs .tab[data-rep="'+session.rep+'"]');
+            if(_rt3) _rt3.click();
+          }, 100);
+        }
       }
     }
   }
