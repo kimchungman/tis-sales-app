@@ -3075,15 +3075,14 @@ document.addEventListener('mousedown',function(e){
                 </select>
                 <div style="display:flex;align-items:center;gap:2px;height:26px;border:1px solid var(--border);border-radius:4px;padding:0 5px;background:white;">
                   <span style="font-size:10px;color:#64748B;">색</span>
-                  <input type="color" value="#000000" onchange="document.getElementById('cfg-banner-editor').focus();document.execCommand('foreColor',false,this.value)" style="width:18px;height:18px;border:none;padding:0;cursor:pointer;">
+                  <input type="color" value="#000000" onchange="_cfgBannerColor(this.value);" style="width:18px;height:18px;border:none;padding:0;cursor:pointer;">
                 </div>
                 <button type="button" onclick="document.getElementById('cfg-banner-editor').focus();document.execCommand('removeFormat')" style="width:26px;height:26px;border:1px solid var(--border);border-radius:4px;background:white;cursor:pointer;font-size:11px;color:#EF4444;">✕</button>
               </div>
               <div id="cfg-banner-editor" contenteditable="true"
-                oninput="var el=this;var lines=el.innerText.split('\n').length;if(lines>2){var t=el.innerText.split('\n').slice(0,2).join('\n');el.innerText=t;var range=document.createRange();var sel=window.getSelection();range.selectNodeContents(el);range.collapse(false);sel.removeAllRanges();sel.addRange(range);}document.getElementById('cfg-banner-text').value=this.innerHTML;"
-                onkeydown="if(event.key==='Enter'){var lines=this.innerText.split('\n').length;if(lines>=2){event.preventDefault();}}"
-                onfocus="this.style.borderColor='#4f7fff';" onblur="this.style.borderColor='var(--border)';"
-                style="min-height:36px;max-height:54px;overflow:hidden;border:1px solid var(--border);border-radius:0 0 7px 7px;padding:7px 10px;font-size:12px;font-family:inherit;background:white;outline:none;line-height:1.5;"></div>
+                oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';document.getElementById('cfg-banner-text').value=this.innerHTML;"
+                onfocus="this.style.borderColor='#4f7fff';" onblur="this.style.borderColor='var(--border)';" onmouseup="window._bannerSel=window.getSelection().getRangeAt&&window.getSelection().rangeCount?window.getSelection().getRangeAt(0).cloneRange():null;" onkeyup="window._bannerSel=window.getSelection().getRangeAt&&window.getSelection().rangeCount?window.getSelection().getRangeAt(0).cloneRange():null;"
+                style="min-height:36px;max-height:90px;overflow-y:auto;border:1px solid var(--border);border-radius:0 0 7px 7px;padding:7px 10px;font-size:12px;font-family:inherit;background:white;outline:none;line-height:1.5;resize:none;word-break:break-word;"></div>
               <input type="hidden" id="cfg-banner-text">
             </div>
             <div>
@@ -7184,12 +7183,11 @@ function loadBanner(){
   }
   var _bg=b.bg||'#EFF6FF';
   var _tc=b.color||'#1E40AF';
-  el.style.cssText='display:flex;align-items:center;gap:8px;padding:8px 16px;'
+  el.style.cssText='display:flex;align-items:flex-start;gap:8px;padding:10px 16px;'
     +'background:'+_bg+';border-bottom:0.5px solid rgba(0,0,0,0.06);';
   el.innerHTML=
-    '<span style="font-size:14px;flex-shrink:0;">📢</span>'
-    +'<span style="font-size:12px;font-weight:500;color:'+_tc+';flex:1;line-height:1.5;word-break:keep-all;">'+(b.text||'')+'</span>'
-    +'<span style="background:#DBEAFE;color:#1E3A8A;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;white-space:nowrap;flex-shrink:0;">공지</span>'
+    '<span style="background:#2563EB;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;white-space:nowrap;flex-shrink:0;letter-spacing:0.02em;">공지</span>'
+    +'<span style="font-size:12px;font-weight:500;color:'+_tc+';flex:1;line-height:1.5;word-break:break-all;padding:0 4px;">'+(b.text||'')+'</span>'
     +'<button onclick="_dismissBanner()" title="닫기" style="background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:18px;padding:0 4px;line-height:1;flex-shrink:0;">×</button>';
   var _bh=el.offsetHeight||40;
   document.documentElement.style.setProperty('--banner-h', _bh+'px');
@@ -7197,6 +7195,20 @@ function loadBanner(){
 }
 
 
+
+window._cfgBannerColor=function(color){
+  var ed=document.getElementById('cfg-banner-editor');
+  if(!ed) return;
+  ed.focus();
+  // 저장된 selection 복원
+  if(window._bannerSel){
+    var sel=window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(window._bannerSel);
+  }
+  document.execCommand('foreColor',false,color);
+  document.getElementById('cfg-banner-text')&&(document.getElementById('cfg-banner-text').value=ed.innerHTML);
+};
 function deployBanner(){
   var _be=document.getElementById('cfg-banner-editor');
   var _bt=document.getElementById('cfg-banner-text');
@@ -7207,7 +7219,8 @@ function deployBanner(){
   const weight=(document.getElementById('cfg-banner-weight')||{}).value||'400';
   const color=(document.getElementById('cfg-banner-color')||{}).value||'#1E293B';
   const bg=(document.getElementById('cfg-banner-bg')||{}).value||'#EFF6FF';
-  authCfg.banner={text,font,size,weight,color,bg,scheduledAt:_schedAt,active:true,deployedAt:new Date().toISOString()};
+  var _schedAt=(document.getElementById('cfg-banner-schedule')||{}).value||'';
+  authCfg.banner={text:text,font:font,size:size,weight:weight,color:color,bg:bg,scheduledAt:_schedAt,active:true,deployedAt:new Date().toISOString()};
   saveAuthCfg();
   loadBanner();
   showToast('✅ 공지가 배포됐습니다.');
@@ -8669,9 +8682,18 @@ async function _spLoadSettings() {
   // 담당자 비밀번호 설정
   if (cfg.authCfg && typeof authCfg !== 'undefined') {
     const _oldAuth=JSON.parse(JSON.stringify(authCfg));
+    // banner는 in-memory 값이 최신이면 보존 (SP 구버전으로 덮어쓰기 방지)
+    var _memBanner=authCfg.banner;
     Object.assign(authCfg, cfg.authCfg);
+    // SP banner가 없거나 더 오래된 경우 in-memory banner 복원
+    if(_memBanner&&_memBanner.active&&_memBanner.deployedAt){
+      var _spDt=(cfg.authCfg.banner&&cfg.authCfg.banner.deployedAt)||'';
+      if(!_spDt||_memBanner.deployedAt>_spDt) authCfg.banner=_memBanner;
+    }
     if(cfg.authCfg && cfg.authCfg.guestAllowList) authCfg.guestAllowList = cfg.authCfg.guestAllowList;
-    localStorage.setItem('weekly_auth', JSON.stringify(cfg.authCfg));
+    // localStorage도 banner 포함해서 저장
+    var _authToSave=Object.assign({},cfg.authCfg,{banner:authCfg.banner});
+    localStorage.setItem('weekly_auth', JSON.stringify(_authToSave));
   }
 
   // 담당자 목록 & 색상
