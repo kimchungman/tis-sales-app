@@ -8692,15 +8692,18 @@ async function _spLoadSettings() {
     var _inputPage = document.getElementById('page-input');
     if(_inputPage && _inputPage.classList.contains('active') && session && session.rep){
       var _isViewingOther = (typeof activeRep!=='undefined' && activeRep && activeRep !== session.rep);
-      if(!_isViewingOther){
+      // 내 탭이 이미 활성화 상태면 click() 불필요 (깜빡임 방지)
+      var _myTabAlreadyActive = (typeof activeRep!=='undefined' && activeRep === session.rep);
+      if(!_isViewingOther && !_myTabAlreadyActive){
         var _rt2 = _inputPage.querySelector('.tab[data-rep="'+session.rep+'"]');
         if(_rt2){
           _rt2.click();
           if(typeof applyPermissions==='function') setTimeout(applyPermissions, 50);
         } else {
           setTimeout(function(){
-            var _isStillViewingOther=(typeof activeRep!=='undefined'&&activeRep&&activeRep!==session.rep);
-            if(_isStillViewingOther) return;
+            var _curActive=(typeof activeRep!=='undefined'&&activeRep);
+            if(_curActive && _curActive!==session.rep) return; // 다른 탭 보는 중
+            if(_curActive === session.rep) return; // 이미 내 탭
             var _rt3 = document.querySelector('#rep-tabs .tab[data-rep="'+session.rep+'"]');
             if(_rt3) _rt3.click();
           }, 100);
