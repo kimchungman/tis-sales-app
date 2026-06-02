@@ -2357,45 +2357,40 @@ document.addEventListener('mousedown',function(e){
 </aside>
 <div class="main">
   <div class="topbar">
-      
-    <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+    <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
       <button onclick="toggleSidebar()" class="tb-icon-btn" style="flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+      <div style="width:1px;height:18px;background:#E5E7EB;flex-shrink:0;"></div>
       <div style="min-width:0;">
         <div class="topbar-title" id="pg-title">통합 대시보드</div>
         <div class="topbar-sub" id="pg-sub">경영계획 vs 실적 현황</div>
       </div>
     </div>
     <div class="topbar-right">
-      <div id="banner-bar"></div>
-      <span id="sp-status" style="display:inline-flex;align-items:center;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;cursor:default;transition:all 0.2s;"></span>
-      <span id="save-indicator"></span>
-      <input type="date" id="mtg-date" style="height:32px;width:130px;box-sizing:border-box;padding:0 12px;border-radius:20px;border:1.5px solid #E2E8F0;font-size:12px;font-weight:600;color:#374151;background:white;cursor:pointer;font-family:inherit;transition:all 0.2s;text-align:center;" onfocus="this.style.borderColor='#4f7fff'" onblur="this.style.borderColor='#E2E8F0'">
+      <span id="sp-status" style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:500;cursor:default;transition:all 0.2s;"></span>
+      <span id="save-indicator" style="display:none;"></span>
+      <div style="width:1px;height:18px;background:#E5E7EB;flex-shrink:0;"></div>
+      <input type="date" id="mtg-date" style="height:30px;width:120px;box-sizing:border-box;padding:0 8px;border-radius:6px;border:0.5px solid #E5E7EB;font-size:12px;font-weight:500;color:#374151;background:white;cursor:pointer;font-family:inherit;transition:border-color 0.15s;" onfocus="this.style.borderColor='#4f7fff'" onblur="this.style.borderColor='#E5E7EB'">
 
-      <button onclick="window.print()" id="print-btn" title="인쇄/PDF" style="display:flex;align-items:center;justify-content:center;gap:6px;height:32px;min-width:90px;box-sizing:border-box;padding:0 12px;border-radius:20px;background:linear-gradient(135deg,#64748B15,#94A3B815);border:1.5px solid #94A3B840;cursor:pointer;transition:all 0.2s;font-family:inherit;" onmouseover="this.style.background='linear-gradient(135deg,#64748B25,#94A3B825)'" onmouseout="this.style.background='linear-gradient(135deg,#64748B15,#94A3B815)'">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-          <span style="font-size:12px;font-weight:600;color:#64748B;">인쇄</span>
-        </button>
-        <button id="refresh-btn" onclick="manualRefresh()" title="새로고침" style="display:flex;align-items:center;justify-content:center;gap:6px;height:32px;min-width:90px;box-sizing:border-box;padding:0 12px;border-radius:20px;background:linear-gradient(135deg,#05966915,#10B98115);border:1.5px solid #10B98140;cursor:pointer;transition:all 0.2s;font-family:inherit;" onmouseover="this.style.background='linear-gradient(135deg,#05966925,#10B98125)'" onmouseout="this.style.background='linear-gradient(135deg,#05966915,#10B98115)'">
+
+        <button id="refresh-btn" onclick="manualRefresh()" title="동기화" style="display:flex;align-items:center;justify-content:center;gap:5px;height:30px;padding:0 10px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;cursor:pointer;transition:all 0.15s;font-family:inherit;" onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='#fff'">
           <span id="refresh-icon" style="display:inline-flex;align-items:center;transform-origin:center;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
           </span>
-          <span style="font-size:12px;font-weight:600;color:#059669;">동기화</span>
+          <span style="font-size:12px;font-weight:500;color:#374151;">동기화</span>
         </button>
-        <button id="wk-notif-btn-global" onclick="_wkToggleNotif(event)" style="height:32px;display:inline-flex;align-items:center;box-sizing:border-box;padding:0 12px;border-radius:20px;background:linear-gradient(135deg,#1A56DB15,#3B82F615);border:1.5px solid #1A56DB40;cursor:pointer;transition:all 0.2s;font-family:inherit;gap:5px;margin-right:6px;" onmouseover="this.style.background='linear-gradient(135deg,#1A56DB25,#3B82F625)'" onmouseout="this.style.background='linear-gradient(135deg,#1A56DB15,#3B82F615)'">
-          <span style="display:inline-flex;align-items:center;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A56DB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-          </span>
-          <span style="font-size:12px;font-weight:600;color:#1A56DB;">알림</span>
-          <span id="wk-notif-badge-global" style="display:none;background:#DC2626;color:#fff;font-size:9px;font-weight:700;border-radius:20px;padding:1px 5px;min-width:16px;text-align:center;line-height:1.4;">0</span>
-        </button>
+        <div style="position:relative;display:inline-flex;">
+          <button id="wk-notif-btn-global" onclick="_wkToggleNotif(event)" title="알림" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='#fff'">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          </button>
+          <span id="wk-notif-badge-global" style="display:none;position:absolute;top:-3px;right:-3px;background:#DC2626;color:#fff;font-size:9px;font-weight:700;border-radius:8px;padding:0 3px;min-width:14px;text-align:center;line-height:1.6;pointer-events:none;">0</span>
+        </div>
         <div style="position:relative;display:inline-block;">
-        <button id="access-count-btn" onclick="toggleAccessPopup()" class="tb-btn" style="display:flex;align-items:center;justify-content:center;gap:6px;height:32px;min-width:90px;box-sizing:border-box;padding:0 12px;border-radius:20px;background:linear-gradient(135deg,#1E5FBE15,#4f7fff15);border:1.5px solid #4f7fff40;transition:all 0.2s;" onmouseover="this.style.background='linear-gradient(135deg,#1E5FBE25,#4f7fff25)'" onmouseout="this.style.background='linear-gradient(135deg,#1E5FBE15,#4f7fff15)'">
+        <button id="access-count-btn" onclick="toggleAccessPopup()" class="tb-btn" title="접속현황" style="display:flex;align-items:center;gap:5px;height:30px;padding:0 10px;border-radius:6px;border:0.5px solid #E5E7EB;background:#fff;cursor:pointer;transition:all 0.15s;font-family:inherit;" onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='#fff'">
           <span style="position:relative;display:inline-flex;align-items:center;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4f7fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            <span id="access-pulse" style="position:absolute;top:-2px;right:-2px;width:7px;height:7px;background:#22C55E;border-radius:50%;border:1.5px solid white;animation:pulse-dot 2s infinite;"></span>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span id="access-pulse" style="position:absolute;top:-2px;right:-2px;width:6px;height:6px;background:#22C55E;border-radius:50%;border:1.5px solid white;animation:pulse-dot 2s infinite;"></span>
           </span>
-          <span style="font-size:12px;font-weight:600;color:#1E5FBE;">접속</span>
-          <span id="access-count-num" style="background:#4f7fff;color:white;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;min-width:18px;text-align:center;">0</span>
+          <span id="access-count-num" style="font-size:12px;font-weight:500;color:#374151;">0</span>
         </button>
         <div id="access-popup" class="tb-dropdown" style="display:none;position:absolute;top:calc(100% + 8px);right:0;left:auto;min-width:280px;z-index:9999;">
           <div class="tb-dropdown-head">오늘 접속 현황</div>
