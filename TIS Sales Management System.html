@@ -2310,6 +2310,7 @@ document.addEventListener('mousedown',function(e){
       <div style="width:44px;height:44px;background:#4f7fff;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
         <span style="color:white;font-size:15px;font-weight:900;letter-spacing:-0.5px;">TIS</span>
       </div>
+  <div id="banner-bar"></div>
       <!-- 텍스트 -->
       <div style="line-height:1.2;">
         <div style="font-size:10px;font-weight:600;color:#6b8ac9;letter-spacing:0.02em;margin-bottom:3px;">TIS · Business Development</div>
@@ -7162,6 +7163,21 @@ window._dismissBanner=function(){
   if(el) el.style.display='none';
 };
 
+function loadBanner(){
+  var el=document.getElementById('banner-bar');
+  if(!el) return;
+  var b=authCfg&&authCfg.banner;
+  if(!b||!b.active||!b.text){ el.style.display='none'; return; }
+  var _bid=b.id||(b.text||'').slice(0,20);
+  var _dis=''; try{ _dis=localStorage.getItem('_tis_banner_dismissed')||'';}catch(e){}
+  if(_dis===_bid){ el.style.display='none'; return; }
+  var _bg=b.bg||'#EFF6FF'; var _tc=b.color||'#1E40AF';
+  el.style.cssText='display:flex;align-items:center;gap:8px;padding:8px 12px;margin:0 16px 8px;border-radius:7px;background:'+_bg+';border:0.5px solid #BFDBFE;';
+  el.innerHTML='<span style="font-size:13px;flex-shrink:0;">📢</span>'
+    +'<span style="font-size:12px;font-weight:500;color:'+_tc+';flex:1;line-height:1.5;word-break:keep-all;">'+(b.text||'')+'</span>'
+    +'<span style="background:#DBEAFE;color:#1E3A8A;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;white-space:nowrap;">공지</span>'
+    +'<button onclick="_dismissBanner()" style="background:none;border:none;cursor:pointer;color:#93C5FD;font-size:16px;padding:0 3px;line-height:1;">×</button>';
+}
 function deployBanner(){
   var _be=document.getElementById('cfg-banner-editor');
   var _bt=document.getElementById('cfg-banner-text');
@@ -7196,9 +7212,7 @@ function deployPopup(){
   const pw=(document.getElementById('cfg-popup-width')||{}).value||'560px';
   authCfg.popup={title,content,width:pw,active:true,deployedAt:new Date().toISOString()};
   saveAuthCfg();
-  // 오늘 숨김 키 초기화 (즉시 표시를 위해)
-  const _todayKey='popup_hide_'+new Date().toISOString().split('T')[0];
-  localStorage.removeItem(_todayKey);
+  // 새 deployedAt으로 자동 갱신 → 기존 숨김 무효화됨
   showPopupNotice();
   showToast('✅ 팝업 공지가 배포됐습니다.');
 }
@@ -7212,14 +7226,10 @@ function showPopupNotice(){
   if(!p||!p.active||(!p.title&&!p.content))return;
   // 오늘 하루 보지 않기 체크
   if(p.scheduledAt&&new Date(p.scheduledAt)>new Date()) return;
-  const _repeat=p.repeat||'day';
-  if(_repeat==='day'){
-    const todayKey='popup_hide_'+new Date().toISOString().split('T')[0];
-    if(localStorage.getItem(todayKey)==='1') return;
-  } else if(_repeat==='week'){
-    const _d=new Date(); const _sun=new Date(_d); _sun.setDate(_d.getDate()-_d.getDay());
-    if(localStorage.getItem('popup_hide_week_'+_sun.toISOString().split('T')[0])==='1') return;
-  }
+  // 숨김 체크: deployedAt 기준 (재배포 시 항상 재표시)
+  var _hideKey='popup_hide_deploy';
+  var _hiddenAt=''; try{ _hiddenAt=localStorage.getItem(_hideKey)||''; }catch(e){}
+  if(_hiddenAt && _hiddenAt===(p.deployedAt||'')) return;
   const modal=document.getElementById('popup-notice-modal');
   if(!modal)return;
   document.getElementById('popup-notice-title').textContent=p.title||'';
@@ -7245,9 +7255,10 @@ function showPopupNotice(){
 function closePopupNotice(){
   const modal=document.getElementById('popup-notice-modal');
   if(modal) modal.style.display='none';
+  // "오늘 하루 보지 않기" → deployedAt 저장
   if(document.getElementById('popup-today-hide')&&document.getElementById('popup-today-hide').checked){
-    const todayKey='popup_hide_'+new Date().toISOString().split('T')[0];
-    localStorage.setItem(todayKey,'1');
+    var _da=(authCfg&&authCfg.popup&&authCfg.popup.deployedAt)||'';
+    try{ localStorage.setItem('popup_hide_deploy', _da); }catch(e){}
   }
 }
 
@@ -16106,20 +16117,4 @@ function _addIssueCheckboxes(rep){
     <div class="wk-cp" style="background:#7C3AED;" onmousedown="event.preventDefault();_wkApplyColor('#7C3AED')" title="보라"></div>
   </div>
 </div>
-</bodyfunction loadBanner(){
-  var el=document.getElementById('banner-bar');
-  if(!el) return;
-  var b=authCfg&&authCfg.banner;
-  if(!b||!b.active||!b.text){ el.style.display='none'; return; }
-  var _bid=b.id||(b.text||'').slice(0,20);
-  var _dis=''; try{ _dis=localStorage.getItem('_tis_banner_dismissed')||''; }catch(e){}
-  if(_dis===_bid){ el.style.display='none'; return; }
-  var _bg=b.bg||'#EFF6FF';
-  var _tc=b.color||'#1E40AF';
-  el.style.cssText='display:flex;align-items:center;gap:8px;padding:8px 12px;margin:0 16px 8px;border-radius:7px;flex-shrink:0;background:'+_bg+';border:0.5px solid #BFDBFE;';
-  el.innerHTML='<span style="font-size:13px;flex-shrink:0;">📢</span>'
-    +'<span style="font-size:12px;font-weight:500;color:'+_tc+';flex:1;line-height:1.5;word-break:keep-all;">'+(b.text||'')+'</span>'
-    +'<span style="background:#DBEAFE;color:#1E3A8A;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;white-space:nowrap;flex-shrink:0;">공지</span>'
-    +'<button onclick="_dismissBanner()" style="background:none;border:none;cursor:pointer;color:#93C5FD;font-size:16px;padding:0 3px;line-height:1;">×</button>';
-}
->
+</body>
