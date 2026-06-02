@@ -8074,7 +8074,9 @@ async function _initSP() {
         window._syncCount++;
         if(window._syncCount % 4 === 0){
           var _settingsBefore = JSON.stringify({teams:TEAMS, teamReps:TEAM_REPS});
-          await _spLoadSettings(); // 관리자 설정 최신화 (모든 사용자)
+          window._syncLoadingSettings=true;
+          await _spLoadSettings(); // 관리자 설정 최신화
+          window._syncLoadingSettings=false;
           // 설정 변경됐으면 UI 갱신
           if(JSON.stringify({teams:TEAMS, teamReps:TEAM_REPS}) !== _settingsBefore){
             if(typeof buildRepTabs==='function') buildRepTabs();
@@ -8666,8 +8668,9 @@ async function _spLoadSettings() {
   if (typeof loadNotifCfg === 'function') loadNotifCfg();
 
   syncTeamData();
-  // SP 로드 후: REPS 업데이트 + 탭 재빌드 (신규팀 포함)
-  if(session && session.role==='rep' && session.team){
+  // SP 로드 후: REPS 업데이트 + 탭 재빌드
+  // sync 호출 시에는 탭 전환 코드 실행 안 함 (탭 이동 방지)
+  if(!window._syncLoadingSettings && session && session.role==='rep' && session.team){
     _tabState.input    = session.team;
     _tabState.issues   = session.team;
     _tabState.pipeline = session.team;
@@ -8741,9 +8744,11 @@ async function _spLoadSettings() {
     }
   }
   window._spSettingsLoaded = true;
-  // SP 완료 → spReady 설정 (이후 유지)
-  APP.spReady = true;
-  checkReady();  // domReady 이미 true면 즉시 발화
+  // 초기 로그인 시에만 spReady/checkReady (sync 반복 호출 시 skip)
+  if(!window._syncLoadingSettings){
+    APP.spReady = true;
+    checkReady();
+  }
 
 
 }
