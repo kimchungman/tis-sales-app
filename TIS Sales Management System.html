@@ -4035,11 +4035,13 @@ function saveBannerCfg(){
   if(!authCfg.banner) authCfg.banner={};
   authCfg.banner.text=(_be2?_be2.innerHTML:'')||(_bt2?_bt2.value:'')||'';
   if(bg) authCfg.banner.bg=bg.value;
-  if(typeof _spSaveAuthCfg==='function') _spSaveAuthCfg();
-  else if(typeof saveAuthCfg==='function') saveAuthCfg();
-  else localStorage.setItem('_authCfg',JSON.stringify(authCfg));
+  authCfg.banner.active=true;
+  authCfg.banner.deployedAt=new Date().toISOString();
+  // dismissed 초기화 (재배포 시 다시 표시)
+  try{ localStorage.removeItem('_tis_banner_dismissed'); }catch(e){}
+  if(typeof saveAuthCfg==='function') saveAuthCfg();
   if(typeof loadBanner==='function') loadBanner();
-  showToast('배너 저장됨');
+  showToast('✅ 배너가 배포되었습니다.');
 }
 
 
