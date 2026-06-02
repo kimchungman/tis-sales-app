@@ -8079,23 +8079,23 @@ async function _initSP() {
             if(_issSt>0) requestAnimationFrame(function(){ if(_issScroll) _issScroll.scrollTop=_issSt; });
           }
           if(_pid2==='pipeline'&&typeof renderPipeline==='function') renderPipeline();
-          // 입력 페이지: 스크롤 위치 보존 후 재렌더
+          // 입력 페이지: buildRepInputs는 스크롤 보존 후 호출
           if(_pid2==='input'&&typeof buildRepInputs==='function'){
-            // 스크롤 저장: 섹션별 + 페이지 전체
-            var _iSections=document.querySelectorAll('.page.active .sec-body');
-            var _iScrolls=[].map.call(_iSections,function(el){return el.scrollTop;});
-            var _iScrollIds=[].map.call(_iSections,function(el){return el.id||'';});
-            var _iPageScroll=(document.querySelector('.page.active')||{}).scrollTop||0;
+            var _inpPage=document.querySelector('.page.active');
+            var _secBodies=_inpPage?[].slice.call(_inpPage.querySelectorAll('.sec-body')):[];
+            var _savedScrolls=_secBodies.map(function(el){return {el:el,top:el.scrollTop};});
+            var _pageTop=_inpPage?_inpPage.scrollTop:0;
             buildRepInputs();
-            // DOM 완전 렌더 후 스크롤 복원 (300ms)
+            // 500ms 후 복원 (override 체인 완전 완료 보장)
             setTimeout(function(){
-              _iScrollIds.forEach(function(id,i){
-                var el=id?document.getElementById(id):document.querySelectorAll('.page.active .sec-body')[i];
-                if(el&&_iScrolls[i]>0) el.scrollTop=_iScrolls[i];
+              _savedScrolls.forEach(function(s){ if(s.top>0) s.el.scrollTop=s.top; });
+              if(_inpPage&&_pageTop>0) _inpPage.scrollTop=_pageTop;
+              // 새로 생성된 섹션도 복원 (DOM 재생성 시)
+              var _newBodies=_inpPage?[].slice.call(_inpPage.querySelectorAll('.sec-body')):[];
+              _newBodies.forEach(function(el,i){
+                if(_savedScrolls[i]&&_savedScrolls[i].top>0) el.scrollTop=_savedScrolls[i].top;
               });
-              var _ap=document.querySelector('.page.active');
-              if(_ap&&_iPageScroll>0) _ap.scrollTop=_iPageScroll;
-            }, 300);
+            }, 500);
           }
           if(_pid2==='visits'){
             if(window._visitFilterDate && typeof filterVisitsByDate==='function'){
@@ -10242,10 +10242,10 @@ function _iRow(rep, idx, iss){
     +'</div></td>';
 
   // 체크박스: data 속성으로 이벤트 위임 (onchange 이스케이프 문제 회피)
-  var _issChkHtml=canEdit?'<input type="checkbox" class="wk-iss-chk" data-rep="'+r+'" data-idx="'+idx+'" '+(iss.weeklyCheck&&iss.weeklyCheck[_thisWkKey()]?'checked ':'')+' style="width:15px;height:15px;cursor:pointer;accent-color:#1A56DB;vertical-align:middle;display:block;" title="주간보고에 포함">'+'&nbsp;':'&nbsp;';
+  var _issChkHtml=canEdit?'<input type="checkbox" class="wk-iss-chk" data-rep="'+r+'" data-idx="'+idx+'" '+(iss.weeklyCheck&&iss.weeklyCheck[_thisWkKey()]?'checked ':'')+' style="width:15px;height:15px;cursor:pointer;accent-color:#1A56DB;" title="주간보고에 포함">':'&nbsp;';
   // :'&nbsp;'; // (위 삼항연산자에 통합)
   return '<tr id="ir-'+rep+'-'+idx+'">'
-    +'<td class="wk-chk-cell" style="display:table-cell;vertical-align:middle;text-align:center;">'+_issChkHtml+'</td>'    +'<td class="wk-no-cell" style="color:#94A3B8;font-weight:600;font-size:12px;">'+(iss.no||idx+1)+'</td>'    // 고객사
+    +'<td class="wk-chk-cell">'+_issChkHtml+'</td>'    +'<td class="wk-no-cell" style="color:#94A3B8;font-weight:600;font-size:12px;">'+(iss.no||idx+1)+'</td>'    // 고객사
     +'<td style="width:175px;vertical-align:middle;text-align:center;">'
       +(canEdit?'<input type="text" value="'+(iss.client||'')+'" style="width:100%;height:28px;box-sizing:border-box;text-align:center;" onchange="store.reps[\''+r+'\'].issuesList['+idx+'].client=this.value;autoSave&&autoSave()">':'<span style="font-size:12px;">'+( iss.client||'─')+'</span>')
     +'</td>'
@@ -14619,6 +14619,11 @@ function _wkGenContractNotifs(){
   var contracts=(typeof _getContracts==='function')?_getContracts(rep):[];
   if(!contracts.length) return;
   var today=new Date(); today.setHours(0,0,0,0);
+  // 필터 전에 읽음 상태 기억 (contract_id로 매핑)
+  var _contractReadMap={};
+  _wk.notifications.forEach(function(n){
+    if(n.type==='contract'&&n.read) _contractReadMap[n.id]=true;
+  });
   // 기존 계약 알림 초기화 (중복 방지)
   _wk.notifications=_wk.notifications.filter(function(n){return n.type!=='contract';});
   contracts.forEach(function(c){
@@ -14630,7 +14635,7 @@ function _wkGenContractNotifs(){
     // 이미 같은 계약 알림 있으면 스킵 (읽음 상태 보존됨)
     if(_wk.notifications.some(function(n){return n.id===notifId;})) return;
     // 이전에 읽었는지 확인 (diff가 바뀌어도 같은 계약이면 읽음 유지)
-    var _wasRead=_wk.notifications.some(function(n){return n.id.indexOf('contract_'+c.id)===0&&n.read;});
+    var _wasRead=!!_contractReadMap['contract_'+c.id];
     // 하자기간인 경우 endDate 지나도 정상 (관리기간 중)
     if(c.managementType==='하자기간') return;
     if(diff<=7&&diff>=0){
@@ -15168,9 +15173,9 @@ function _wkRenderFeed(){
 function _wkEntryHtml(entry){
   var pending=!entry.replies||!entry.replies.length;
   var _isOwn=(session&&(session.rep===entry.rep||session.role==='admin'));
+  var _eid=entry.id;
   var _editBtns=_isOwn
-    ?'<button class="wk-edit-btn" onclick="_wkEditEntry(\''+entry.id+'\')">✏️ 수정</button>'
-     +'<button class="wk-del-btn" onclick="_wkDeleteEntry(\''+entry.id+'\')">🗑 삭제</button>'
+    ?'<button class="wk-action-btn" onclick="event.stopPropagation();_wkToggleAction(this)" title="메뉴">···</button>'     +'<div class="wk-action-menu" id="wk-am-'+_eid+'">'     +'<button onclick="_wkEditEntry(\''+_eid+'\');_wkCloseAction()">수정</button>'     +'<button class="wk-del-action" onclick="_wkDeleteEntry(\''+_eid+'\');_wkCloseAction()">삭제</button>'     +'</div>'
     :'';
   var repliesHtml='';
   if(entry.replies&&entry.replies.length){
@@ -15178,11 +15183,7 @@ function _wkEntryHtml(entry){
       +entry.replies.map(function(r,ri){
         var _riOwn=(session&&(session.rep===r.rep||session.role==='admin'));
         var _riEdit=_riOwn
-          ?'<button class="wk-action-btn" style="top:6px;right:4px;font-size:13px;width:22px;height:22px;" onclick="event.stopPropagation();_wkToggleAction(this)" title="더보기">···</button>'
-           +'<div class="wk-action-menu" id="wk-rmore-'+entry.id+'-'+ri+'">'
-           +'<button onclick="_wkEditReply(\''+entry.id+'\','+ri+');_wkCloseAction()"><span>✏️</span>수정</button>'
-           +'<button class="wk-del-action" onclick="_wkDeleteReply(\''+entry.id+'\','+ri+');_wkCloseAction()"><span>🗑</span>삭제</button>'
-           +'</div>'
+          ?'<button class="wk-action-btn" style="top:6px;right:4px;width:20px;height:20px;font-size:12px;" onclick="event.stopPropagation();_wkToggleAction(this)" title="메뉴">···</button>'           +'<div class="wk-action-menu" id="wk-ram-'+entry.id+'-'+ri+'">'           +'<button onclick="_wkEditReply(\''+entry.id+'\','+ri+');_wkCloseAction()">수정</button>'           +'<button class="wk-del-action" onclick="_wkDeleteReply(\''+entry.id+'\','+ri+');_wkCloseAction()">삭제</button>'           +'</div>'
           :'';
         return '<div class="wk-ri" id="wk-reply-'+entry.id+'-'+ri+'">'
           +'<div class="wk-ri-meta">'
@@ -15575,7 +15576,7 @@ window._syncWeeklyFeed=async function(){
   // 변경 있으면 렌더
   var changed=JSON.stringify(entries)!==JSON.stringify(_wk.entries);
   // 최근 5초 이내 저장했으면 SP 데이터로 덮어쓰지 않음 (삭제/수정 보호)
-  var _recentSave=_wk.lastSaveAt&&(Date.now()-_wk.lastSaveAt<5000);
+  var _recentSave=_wk.lastSaveAt&&(Date.now()-_wk.lastSaveAt<15000);
   if(changed && !_recentSave){
     _wk.entries=entries;
     if(_wk.view==='feed') _wkRenderFeed();
@@ -15738,10 +15739,14 @@ window._wkDeleteEntry=async function(entryId){
   var idx=_wk.entries.findIndex(function(e){return e.id===entryId;});
   if(idx<0) return;
   _wk.entries.splice(idx,1);
+  _wk.lastSaveAt=Date.now(); // 삭제 즉시 보호 시작
   var wk=_wkThisKey(); var myRep=_wkGetMyName();
-  try{ await _wkSaveFeed(wk,myRep,_wk.entries.filter(function(e){return e.rep===myRep;})); }catch(e){}
+  try{
+    await _wkSaveFeed(wk,myRep,_wk.entries.filter(function(e){return e.rep===myRep;}));
+    _wk.lastSaveAt=Date.now(); // 저장 완료 후 갱신
+  }catch(e){ console.warn('[delete]',e); }
   _wkRenderFeed();
-  if(typeof showToast==='function') showToast('🗑 삭제되었습니다');
+  if(typeof showToast==='function') showToast('삭제되었습니다');
 };
 window._wkEditReply=function(entryId,ri){
   var entry=_wk.entries.find(function(e){return e.id===entryId;});
