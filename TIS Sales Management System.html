@@ -14432,8 +14432,15 @@ async function _wkSaveNotif(rep, items){
   if(!rep||!window._isSPReady) return;
   try{
     var key=_sanitizeDKey('notif_'+rep);
+    var _lockKey='weeklyNotif_'+key;
+    // 락 해제 대기 (최대 5초)
+    var _w=0;
+    while(window._spSaveLocks&&window._spSaveLocks[_lockKey]&&_w<5000){
+      await new Promise(function(r){ setTimeout(r,100); });
+      _w+=100;
+    }
     await _spSaveItem('weeklyNotif', key, {rep:rep, items:items, savedAt:new Date().toISOString()});
-    _wk.lastNotifSaveAt=Date.now(); // 저장 완료 시각 기록
+    _wk.lastNotifSaveAt=Date.now();
   }catch(e){ console.warn('[wk notif save]',e); }
 }
 
@@ -14766,23 +14773,29 @@ window._wkMarkAllRead=function(){
   if(_myN&&_myN!=='알 수 없음') _wkSaveNotif(_myN, _wk.notifications);
 };
 
-window._wkDeleteNotif=function(id){
+window._wkDeleteNotif=async function(id){
   _wk.notifications=_wk.notifications.filter(function(n){return n.id!==id;});
   _wk.lastNotifSaveAt=Date.now(); // 즉시 보호
   _wkUpdateNotifBadge();
   _wkRenderNotifDrop();
   var _myN=_wkGetMyName();
-  if(_myN&&_myN!=='알 수 없음') _wkSaveNotif(_myN, _wk.notifications);
+  if(_myN&&_myN!=='알 수 없음'){
+    await _wkSaveNotif(_myN, _wk.notifications);
+    _wk.lastNotifSaveAt=Date.now(); // 저장 완료 후 갱신
+  }
 };
 
-window._wkDeleteAllNotif=function(){
+window._wkDeleteAllNotif=async function(){
   if(!confirm('모든 알림을 삭제하시겠습니까?')) return;
   _wk.notifications=[];
-  _wk.lastNotifSaveAt=Date.now(); // 즉시 보호
+  _wk.lastNotifSaveAt=Date.now();
   _wkUpdateNotifBadge();
   _wkRenderNotifDrop();
   var _myN=_wkGetMyName();
-  if(_myN&&_myN!=='알 수 없음') _wkSaveNotif(_myN, []);
+  if(_myN&&_myN!=='알 수 없음'){
+    await _wkSaveNotif(_myN, []);
+    _wk.lastNotifSaveAt=Date.now();
+  }
 };
 
 // ── 팀/담당자 탭 빌드 ─────────────────────────────
