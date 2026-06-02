@@ -14433,6 +14433,7 @@ async function _wkSaveNotif(rep, items){
   try{
     var key=_sanitizeDKey('notif_'+rep);
     await _spSaveItem('weeklyNotif', key, {rep:rep, items:items, savedAt:new Date().toISOString()});
+    _wk.lastNotifSaveAt=Date.now(); // 저장 완료 시각 기록
   }catch(e){ console.warn('[wk notif save]',e); }
 }
 
@@ -14744,9 +14745,9 @@ window._wkClickNotif=function(id){
   var n=_wk.notifications.find(function(x){return x.id===id;});
   if(!n) return;
   n.read=true;
+  _wk.lastNotifSaveAt=Date.now();
   _wkUpdateNotifBadge();
   _wkRenderNotifDrop();
-  // SP에 읽음 상태 저장
   var _myN=_wkGetMyName();
   if(_myN&&_myN!=='알 수 없음') _wkSaveNotif(_myN, _wk.notifications);
   document.getElementById('wk-notif-drop').style.display='none';
@@ -14758,6 +14759,7 @@ window._wkClickNotif=function(id){
 
 window._wkMarkAllRead=function(){
   _wk.notifications.forEach(function(n){n.read=true;});
+  _wk.lastNotifSaveAt=Date.now();
   _wkUpdateNotifBadge();
   _wkRenderNotifDrop();
   var _myN=_wkGetMyName();
@@ -14766,6 +14768,7 @@ window._wkMarkAllRead=function(){
 
 window._wkDeleteNotif=function(id){
   _wk.notifications=_wk.notifications.filter(function(n){return n.id!==id;});
+  _wk.lastNotifSaveAt=Date.now(); // 즉시 보호
   _wkUpdateNotifBadge();
   _wkRenderNotifDrop();
   var _myN=_wkGetMyName();
@@ -14775,6 +14778,7 @@ window._wkDeleteNotif=function(id){
 window._wkDeleteAllNotif=function(){
   if(!confirm('모든 알림을 삭제하시겠습니까?')) return;
   _wk.notifications=[];
+  _wk.lastNotifSaveAt=Date.now(); // 즉시 보호
   _wkUpdateNotifBadge();
   _wkRenderNotifDrop();
   var _myN=_wkGetMyName();
@@ -15647,12 +15651,15 @@ window._syncWeeklyFeed=async function(){
   // 알림 로드 (매번 최신 데이터)
   var _myN=_wkGetMyName();
   if(session&&_myN&&_myN!=='알 수 없음'){
-    var notifs=await _wkLoadNotif(_myN);
-    // 기존 읽음 상태 보존 (read=true인 항목 유지)
-    var _readSet={};
-    _wk.notifications.forEach(function(n){if(n.read) _readSet[n.id]=true;});
-    _wk.notifications=notifs||[];
-    _wk.notifications.forEach(function(n){if(_readSet[n.id]) n.read=true;});
+    // 최근 15초 이내 알림 저장 시 덮어쓰기 방지 (삭제 보호)
+    var _recentNotifSave=_wk.lastNotifSaveAt&&(Date.now()-_wk.lastNotifSaveAt<15000);
+    if(!_recentNotifSave){
+      var notifs=await _wkLoadNotif(_myN);
+      var _readSet={};
+      _wk.notifications.forEach(function(n){if(n.read) _readSet[n.id]=true;});
+      _wk.notifications=notifs||[];
+      _wk.notifications.forEach(function(n){if(_readSet[n.id]) n.read=true;});
+    }
     _wkGenContractNotifs();
     if(true){
       _wkUpdateNotifBadge();
