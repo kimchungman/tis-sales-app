@@ -3318,8 +3318,10 @@ document.addEventListener('mousedown',function(e){
 <div class="wk-notif-drop" id="wk-notif-drop">
   <div class="wk-nd-head">
     <span class="wk-nd-title">🔔 알림</span>
-    <button class="wk-nd-clear" onclick="_wkMarkAllRead()">모두 읽음</button>
-    <button class="wk-nd-clear" style="color:#DC2626;" onclick="_wkDeleteAllNotif()">전체 삭제</button>
+    <div style="display:flex;gap:4px;">
+      <button class="wk-nd-clear" onclick="_wkMarkAllRead()">모두 읽음</button>
+      <button class="wk-nd-clear" style="color:#DC2626;" onclick="_wkDeleteAllNotif()">전체 삭제</button>
+    </div>
   </div>
   <div class="wk-nd-list" id="wk-notif-list"></div>
 </div>
