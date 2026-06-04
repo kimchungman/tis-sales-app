@@ -2431,6 +2431,10 @@ document.addEventListener('mousedown',function(e){
 .wk-row .wk-cli { width: 100px; flex-shrink: 0; font-weight: 600; font-size: 11px; }
 .wk-row .wk-cont { flex: 1; font-size: 12px; line-height: 1.5; }
 .wk-row .wk-dt { width: 44px; flex-shrink: 0; font-size: 10px; color: var(--muted); text-align: right; }
+
+.wk-edit-btn,.wk-del-btn{border:none;background:transparent;cursor:pointer;font-size:11px;padding:3px 8px;border-radius:6px;color:var(--muted);transition:background .1s;}
+.wk-edit-btn:hover{background:var(--blue-soft);color:var(--blue);}
+.wk-del-btn:hover{background:#FEE2E2;color:#DC2626;}
 </style>
 </head>
 <body>
@@ -2492,6 +2496,65 @@ window._renderRich = function(text) {
 };
 // 별칭
 function _renderRich(text){ return window._renderRich(text); }
+
+
+// ── 작성자/관리자 체크
+function _wkIsAuthor(entry){
+  return session&&entry&&(session.rep===entry.rep||session.role==='admin');
+}
+function _wkIsAdmin(){
+  return session&&session.role==='admin';
+}
+function _wkGetMyName(){
+  return (session&&session.rep)||'';
+}
+
+// ── 수정
+window._wkEditEntry=function(entryId){
+  var entry=_wk.entries.find(function(e){return e.id===entryId;});
+  if(!entry) return;
+  var cont=document.getElementById('wk-entry-cont-'+entryId);
+  if(!cont) return;
+  cont.innerHTML='<div class="rich-ed" contenteditable="true" id="wk-edit-ta-'+entryId+'" style="min-height:60px;padding:8px;border:1.5px solid var(--blue);border-radius:6px;font-size:13px;line-height:1.5;outline:none;background:var(--bg);">'+_wkSanitize(entry.text||'')+'</div>'    +'<div style="margin-top:6px;display:flex;gap:6px;">'    +'<button class="wk-reply-submit" onclick="_wkSaveEntryEdit(\''+entryId+'\')">저장</button>'    +'<button class="wk-reply-cancel" onclick="_wkCancelEntryEdit(\''+entryId+'\')">취소</button>'    +'</div>';
+  var ed=document.getElementById('wk-edit-ta-'+entryId);
+  if(ed){ed.focus();var rng=document.createRange();rng.selectNodeContents(ed);rng.collapse(false);var sel=window.getSelection();sel.removeAllRanges();sel.addRange(rng);}
+};
+
+window._wkCancelEntryEdit=function(entryId){
+  var entry=_wk.entries.find(function(e){return e.id===entryId;});
+  if(!entry) return;
+  var cont=document.getElementById('wk-entry-cont-'+entryId);
+  if(cont) cont.innerHTML=_wkSanitize(entry.text||'');
+};
+
+window._wkSaveEntryEdit=async function(entryId){
+  var entry=_wk.entries.find(function(e){return e.id===entryId;});
+  if(!entry) return;
+  var ed=document.getElementById('wk-edit-ta-'+entryId);
+  if(!ed) return;
+  entry.text=ed.innerHTML;
+  entry.editedAt=_wkNowStr();
+  var weekKey=_wkThisKey();
+  var myRep=_wkGetMyName();
+  var myEntries=_wk.entries.filter(function(e){return e.rep===myRep;});
+  try{ await _wkSaveFeed(weekKey,myRep,myEntries); }catch(e){}
+  _wkRenderFeed();
+  if(typeof showToast==='function') showToast('✅ 수정되었습니다');
+};
+
+// ── 삭제
+window._wkDeleteEntry=async function(entryId){
+  if(!confirm('이 회의록을 삭제하시겠습니까?')) return;
+  var idx=_wk.entries.findIndex(function(e){return e.id===entryId;});
+  if(idx<0) return;
+  _wk.entries.splice(idx,1);
+  var weekKey=_wkThisKey();
+  var myRep=_wkGetMyName();
+  var myEntries=_wk.entries.filter(function(e){return e.rep===myRep;});
+  try{ await _wkSaveFeed(weekKey,myRep,myEntries); }catch(e){}
+  _wkRenderFeed();
+  if(typeof showToast==='function') showToast('🗑 삭제되었습니다');
+};
 
 })();
 </script>
@@ -13238,6 +13301,12 @@ function checkReady(){
 
 document.addEventListener('app:ready', function(){
   if(APP.autoDone) return;
+  // 주간회의 데이터 사전 로드 (페이지 진입 전 미리 캐싱)
+  try{
+    if(typeof window._syncWeeklyFeed==='function'){
+      window._syncWeeklyFeed();
+    }
+  }catch(e){}
   if(!session||session.role!=='rep'||!session.rep) return;
   var pg=document.getElementById('page-input');
   if(!pg||!pg.classList.contains('active')) return;
@@ -16853,7 +16922,7 @@ function _wkEntryHtml(entry){
       +(pending?'<span class="wk-pend-badge">\ubbf8\ub2f5\ubcc0</span>':'<span class="wk-done-badge">\ub2f5\ubcc0\uc644\ub8cc</span>')
       +'<span class="wk-fi-t">'+_wkEsc(entry.time||'')+'</span>'
     +'</div>'
-    +'<div class="wk-fi-cont">'+_wkSanitize(entry.text||'')+'</div>'
+    +'<div class="wk-fi-cont" id="wk-entry-cont-'+entry.id+'">'+_wkSanitize(entry.text||'')+'</div>'
     +repliesHtml
     +'<div style="margin-top:5px;">'
       +'<button class="wk-reply-btn" onclick="_wkToggleReply(\''+entry.id+'\')">\u21a9 \ub2f5\ubcc0\ud558\uae30</button>'
