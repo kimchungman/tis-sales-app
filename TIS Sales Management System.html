@@ -13786,18 +13786,42 @@ function _getMSAL(){
 }
 
 async function _connectSP(app, account){
+  // 1차: 조용한 토큰 갱신
   try{
     var sr = await app.acquireTokenSilent({scopes:[SP_SCOPE],account:account});
     if(sr && sr.accessToken){
       window._spToken = sr.accessToken;
+      window._msalApp = app;
       _setBar('connected');
       if(typeof _initSP==='function') await _initSP();
-      // 대시보드 강제 재렌더
       try{ if(typeof renderDashboard==='function') renderDashboard(); }catch(e){}
       try{ if(typeof renderRepSummary==='function') renderRepSummary(); }catch(e){}
+      return;
     }
   }catch(e){
-    console.warn('[SP]',e.message);
+    console.warn('[SP silent]',e.message);
+    // interaction_required → 팝업으로 재시도
+    if(e.errorCode==='interaction_required'||e.name==='InteractionRequiredAuthError'
+       ||( e.message&&(e.message.includes('interaction')||e.message.includes('AADSTS')
+           ||e.message.includes('consent')||e.message.includes('login_required')))){
+      try{
+        var pr = await app.acquireTokenPopup({scopes:[SP_SCOPE]});
+        if(pr && pr.accessToken){
+          window._spToken = pr.accessToken;
+          window._msalApp = app;
+          if(pr.account) app.setActiveAccount(pr.account);
+          _setBar('connected');
+          if(typeof _initSP==='function') await _initSP();
+          try{ if(typeof renderDashboard==='function') renderDashboard(); }catch(e2){}
+          return;
+        }
+      }catch(e2){
+        console.warn('[SP popup]',e2.message);
+        _setBar('error',e2.message);
+        showToast('SP 로그인 필요: '+e2.message,'warn');
+        return;
+      }
+    }
     _setBar('error',e.message);
   }
 }
