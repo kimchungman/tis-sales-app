@@ -4541,6 +4541,17 @@ function _initApp(){
       try{ renderPipeline(); }catch(e){}
       try{ renderVisits(); }catch(e){}
       try{ populateFilters(); }catch(e){}
+      // 입력 페이지가 활성화 상태면 재빌드 (SP 데이터 로드 후 빈 화면 방지)
+      try{
+        var _ipEl=document.getElementById('page-input');
+        var _iaEl=document.getElementById('rep-input-area');
+        if(_ipEl&&_ipEl.classList.contains('active')){
+          window._lastBuiltTeam=null;
+          if(_iaEl) _iaEl.innerHTML='';
+          if(typeof switchInputTeam==='function' && typeof currentTeam!=='undefined')
+            switchInputTeam(currentTeam);
+        }
+      }catch(e){}
       setTimeout(function(){
         try{ if(typeof renderRepChart==='function') renderRepChart(); }catch(e){}
         try{ if(typeof renderMainChart==='function') renderMainChart(); }catch(e){}
@@ -9172,6 +9183,18 @@ async function _spLoadSettings() {
   if(!window._syncLoadingSettings){
     APP.spReady = true;
     checkReady();
+    // SP 로드 후 입력 페이지 강제 재빌드 (타이밍 문제 방지)
+    setTimeout(function(){
+      try{
+        var _ipEl2=document.getElementById('page-input');
+        var _iaEl2=document.getElementById('rep-input-area');
+        if(_ipEl2&&_ipEl2.classList.contains('active')&&_iaEl2&&_iaEl2.children.length===0){
+          window._lastBuiltTeam=null;
+          if(typeof switchInputTeam==='function'&&typeof currentTeam!=='undefined')
+            switchInputTeam(currentTeam);
+        }
+      }catch(e){}
+    }, 300);
   }
 
 
