@@ -2556,6 +2556,46 @@ window._wkDeleteEntry=async function(entryId){
   if(typeof showToast==='function') showToast('🗑 삭제되었습니다');
 };
 
+
+// ── Rich Editor selectionchange (드래그 색상 툴바)
+var _richTarget = null;
+var _barHideTimer = null;
+function _inRichEd(node){
+  var el=node;
+  while(el&&el!==document.body){
+    if(el.classList&&el.classList.contains('rich-ed')) return el;
+    el=el.parentNode;
+  }
+  return null;
+}
+function _showBar(sel){
+  var bar=document.getElementById('_rich-bar');
+  if(!bar) return;
+  var range=sel.getRangeAt(0);
+  var rect=range.getBoundingClientRect();
+  bar.style.display='flex';
+  var bw=bar.offsetWidth||220, bh=bar.offsetHeight||36;
+  var left=Math.max(8,Math.min(rect.left+rect.width/2-bw/2,window.innerWidth-bw-8));
+  var top=rect.top-bh-10;
+  if(top<8) top=rect.bottom+10;
+  bar.style.left=left+'px'; bar.style.top=top+'px';
+}
+function _hideBar(){
+  var bar=document.getElementById('_rich-bar');
+  if(bar) bar.style.display='none';
+}
+document.addEventListener('selectionchange',function(){
+  clearTimeout(_barHideTimer);
+  var sel=window.getSelection();
+  if(!sel||sel.isCollapsed||sel.rangeCount===0){
+    _barHideTimer=setTimeout(_hideBar,150); return;
+  }
+  var target=_inRichEd(sel.anchorNode);
+  if(!target){ _barHideTimer=setTimeout(_hideBar,150); return; }
+  _richTarget=target;
+  _showBar(sel);
+});
+
 })();
 </script>
 
@@ -5270,8 +5310,16 @@ function switchInputTeam(team){
     window._lastBuiltTeam = currentTeam;
     document.querySelectorAll('.rep-sec').forEach(function(s){s.style.display='none';});
     buildRepInputs();
+    // buildRepInputs 직후 myRep 섹션 즉시 표시 (경쟁 조건 방지)
+    (function(){
+      var _myRep2=(session&&session.rep&&REPS.indexOf(session.rep)>=0)?session.rep:(REPS[0]||'');
+      if(_myRep2){
+        document.querySelectorAll('.rep-sec').forEach(function(s){s.style.display='none';});
+        var _secEl=document.getElementById('rs-'+_myRep2);
+        if(_secEl){ _secEl.style.display='block'; }
+      }
+    })();
     // buildRepInputs 완료 후 현재 활성 담당자 탭 적용 (rAF로 DOM 안정화 후)
-    // DOM 완전 안정화 후 switchTab (모든 래퍼 rAF 완료 보장)
     setTimeout(function(){
       // _savedVT 있으면 깜빡임 없이 바로 복원
       if(_savedVT&&_savedVT.rep&&_savedVT.tab&&typeof window._switchVTab==='function'){
@@ -16934,7 +16982,11 @@ function _wkEntryHtml(entry){
     +'<div class="wk-fi-cont" id="wk-entry-cont-'+entry.id+'">'+_wkSanitize(entry.text||'')+'</div>'
     +repliesHtml
     +'<div style="margin-top:5px;">'
-      +'<button class="wk-reply-btn" onclick="_wkToggleReply(\''+entry.id+'\')">\u21a9 \ub2f5\ubcc0\ud558\uae30</button>'
+      +'<button class="wk-reply-btn" onclick="_wkToggleReply(\''+entry.id+'\')">↩ 답변하기</button>'
+      +((_wkIsAuthor&&_wkIsAuthor(entry))
+        ?'<button class="wk-edit-btn" onclick="_wkEditEntry(\''+entry.id+'\')">✏️ 수정</button>'
+         +'<button class="wk-del-btn" onclick="_wkDeleteEntry(\''+entry.id+'\')">🗑 삭제</button>'
+        :'')
     +'</div>'
     +'<div class="wk-reply-input-wrap" id="wk-reply-wrap-'+entry.id+'" style="display:none;">'
       +'<textarea class="wk-reply-textarea" id="wk-reply-ta-'+entry.id+'" rows="2" placeholder="\ub2f5\ubcc0 \uc785\ub825..."></textarea>'
