@@ -4563,56 +4563,20 @@ function showPage(id,navEl){
   if(typeof closeMobileMenu==="function") closeMobileMenu();
   // ── 페이지별 탭 초기화 (매번 호출 보장) ──
   if(id==='input'){
-    // admin/guest: 항상 리셋
-    if(!session || session.role !== 'rep'){
-      window._lastBuiltTeam = null;
-    }
-    // 이전 담당자와 다르면 DOM 즉시 비우기 (이중 안전망)
-    if(window._lastBuiltTeam && session && session.team &&
-       window._lastBuiltTeam !== session.team){
-      var _rAreaSP=document.getElementById('rep-input-area');
-      if(_rAreaSP) _rAreaSP.innerHTML='';
-      window._lastBuiltTeam=null;
-    }
-    APP.domReady=false; APP.autoDone=false;  // 페이지 진입 초기화
-    window._inputPageDirty=false; // 진입 시 dirty 초기화
-
-    window._autoTabPending = true; // 초기 진입 시 자동 탭 이동 허용
-    // session.team 기준으로 팀 탭 초기화
-    if(session && session.role==='rep' && session.team){
-      _tabState.input = session.team; // 항상 본인 팀으로 강제
-    }
-    // 진입 시마다 강제 재빌드 (SP 로드 타이밍 문제 해결)
-    window._lastBuiltTeam = null;
-    var _clearArea = document.getElementById('rep-input-area');
-    if(_clearArea) _clearArea.innerHTML = '';
-    window._inputPageInitializing=true;
     initInputTabs();
-    window._inputPageInitializing=false;
-
-    if(typeof applyPermissions==='function') applyPermissions();
-    // 200ms 후 강제 보정: buildRepInputs 완료 후 올바른 담당자 섹션 확인
-    (function(){
-      var _corrRep=(session&&session.rep)?session.rep:null;
-      if(!_corrRep) return;
+    if(typeof buildRepTabs==='function') buildRepTabs();
+    if(typeof buildRepInputs==='function') buildRepInputs();
+    // 참가자 접속 시 본인 탭 자동 선택 (page-input 내부만)
+    if(session && session.role==='rep' && session.rep){
       setTimeout(function(){
-        var _pg=document.getElementById('page-input');
-        if(!_pg||!_pg.classList.contains('active')) return;
-        // 현재 보이는 rep-sec 확인
-        var _visible=document.querySelector('.rep-sec[style*="display: block"],.rep-sec[style*="display:block"]');
-        if(_visible&&_visible.id!=='rs-'+_corrRep){
-          // 잘못된 섹션 보임 → 강제 수정
-          document.querySelectorAll('.rep-sec').forEach(function(s){s.style.display='none';});
-          var _ms=document.getElementById('rs-'+_corrRep);
-          if(_ms)_ms.style.display='block';
-          document.querySelectorAll('#rep-tabs .tab').forEach(function(t){t.classList.remove('active');});
-          var _mt=document.querySelector('#rep-tabs .tab[data-rep="'+_corrRep+'"]');
-          if(_mt)_mt.classList.add('active');
-        }
-      }, 200);
-    })();
-    APP.domReady=true;
-    checkReady();
+        var pageInput = document.getElementById('page-input');
+        if(!pageInput) return;
+        var _sRep=session.rep||'';
+        var _nRep=(REPS&&REPS.indexOf(_sRep)>=0)?_sRep:(REPS&&REPS.find(function(r){return _sRep.replace(/[（(\[【].*$/,'').trim()===r;}))||_sRep;
+        var myTab = pageInput.querySelector('.tab[data-rep="'+_nRep+'"]');
+        if(myTab && !myTab.classList.contains('active')) myTab.click();
+      }, 80);
+    }
   } else if(id==='issues'){
     initIssueTabs();
     // 참가자: 본인 팀으로 필터
@@ -5299,106 +5263,28 @@ function renderRepChart(){
 // INPUT
 
 function switchInputTeam(team){
-  console.log('[switchInputTeam] called with:', JSON.stringify(team));
-  // 현재 활성 vtab 저장 (200ms 후 복원용 - 80ms timeout이 main으로 덮기 전에 저장)
-  var _savedVT=(window._activeVTab&&window._activeVTab.tab!=='main')
-    ?{rep:window._activeVTab.rep,tab:window._activeVTab.tab}:null;
-  var _bA=document.getElementById('rep-input-area');
-  if(window._lastBuiltTeam===team&&_bA&&_bA.children.length>0){
-    if(_savedVT&&_savedVT.rep&&_savedVT.tab&&typeof window._switchVTab==='function')window._switchVTab(_savedVT.rep,_savedVT.tab);
-    return;
-  }
   currentTeam=team;
-  // 팀이 바뀌면 재빌드 강제
-  if(window._lastBuiltTeam !== team) window._lastBuiltTeam = null;
   applyCurrentTeam(team);
   (TEAM_REPS[team]||[]).forEach(function(rep){
-    if(!store.reps[rep]) store.reps[rep]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],contracts:[]};
+    if(!store.reps[rep]) store.reps[rep]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],visitLog:[],contracts:[],issuesList:[]};
+    // SP 데이터 덮어쓰기 후 배열 타입 보장
+    var _rd=store.reps[rep];
+    ['plan','actual','forecast'].forEach(function(k){
+      if(!Array.isArray(_rd[k])){var _o=_rd[k]||{};_rd[k]=new Array(12).fill(0).map(function(_,i){return parseFloat(_o[i]||_o[String(i)]||0)||0;});}
+    });
+    if(!Array.isArray(_rd.clients)) _rd.clients=[];
+    if(!Array.isArray(_rd.activities)) _rd.activities=[];
+    if(!Array.isArray(_rd.visitLog)) _rd.visitLog=[];
+    if(!Array.isArray(_rd.contracts)) _rd.contracts=[];
+    if(!Array.isArray(_rd.issuesList)) _rd.issuesList=[];
   });
   renderInputTeamTabs();
   buildRepTabs();
-  // buildRepInputs 중복 호출 방지 (app:ready 동기 이벤트로 인한 이중 호출 차단)
-  if(window._briTimer) clearTimeout(window._briTimer);
-  window._briTimer = setTimeout(function(){
-    window._briTimer = null;
-    var _ip=document.getElementById('page-input');
-    if(!_ip) return;
-    // page가 아직 active 아니어도 빌드 허용 (showPage 초기화 순서 문제 해결)
-    var _pageIsActive=_ip.classList.contains('active')||window._inputPageInitializing;
-    if(!_pageIsActive) return;
-    // 같은 팀 && 이미 빌드됨 → 재빌드 없이 탭만 복원 (플리커 방지)
-    var _area=document.getElementById('rep-input-area');
-    var _alreadyBuilt = _area && _area.children.length>0 && window._lastBuiltTeam===currentTeam;
-    if(_alreadyBuilt){
-      if(_savedVT&&_savedVT.rep&&_savedVT.tab&&typeof window._switchVTab==='function'){
-        window._switchVTab(_savedVT.rep,_savedVT.tab);
-      } else {
-        // session.rep가 직책명 포함("김충만(차장)") 등으로 탭 못찾는 경우 정규화
-        var _sRep=(session&&session.rep)||'';
-        var _sRepNorm=_sRep.replace(/[（(\[【].*$/,'').trim();
-        var _myRepTab=document.querySelector('#rep-tabs .tab[data-rep="'+_sRep+'"]')
-          ||document.querySelector('#rep-tabs .tab[data-rep="'+_sRepNorm+'"]')
-          ||(REPS.indexOf(_sRepNorm)>=0?document.querySelector('#rep-tabs .tab[data-rep="'+_sRepNorm+'"]'):null)
-          ||document.querySelector('#rep-tabs .tab')
-          ||document.querySelector('#rep-tabs .tab.active');
-        if(_myRepTab&&typeof switchTab==='function'){
-          switchTab(_myRepTab.dataset.rep||_myRepTab.textContent.trim(),_myRepTab);
-        } else if(REPS&&REPS[0]){
-          var _fs=document.getElementById('rs-'+REPS[0]);
-          if(_fs) _fs.style.display='block';
-        }
-      }
-      return;
-    }
-    window._lastBuiltTeam = currentTeam;
-    document.querySelectorAll('.rep-sec').forEach(function(s){s.style.display='none';});
-    buildRepInputs();
-    // buildRepInputs 직후 myRep 섹션 즉시 표시 (경쟁 조건 방지)
-    (function(){
-      var _mr=((session&&session.rep)||'');
-      var _mrNorm=_mr.replace(/[（(\[【].*$/,'').trim();
-      var _myRep2=(REPS.indexOf(_mr)>=0)?_mr:(REPS.indexOf(_mrNorm)>=0?_mrNorm:(REPS[0]||''));
-      if(_myRep2){
-        document.querySelectorAll('.rep-sec').forEach(function(s){s.style.display='none';});
-        var _secEl=document.getElementById('rs-'+_myRep2);
-        if(_secEl){ _secEl.style.display='block'; }
-      }
-    })();
-    // buildRepInputs 완료 후 현재 활성 담당자 탭 적용 (rAF로 DOM 안정화 후)
-    setTimeout(function(){
-      // _savedVT 있으면 깜빡임 없이 바로 복원
-      if(_savedVT&&_savedVT.rep&&_savedVT.tab&&typeof window._switchVTab==='function'){
-        window._switchVTab(_savedVT.rep,_savedVT.tab);
-      } else {
-        // session.rep 직접 사용 (activeTab 의존 제거 - 다른 담당자 탭이 active일 수 있음)
-        var _sr=(session&&session.rep)||'';
-        var _srNorm=_sr.replace(/[（(\[【].*$/,'').trim();
-        var _targetRep=(REPS.indexOf(_sr)>=0)?_sr:(REPS.indexOf(_srNorm)>=0?_srNorm:(REPS[0]||''));
-        var activeTab=_targetRep
-          ?document.querySelector('#rep-tabs .tab[data-rep="'+_targetRep+'"]')
-          :document.querySelector('#rep-tabs .tab.active');
-        if(!activeTab) activeTab=document.querySelector('#rep-tabs .tab');
-        if(activeTab&&typeof switchTab==='function'){
-          switchTab(activeTab.dataset.rep||activeTab.textContent.trim(),activeTab);
-        } else if(REPS&&REPS[0]&&typeof switchTab==='function'){
-          var firstSec=document.getElementById('rs-'+REPS[0]);
-          if(firstSec)firstSec.style.display='block';
-          if(typeof window._switchVTab==='function')window._switchVTab(REPS[0],'main');
-        }
-      }
-    },80);
-    // 숨김 select 강제 투명 처리 (CSS specificity 충돌 방어)
-    setTimeout(function(){
-      document.querySelectorAll('._bsl-sel').forEach(function(el){
-        el.style.setProperty('opacity','0','important');
-        el.style.setProperty('z-index','2','');
-      });
-    }, 50);
-    extractIssues();
-    renderIssues();
-    renderPipeline();
-    populateFilters();
-  }, 0);
+  buildRepInputs();
+  extractIssues();
+  renderIssues();
+  renderPipeline();
+  populateFilters();
 }// (구버전 switchInputTeam 제거됨)
 
 function buildRepTabs(){
@@ -5583,8 +5469,14 @@ function buildRepInputs(){
     </div>
   </div>`).join('');
   // session.rep 섹션 즉시 표시 (rAF 대기 없이 바로 브라우저 페인트)
-  if(session && session.rep){
-    var _prSec = document.getElementById('rs-'+session.rep);
+  // _myRep이 REPS에 없으면 정규화 (직책명 제거: "김충만(차장)" → "김충만")
+  var _showRep = _myRep || (session&&session.rep
+    ? (REPS.indexOf(session.rep)>=0 ? session.rep
+       : REPS.find(function(r){return session.rep.replace(/[（(\[【].*$/,'').trim()===r;})||REPS[0]||'')
+    : (REPS[0]||''));
+  if(_showRep){
+    document.querySelectorAll('.rep-sec').forEach(function(s){s.style.display='none';});
+    var _prSec = document.getElementById('rs-'+_showRep);
     if(_prSec) _prSec.style.display = 'block';
   }
 
@@ -5632,7 +5524,9 @@ function buildRepInputs(){
     // 담당자 모드: 초기 진입 시에만 본인 탭으로 자동 이동
     if(session && session.role==='rep' && session.rep && window._autoTabPending){
       window._autoTabPending = false;
-      var _myRep  = session.rep;
+      var _rawRep = session.rep||'';
+      var _myRep = (REPS.indexOf(_rawRep)>=0)?_rawRep
+        :(REPS.find(function(r){return _rawRep.replace(/[（(\[【].*$/,'').trim()===r;})||_rawRep);
       var _myTeam = session.team || currentTeam || '';
       // 다른 담당자 탭을 사용자가 직접 선택했으면 강제 이동 안 함
       var _userChoseOther = (typeof activeRep!=='undefined' && activeRep && activeRep !== _myRep);
@@ -13428,77 +13322,17 @@ function checkReady(){
 
 document.addEventListener('app:ready', function(){
   if(APP.autoDone) return;
-  // 주간회의 데이터 사전 로드 (페이지 진입 전 미리 캐싱)
-  try{
-    if(typeof window._syncWeeklyFeed==='function'){
-      window._syncWeeklyFeed();
+  APP.autoDone=true;
+  // 주간회의 데이터 사전 로드
+  try{ if(typeof window._syncWeeklyFeed==='function') window._syncWeeklyFeed(); }catch(e){}
+  // 입력 페이지가 활성 상태면 SP 데이터로 재빌드
+  var _pg=document.getElementById('page-input');
+  if(_pg&&_pg.classList.contains('active')&&session&&session.role==='rep'&&session.rep){
+    var myTeam=session.team||'';
+    if(!myTeam&&typeof REP_TEAM_MAP!=='undefined') myTeam=REP_TEAM_MAP[session.rep]||'';
+    if(myTeam&&typeof switchInputTeam==='function'){
+      switchInputTeam(myTeam);
     }
-  }catch(e){}
-  if(!session||session.role!=='rep'||!session.rep) return;
-  var pg=document.getElementById('page-input');
-  if(!pg||!pg.classList.contains('active')) return;
-
-  var myRep  = session.rep;
-  var myTeam = session.team || _getRepActualTeam(myRep) || '';
-
-  // ══ 디버그 로그 ══
-  console.log('[AutoTab] session.team =', JSON.stringify(myTeam));
-  console.log('[AutoTab] session.rep  =', JSON.stringify(myRep));
-  console.log('[AutoTab] TEAMS =', JSON.stringify(TEAMS));
-  var _teamBtns = document.querySelectorAll('#input-team-tabs .tis-tab');
-  _teamBtns.forEach(function(b){
-    console.log('[AutoTab] teamBtn data-tab='+JSON.stringify(b.dataset.tab)+' text='+JSON.stringify(b.textContent.trim())+' active='+b.classList.contains('active'));
-  });
-  var _repBtns = document.querySelectorAll('#rep-tabs .tab');
-  console.log('[AutoTab] repTab count=', _repBtns.length);
-  _repBtns.forEach(function(b){
-    console.log('[AutoTab] repBtn data-rep='+JSON.stringify(b.dataset.rep));
-  });
-  console.log('[AutoTab] myTeam===TEAMS match:', TEAMS.indexOf(myTeam));
-  console.log('[AutoTab] myTeam charCodes:', myTeam.split('').map(function(c){return c.charCodeAt(0);}));
-  var _firstTeam = TEAMS[0]||'';
-  console.log('[AutoTab] TEAMS[0] charCodes:', _firstTeam.split('').map(function(c){return c.charCodeAt(0);}));
-
-  // fallback: REP_TEAM_MAP
-  if(!myTeam && typeof REP_TEAM_MAP!=='undefined' && REP_TEAM_MAP[myRep]){
-    myTeam = REP_TEAM_MAP[myRep];
-  }
-  if(!myTeam){ APP.domReady=false; APP.spReady=false; return; }
-
-  // SP 로드 후 섹션 비어있으면 강제 재빌드
-  var _inputArea = document.getElementById('rep-input-area');
-  if(_inputArea && _inputArea.children.length === 0){
-    window._lastBuiltTeam = null; // 강제 재빌드 트리거
-  }
-  // 이미 맞는 팀이면 switchInputTeam 생략 (buildRepInputs 중복 방지)
-  if(typeof currentTeam !== 'undefined' && currentTeam === myTeam && window._lastBuiltTeam === myTeam){
-    // 팀 탭 UI만 확인
-    document.querySelectorAll('#input-team-tabs .tis-tab').forEach(function(t){
-      t.classList.toggle('active', t.getAttribute('data-tab')===myTeam);
-    });
-    // rep 탭 탐색 → buildRepInputs 완료 대기 후 처리
-    var repTab = document.querySelector('#rep-tabs .tab[data-rep="'+myRep+'"]');
-    if(repTab){
-      APP.autoDone=true;
-      // (navigation 시에만 설정)
-      repTab.click();
-      if(typeof applyPermissions==='function') applyPermissions();
-    } else {
-      // rep 탭 미생성 시 buildRepInputs 완료 후 처리
-      // (navigation 시에만 설정)
-    }
-  } else {
-    // 다른 팀이면 switchInputTeam 호출 후 rep 탐색
-    if(typeof switchInputTeam==='function') switchInputTeam(myTeam);
-    // (navigation 시에만 설정)
-    document.querySelectorAll('#input-team-tabs .tis-tab').forEach(function(t){
-      t.classList.toggle('active', t.getAttribute('data-tab')===myTeam);
-    });
-    var repTab = document.querySelector('#rep-tabs .tab[data-rep="'+myRep+'"]');
-    if(!repTab){ APP.domReady=false; return; }
-    APP.autoDone=true;
-    repTab.click();
-    if(typeof applyPermissions==='function') applyPermissions();
   }
 });
 
