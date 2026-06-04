@@ -8363,7 +8363,6 @@ function _lUrl() {
 }
 
 async function _initSP() {
-  window._spDataLoaded = false; // SP 로드 완료 전 저장 차단
   try {
     _setSPStatus('connecting');
 
@@ -8385,29 +8384,7 @@ async function _initSP() {
 
     // 설정 + 오늘 데이터 자동 로드 (최초 접속 시 동기화)
     await _spLoadSettings();
-    // _spLoadToday 제거: 구버전 스냅샷이 최신 데이터 오염 방지
-    await _spLoadAllReps();
-    // SP 로드 완료 → 저장 허용 + repSavedHashes 초기화
-    window._spDataLoaded = true;
-  if(typeof _cdbSyncFromStore==='function') setTimeout(_cdbSyncFromStore, 500);
-    // 오프라인 임시저장 데이터 자동 업로드
-    try{
-      var _oq=JSON.parse(localStorage.getItem('_spOfflineQ')||'[]');
-      if(_oq.length>0 && typeof _spFlushOffline==='function') setTimeout(_spFlushOffline, 2000);
-    }catch(e){}
-    if(typeof _repSavedHashes!=='undefined' && typeof store!=='undefined' && store.reps){
-      Object.keys(store.reps).forEach(function(r){
-        try{
-          // savedAt 없으면 현재 시각으로 초기화 (sync 보호)
-          if(store.reps[r] && !store.reps[r].savedAt){
-            store.reps[r].savedAt = new Date().toISOString();
-          }
-          _repSavedHashes[r]=JSON.stringify(store.reps[r]);
-        }catch(e){}
-      });
-    }
-    // 기존 visit_log 데이터 마이그레이션 (rep_data 통합 전 데이터 호환)
-      if(typeof _spLoadAllVisitLogs==='function') await _spLoadAllVisitLogs();
+    await _spLoadToday();
     await _spLoadHistList();
 
     // 데이터 로드 후 대시보드 즉시 재렌더링 (모든 사용자)
@@ -8417,208 +8394,25 @@ async function _initSP() {
 
     // 10초 자동 동기화 시작
     if(window._spSyncTimer) clearInterval(window._spSyncTimer);
-    window._spSyncAccessTimer = setInterval(async function(){
-      if(!window._isSPReady) return;
-      try{
-        // 10초마다 접속로그 로드 → 상단 접속현황 업데이트
-        await _loadAccessLog();
-        if(typeof updateAccessDisplay==='function') updateAccessDisplay();
-      }catch(e){}
-    }, 10000);
-
-    // 접속현황 10초마다 갱신 (별도 타이머)
-    window._accessTimer = setInterval(async function(){
-      try{
-        await _loadAccessLog();
-        if(typeof updateAccessDisplay==='function') updateAccessDisplay();
-      }catch(e){}
-    }, 10000);
     window._spSyncTimer = setInterval(async function(){
       if(!window._isSPReady) return;
-      if(window._syncRunning){ return; } // 중복 실행 방지
-      window._syncRunning = true;
       try{
-        // 관리자 설정 60초마다 동기화 (15초 × 4사이클)
-        if(!window._syncCount) window._syncCount=0;
-        window._syncCount++;
-        if(window._syncCount % 4 === 0){
-          var _settingsBefore = JSON.stringify({teams:TEAMS, teamReps:TEAM_REPS});
-          window._syncLoadingSettings=true;
-          await _spLoadSettings(); // 관리자 설정 최신화
-          window._syncLoadingSettings=false;
-          // 설정 변경됐으면 UI 갱신
-          if(JSON.stringify({teams:TEAMS, teamReps:TEAM_REPS}) !== _settingsBefore){
-            if(typeof buildRepTabs==='function') buildRepTabs();
-
-            if(typeof buildRepBtns==='function') buildRepBtns();
-            if(typeof renderRepManage==='function') renderRepManage();
-            _changed = true;
-          }
-          // 배너/팝업 항상 갱신 (authCfg 업데이트됐으므로)
-          try{ if(typeof loadBanner==='function') loadBanner(); }catch(e){}
-          // 선택박스 배열만 갱신 (DOM rebuild 없이 - 탭이동 방지)
-          try{
-            if(typeof CONTACT_TYPES!=='undefined'&&typeof getSelectOpts==='function')
-              CONTACT_TYPES.splice(0,CONTACT_TYPES.length,...getSelectOpts('contactType'));
-            if(typeof CONTACT_PURPOSES!=='undefined'&&typeof getSelectOpts==='function')
-              CONTACT_PURPOSES.splice(0,CONTACT_PURPOSES.length,...getSelectOpts('contactPurpose'));
-          }catch(e){}
-          try{ if(typeof renderSelectOptsSettings==='function') renderSelectOptsSettings(); }catch(e){}
-          try{ if(typeof renderGuestAllowList==='function') renderGuestAllowList(); }catch(e){}
-
-        }
-        // 공동편집: 다른 담당자 데이터만 동기화
-        var _changed = await _spSyncOtherReps();
-          // 새 이슈 감지 → 팀장 알림 (sync 후 체크)
-          if(_changed&&typeof _wkCheckNewIssues==='function') setTimeout(_wkCheckNewIssues, 500);
+        await _spLoadToday();
         await _spLoadHistList();
-        try{ if(typeof updateAccessDisplay==='function') updateAccessDisplay(); }catch(_e){}
-        if(_changed){
-          var _activePage=document.querySelector('.page.active');
-          var _pid2=_activePage?_activePage.id.replace('page-',''):'';
-          var _ipOn=(_pid2==='input');
-          // 현재 활성 페이지에만 렌더 실행 (다른 페이지 DOM 건드리지 않음)
-          // 렌더 전 스크롤 위치 저장 (페이지 내 실제 스크롤 컨테이너 우선)
-          var _activePg=document.querySelector('.page.active');
-          var _syncScrollEl=(_activePg&&_activePg.querySelector('[style*="overflow-y:auto"],[style*="overflow-y: auto"]'))||_activePg||document.body;
-          var _syncSt=_syncScrollEl.scrollTop||(_activePg?_activePg.scrollTop:0)||window.scrollY||0;
-          if(_pid2==='dashboard'&&typeof renderDashboard==='function') renderDashboard();
-          if(_pid2==='issues'&&typeof renderIssues==='function'){
-            var _issScroll=document.querySelector('.sec-body');
-            var _issSt=_issScroll?_issScroll.scrollTop:0;
-            renderIssues();
-            if(_issSt>0) requestAnimationFrame(function(){ if(_issScroll) _issScroll.scrollTop=_issSt; });
-          }
-          if(_pid2==='pipeline'&&typeof renderPipeline==='function') renderPipeline();
-          // 입력 페이지: buildRepInputs는 사용자가 main 탭일 때만 실행
-          if(_pid2==='input'&&typeof buildRepInputs==='function'){
-            var _curVTab=window._activeVTab;
-            var _onOtherRep=(typeof activeRep!=='undefined'&&activeRep&&session&&session.rep&&activeRep!==session.rep);
-            // non-main 탭이거나 다른 담당자 탭 보는 중 → DOM 재빌드 건너뜀
-            if((_curVTab&&_curVTab.tab&&_curVTab.tab!=='main')||_onOtherRep){
-              // 데이터는 store에 이미 반영됨 - UI만 유지
-            } else {
-              var _inpPage=document.querySelector('.page.active');
-              var _secBodies=_inpPage?[].slice.call(_inpPage.querySelectorAll('.sec-body')):[];
-              var _savedScrolls=_secBodies.map(function(el){return {el:el,top:el.scrollTop};});
-              var _pageTop=_inpPage?_inpPage.scrollTop:0;
-              var _savedVT2=_curVTab?{rep:_curVTab.rep,tab:_curVTab.tab}:null;
-              buildRepInputs();
-              setTimeout(function(){
-                // 탭 복원
-                if(_savedVT2&&typeof window._switchVTab==='function'){
-                  window._switchVTab(_savedVT2.rep,_savedVT2.tab);
-                }
-                // 스크롤 복원
-                var _newBodies=_inpPage?[].slice.call(_inpPage.querySelectorAll('.sec-body')):[];
-                _newBodies.forEach(function(el,i){
-                  var _st=_savedScrolls[i]?_savedScrolls[i].top:0;
-                  if(_st>0) el.scrollTop=_st;
-                });
-                if(_inpPage&&_pageTop>0) _inpPage.scrollTop=_pageTop;
-              }, 500);
-            }
-          }
-          if(_pid2==='visits'){
-            if(window._visitFilterDate && typeof filterVisitsByDate==='function'){
-              filterVisitsByDate(window._visitFilterDate);
-            } else if(typeof renderVisits==='function'){
-              renderVisits();
-            }
-          }
-          // 렌더 후 스크롤 복원 (rAF 2중으로 DOM 안정화 후)
-          if(_syncSt>0)(function(el,st){
-            requestAnimationFrame(function(){
-              requestAnimationFrame(function(){
-                if(el&&el!==document.body) el.scrollTop=st;
-                else window.scrollTo(0,st);
-              });
-            });
-          })(_syncScrollEl,_syncSt);
-          // 입력 페이지 DOM은 건드리지 않음 - dirty 마킹만
-          if(!_ipOn) window._inputPageDirty = true;
-          // 계약 현황 페이지
-          if(_pid2==='contract'&&typeof renderContractDashboard==='function') renderContractDashboard();
-          if(_pid2==='weekly'&&typeof _syncWeeklyFeed==='function') _syncWeeklyFeed();
-          // 월요일 미답변 이월 알림 (SP 연결 후 최초 1회)
-  if(typeof _wkCheckCarryOver==='function') _wkCheckCarryOver();
-  // 알림 배지는 모든 페이지에서 갱신
-          if(session&&session.rep&&typeof _wkLoadNotif==='function'){
-            _wkLoadNotif(session.rep).then(function(notifs){
-              if(window._wk){
-                var _del2=typeof _wkGetDeletedNotifIds==='function'?_wkGetDeletedNotifIds():{};
-                window._wk.notifications=(notifs||[]).filter(function(n){return !_del2[n.id];});
-              }
-              if(typeof _wkGenContractNotifs==='function') _wkGenContractNotifs();
-              if(typeof _wkUpdateNotifBadge==='function') _wkUpdateNotifBadge();
-            }).catch(function(){});
-          }
-          // 계약 관리 vtab: 데이터 변경 시만 재빌드
-          // 계약 패널만 부분 업데이트 (탭 이동 없음)
-          var _ivt2=window._activeVTab||window._intendedVTab;
-          if(_ivt2&&_ivt2.tab==='contract'&&_ivt2.rep){
-            if(typeof _rebuildContractPanel==='function') _rebuildContractPanel(_ivt2.rep);
-          }
-        } else {
-          // 데이터 변경 없어도 visits 페이지면 visitLog 갱신
-          var _ap2=document.querySelector('.page.active');
-          if(_ap2&&_ap2.id==='page-visits'&&typeof renderVisits==='function'){
-            var _vSt2=_ap2.scrollTop||0;
-            renderVisits();
-            if(_vSt2>0){(function(el,st){requestAnimationFrame(function(){requestAnimationFrame(function(){el.scrollTop=st;});});})(_ap2,_vSt2);}
-          }
-        }
-      }catch(e){ console.warn('[sync]',e); }finally{
-        window._syncRunning = false;
-      }
-      // weekly 페이지는 _changed 여부와 무관하게 항상 동기화
-      try{
-        var _ap_wk=document.querySelector('.page.active');
-        if(_ap_wk&&_ap_wk.id==='page-weekly'&&typeof _syncWeeklyFeed==='function'){
-          _syncWeeklyFeed();
-        }
+        renderDashboard();
+        renderIssues();
+        renderPipeline();
       }catch(e){}
     }, 10000);
 
   } catch (err) {
-    window._spInitializing = false;
     window._isSPReady = false;
     _setSPStatus('error');
     var errMsg = err.message || '';
-    // 401 토큰 만료 → MSAL 자동갱신도 실패한 경우 → 로그인창 이동
-    if(errMsg.includes('401') || errMsg.includes('token') || errMsg.includes('unauthorized')){
-      showToast('🔒 세션이 만료되었습니다. 다시 로그인해주세요.', 'warn');
-      setTimeout(function(){
-        try{
-          // 현재 데이터 임시 보존
-          if(typeof session !== 'undefined' && session)
-            sessionStorage.setItem('_preAuthSession', JSON.stringify(session));
-          sessionStorage.setItem('_sessionExpired','1');
-          if(typeof openAuth === 'function') openAuth();
-        }catch(e){}
-      }, 1500);
-      return;
-    }
     if(errMsg.includes('redirect') || errMsg.includes('reply') || errMsg.includes('AADSTS')){
       showToast('Azure redirect URI 등록 필요. 현재URL: ' + window.location.href.split('?')[0], 'warn');
     } else {
-      showToast('SP 연결 실패 - 30초 후 자동 재시도합니다.', 'warn');
-      // 네트워크 오류: 30초 후 자동 재연결 시도 (최대 3회)
-      if(!window._spRetryCount) window._spRetryCount=0;
-      window._spRetryCount++;
-      if(window._spRetryCount<=3){
-        setTimeout(async function(){
-          if(!window._isSPReady&&typeof _initSP==='function'){
-            showToast('SP 재연결 시도 중... ('+window._spRetryCount+'/3)','warn');
-            try{ await _initSP(); window._spRetryCount=0; }catch(e){}
-          }
-        }, 30000);
-      } else {
-        // 3회 실패 → 로그인 창
-        window._spRetryCount=0;
-        showToast('SP 연결 실패. 다시 로그인해주세요.','warn');
-        setTimeout(function(){if(typeof openAuth==='function')openAuth();},2000);
-      }
+      showToast('SP 연결 실패: ' + errMsg, 'warn');
     }
   }
 }
