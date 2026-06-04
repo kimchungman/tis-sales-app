@@ -5416,6 +5416,21 @@ function buildRepInputs(){
       plan:new Array(12).fill(0),actual:new Array(12).fill(0),
       forecast:new Array(12).fill(0),clients:[],activities:[],visitLog:[]
     };
+    // SP 데이터 덮어쓰기 후 배열 타입 보장 (Object.assign으로 객체로 바뀔 수 있음)
+    var _rd=store.reps[rep];
+    ['plan','actual','forecast'].forEach(function(k){
+      if(!Array.isArray(_rd[k])){
+        var _obj=_rd[k]||{};
+        _rd[k]=new Array(12).fill(0).map(function(_,i){
+          return parseFloat(_obj[i]||_obj[String(i)]||0)||0;
+        });
+      }
+    });
+    if(!Array.isArray(_rd.clients)) _rd.clients=[];
+    if(!Array.isArray(_rd.activities)) _rd.activities=[];
+    if(!Array.isArray(_rd.visitLog)) _rd.visitLog=[];
+    if(!Array.isArray(_rd.contracts)) _rd.contracts=[];
+    if(!Array.isArray(_rd.issuesList)) _rd.issuesList=[];
   });
   // session.rep을 맨 앞으로 정렬해서 렌더 (DOM에 먼저 들어감)
   var _myRep = (session && session.rep && REPS.indexOf(session.rep)>=0) ? session.rep : null;
@@ -13891,6 +13906,14 @@ async function _spLoadAllReps(){
         var _rawPL=item.Payload||item.payload||item.Description||'{}'; var repData=JSON.parse(_rawPL);
         if(!store.reps[repName]) store.reps[repName]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[]};
         Object.assign(store.reps[repName], repData);
+        // 배열 타입 보장 (plan/actual/forecast는 반드시 Array)
+        var _rd2=store.reps[repName];
+        ['plan','actual','forecast'].forEach(function(k){
+          if(_rd2[k]&&!Array.isArray(_rd2[k])){
+            var _o=_rd2[k];
+            _rd2[k]=new Array(12).fill(0).map(function(_,i){return parseFloat(_o[i]||_o[String(i)]||0)||0;});
+          }
+        });
       }catch(e){}
     });
   }catch(e){}
