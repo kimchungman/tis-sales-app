@@ -4736,6 +4736,30 @@ function showPage(id,navEl){
   }
   if(id==='export')buildExpPreview();
   if(id==='weekly'&&typeof _initWeeklyPage==='function') _initWeeklyPage();
+  // 입력 페이지 500ms 안전망: 섹션이 안보이면 강제 표시
+  if(id==='input'){
+    setTimeout(function(){
+      var _pg2=document.getElementById('page-input');
+      if(!_pg2||!_pg2.classList.contains('active')) return;
+      var _vis=document.querySelector('.rep-sec[style*="display: block"],.rep-sec[style*="display:block"]');
+      if(!_vis){
+        // 섹션이 하나도 안보임 - 첫번째 rep 강제 표시
+        var _secs=document.querySelectorAll('.rep-sec');
+        if(_secs.length>0){
+          _secs[0].style.display='block';
+          var _r0=_secs[0].id.replace('rs-','');
+          var _t0=document.querySelector('#rep-tabs .tab[data-rep="'+_r0+'"]');
+          if(_t0&&typeof switchTab==='function') switchTab(_r0,_t0);
+        } else {
+          // 섹션 자체가 없음 - buildRepInputs 강제 실행
+          window._lastBuiltTeam=null;
+          var _ia=document.getElementById('rep-input-area');
+          if(_ia) _ia.innerHTML='';
+          if(typeof buildRepInputs==='function') buildRepInputs();
+        }
+      }
+    }, 600);
+  }
   if(id==='clients'&&typeof _initClientsPage==='function') _initClientsPage();
 }
 
@@ -5309,11 +5333,19 @@ function switchInputTeam(team){
       if(_savedVT&&_savedVT.rep&&_savedVT.tab&&typeof window._switchVTab==='function'){
         window._switchVTab(_savedVT.rep,_savedVT.tab);
       } else {
-        var _myRepTab=(session&&session.rep)
-          ?document.querySelector('#rep-tabs .tab[data-rep="'+session.rep+'"]')
-          :document.querySelector('#rep-tabs .tab.active');
+        // session.rep가 직책명 포함("김충만(차장)") 등으로 탭 못찾는 경우 정규화
+        var _sRep=(session&&session.rep)||'';
+        var _sRepNorm=_sRep.replace(/[（(\[【].*$/,'').trim();
+        var _myRepTab=document.querySelector('#rep-tabs .tab[data-rep="'+_sRep+'"]')
+          ||document.querySelector('#rep-tabs .tab[data-rep="'+_sRepNorm+'"]')
+          ||(REPS.indexOf(_sRepNorm)>=0?document.querySelector('#rep-tabs .tab[data-rep="'+_sRepNorm+'"]'):null)
+          ||document.querySelector('#rep-tabs .tab')
+          ||document.querySelector('#rep-tabs .tab.active');
         if(_myRepTab&&typeof switchTab==='function'){
-          switchTab(_myRepTab.dataset.rep,_myRepTab);
+          switchTab(_myRepTab.dataset.rep||_myRepTab.textContent.trim(),_myRepTab);
+        } else if(REPS&&REPS[0]){
+          var _fs=document.getElementById('rs-'+REPS[0]);
+          if(_fs) _fs.style.display='block';
         }
       }
       return;
@@ -5323,7 +5355,9 @@ function switchInputTeam(team){
     buildRepInputs();
     // buildRepInputs 직후 myRep 섹션 즉시 표시 (경쟁 조건 방지)
     (function(){
-      var _myRep2=(session&&session.rep&&REPS.indexOf(session.rep)>=0)?session.rep:(REPS[0]||'');
+      var _mr=((session&&session.rep)||'');
+      var _mrNorm=_mr.replace(/[（(\[【].*$/,'').trim();
+      var _myRep2=(REPS.indexOf(_mr)>=0)?_mr:(REPS.indexOf(_mrNorm)>=0?_mrNorm:(REPS[0]||''));
       if(_myRep2){
         document.querySelectorAll('.rep-sec').forEach(function(s){s.style.display='none';});
         var _secEl=document.getElementById('rs-'+_myRep2);
@@ -5337,10 +5371,13 @@ function switchInputTeam(team){
         window._switchVTab(_savedVT.rep,_savedVT.tab);
       } else {
         // session.rep 직접 사용 (activeTab 의존 제거 - 다른 담당자 탭이 active일 수 있음)
-        var _targetRep=(session&&session.rep&&REPS.indexOf(session.rep)>=0)?session.rep:(REPS[0]||'');
+        var _sr=(session&&session.rep)||'';
+        var _srNorm=_sr.replace(/[（(\[【].*$/,'').trim();
+        var _targetRep=(REPS.indexOf(_sr)>=0)?_sr:(REPS.indexOf(_srNorm)>=0?_srNorm:(REPS[0]||''));
         var activeTab=_targetRep
           ?document.querySelector('#rep-tabs .tab[data-rep="'+_targetRep+'"]')
           :document.querySelector('#rep-tabs .tab.active');
+        if(!activeTab) activeTab=document.querySelector('#rep-tabs .tab');
         if(activeTab&&typeof switchTab==='function'){
           switchTab(activeTab.dataset.rep||activeTab.textContent.trim(),activeTab);
         } else if(REPS&&REPS[0]&&typeof switchTab==='function'){
@@ -17309,7 +17346,7 @@ window._syncWeeklyFeed=async function(){
 };
 
 // \u2500\u2500 \ucd08\uae30\ud654 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-window._initWeeklyPage=function(){
+window._initWeeklyPage=async function(){
   _wkBuildTeamTabs();
   _wkBuildRepTabs();
   _wkSetupInput();
@@ -17318,7 +17355,7 @@ window._initWeeklyPage=function(){
   if(session&&session.role==='rep'&&session.team){
     if(_wk.activeTeam==='all'){} // \uc804\uccb4 \uc720\uc9c0
   }
-  _wkLoad();
+  await _wkLoad();
   // \uc54c\ub9bc \ubc84\ud2bc \ube4c\ub4dc
   _wkBuildNotifBtn();
   // \uacc4\uc57d \uc54c\ub9bc \uccb4\ud06c
