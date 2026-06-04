@@ -4531,6 +4531,10 @@ function showPage(id,navEl){
     if(session && session.role==='rep' && session.team){
       _tabState.input = session.team; // 항상 본인 팀으로 강제
     }
+    // 진입 시마다 강제 재빌드 (SP 로드 타이밍 문제 해결)
+    window._lastBuiltTeam = null;
+    var _clearArea = document.getElementById('rep-input-area');
+    if(_clearArea) _clearArea.innerHTML = '';
     window._inputPageInitializing=true;
     initInputTabs();
     window._inputPageInitializing=false;
@@ -13338,8 +13342,13 @@ document.addEventListener('app:ready', function(){
   }
   if(!myTeam){ APP.domReady=false; APP.spReady=false; return; }
 
+  // SP 로드 후 섹션 비어있으면 강제 재빌드
+  var _inputArea = document.getElementById('rep-input-area');
+  if(_inputArea && _inputArea.children.length === 0){
+    window._lastBuiltTeam = null; // 강제 재빌드 트리거
+  }
   // 이미 맞는 팀이면 switchInputTeam 생략 (buildRepInputs 중복 방지)
-  if(typeof currentTeam !== 'undefined' && currentTeam === myTeam){
+  if(typeof currentTeam !== 'undefined' && currentTeam === myTeam && window._lastBuiltTeam === myTeam){
     // 팀 탭 UI만 확인
     document.querySelectorAll('#input-team-tabs .tis-tab').forEach(function(t){
       t.classList.toggle('active', t.getAttribute('data-tab')===myTeam);
@@ -15589,13 +15598,13 @@ function _rebuildContractPanel(rep){ try {
     allChains[k]=_sortContractChain(allChains[k]);
   });
 
-  h+='<div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 440px);min-height:180px;border:1px solid #E2E8F0;border-radius:10px;background:#ffffff;">';
-  h+='<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;min-width:860px;">';
+  h+='<div class="tbl-scroll-wrap" style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 280px);min-height:180px;border:1px solid #E2E8F0;border-radius:10px;background:#ffffff;width:100%;">';
+  h+='<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:auto;">';
   h+='<colgroup>';
-  h+='<col style="width:26px;"><col style="width:82px;"><col style="width:72px;"><col style="width:198px;"><col style="width:72px;">';
-  h+='<col style="width:64px;"><col style="width:64px;"><col style="width:58px;">';
-  h+='<col style="width:74px;"><col style="width:64px;"><col style="width:58px;">';
-  h+='<col style="width:72px;">'+(canEdit?'<col style="width:28px;">':'');
+  h+='<col style="width:28px;"><col style="width:90px;"><col style="width:75px;"><col><col style="width:75px;">';
+  h+='<col style="min-width:62px;"><col style="min-width:62px;"><col style="min-width:60px;">';
+  h+='<col style="min-width:72px;"><col style="min-width:62px;"><col style="min-width:60px;">';
+  h+='<col style="min-width:60px;">'+(canEdit?'<col style="width:30px;">':'');
   h+='</colgroup>';
   var TH='padding:8px 6px !important;font-weight:600;color:#94A3B8;font-size:11px;border-bottom:2px solid #E2E8F0;text-align:center !important;white-space:nowrap;background:#F8FAFC !important;';
   h+='<thead style="position:sticky;top:0;z-index:5;"><tr><th style="'+TH+'"></th>';
