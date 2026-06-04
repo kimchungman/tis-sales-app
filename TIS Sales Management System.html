@@ -4468,7 +4468,9 @@ function showPage(id,navEl){
     if(session && session.role==='rep' && session.team){
       _tabState.input = session.team; // 항상 본인 팀으로 강제
     }
+    window._inputPageInitializing=true;
     initInputTabs();
+    window._inputPageInitializing=false;
 
     if(typeof applyPermissions==='function') applyPermissions();
     // 200ms 후 강제 보정: buildRepInputs 완료 후 올바른 담당자 섹션 확인
@@ -5178,7 +5180,10 @@ function switchInputTeam(team){
   window._briTimer = setTimeout(function(){
     window._briTimer = null;
     var _ip=document.getElementById('page-input');
-    if(!_ip||!_ip.classList.contains('active')) return;
+    if(!_ip) return;
+    // page가 아직 active 아니어도 빌드 허용 (showPage 초기화 순서 문제 해결)
+    var _pageIsActive=_ip.classList.contains('active')||window._inputPageInitializing;
+    if(!_pageIsActive) return;
     // 같은 팀 && 이미 빌드됨 → 재빌드 없이 탭만 복원 (플리커 방지)
     var _area=document.getElementById('rep-input-area');
     var _alreadyBuilt = _area && _area.children.length>0 && window._lastBuiltTeam===currentTeam;
@@ -13182,7 +13187,7 @@ window.filterVisitsByDate=function(dateStr){
   if(!dayVisits.length){ list.innerHTML='<tr><td colspan="8" style="text-align:center;padding:30px;color:#94A3B8;font-size:13px;">'+dateStr+' 접점 기록이 없습니다</td></tr>'; return; }
   list.innerHTML=dayVisits.map(function(v){
     var ct=v.contactType||'방문', cp=v.contactPurpose||'';
-  if(_visitSt>0){requestAnimationFrame(function(){requestAnimationFrame(function(){list.scrollTop=_visitSt;});});}
+
     var tpc=TYPE_COLOR[ct]||'#94A3B8', ppc=PURPOSE_COLOR2[cp]||'#94A3B8';
     return '<tr style="background:white;" onmouseover="this.style.background=\'#F7F9FF\'" onmouseout="this.style.background=\'white\'">'
       +'<td colspan="2" style="text-align:center;padding:10px 8px;font-size:13px;font-weight:700;color:'+v.rc+';">'+v.rep+'</td>'
@@ -13193,6 +13198,7 @@ window.filterVisitsByDate=function(dateStr){
       +'<td style="padding:10px 14px;font-size:13px;color:#374151;line-height:1.5;">'+_renderRich(v.content||'─')+'</td>'
       +'</tr>';
   }).join('');
+  if(_visitSt>0){requestAnimationFrame(function(){requestAnimationFrame(function(){list.scrollTop=_visitSt;});});}
 };
 
 
@@ -14787,6 +14793,20 @@ function _cdbStrip(s){
   var r=String(s).replace(/<[^>]*>/g,'');
   // HTML 엔티티 기본 복원
   return r.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ').replace(/&#[0-9]+;/g,'');
+}
+
+
+function _cdbToggleAutoRep(id, repName){
+  var item=_cdbById(id); if(!item) return;
+  if(!item.disabledAutoReps) item.disabledAutoReps=[];
+  var idx=item.disabledAutoReps.indexOf(repName);
+  if(idx>=0){
+    item.disabledAutoReps.splice(idx,1); // 다시 활성화
+  } else {
+    item.disabledAutoReps.push(repName); // 비활성화
+  }
+  _cdbSaveItem(item);
+  _cdbRenderDetail(id);
 }
 
 function _cdbSaveNote(id,val){
@@ -17311,6 +17331,45 @@ function _wkBuildNotifBtn(){
 }
 
 })();
+</script>
+<script>
+
+// ── Rich Bar 버튼 핸들러 설정
+(function(){
+  function _setupRichBar(){
+    var bar=document.getElementById('_rich-bar');
+    if(!bar||bar._setup) return;
+    bar._setup=true;
+    var bB=document.getElementById('_rb-b');
+    var bI=document.getElementById('_rb-i');
+    var bU=document.getElementById('_rb-u');
+    var bS=document.getElementById('_rb-s');
+    var bReset=document.getElementById('_rb-reset');
+    var colors=bar.querySelectorAll('[data-color]');
+    function _doCmd(cmd,val){ document.execCommand(cmd,false,val||null); }
+    if(bB) bB.addEventListener('click',function(e){e.preventDefault();_doCmd('bold');});
+    if(bI) bI.addEventListener('click',function(e){e.preventDefault();_doCmd('italic');});
+    if(bU) bU.addEventListener('click',function(e){e.preventDefault();_doCmd('underline');});
+    if(bS) bS.addEventListener('click',function(e){e.preventDefault();_doCmd('strikeThrough');});
+    if(bReset) bReset.addEventListener('click',function(e){e.preventDefault();_doCmd('removeFormat');});
+    colors.forEach(function(btn){
+      btn.addEventListener('click',function(e){
+        e.preventDefault();
+        var col=btn.getAttribute('data-color');
+        if(col==='remove') _doCmd('removeFormat');
+        else _doCmd('foreColor',col);
+      });
+    });
+  }
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',_setupRichBar);
+  } else {
+    _setupRichBar();
+    // 지연 재시도 (동적 로드 대비)
+    setTimeout(_setupRichBar, 500);
+  }
+})();
+
 </script>
 </body>
 </html>
