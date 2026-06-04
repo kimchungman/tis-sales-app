@@ -2300,12 +2300,12 @@ document.addEventListener('mousedown',function(e){
 /* ═══ 고객사 관리 ═══ */
 #page-clients{display:none;height:calc(100vh - 48px);overflow:hidden;}
 .cdb-wrap{display:flex;height:100%;overflow:hidden;}
-.cdb-left{width:260px;flex-shrink:0;border-right:1px solid #F1F5F9;display:flex;flex-direction:column;background:#FAFBFF;overflow:hidden;}
+.cdb-left{width:320px;flex-shrink:0;border-right:1px solid #F1F5F9;display:flex;flex-direction:column;background:#FAFBFF;overflow:hidden;}
 .cdb-lh{padding:10px 12px;border-bottom:1px solid #F1F5F9;display:flex;align-items:center;gap:6px;flex-shrink:0;}
 .cdb-sb{flex:1;display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #E2E8F0;border-radius:7px;padding:5px 9px;}
 .cdb-sb input{background:none;border:none;outline:none;font-size:11px;color:#0D1B2E;width:100%;}
 .cdb-sb input::placeholder{color:#94A3B8;}
-.cdb-fab{width:44px;height:44px;border-radius:10px;border:none;background:#4f7fff;color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(79,127,255,.3);-webkit-tap-highlight-color:transparent;}
+.cdb-fab{width:34px;height:34px;border-radius:8px;border:none;background:#4f7fff;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(79,127,255,.3);-webkit-tap-highlight-color:transparent;}
 .cdb-list{flex:1;overflow-y:auto;}
 .cdb-cr{display:flex;align-items:center;gap:9px;padding:11px 12px;border-bottom:1px solid #F1F5F9;cursor:pointer;position:relative;transition:background .1s;min-height:48px;-webkit-tap-highlight-color:transparent;}
 .cdb-cr::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:transparent;}
@@ -2397,6 +2397,27 @@ document.addEventListener('mousedown',function(e){
   .cdb-ki { min-width:50%; }
   .cdb-rep-row { flex-wrap:wrap; }
 }
+
+/* 고객사 관리 디자인 개선 */
+.cdb-d-head{padding:16px 24px 14px;border-bottom:2px solid #F1F5F9;flex-shrink:0;background:#fff;}
+.cdb-kpi{display:flex;gap:10px;padding:14px 24px;background:#F8FAFF;border-bottom:1px solid #EEF2FF;flex-shrink:0;}
+.cdb-ki{flex:1;background:#fff;border:1px solid #E8EFFF;border-radius:12px;padding:11px 12px;text-align:center;box-shadow:0 1px 4px rgba(79,127,255,.07);}
+.cdb-kn{font-size:20px;font-weight:800;color:#0D1B2E;}
+.cdb-kl{font-size:10px;color:#94A3B8;margin-top:3px;font-weight:500;}
+.cdb-body{display:flex;flex:1;overflow:hidden;background:#F8FAFC;}
+.cdb-info{width:240px;flex-shrink:0;border-right:1px solid #E8EFFF;overflow-y:auto;padding:16px;background:#fff;}
+.cdb-st{font-size:10px;font-weight:700;color:#94A3B8;letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px;margin-top:16px;padding-bottom:6px;border-bottom:1px solid #F1F5F9;}
+.cdb-st:first-child{margin-top:0;}
+.cdb-cc{background:#F8FAFF;border:1px solid #E8EFFF;border-radius:10px;padding:10px 12px;margin-bottom:8px;position:relative;transition:box-shadow .15s;}
+.cdb-cc:hover{box-shadow:0 2px 8px rgba(79,127,255,.1);}
+.cdb-hist{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#fff;}
+.cdb-htabs{display:flex;border-bottom:1px solid #F1F5F9;padding:0 20px;flex-shrink:0;background:#fff;}
+.cdb-note{width:100%;min-height:60px;max-height:180px;padding:8px 10px;border:1px solid #E8EFFF;border-radius:8px;font-size:12px;color:#374151;resize:none;outline:none;background:#F8FAFF;line-height:1.6;font-family:inherit;overflow-y:auto;transition:border-color .15s;}
+.cdb-note:focus{border-color:#BFDBFE;background:#EFF6FF;box-shadow:0 0 0 3px rgba(79,127,255,.08);}
+.cdb-right{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#fff;border-left:1px solid #F1F5F9;}
+.cdb-lh{padding:12px 14px;border-bottom:1px solid #F1F5F9;display:flex;align-items:center;gap:8px;flex-shrink:0;background:#fff;}
+.cdb-sb{flex:1;display:flex;align-items:center;gap:6px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:6px 10px;}
+.cdb-sb input{background:none;border:none;outline:none;font-size:12px;color:#0D1B2E;width:100%;}
 </style>
 </head>
 <body>
@@ -14302,7 +14323,12 @@ var _cdbSelectedId=null;
 function _cdbRenderList(q){
   var el=document.getElementById('cdb-list'); if(!el) return;
   var pos=window._saveScroll?window._saveScroll(el):el.scrollTop||0;
-  var items=_cdbAll().slice().sort(function(a,b){return (a.name||'').localeCompare(b.name||'','ko');});
+  var items=_cdbAll().slice().sort(function(a,b){
+  function ctype(s){if(!s)return 3;var c=s.charCodeAt(0);if(c>=48&&c<=57)return 0;if((c>=65&&c<=90)||(c>=97&&c<=122))return 1;return 2;}
+  var ta=ctype(a.name),tb=ctype(b.name);
+  if(ta!==tb)return ta-tb;
+  return (a.name||'').localeCompare(b.name||'','ko');
+});
   if(q&&q.trim()) items=items.filter(function(c){return c.name.toLowerCase().includes(q.trim().toLowerCase());});
   if(!items.length){
     el.innerHTML='<div style="padding:30px 16px;text-align:center;color:#94A3B8;font-size:12px;">'+(q?'검색 결과 없음':'등록된 고객사가 없습니다<br>＋ 버튼으로 추가하세요')+'</div>';
@@ -14405,7 +14431,7 @@ function _cdbRenderDetail(id){
         +'<div style="flex:1;min-width:0;">'
           +'<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">'
             +'<input id="cdb-name-inp" class="cdb-name-input" value="'+_cdbEsc(item.name)+'" onblur="_cdbNameBlur(\''+id+'\',this.value)" onkeydown="if(event.key===\'Enter\')this.blur()">'
-            +(hasInfo?'<span class="cdb-bdg cdb-bok">정보완성</span>':'<span class="cdb-bdg cdb-bw">⚠ 정보없음</span>')
+            +(hasInfo?'<span class="cdb-bdg cdb-bok">정보완성</span>':'')
           +'</div>'
           +'<div style="font-size:11px;color:#94A3B8;margin-top:2px;">등록 '+new Date(item.createdAt||Date.now()).toLocaleDateString('ko-KR')+(item.autoAdded?' · 자동등록':'')+'</div>'
         +'</div>'
@@ -14424,7 +14450,7 @@ function _cdbRenderDetail(id){
       +'<div class="cdb-info">'
         +'<div class="cdb-st">담당자 (고객사 측)</div>'+ccHTML
         +'<div class="cdb-st" style="margin-top:14px;">비고</div>'
-        +'<textarea class="cdb-note" placeholder="고객사 관련 메모를 입력하세요..." onchange="_cdbSaveNote(\''+id+'\',this.value)">'+_cdbEsc(item.note||'')+'</textarea>'
+        +'<textarea class="cdb-note" placeholder="고객사 관련 메모를 입력하세요..." oninput="_cdbNoteAutoHeight(this)" onchange="_cdbSaveNote(\''+id+'\',this.value)">'+_cdbEsc(item.note||'')+'</textarea>'
       +'</div>'
       +'<div class="cdb-hist">'
         +'<div class="cdb-htabs">'
@@ -14606,27 +14632,31 @@ function _cdbUpdateContact(id,ci,field,val){
   var item=_cdbById(id); if(!item||(item.contacts||[])[ci]===undefined) return;
   item.contacts[ci][field]=val;
   _cdbSaveItem(item);
-  _cdbRenderList(document.getElementById('cdb-search')&&document.getElementById('cdb-search').value||'');
+  _cdbRefreshStatus(id);  // 즉시 반영
 }
 
 // 재렌더 전 현재 DOM 입력값을 item에 저장
 function _cdbFlushInputs(id){
   var item=_cdbById(id); if(!item) return;
-  // 담당자 카드 입력값
+  // 담당자 카드 입력값 - 모든 입력 강제 저장
   var cards=document.querySelectorAll('.cdb-cc');
   cards.forEach(function(card,ci){
-    if(!item.contacts||!item.contacts[ci]) return;
+    if(!item.contacts) item.contacts=[];
+    if(!item.contacts[ci]) return;
     var inps=card.querySelectorAll('.cdb-inline');
-    if(inps[0]&&inps[0].value!==undefined) item.contacts[ci].name=inps[0].value;
-    if(inps[1]&&inps[1].value!==undefined) item.contacts[ci].dept=inps[1].value;
-    if(inps[2]&&inps[2].value!==undefined) item.contacts[ci].phone=inps[2].value;
+    // 값이 있든 없든 무조건 현재 DOM 값으로 덮어쓰기
+    if(inps[0]) item.contacts[ci].name=inps[0].value||'';
+    if(inps[1]) item.contacts[ci].dept=inps[1].value||'';
+    if(inps[2]) item.contacts[ci].phone=inps[2].value||'';
   });
   // 비고
   var note=document.querySelector('.cdb-note');
   if(note) item.note=note.value;
   // 고객사명
   var nameInp=document.getElementById('cdb-name-inp');
-  if(nameInp&&nameInp.value&&nameInp.value.trim()) item.name=nameInp.value.trim();
+  if(nameInp&&nameInp.value&&nameInp.value.trim()&&nameInp.value.trim()!==item.name){
+    // 이름변경은 _cdbNameBlur에서 처리
+  }
 }
 
 function _cdbAddContact(id){
@@ -14640,11 +14670,52 @@ function _cdbAddContact(id){
 }
 function _cdbDeleteContact(id,ci){
   var item=_cdbById(id); if(!item) return;
-  _cdbFlushInputs(id);  // 현재 입력값 먼저 저장
+  _cdbFlushInputs(id);
   item.contacts.splice(ci,1);
   _cdbSaveItem(item);
   _cdbRenderDetail(id);
+  setTimeout(function(){ _cdbRefreshStatus(id); },50);
 }
+
+function _cdbNoteAutoHeight(el){
+  if(!el) return;
+  el.style.height='1px';
+  var h=Math.min(180, Math.max(60, el.scrollHeight));
+  el.style.height=h+'px';
+  el.style.overflowY=el.scrollHeight>180?'auto':'hidden';
+}
+
+
+// 담당자 변경 시 즉시 상태 반영 (배너/뱃지/목록)
+function _cdbRefreshStatus(id){
+  var item=_cdbById(id); if(!item) return;
+  var hasInfo=item.contacts&&item.contacts.some(function(ct){return ct.name||ct.phone;});
+  // 배너 즉시 토글
+  var banner=document.querySelector('.cdb-warn-bar');
+  if(banner) banner.style.display=hasInfo?'none':'flex';
+  // 상태 뱃지 즉시 변경
+  var badge=document.querySelector('.cdb-d-top .cdb-bdg');
+  if(badge){
+    badge.textContent=hasInfo?'정보완성':'';
+    badge.className=hasInfo?'cdb-bdg cdb-bok':'';
+  }
+  // 목록 해당 항목만 업데이트
+  var listItem=document.querySelector('.cdb-sel .cdb-cm');
+  if(listItem){
+    var kpi=_cdbGetKPI(item.name);
+    var meta=[];
+    if(kpi.contracts) meta.push('계약 '+kpi.contracts+'건');
+    if(kpi.activities) meta.push('활동 '+kpi.activities+'건');
+    if(!meta.length) meta.push(item.autoAdded?'자동등록':'이력없음');
+    listItem.innerHTML=(hasInfo?'<span style="color:#10B981;font-size:9px;">●</span> ':'<span style="color:#CBD5E1;font-size:9px;">●</span> ')+meta.join(' · ');
+    var selBdg=document.querySelector('.cdb-sel .cdb-bdg');
+    if(selBdg){
+      selBdg.textContent=hasInfo?'완성':'미완성';
+      selBdg.className=hasInfo?'cdb-bdg cdb-bok':'cdb-bdg cdb-bw';
+    }
+  }
+}
+
 function _cdbSaveNote(id,val){
   var item=_cdbById(id); if(!item) return;
   item.note=val;
@@ -15352,7 +15423,7 @@ function _rebuildContractPanel(rep){ try {
   });
 
   h+='<div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 440px);min-height:180px;border:1px solid #E2E8F0;border-radius:10px;background:#ffffff;">';
-  h+='<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;min-width:860px;">';
+  h+='<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:auto;min-width:860px;">';
   h+='<colgroup>';
   h+='<col style="width:26px;"><col style="width:82px;"><col style="width:72px;"><col style="width:198px;"><col style="width:72px;">';
   h+='<col style="width:64px;"><col style="width:64px;"><col style="width:58px;">';
@@ -15575,7 +15646,7 @@ function renderContractDashboard(){
     // 유지보수 계약 대상: 관리유형이 해당없음이 아니고 진행중인 건
     var mgtTarget=all.filter(function(c){return c.managementType&&c.managementType!=='해당없음'&&c.status==='진행중';}).length;
     // 유지보수 갱신 필요 (endDate 기준, D-60 이내)
-    var maNeed=all.filter(function(c){var d=_cDday(c.endDate);return c.managementType==='유지보수'&&d!==null&&d>=0&&d<=60;});
+    var maNeed=all.filter(function(c){var d=_cDday(c.endDate);return c.managementType==='유지보수'&&d!==null&&d>=0&&d<=60&&c.status!=='종료';});
     // 하자→유지보수 전환 (managementEndDate 기준, D-60 이내)
     var def2ma=all.filter(function(c){var d=_cDday(c.managementEndDate);return c.managementType==='하자기간'&&d!==null&&d>=0&&d<=60;});
     // 유지보수 계약 지연
