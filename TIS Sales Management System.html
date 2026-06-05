@@ -6843,7 +6843,13 @@ function doGuestWithName(name, skipPwCheck){
     try{
       var _ap=document.querySelector('.page.active');
       var _aid=_ap?_ap.id:'';
-      if(_aid==='page-weekly'&&typeof window._syncWeeklyFeed==='function') window._syncWeeklyFeed();
+      if(_aid==='page-weekly'){
+        // SP 연결 완료 - 회의록 데이터 즉시 재로드
+        if(typeof window._wkLoad==='function'){
+          window._wk&&(window._wk.loading=false); // 혹시 loading 상태이면 해제
+          window._wkLoad();
+        }
+      }
       if(_aid==='page-contract'&&typeof renderContractDashboard==='function') renderContractDashboard();
     }catch(e){}
         // 게스트 접속현황 즉시 반영 후 SP 저장
@@ -15977,6 +15983,7 @@ function _wkLastKey(){
 window._wkGetWeekKey = _wkGetWeekKey;
 window._wkThisKey   = _wkThisKey;
 window._wkLastKey   = _wkLastKey;
+window._wkLoad      = function(){ return _wkLoad(); };
 // 수정/삭제 함수(L2462 블록)에서 IIFE 내부 함수 접근용 window 노출
 window._wkSanitize   = function(t){ return typeof _wkSanitize==='function'?_wkSanitize(t):t; };
 window._wkNowStr     = function(){ return typeof _wkNowStr==='function'?_wkNowStr():''; };
@@ -16468,20 +16475,34 @@ async function _wkLoad(){
   try{
     var thisKey=_wkThisKey();
     var prevKey=_wkPrevKey();
-    // \uc774\ubc88\uc8fc \ud53c\ub4dc
-    var entries=await _wkLoadFeed(thisKey);
-    _wk.entries=entries;
-    // \uc9c0\ub09c\uc8fc \ud53c\ub4dc
-    if(prevKey){
-      _wk.prevEntries=await _wkLoadFeed(prevKey);
+    if(window._isSPReady){
+      // SP 연결 완료 → 최신 데이터 로드
+      var entries=await _wkLoadFeed(thisKey);
+      if(entries&&entries.length>0) _wk.entries=entries;
+      if(prevKey){
+        var prev=await _wkLoadFeed(prevKey);
+        if(prev&&prev.length>0) _wk.prevEntries=prev;
+      }
+      _wkRenderReport();
+      _wkRenderFeed();
+      _wkUpdatePendingCnt();
+    } else {
+      // SP 미연결: 현재 데이터로 즉시 렌더 후 SP 연결 대기 폴링
+      _wkRenderReport();
+      _wkRenderFeed();
+      _wkUpdatePendingCnt();
+      _wk.loading=false;
+      var _poll=0;
+      var _pollId=setInterval(function(){
+        _poll++;
+        if(window._isSPReady){ clearInterval(_pollId); _wkLoad(); }
+        if(_poll>60) clearInterval(_pollId);
+      },500);
+      return;
     }
-    _wkRenderReport();
-    _wkRenderFeed();
-    _wkUpdatePendingCnt();
   }catch(e){ console.warn('[wk load]',e); }
   _wk.loading=false;
 }
-
 // \u2500\u2500 \ubcf4\uace0\uc11c \ub80c\ub354 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 function _wkRenderReport(){
   _wkRenderPrevSection();
@@ -17074,7 +17095,8 @@ window._syncWeeklyFeed=async function(){
   // \ubcc0\uacbd \uc788\uc73c\uba74 \ub80c\ub354
   if(JSON.stringify(entries)!==JSON.stringify(_wk.entries)){
     _wk.entries=entries;
-    if(_wk.view==='feed') _wkRenderFeed();
+    _wkRenderFeed();
+    _wkRenderReport();
     _wkUpdatePendingCnt();
   }
   // \uc54c\ub9bc \ub85c\ub4dc
