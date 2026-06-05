@@ -16034,7 +16034,7 @@ async function _wkSaveFeed(weekKey, rep, entries){
 async function _wkLoadFeed(weekKey){
   if(!weekKey||!window._isSPReady) return [];
   try{
-    var url=_lUrl()+'?$select=Title,DataType,DataKey,Payload&$filter=DataType+eq+%27weeklyFeed%27&$top=200';
+    var url=_lUrl()+'?$select=Title,DataType,DataKey,Payload&$top=500';
     var res=await _spFetchAll(url);
     var _items=(res&&res.value)||[];
     // rep별 최신 savedAt 기준으로 1건만 사용 (중복 SP 아이템 방지)
