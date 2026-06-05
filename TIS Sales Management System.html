@@ -2551,7 +2551,7 @@ window._wkDeleteEntry=async function(entryId){
   var weekKey=_wkThisKey();
   var myRep=_wkGetMyName();
   var myEntries=_wk.entries.filter(function(e){return e.rep===myRep;});
-  try{ await _wkSaveFeed(weekKey,myRep,myEntries); }catch(e){}
+  try{ await (window._wkSaveFeed||_wkSaveFeed)(weekKey,myRep,myEntries); }catch(e){}
   (window._wkRenderFeed||_wkRenderFeed)();
   if(typeof showToast==='function') showToast('🗑 삭제되었습니다');
 };
@@ -4567,13 +4567,6 @@ function showPage(id,navEl){
     initInputTabs();
     if(typeof buildRepTabs==='function') buildRepTabs();
     if(typeof buildRepInputs==='function') buildRepInputs();
-    // 마지막으로 보던 탭 복원 (계약/접점 탭)
-    setTimeout(function(){
-      var _iv=window._intendedVTab;
-      if(_iv&&_iv.tab&&_iv.tab!=='main'&&_iv.rep&&typeof window._switchVTab==='function'){
-        window._switchVTab(_iv.rep,_iv.tab);
-      }
-    }, 120);
     // 참가자 접속 시 본인 탭 자동 선택 (page-input 내부만)
     if(session && session.role==='rep' && session.rep){
       setTimeout(function(){
@@ -8455,10 +8448,9 @@ function _safeRepDisplayName(name){
 function getRepDisplayName(rep){
   if(!rep) return rep;
   var titles=(typeof authCfg!=='undefined'&&authCfg.repTitles)||{};
-  // 순수이름으로 직책 조회
   var t=titles[rep]||'';
   if(t) return rep+' '+t;
-  // 이미 "이름 직책" 형태인지 확인 → 중복 방지
+  // 이미 "이름 직책" 형태이면 그대로 반환 (중복 방지)
   var keys=Object.keys(titles);
   for(var _i=0;_i<keys.length;_i++){
     var base=keys[_i], tt=titles[base];
@@ -13810,42 +13802,18 @@ function _getMSAL(){
 }
 
 async function _connectSP(app, account){
-  // 1차: 조용한 토큰 갱신
   try{
     var sr = await app.acquireTokenSilent({scopes:[SP_SCOPE],account:account});
     if(sr && sr.accessToken){
       window._spToken = sr.accessToken;
-      window._msalApp = app;
       _setBar('connected');
       if(typeof _initSP==='function') await _initSP();
+      // 대시보드 강제 재렌더
       try{ if(typeof renderDashboard==='function') renderDashboard(); }catch(e){}
       try{ if(typeof renderRepSummary==='function') renderRepSummary(); }catch(e){}
-      return;
     }
   }catch(e){
-    console.warn('[SP silent]',e.message);
-    // interaction_required → 팝업으로 재시도
-    if(e.errorCode==='interaction_required'||e.name==='InteractionRequiredAuthError'
-       ||( e.message&&(e.message.includes('interaction')||e.message.includes('AADSTS')
-           ||e.message.includes('consent')||e.message.includes('login_required')))){
-      try{
-        var pr = await app.acquireTokenPopup({scopes:[SP_SCOPE]});
-        if(pr && pr.accessToken){
-          window._spToken = pr.accessToken;
-          window._msalApp = app;
-          if(pr.account) app.setActiveAccount(pr.account);
-          _setBar('connected');
-          if(typeof _initSP==='function') await _initSP();
-          try{ if(typeof renderDashboard==='function') renderDashboard(); }catch(e2){}
-          return;
-        }
-      }catch(e2){
-        console.warn('[SP popup]',e2.message);
-        _setBar('error',e2.message);
-        showToast('SP 로그인 필요: '+e2.message,'warn');
-        return;
-      }
-    }
+    console.warn('[SP]',e.message);
     _setBar('error',e.message);
   }
 }
@@ -16009,12 +15977,12 @@ function _wkLastKey(){
 window._wkGetWeekKey = _wkGetWeekKey;
 window._wkThisKey   = _wkThisKey;
 window._wkLastKey   = _wkLastKey;
-// 수정/삭제/등록에서 사용하는 IIFE 내부 함수 전역 노출
-window._wkSanitize  = function(t){ return typeof _wkSanitize==='function'?_wkSanitize(t):t; };
-window._wkNowStr    = function(){ return typeof _wkNowStr==='function'?_wkNowStr():''; };
-window._wkSaveFeed  = function(a,b,c){ return typeof _wkSaveFeed==='function'?_wkSaveFeed(a,b,c):Promise.resolve(); };
-window._wkRenderFeed= function(){ if(typeof _wkRenderFeed==='function') _wkRenderFeed(); };
-window._wkGetMyName = function(){ return typeof _wkGetMyName==='function'?_wkGetMyName():(session&&session.rep||''); };
+// 수정/삭제 함수(L2462 블록)에서 IIFE 내부 함수 접근용 window 노출
+window._wkSanitize   = function(t){ return typeof _wkSanitize==='function'?_wkSanitize(t):t; };
+window._wkNowStr     = function(){ return typeof _wkNowStr==='function'?_wkNowStr():''; };
+window._wkSaveFeed   = function(a,b,c){ return typeof _wkSaveFeed==='function'?_wkSaveFeed(a,b,c):Promise.resolve(); };
+window._wkRenderFeed = function(){ if(typeof _wkRenderFeed==='function') _wkRenderFeed(); };
+window._wkGetMyName  = function(){ return typeof _wkGetMyName==='function'?_wkGetMyName():(session&&session.rep||''); };
 function _wkCurrentKeys(){
   if(_wk.weekMode==='this') return [_wkThisKey()];
   if(_wk.weekMode==='last') return [_wkLastKey()];
@@ -16497,26 +16465,23 @@ window._wkSetView=function(view){
 async function _wkLoad(){
   if(_wk.loading) return;
   _wk.loading=true;
-  // 1단계: 현재 데이터로 즉시 렌더 (지연 없이)
-  try{ _wkRenderReport(); _wkRenderFeed(); _wkUpdatePendingCnt(); }catch(e){}
-  // 2단계: SP 연결 시 최신 데이터 로드
-  if(window._isSPReady){
-    try{
-      var thisKey=_wkThisKey();
-      var prevKey=_wkPrevKey();
-      var entries=await _wkLoadFeed(thisKey);
-      if(entries&&entries.length>0) _wk.entries=entries;
-      if(prevKey){
-        var prev=await _wkLoadFeed(prevKey);
-        if(prev&&prev.length>0) _wk.prevEntries=prev;
-      }
-      _wkRenderReport();
-      _wkRenderFeed();
-      _wkUpdatePendingCnt();
-    }catch(e){ console.warn('[wk load]',e); }
-  }
+  try{
+    var thisKey=_wkThisKey();
+    var prevKey=_wkPrevKey();
+    // \uc774\ubc88\uc8fc \ud53c\ub4dc
+    var entries=await _wkLoadFeed(thisKey);
+    _wk.entries=entries;
+    // \uc9c0\ub09c\uc8fc \ud53c\ub4dc
+    if(prevKey){
+      _wk.prevEntries=await _wkLoadFeed(prevKey);
+    }
+    _wkRenderReport();
+    _wkRenderFeed();
+    _wkUpdatePendingCnt();
+  }catch(e){ console.warn('[wk load]',e); }
   _wk.loading=false;
 }
+
 // \u2500\u2500 \ubcf4\uace0\uc11c \ub80c\ub354 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 function _wkRenderReport(){
   _wkRenderPrevSection();
@@ -16524,6 +16489,8 @@ function _wkRenderReport(){
   _wkRenderRepTable();
   _wkRenderProjects();
   _wkRenderIssues();
+  _wkRenderVisitList();
+  _wkRenderContractList();
 }
 
 function _wkRenderPrevSection(){
@@ -16699,6 +16666,89 @@ function _wkRenderIssues(){
       +'<span class="wk-cli">'+_wkEsc(iss.client)+'</span>'
       +'<span class="wk-cont">'+_renderRich(iss.content)+'</span>'
       +'<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;'+diffColor+'">'+diffStr+'</span>'
+      +'</div>';
+  }).join('');
+}
+
+
+// ── 이번 주 고객 접점 렌더 ──────────────────────────────────
+function _wkRenderVisitList(){
+  var el=document.getElementById('wk-visit-list');
+  var cnt=document.getElementById('wk-visit-cnt');
+  if(!el) return;
+  var reps=_wkGetActiveReps();
+  var weekStart=new Date(); weekStart.setDate(weekStart.getDate()-weekStart.getDay()+1); weekStart.setHours(0,0,0,0);
+  var weekEnd=new Date(weekStart); weekEnd.setDate(weekStart.getDate()+6); weekEnd.setHours(23,59,59,999);
+  var visits=[];
+  reps.forEach(function(rep){
+    var rd=store&&store.reps&&store.reps[rep]; if(!rd) return;
+    (rd.visitLog||[]).forEach(function(v){
+      var d=new Date(v.date||v.visitDate||'');
+      if(isNaN(d.getTime())) return;
+      if(d>=weekStart&&d<=weekEnd){
+        visits.push({rep:rep,company:v.company||v.client||'',content:v.content||'',date:v.date||v.visitDate||''});
+      }
+    });
+  });
+  visits.sort(function(a,b){ return (b.date>a.date?1:-1); });
+  if(cnt) cnt.textContent=visits.length+'건';
+  if(!visits.length){
+    el.innerHTML='<div style="font-size:11px;color:var(--muted);padding:8px 0;">이번 주 고객 접점이 없습니다</div>';
+    return;
+  }
+  var repColors={};
+  (typeof REPS!=='undefined'?REPS:[]).forEach(function(r,i){
+    var cols=['#1A56DB','#059669','#7C3AED','#D97706','#DC2626','#0EA5A0'];
+    repColors[r]=cols[i%cols.length];
+  });
+  el.innerHTML=visits.map(function(v){
+    var col=repColors[v.rep]||'var(--blue)';
+    var dtStr=v.date?v.date.slice(5,10).replace('-','.'):'';
+    return '<div class="wk-row">'
+      +'<div class="wk-dot" style="background:'+col+';"></div>'
+      +'<span class="wk-cli" style="color:'+col+';">'+_wkEsc(v.rep)+'</span>'
+      +'<span class="wk-cli">'+_wkEsc(v.company)+'</span>'
+      +'<span class="wk-cont">'+_renderRich(v.content)+'</span>'
+      +'<span class="wk-dt">'+dtStr+'</span>'
+      +'</div>';
+  }).join('');
+}
+
+// ── 계약 주요 현황 렌더 ──────────────────────────────────────
+function _wkRenderContractList(){
+  var el=document.getElementById('wk-contract-list');
+  var cnt=document.getElementById('wk-contract-cnt');
+  if(!el) return;
+  var reps=_wkGetActiveReps();
+  var today=new Date(); today.setHours(0,0,0,0);
+  var contracts=[];
+  reps.forEach(function(rep){
+    var cs=typeof _getContracts==='function'?_getContracts(rep):[];
+    cs.forEach(function(con){
+      if(con.status==='종료') return;
+      var d=con.endDate?new Date(con.endDate):null;
+      if(!d||isNaN(d.getTime())) return;
+      var diff=Math.round((d-today)/86400000);
+      if(diff>=0&&diff<=90){
+        contracts.push({rep:rep,client:con.client||'',project:con.projectName||'',endDate:con.endDate||'',diff:diff,status:con.status||''});
+      }
+    });
+  });
+  contracts.sort(function(a,b){ return a.diff-b.diff; });
+  if(cnt) cnt.textContent=contracts.length+'건 만료 임박';
+  if(!contracts.length){
+    el.innerHTML='<div style="font-size:11px;color:var(--muted);padding:8px 0;">90일 이내 만료 계약이 없습니다</div>';
+    return;
+  }
+  el.innerHTML=contracts.slice(0,10).map(function(con){
+    var diff=con.diff;
+    var diffStr=diff===0?'D-day':'D-'+diff;
+    var diffColor=diff<=7?'background:#FEE2E2;color:var(--red);':diff<=30?'background:#FEF3C7;color:var(--gold);':'background:#F0FFF4;color:var(--green);';
+    return '<div class="wk-row">'
+      +'<span class="wk-cli">'+_wkEsc(con.client)+'</span>'
+      +'<span class="wk-cont">'+_wkEsc(con.project||con.client)+'</span>'
+      +'<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;'+diffColor+'">'+diffStr+'</span>'
+      +'<span class="wk-dt">'+_wkEsc(con.endDate.slice(0,10))+'</span>'
       +'</div>';
   }).join('');
 }
@@ -17251,13 +17301,13 @@ function _wkBuildNotifBtn(){
     var bReset=document.getElementById('_rb-reset');
     var colors=bar.querySelectorAll('[data-color]');
     function _doCmd(cmd,val){
-      if(_richTarget){ _richTarget.focus(); }
+      if(window._richTarget){ window._richTarget.focus(); }
       var s=window.getSelection();
       if((!s||s.isCollapsed)&&window._rtb_lastRange){
         try{s=window.getSelection();s.removeAllRanges();s.addRange(window._rtb_lastRange);}catch(e){}
       }
       try{ document.execCommand(cmd,false,val||null); }catch(e){}
-      if(_richTarget){ try{_richTarget.dispatchEvent(new Event('input',{bubbles:true}));}catch(e){} }
+      if(window._richTarget){ try{window._richTarget.dispatchEvent(new Event('input',{bubbles:true}));}catch(e){} }
     }
     if(bB) bB.addEventListener('click',function(e){e.preventDefault();_doCmd('bold');});
     if(bI) bI.addEventListener('click',function(e){e.preventDefault();_doCmd('italic');});
