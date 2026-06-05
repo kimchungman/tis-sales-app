@@ -2546,7 +2546,7 @@ function _wkGetMyName(){
 
 // ── 수정
 window._wkEditEntry=function(entryId){
-  var entry=_wk.entries.find(function(e){return e.id===entryId;});
+  var entry=(window._wk||_wk).entries.find(function(e){return e.id===entryId;});
   if(!entry) return;
   var cont=document.getElementById('wk-entry-cont-'+entryId);
   if(!cont) return;
@@ -2556,38 +2556,38 @@ window._wkEditEntry=function(entryId){
 };
 
 window._wkCancelEntryEdit=function(entryId){
-  var entry=_wk.entries.find(function(e){return e.id===entryId;});
+  var entry=(window._wk||_wk).entries.find(function(e){return e.id===entryId;});
   if(!entry) return;
   var cont=document.getElementById('wk-entry-cont-'+entryId);
-  if(cont) cont.innerHTML=_wkSanitize(entry.text||'');
+  if(cont) cont.innerHTML=(window._wkSanitize||_wkSanitize)(entry.text||'');
 };
 
 window._wkSaveEntryEdit=async function(entryId){
-  var entry=_wk.entries.find(function(e){return e.id===entryId;});
+  var entry=(window._wk||_wk).entries.find(function(e){return e.id===entryId;});
   if(!entry) return;
   var ed=document.getElementById('wk-edit-ta-'+entryId);
   if(!ed) return;
   entry.text=ed.innerHTML;
-  entry.editedAt=_wkNowStr();
-  var weekKey=_wkThisKey();
+  entry.editedAt=(window._wkNowStr||_wkNowStr)();
+  var weekKey=(window._wkThisKey||_wkThisKey)();
   var myRep=_wkGetMyName();
-  var myEntries=_wk.entries.filter(function(e){return e.rep===myRep;});
-  try{ await _wkSaveFeed(weekKey,myRep,myEntries); }catch(e){}
-  _wkRenderFeed();
+  var myEntries=(window._wk||_wk).entries.filter(function(e){return e.rep===myRep;});
+  try{ await (window._wkSaveFeed||_wkSaveFeed)(weekKey,myRep,myEntries); }catch(e){}
+  (window._wkRenderFeed||_wkRenderFeed)();
   if(typeof showToast==='function') showToast('✅ 수정되었습니다');
 };
 
 // ── 삭제
 window._wkDeleteEntry=async function(entryId){
   if(!confirm('이 회의록을 삭제하시겠습니까?')) return;
-  var idx=_wk.entries.findIndex(function(e){return e.id===entryId;});
+  var idx=(window._wk||_wk).entries.findIndex(function(e){return e.id===entryId;});
   if(idx<0) return;
-  _wk.entries.splice(idx,1);
+  (window._wk||_wk).entries.splice(idx,1);
   var weekKey=_wkThisKey();
   var myRep=_wkGetMyName();
-  var myEntries=_wk.entries.filter(function(e){return e.rep===myRep;});
+  var myEntries=(window._wk||_wk).entries.filter(function(e){return e.rep===myRep;});
   try{ await _wkSaveFeed(weekKey,myRep,myEntries); }catch(e){}
-  _wkRenderFeed();
+  (window._wkRenderFeed||_wkRenderFeed)();
   if(typeof showToast==='function') showToast('🗑 삭제되었습니다');
 };
 
@@ -2607,7 +2607,8 @@ function _showBar(sel){
   var bar=document.getElementById('_rich-bar');
   if(!bar) return;
   var range=sel.getRangeAt(0);
-  var rect=range.getBoundingClientRect();
+  var range=sel.getRangeAt(0);
+  try{ window._rtb_lastRange=range.cloneRange(); }catch(e){}  // 색상 적용용 range 저장
   bar.style.display='flex';
   var bw=bar.offsetWidth||220, bh=bar.offsetHeight||36;
   var left=Math.max(8,Math.min(rect.left+rect.width/2-bw/2,window.innerWidth-bw-8));
@@ -8492,8 +8493,17 @@ function _safeRepDisplayName(name){
 }
 function getRepDisplayName(rep){
   if(!rep) return rep;
-  var t=(typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[rep])||'';
-  return t?rep+' '+t:rep;
+  var titles=(typeof authCfg!=='undefined'&&authCfg.repTitles)||{};
+  // 순수이름으로 직책 조회
+  var t=titles[rep]||'';
+  if(t) return rep+' '+t;
+  // 이미 직책이 포함된 이름인지 확인 (예: "허인수 책임")
+  var keys=Object.keys(titles);
+  for(var _i=0;_i<keys.length;_i++){
+    var base=keys[_i], tt=titles[base];
+    if(tt && rep===base+' '+tt) return rep; // 이미 직책 포함 → 그대로
+  }
+  return rep;
 }
 
 // sanitized DataKey → 원본 rep명 역매핑 (구버전 직책 포함 key 지원)
@@ -14253,7 +14263,7 @@ function _cdbGetHistory(name,typeFilter){
       });
     if(!typeFilter||typeFilter==='이슈'||typeFilter==='all')
       (d.issuesList||[]).forEach(function(iss){
-        if(iss.client===name) items.push({type:'이슈',rep:rep,text:iss.title||iss.content||'',sub:iss.content||iss.status||'',date:iss.createdAt||'',sort:iss.createdAt||''});
+        if(iss.client===name) items.push({type:'이슈',rep:rep,text:iss.title||'',sub:iss.content||iss.status||'',date:iss.createdAt||'',sort:iss.createdAt||''});
       });
     if(!typeFilter||typeFilter==='방문'||typeFilter==='접점현황'||typeFilter==='all')
       (d.visitLog||[]).forEach(function(v){
@@ -14419,7 +14429,11 @@ function _cdbRenderDetail(id){
   // 히스토리
   var typeColor={'계약':'#4f7fff','활동':'#F59E0B','이슈':'#8B5CF6','방문':'#10B981','접점현황':'#10B981'};
   var histHTML=hist.length?hist.map(function(h){
-    return '<div class="cdb-hi"><div class="cdb-hd" style="background:'+(typeColor[h.type]||'#94A3B8')+';"></div><div class="cdb-hw"><div>'+TB(h.type)+'<span style="font-size:12px;color:#374151;">'+_cdbEsc(_cdbStrip(h.text))+(h.sub?'<div style="color:#94A3B8;font-size:11px;margin-top:3px;line-height:1.5;">'+_renderRich(h.sub)+'</div>':'')+'</span></div><div style="font-size:10px;color:#94A3B8;margin-top:2px;">'+(h.rep?_cdbEsc(h.rep)+' · ':'')+_cdbEsc(h.date||'')+'</div></div></div>';
+    // sub가 text와 동일한 내용이면 중복 생략 (이슈 등)
+    var mainText=h.text?_renderRich(h.text):'';
+    var subText=h.sub&&h.sub!==h.text?_renderRich(h.sub):'';
+    var repDisp=h.rep?(typeof getRepDisplayName==='function'?getRepDisplayName(h.rep):h.rep):h.rep;
+    return '<div class="cdb-hi"><div class="cdb-hd" style="background:'+(typeColor[h.type]||'#94A3B8')+';"></div><div class="cdb-hw"><div>'+TB(h.type)+'<div style="font-size:12px;color:#374151;line-height:1.6;">'+mainText+(subText?'<div style="color:#94A3B8;font-size:11px;margin-top:3px;line-height:1.6;">'+subText+'</div>':'')+'</div></div><div style="font-size:10px;color:#94A3B8;margin-top:2px;">'+(repDisp?_cdbEsc(repDisp)+' · ':'')+_cdbEsc(h.date||'')+'</div></div></div>';
   }).join(''):'<div style="padding:20px;text-align:center;color:#94A3B8;font-size:12px;">활동 이력이 없습니다.</div>';
 
   var amtDisp=kpi.amount>=100000?(kpi.amount/100000).toFixed(1)+'억':kpi.amount>=10000?(Math.round(kpi.amount/1000))+'천만':kpi.amount?kpi.amount.toLocaleString('ko-KR')+'천':'0';
@@ -16053,6 +16067,7 @@ var _wk = {
   loading: false,
 };
 
+window._wk = _wk; // IIFE 외부에서도 접근 가능하도록 노출
 // ── 주차 계산 ──────────────────────────────────────
 function _wkGetWeekKey(date){
   var d=new Date(date||Date.now());
@@ -16071,6 +16086,21 @@ window._wkGetWeekKey = _wkGetWeekKey;
 window._wkThisKey   = _wkThisKey;
 window._wkLastKey   = _wkLastKey;
 function _wkCurrentKeys(){
+// IIFE 내부 함수 전체 window 노출 (외부 onclick 등에서 호출 가능하도록)
+window._wkSanitize          = function(t){ return _wkSanitize(t); };
+window._wkNowStr            = function(){ return _wkNowStr(); };
+window._wkSaveFeed          = function(a,b,c){ return _wkSaveFeed(a,b,c); };
+window._wkRenderFeed        = function(){ return _wkRenderFeed(); };
+window._wkRenderReport      = function(){ return _wkRenderReport(); };
+window._wkUpdatePendingCnt  = function(){ return _wkUpdatePendingCnt(); };
+window._wkBuildMentionPopup = function(){ return _wkBuildMentionPopup(); };
+window._wkLoadNotif         = function(r){ return _wkLoadNotif(r); };
+window._wkUpdateNotifBadge  = function(){ if(typeof _wkUpdateNotifBadge==='function') _wkUpdateNotifBadge(); };
+window._wkGenContractNotifs = function(){ if(typeof _wkGenContractNotifs==='function') _wkGenContractNotifs(); };
+window._wkLoad              = function(){ return _wkLoad(); };
+window._wkBuildRepTabs      = function(){ if(typeof _wkBuildRepTabs==='function') _wkBuildRepTabs(); };
+window._wkBuildTeamTabs     = function(){ if(typeof _wkBuildTeamTabs==='function') _wkBuildTeamTabs(); };
+window._wkCreateReplyNotif  = function(a,b,c){ if(typeof _wkCreateReplyNotif==='function') return _wkCreateReplyNotif(a,b,c); };
   if(_wk.weekMode==='this') return [_wkThisKey()];
   if(_wk.weekMode==='last') return [_wkLastKey()];
   // period
@@ -17011,7 +17041,7 @@ window._wkSubmitEntry=async function(){
   var weekKey=_wkThisKey();
   var myRep=session&&session.rep||'guest';
   // \ub0b4 rep\uc758 entries\ub9cc \uc800\uc7a5 (\ucda9\ub3cc \ubc29\uc9c0)
-  var myEntries=_wk.entries.filter(function(e){return e.rep===myRep;});
+  var myEntries=(window._wk||_wk).entries.filter(function(e){return e.rep===myRep;});
   await _wkSaveFeed(weekKey, myRep, myEntries);
   // \uc54c\ub9bc \uc0dd\uc131
   await _wkCreateNotifs(entry);
@@ -17039,7 +17069,7 @@ window._wkSubmitReply=async function(entryId){
   var ta=document.getElementById('wk-reply-ta-'+entryId);
   if(!ta||!ta.value.trim()) return;
   var text=ta.value.trim();
-  var entry=_wk.entries.find(function(e){return e.id===entryId;});
+  var entry=(window._wk||_wk).entries.find(function(e){return e.id===entryId;});
   if(!entry) return;
   if(!entry.replies) entry.replies=[];
   var now=new Date();
@@ -17057,7 +17087,7 @@ window._wkSubmitReply=async function(entryId){
   // SP \uc800\uc7a5 (\ub2f5\ubcc0 \ud3ec\ud568\ud55c \ub0b4 \ud56d\ubaa9 + \uc6d0\uae00 rep \ud56d\ubaa9 \uc5c5\ub370\uc774\ud2b8)
   var weekKey=_wkThisKey();
   var myRep=session&&session.rep||'guest';
-  var myEntries=_wk.entries.filter(function(e){return e.rep===myRep;});
+  var myEntries=(window._wk||_wk).entries.filter(function(e){return e.rep===myRep;});
   var entryRep=entry.rep;
   // \uc6d0\uae00 rep\uc758 entries\ub3c4 \uc5c5\ub370\uc774\ud2b8 (\ub2f5\ubcc0 \ud3ec\ud568)
   if(entryRep!==myRep){
@@ -17310,7 +17340,20 @@ function _wkBuildNotifBtn(){
     var bS=document.getElementById('_rb-s');
     var bReset=document.getElementById('_rb-reset');
     var colors=bar.querySelectorAll('[data-color]');
-    function _doCmd(cmd,val){ document.execCommand(cmd,false,val||null); }
+    function _doCmd(cmd,val){
+      // selection 복원 후 execCommand
+      if(typeof _richTarget !== 'undefined' && _richTarget){
+        _richTarget.focus();
+        var s=window.getSelection();
+        if((!s||s.isCollapsed)&&window._rtb_lastRange){
+          try{s.removeAllRanges();s.addRange(window._rtb_lastRange);}catch(e){}
+        }
+      }
+      try{ document.execCommand(cmd,false,val||null); }catch(e){}
+      if(typeof _richTarget!=='undefined'&&_richTarget){
+        try{_richTarget.dispatchEvent(new Event('input',{bubbles:true}));}catch(e){}
+      }
+    }
     if(bB) bB.addEventListener('click',function(e){e.preventDefault();_doCmd('bold');});
     if(bI) bI.addEventListener('click',function(e){e.preventDefault();_doCmd('italic');});
     if(bU) bU.addEventListener('click',function(e){e.preventDefault();_doCmd('underline');});
