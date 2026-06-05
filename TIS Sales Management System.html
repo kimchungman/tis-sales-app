@@ -16472,36 +16472,43 @@ window._wkSetView=function(view){
 async function _wkLoad(){
   if(_wk.loading) return;
   _wk.loading=true;
-  try{
-    var thisKey=_wkThisKey();
-    var prevKey=_wkPrevKey();
-    if(window._isSPReady){
-      // SP 연결 완료 → 최신 데이터 로드
+
+  // ── 1단계: 즉시 현재 캐시 데이터로 렌더 (지연 0) ──
+  try{ _wkRenderReport(); _wkRenderFeed(); _wkUpdatePendingCnt(); }catch(e){}
+
+  // ── 2단계: SP에서 최신 데이터 백그라운드 로드 ──
+  if(window._isSPReady){
+    try{
+      var thisKey=_wkThisKey();
+      var prevKey=_wkPrevKey();
       var entries=await _wkLoadFeed(thisKey);
-      if(entries&&entries.length>0) _wk.entries=entries;
+      var changed=false;
+      if(entries&&entries.length>0&&JSON.stringify(entries)!==JSON.stringify(_wk.entries)){
+        _wk.entries=entries; changed=true;
+      }
       if(prevKey){
         var prev=await _wkLoadFeed(prevKey);
-        if(prev&&prev.length>0) _wk.prevEntries=prev;
+        if(prev&&prev.length>0&&JSON.stringify(prev)!==JSON.stringify(_wk.prevEntries)){
+          _wk.prevEntries=prev; changed=true;
+        }
       }
-      _wkRenderReport();
-      _wkRenderFeed();
-      _wkUpdatePendingCnt();
-    } else {
-      // SP 미연결: 현재 데이터로 즉시 렌더 후 SP 연결 대기 폴링
-      _wkRenderReport();
-      _wkRenderFeed();
-      _wkUpdatePendingCnt();
-      _wk.loading=false;
-      var _poll=0;
-      var _pollId=setInterval(function(){
-        _poll++;
-        if(window._isSPReady){ clearInterval(_pollId); _wkLoad(); }
-        if(_poll>60) clearInterval(_pollId);
-      },500);
-      return;
-    }
-  }catch(e){ console.warn('[wk load]',e); }
-  _wk.loading=false;
+      if(changed){
+        _wkRenderReport();
+        _wkRenderFeed();
+        _wkUpdatePendingCnt();
+      }
+    }catch(e){ console.warn('[wk load]',e); }
+    _wk.loading=false;
+  } else {
+    // SP 미연결: 500ms 간격 폴링으로 연결 대기
+    _wk.loading=false;
+    var _poll=0;
+    var _pollId=setInterval(function(){
+      _poll++;
+      if(window._isSPReady){ clearInterval(_pollId); _wkLoad(); }
+      if(_poll>60) clearInterval(_pollId);
+    },500);
+  }
 }
 // \u2500\u2500 \ubcf4\uace0\uc11c \ub80c\ub354 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 function _wkRenderReport(){
