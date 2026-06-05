@@ -6843,12 +6843,9 @@ function doGuestWithName(name, skipPwCheck){
     try{
       var _ap=document.querySelector('.page.active');
       var _aid=_ap?_ap.id:'';
-      if(_aid==='page-weekly'){
-        // SP 연결 완료 - 회의록 데이터 즉시 재로드
-        if(typeof window._wkLoad==='function'){
-          window._wk&&(window._wk.loading=false); // 혹시 loading 상태이면 해제
-          window._wkLoad();
-        }
+      if(_aid==='page-weekly'&&typeof window._wkLoad==='function'){
+        if(window._wk) window._wk.loading=false;
+        window._wkLoad();
       }
       if(_aid==='page-contract'&&typeof renderContractDashboard==='function') renderContractDashboard();
     }catch(e){}
@@ -16472,41 +16469,31 @@ window._wkSetView=function(view){
 async function _wkLoad(){
   if(_wk.loading) return;
   _wk.loading=true;
-
-  // ── 1단계: 즉시 현재 캐시 데이터로 렌더 (지연 0) ──
+  // 1단계: 즉시 현재 캐시로 렌더 (화면 즉시 표시)
   try{ _wkRenderReport(); _wkRenderFeed(); _wkUpdatePendingCnt(); }catch(e){}
-
-  // ── 2단계: SP에서 최신 데이터 백그라운드 로드 ──
+  // 2단계: SP 연결 완료 시 최신 데이터 로드 후 재렌더
   if(window._isSPReady){
     try{
       var thisKey=_wkThisKey();
       var prevKey=_wkPrevKey();
       var entries=await _wkLoadFeed(thisKey);
-      var changed=false;
-      if(entries&&entries.length>0&&JSON.stringify(entries)!==JSON.stringify(_wk.entries)){
-        _wk.entries=entries; changed=true;
-      }
+      _wk.entries=entries;
       if(prevKey){
-        var prev=await _wkLoadFeed(prevKey);
-        if(prev&&prev.length>0&&JSON.stringify(prev)!==JSON.stringify(_wk.prevEntries)){
-          _wk.prevEntries=prev; changed=true;
-        }
+        _wk.prevEntries=await _wkLoadFeed(prevKey);
       }
-      if(changed){
-        _wkRenderReport();
-        _wkRenderFeed();
-        _wkUpdatePendingCnt();
-      }
+      _wkRenderReport();
+      _wkRenderFeed();
+      _wkUpdatePendingCnt();
     }catch(e){ console.warn('[wk load]',e); }
     _wk.loading=false;
   } else {
-    // SP 미연결: 500ms 간격 폴링으로 연결 대기
+    // SP 미연결: 연결될 때까지 폴링
     _wk.loading=false;
-    var _poll=0;
-    var _pollId=setInterval(function(){
-      _poll++;
-      if(window._isSPReady){ clearInterval(_pollId); _wkLoad(); }
-      if(_poll>60) clearInterval(_pollId);
+    var _wkPoll=0;
+    var _wkPollId=setInterval(function(){
+      _wkPoll++;
+      if(window._isSPReady){ clearInterval(_wkPollId); _wkLoad(); }
+      if(_wkPoll>60) clearInterval(_wkPollId);
     },500);
   }
 }
