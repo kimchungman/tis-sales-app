@@ -2508,10 +2508,14 @@ function _wkIsAdmin(){
 function _wkGetMyName(){
   return (session&&session.rep)||'';
 }
+// IIFE 밖에서도 접근 가능하도록 window 노출
+window._wkIsAuthor  = _wkIsAuthor;
+window._wkIsAdmin   = _wkIsAdmin;
+window._wkGetMyName = _wkGetMyName;
 
 // ── 수정
 window._wkEditEntry=function(entryId){
-  var entry=_wk.entries.find(function(e){return e.id===entryId;});
+  var entry=(window._wk||_wk).entries.find(function(e){return e.id===entryId;});
   if(!entry) return;
   var cont=document.getElementById('wk-entry-cont-'+entryId);
   if(!cont) return;
@@ -2521,14 +2525,14 @@ window._wkEditEntry=function(entryId){
 };
 
 window._wkCancelEntryEdit=function(entryId){
-  var entry=_wk.entries.find(function(e){return e.id===entryId;});
+  var entry=(window._wk||_wk).entries.find(function(e){return e.id===entryId;});
   if(!entry) return;
   var cont=document.getElementById('wk-entry-cont-'+entryId);
   if(cont) cont.innerHTML=_wkSanitize(entry.text||'');
 };
 
 window._wkSaveEntryEdit=async function(entryId){
-  var entry=_wk.entries.find(function(e){return e.id===entryId;});
+  var entry=(window._wk||_wk).entries.find(function(e){return e.id===entryId;});
   if(!entry) return;
   var ed=document.getElementById('wk-edit-ta-'+entryId);
   if(!ed) return;
@@ -2536,7 +2540,7 @@ window._wkSaveEntryEdit=async function(entryId){
   entry.editedAt=(window._wkNowStr||_wkNowStr)();
   var weekKey=_wkThisKey();
   var myRep=(window._wkGetMyName?window._wkGetMyName():(session&&session.rep||''));
-  var myEntries=_wk.entries.filter(function(e){return e.rep===myRep;});
+  var myEntries=(window._wk||_wk).entries.filter(function(e){return e.rep===myRep;});
   try{ await (window._wkSaveFeed||_wkSaveFeed)(weekKey,myRep,myEntries); }catch(e){}
   (window._wkRenderFeed||_wkRenderFeed)();
   if(typeof showToast==='function') showToast('✅ 수정되었습니다');
@@ -2545,12 +2549,12 @@ window._wkSaveEntryEdit=async function(entryId){
 // ── 삭제
 window._wkDeleteEntry=async function(entryId){
   if(!confirm('이 회의록을 삭제하시겠습니까?')) return;
-  var idx=_wk.entries.findIndex(function(e){return e.id===entryId;});
+  var idx=(window._wk||_wk).entries.findIndex(function(e){return e.id===entryId;});
   if(idx<0) return;
-  _wk.entries.splice(idx,1);
+  (window._wk||_wk).entries.splice(idx,1);
   var weekKey=_wkThisKey();
   var myRep=_wkGetMyName();
-  var myEntries=_wk.entries.filter(function(e){return e.rep===myRep;});
+  var myEntries=(window._wk||_wk).entries.filter(function(e){return e.rep===myRep;});
   try{ await (window._wkSaveFeed||_wkSaveFeed)(weekKey,myRep,myEntries); }catch(e){}
   (window._wkRenderFeed||_wkRenderFeed)();
   if(typeof showToast==='function') showToast('🗑 삭제되었습니다');
@@ -15963,6 +15967,7 @@ var _wk = {
   loading: false,
 };
 
+window._wk = _wk; // L2463 블록에서 _wk 접근용
 // ── 주차 계산 ──────────────────────────────────────
 function _wkGetWeekKey(date){
   var d=new Date(date||Date.now());
@@ -16029,7 +16034,7 @@ async function _wkSaveFeed(weekKey, rep, entries){
 async function _wkLoadFeed(weekKey){
   if(!weekKey||!window._isSPReady) return [];
   try{
-    var url=_lUrl()+'?$select=Title,DataType,DataKey,Payload&$top=500';
+    var url=_lUrl()+'?$select=Title,DataType,DataKey,Payload&$filter=DataType+eq+%27weeklyFeed%27&$top=200';
     var res=await _spFetchAll(url);
     var _items=(res&&res.value)||[];
     // rep별 최신 savedAt 기준으로 1건만 사용 (중복 SP 아이템 방지)
@@ -16822,7 +16827,7 @@ function _wkEntryHtml(entry){
     +repliesHtml
     +'<div style="margin-top:5px;">'
       +'<button class="wk-reply-btn" onclick="_wkToggleReply(\''+entry.id+'\')">↩ 답변하기</button>'
-      +((_wkIsAuthor&&_wkIsAuthor(entry))
+      +((window._wkIsAuthor&&window._wkIsAuthor(entry))
         ?'<button class="wk-edit-btn" onclick="_wkEditEntry(\''+entry.id+'\')">✏️ 수정</button>'
          +'<button class="wk-del-btn" onclick="_wkDeleteEntry(\''+entry.id+'\')">🗑 삭제</button>'
         :'')
