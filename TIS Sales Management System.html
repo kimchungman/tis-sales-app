@@ -15979,6 +15979,10 @@ function _wkLastKey(){
   var d=new Date(); d.setDate(d.getDate()-7);
   return _wkGetWeekKey(d);
 }
+// 전역 노출 — IIFE 외부(aRow 등)에서도 호출 가능하도록
+window._wkGetWeekKey = _wkGetWeekKey;
+window._wkThisKey   = _wkThisKey;
+window._wkLastKey   = _wkLastKey;
 function _wkCurrentKeys(){
   if(_wk.weekMode==='this') return [_wkThisKey()];
   if(_wk.weekMode==='last') return [_wkLastKey()];
