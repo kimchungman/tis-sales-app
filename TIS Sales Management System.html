@@ -5587,7 +5587,7 @@ function aRow(rep,ai,a){
   const progList=getSelectOpts('activityProgress');
   const progOpts='<option value="" disabled'+((!a.progress||a.progress==='')?'selected':'')+' style="text-align:center">선택</option>'+progList.map(p=>`<option style="text-align:center"${(a.progress||'')===p?' selected':''}>${p}</option>`).join('');
   var _isOwn=(typeof session!=='undefined'&&session&&session.rep===rep)||(typeof session!=='undefined'&&session&&session.role==='admin');
-  var _wkChecked=a.weeklyCheck&&a.weeklyCheck[_thisWkKey()]?'checked':'';
+  var _wkChecked=a.weeklyCheck&&a.weeklyCheck[_wkThisKey()]?'checked':'';
   return`<tr>
     <td class="wk-chk-cell">${_isOwn?`<input type="checkbox" class="wk-act-chk" ${_wkChecked} onchange="_wkToggleActCheck('${rep}',${ai},this.checked)" style="width:15px;height:15px;cursor:pointer;accent-color:#1A56DB;vertical-align:middle;display:block;" title="주간보고에 포함">`:'&nbsp;'}</td>
     <td class="wk-no-cell" style="color:var(--muted);font-weight:600;font-size:12px;">${a.no||ai+1}</td>
@@ -10494,7 +10494,7 @@ function _iRow(rep, idx, iss){
     +'</div></td>';
 
   // 체크박스: data 속성으로 이벤트 위임 (onchange 이스케이프 문제 회피)
-  var _issChkHtml=canEdit?'<input type="checkbox" class="wk-iss-chk" data-rep="'+r+'" data-idx="'+idx+'" '+(iss.weeklyCheck&&iss.weeklyCheck[_thisWkKey()]?'checked ':'')+' style="width:15px;height:15px;cursor:pointer;accent-color:#1A56DB;" title="주간보고에 포함">':'&nbsp;';
+  var _issChkHtml=canEdit?'<input type="checkbox" class="wk-iss-chk" data-rep="'+r+'" data-idx="'+idx+'" '+(iss.weeklyCheck&&iss.weeklyCheck[_wkThisKey()]?'checked ':'')+' style="width:15px;height:15px;cursor:pointer;accent-color:#1A56DB;" title="주간보고에 포함">':'&nbsp;';
   // :'&nbsp;'; // (위 삼항연산자에 통합)
   return '<tr id="ir-'+rep+'-'+idx+'">'
     +'<td class="wk-chk-cell">'+_issChkHtml+'</td>'    +'<td class="wk-no-cell" style="color:#94A3B8;font-weight:600;font-size:12px;">'+(iss.no||idx+1)+'</td>'    // 고객사
