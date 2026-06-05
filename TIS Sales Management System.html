@@ -3609,7 +3609,7 @@ document.addEventListener('selectionchange',function(){
         <button class="wk-tb" title="취소선" onclick="_wkFmt('strikeThrough')"><s>S</s></button>
       </div>
 
-      <div class="wk-editor" id="wk-editor" contenteditable="true" class="rich-ed" data-placeholder="보고 또는 지시 내용 입력... (@이름 으로 담당자 언급)"></div>
+      <div class="wk-editor rich-ed" id="wk-editor" contenteditable="true" data-placeholder="보고 또는 지시 내용 입력... (@이름 으로 담당자 언급)"></div>
       <!-- 멘션 팝업 -->
       <div class="wk-mention-popup" id="wk-mention-popup">
         <div class="wk-mp-head">@ 담당자 선택</div>
@@ -16034,7 +16034,7 @@ async function _wkSaveFeed(weekKey, rep, entries){
 async function _wkLoadFeed(weekKey){
   if(!weekKey||!window._isSPReady) return [];
   try{
-    var url=_lUrl()+'?$select=Title,DataType,DataKey,Payload&$top=500';
+    var url=_lUrl()+'?$select=Title,DataType,DataKey,Payload&$filter=startswith(Title,%27weeklyFeed_%27)&$top=200';
     var res=await _spFetchAll(url);
     var _items=(res&&res.value)||[];
     // rep별 최신 savedAt 기준으로 1건만 사용 (중복 SP 아이템 방지)
@@ -16528,7 +16528,7 @@ function _wkRenderPrevSection(){
     h+='<div class="wk-pi'+(hasUnreplied?' carry':'')+'">'
       +'<div class="wk-pi-who">'
         +'<span class="wk-pi-name">'+_wkEsc(entry.displayName||entry.rep)+'</span>'
-        +'<span class="wk-role-badge '+(entry.role==='admin'?'wk-rb-admin':'wk-rb-rep')+'">'+_wkEsc(entry.role==='admin'?(entry.roleLabel||''):(entry.role==='guest'?'게스트':''))+'</span>'
+        +('')
         +'<span class="wk-pi-time">'+_wkEsc(entry.time||'')+'</span>'
       +'</div>'
       +'<div class="wk-pi-cont">'+_wkSanitize(entry.text||'')+'</div>';
@@ -16808,7 +16808,7 @@ function _wkEntryHtml(entry){
         return '<div class="wk-ri">'
           +'<div class="wk-ri-meta">'
             +'<span class="wk-ri-n">'+_wkEsc(r.displayName||r.rep)+'</span>'
-            +'<span class="wk-role-badge '+(r.role==='admin'?'wk-rb-admin':'wk-rb-rep')+'">'+_wkEsc(r.role==='admin'?(r.roleLabel||''):(r.role==='guest'?'게스트':''))+'</span>'
+            +('')
             +'<span class="wk-ri-t">'+_wkEsc(r.time||'')+'</span>'
           +'</div>'
           +'<div class="wk-ri-c">'+_wkSanitize(r.text||'')+'</div>'
@@ -16819,7 +16819,7 @@ function _wkEntryHtml(entry){
   return '<div class="wk-fi-item'+(pending?' pending':'')+'" id="wk-entry-'+entry.id+'">'
     +'<div class="wk-fi-meta">'
       +'<span class="wk-fi-n">'+_wkEsc(entry.displayName||entry.rep)+'</span>'
-      +'<span class="wk-role-badge '+(entry.role==='admin'?'wk-rb-admin':entry.role==='guest'?'wk-rb-guest':'wk-rb-rep')+'">'+_wkEsc(entry.role==='admin'?(entry.roleLabel||''):(entry.role==='guest'?'게스트':''))+'</span>'
+      +('')
       +(pending?'<span class="wk-pend-badge">\ubbf8\ub2f5\ubcc0</span>':'<span class="wk-done-badge">\ub2f5\ubcc0\uc644\ub8cc</span>')
       +'<span class="wk-fi-t">'+_wkEsc(entry.time||'')+'</span>'
     +'</div>'
@@ -16939,31 +16939,43 @@ function _wkFilterMentionPopup(query){
 
 window._wkSelectMention=function(name, title){
   var editor=document.getElementById('wk-editor');
+  var popup=document.getElementById('wk-mention-popup');
+  if(popup) popup.style.display='none';
   if(!editor) return;
-  // \ucee4\uc11c \uc55e\uc758 @ \uc81c\uac70 \ud6c4 \uba58\uc158 span \uc0bd\uc785
+
   var sel=window.getSelection();
-  if(sel&&sel.focusNode){
-    var node=sel.focusNode;
-    var offset=sel.focusOffset;
-    var text=node.textContent;
-    var atIdx=text.lastIndexOf('@',offset-1);
-    if(atIdx>=0){
-      node.textContent=text.slice(0,atIdx);
-      // \uba58\uc158 span \uc0bd\uc785
-      var span=document.createElement('span');
-      span.className='wk-mention';
-      span.textContent='@'+name;
-      span.contentEditable='false';
-      editor.appendChild(span);
-      // \ucee4\uc11c\ub97c span \ub4a4\ub85c
-      var space=document.createTextNode('\u00A0');
-      editor.appendChild(space);
-      var r=document.createRange();
-      r.setStart(space,1); r.collapse(true);
-      sel.removeAllRanges(); sel.addRange(r);
-    }
+  if(!sel||!sel.focusNode){ editor.focus(); return; }
+
+  // @ 이후 쿼리 텍스트를 Range로 선택 후 mentionSpan으로 교체
+  var focusNode=sel.focusNode;
+  var focusOffset=sel.focusOffset;
+  var text=focusNode.nodeType===3?focusNode.textContent:'';
+  var atIdx=text.lastIndexOf('@', focusOffset-1);
+
+  if(atIdx>=0){
+    // @ 부터 커서까지 Range 선택
+    var range=document.createRange();
+    range.setStart(focusNode, atIdx);
+    range.setEnd(focusNode, focusOffset);
+    range.deleteContents();
+
+    // mention span 삽입
+    var span=document.createElement('span');
+    span.className='wk-mention';
+    span.setAttribute('contenteditable','false');
+    span.textContent='@'+name;
+    range.insertNode(span);
+
+    // 커서를 span 뒤로 이동
+    var after=document.createTextNode('\u00A0');
+    span.parentNode.insertBefore(after, span.nextSibling);
+    var newRange=document.createRange();
+    newRange.setStart(after,1);
+    newRange.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(newRange);
   }
-  document.getElementById('wk-mention-popup').style.display='none';
+
   editor.focus();
 };
 
