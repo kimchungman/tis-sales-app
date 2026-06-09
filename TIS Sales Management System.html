@@ -16033,7 +16033,7 @@ async function _wkSaveFeed(weekKey, rep, entries){
 async function _wkLoadFeed(weekKey){
   if(!weekKey||!window._isSPReady) return [];
   try{
-    var url=_lUrl()+'?$select=Title,DataType,DataKey,Payload&$filter=startswith(Title,%27weeklyFeed_%27)&$top=200';
+    var url=_lUrl()+'?$select=Title,DataType,DataKey,Payload&$top=500';
     var res=await _spFetchAll(url);
     var _items=(res&&res.value)||[];
     // rep별 최신 savedAt 기준으로 1건만 사용 (중복 SP 아이템 방지)
@@ -16921,10 +16921,13 @@ function _wkCheckMention(){
   if(atIdx>=0&&!beforeCursor.slice(atIdx+1).includes(' ')){
     var query=beforeCursor.slice(atIdx+1).toLowerCase();
     // \ud31d\uc5c5 \ud544\ud130
+    // 커서 위치 저장 (팝업 클릭 시 blur 대비)
+    try{ window._wkMentionRange=sel.getRangeAt(0).cloneRange(); }catch(e){}
     _wkFilterMentionPopup(query);
     if(popup) popup.style.display='block';
   } else {
     if(popup) popup.style.display='none';
+    window._wkMentionRange=null;
   }
 }
 
@@ -16942,39 +16945,54 @@ window._wkSelectMention=function(name, title){
   if(popup) popup.style.display='none';
   if(!editor) return;
 
+  // 팝업 버튼 클릭 시 editor blur → 저장된 range 복원
+  editor.focus();
   var sel=window.getSelection();
-  if(!sel||!sel.focusNode){ editor.focus(); return; }
-
-  // @ 이후 쿼리 텍스트를 Range로 선택 후 mentionSpan으로 교체
-  var focusNode=sel.focusNode;
-  var focusOffset=sel.focusOffset;
-  var text=focusNode.nodeType===3?focusNode.textContent:'';
-  var atIdx=text.lastIndexOf('@', focusOffset-1);
-
-  if(atIdx>=0){
-    // @ 부터 커서까지 Range 선택
-    var range=document.createRange();
-    range.setStart(focusNode, atIdx);
-    range.setEnd(focusNode, focusOffset);
-    range.deleteContents();
-
-    // mention span 삽입
-    var span=document.createElement('span');
-    span.className='wk-mention';
-    span.setAttribute('contenteditable','false');
-    span.textContent='@'+name;
-    range.insertNode(span);
-
-    // 커서를 span 뒤로 이동
-    var after=document.createTextNode('\u00A0');
-    span.parentNode.insertBefore(after, span.nextSibling);
-    var newRange=document.createRange();
-    newRange.setStart(after,1);
-    newRange.collapse(true);
-    sel.removeAllRanges();
-    sel.addRange(newRange);
+  var savedRange=window._wkMentionRange;
+  if(savedRange){
+    try{ sel.removeAllRanges(); sel.addRange(savedRange.cloneRange()); }catch(e){}
+    window._wkMentionRange=null;
   }
 
+  if(!sel||!sel.focusNode) return;
+
+  var focusNode=sel.focusNode;
+  var focusOffset=sel.focusOffset;
+  var text='';
+  if(focusNode.nodeType===3){
+    text=focusNode.textContent;
+  } else {
+    // 에디터 내 마지막 텍스트 노드 찾기
+    var walker=document.createTreeWalker(editor,NodeFilter.SHOW_TEXT);
+    var lastNode=null; while(walker.nextNode()) lastNode=walker.currentNode;
+    if(lastNode){ focusNode=lastNode; focusOffset=lastNode.length; text=lastNode.textContent; }
+  }
+
+  var atIdx=text.lastIndexOf('@',focusOffset-1);
+  var insertRange=document.createRange();
+
+  if(atIdx>=0){
+    insertRange.setStart(focusNode,atIdx);
+    insertRange.setEnd(focusNode,focusOffset);
+    insertRange.deleteContents();
+  } else {
+    sel.collapseToEnd();
+    insertRange=sel.getRangeAt(0);
+  }
+
+  var span=document.createElement('span');
+  span.className='wk-mention';
+  span.setAttribute('contenteditable','false');
+  span.setAttribute('data-rep',name);
+  span.textContent='@'+name;
+  insertRange.insertNode(span);
+
+  // 커서를 span 바로 뒤로
+  var after=document.createTextNode(' ');
+  span.parentNode.insertBefore(after,span.nextSibling);
+  var nr=document.createRange();
+  nr.setStart(after,1); nr.collapse(true);
+  sel.removeAllRanges(); sel.addRange(nr);
   editor.focus();
 };
 
@@ -17245,6 +17263,18 @@ window._wkMarkAllRead=function(){
   ((_wk&&_wk.notifications)||[]).forEach(function(n){n.read=true;});
   _wkUpdateNotifBadge();
   _wkRenderNotifDrop();
+};
+window._wkDeleteAllNotif=async function(){
+  if(!confirm('알림을 모두 삭제하시겠습니까?')) return;
+  _wk.notifications=[];
+  _wkUpdateNotifBadge();
+  _wkRenderNotifDrop();
+  // SP 알림 저장: 빈 배열로 덮어쓰기
+  if(window._isSPReady&&session&&session.rep){
+    try{
+      await _spSaveItem('notif',session.rep,{notifications:[],savedAt:new Date().toISOString()});
+    }catch(e){ console.warn('[wk notif delete]',e); }
+  }
 };
 function _wkUpdateNotifBadge(){
   var cnt=((_wk&&_wk.notifications)||[]).filter(function(n){return !n.read;}).length;
