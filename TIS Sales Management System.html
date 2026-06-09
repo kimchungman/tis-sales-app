@@ -2168,7 +2168,7 @@ document.addEventListener('mousedown',function(e){
 .wk-row:last-child{border-bottom:none;}
 .wk-dot{width:6px;height:6px;border-radius:50%;margin-top:3px;flex-shrink:0;}
 .wk-cli{font-size:12px;font-weight:700;color:var(--text);min-width:60px;}
-.wk-cont{font-size:12px;color:var(--sub);flex:1;line-height:1.5;}
+.wk-cont{font-size:12px;color:var(--sub);flex:1;line-height:1.5;white-space:pre-line;word-break:break-word;}
 .wk-dt{font-size:11px;color:var(--muted);white-space:nowrap;}
 /* 회의록 피드 */
 .wk-feed{flex:1;overflow:hidden;display:flex;flex-direction:column;}
@@ -2429,7 +2429,7 @@ document.addEventListener('mousedown',function(e){
 .wk-rep-tbl { table-layout: fixed; width: 100%; }
 .wk-proj-list .wk-row { display: flex; align-items: flex-start; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--border); }
 .wk-row .wk-cli { width: 100px; flex-shrink: 0; font-weight: 600; font-size: 11px; }
-.wk-row .wk-cont { flex: 1; font-size: 12px; line-height: 1.5; }
+.wk-row .wk-cont { flex: 1; font-size: 12px; line-height: 1.5; white-space: pre-line; word-break: break-word; }
 .wk-row .wk-dt { width: 44px; flex-shrink: 0; font-size: 10px; color: var(--muted); text-align: right; }
 
 .wk-edit-btn,.wk-del-btn{border:none;background:transparent;cursor:pointer;font-size:11px;padding:3px 8px;border-radius:6px;color:var(--muted);transition:background .1s;}
@@ -2512,6 +2512,32 @@ function _wkGetMyName(){
 window._wkIsAuthor  = _wkIsAuthor;
 window._wkIsAdmin   = _wkIsAdmin;
 window._wkGetMyName = _wkGetMyName;
+// ── 주간회의 체크박스 토글 함수 ──
+window._wkToggleActCheck = function(rep, idx, checked) {
+  var rd = store && store.reps && store.reps[rep];
+  if (!rd || !rd.activities || !rd.activities[idx]) return;
+  var a = rd.activities[idx];
+  if (!a.weeklyCheck) a.weeklyCheck = {};
+  var wk = typeof _wkThisKey === 'function' ? _wkThisKey() : '';
+  if (checked) { a.weeklyCheck[wk] = true; }
+  else { delete a.weeklyCheck[wk]; }
+  autoSave();
+};
+// 이슈 체크박스 전역 이벤트 위임
+document.addEventListener('change', function(e) {
+  var el = e.target;
+  if (!el || !el.classList.contains('wk-iss-chk')) return;
+  var rep = el.getAttribute('data-rep');
+  var idx = parseInt(el.getAttribute('data-idx'));
+  var rd = store && store.reps && store.reps[rep];
+  if (!rd || !rd.issuesList || !rd.issuesList[idx]) return;
+  var iss = rd.issuesList[idx];
+  if (!iss.weeklyCheck) iss.weeklyCheck = {};
+  var wk = typeof _wkThisKey === 'function' ? _wkThisKey() : '';
+  if (el.checked) { iss.weeklyCheck[wk] = true; }
+  else { delete iss.weeklyCheck[wk]; }
+  autoSave();
+});
 
 // ── 수정
 window._wkEditEntry=function(entryId){
@@ -8472,7 +8498,7 @@ async function _initSP() {
       try{
         if(typeof window._syncWeeklyFeed==='function') await window._syncWeeklyFeed();
       }catch(e){}
-    }, 30000); // 30초마다 동기화 (10초는 너무 잦음)
+    }, 15000); // 15초마다 동기화
 
   } catch (err) {
     window._isSPReady = false;
@@ -16520,8 +16546,8 @@ window._wkSetView=function(view){
 async function _wkLoad(){
   if(_wk.loading) return;
   _wk.loading=true;
-  // 1단계: 즉시 현재 캐시로 렌더
-  try{ _wkRenderReport(); _wkRenderFeed(); _wkUpdatePendingCnt(); }catch(e){}
+  // 1단계: 캐시가 있을 때만 즉시 렌더 (빈 상태로 덮어쓰기 방지)
+  if(_wk.entries&&_wk.entries.length>0) try{ _wkRenderReport(); _wkRenderFeed(); _wkUpdatePendingCnt(); }catch(e){}
   // 2단계: SP 연결 완료 시 최신 데이터 로드
   if(window._isSPReady){
     try{
@@ -16687,6 +16713,9 @@ function _wkRenderProjects(){
     if(!rd) return;
     (rd.activities||[]).forEach(function(a){
       if(!a.content||!a.client) return;
+      // 주간회의 선택된 항목만 표시
+      var _wk2=typeof _wkThisKey==='function'?_wkThisKey():'';
+      if(!a.weeklyCheck||!a.weeklyCheck[_wk2]) return;
       var isNew=a.updatedAt&&new Date(a.updatedAt)>=weekStart;
       items.push({rep:rep, client:a.client, content:a.content, date:a.updatedAt, isNew:isNew});
     });
@@ -16721,6 +16750,8 @@ function _wkRenderIssues(){
     if(!rd) return;
     (rd.issuesList||[]).forEach(function(i){
       if(i.status!=='open') return;
+      var _wkk=typeof _wkThisKey==='function'?_wkThisKey():'';
+      if(!i.weeklyCheck||!i.weeklyCheck[_wkk]) return;
       var due=i.dueDate?new Date(i.dueDate):null;
       var diff=due?Math.round((due-today)/86400000):999;
       issues.push({rep:rep, client:i.client, content:i.content, diff:diff, sev:i.sev||'mid'});
@@ -17161,6 +17192,15 @@ window._wkSubmitReply=async function(entryId){
   await _wkSaveFeed(weekKey, myRep, myEntries);
   // \ub2f5\ubcc0 \uc54c\ub9bc
   await _wkCreateReplyNotif(entry, myRep);
+  // 내 알림 즉시 갱신 (답변 발송 확인)
+  try{
+    if(session&&session.rep){
+      var _nr=await _wkLoadNotif(session.rep);
+      _wk.notifications=_nr;
+      _wkGenContractNotifs();
+      _wkUpdateNotifBadge();
+    }
+  }catch(e){}
   _wkRenderFeed();
   if(typeof showToast==='function') showToast('\u2705 \ub2f5\ubcc0\uc774 \ub4f1\ub85d\ub418\uc5c8\uc2b5\ub2c8\ub2e4');
 };
