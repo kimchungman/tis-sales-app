@@ -16044,6 +16044,8 @@ var _wk = {
   colorMode: 'text',       // 색상 팔레트 모드
   replyingTo: null,        // 현재 답변 중인 entry id
   initialized: false,
+  contractReadIds: {},    // 계약 알림 읽음 상태 (세션 내 영구 보존)
+  contractDismissedAt: {}, // 계약 알림 삭제 날짜 (세션 내 영구 보존)
   loading: false,
 };
 
@@ -16418,12 +16420,16 @@ function _wkGenContractNotifs(){
     if(diff<0||diff>31) return; // 1개월 이내만
     var notifId='contract_'+con.id;
     var prev=_contractReadMap[notifId]||{};
+    // 세션 내 영구 보존된 읽음/삭제 상태 우선 적용
+    var _persistRead=(_wk.contractReadIds&&_wk.contractReadIds[notifId])||false;
+    var _persistDismissed=(_wk.contractDismissedAt&&_wk.contractDismissedAt[notifId])||null;
+    var _dismissedAt=_persistDismissed||prev.dismissedAt||null;
     // 삭제(dismiss)된 알림: 같은 주 월요일이면 숨김, 다음 주부터 재생성
-    if(prev.dismissedAt&&prev.dismissedAt>=thisMondayStr) return;
+    if(_dismissedAt&&_dismissedAt>=thisMondayStr) return;
     var urgent=diff<=7;
     _wk.notifications.unshift({
       id:notifId, type:'contract',
-      read:prev.read||false,
+      read:_persistRead||(prev.read||false),
       urgent:urgent,
       title:urgent?'🔴 계약 만료 임박':'📋 계약 만료 예정',
       msg:'<b>'+_wkEsc(con.client||'')+'</b> '+_wkEsc(con.projectName||con.client||'')+' 계약 만료 <b>D-'+diff+'일</b>'+(urgent?' ⚠️ 즉시 갱신 필요':''),
@@ -16714,7 +16720,7 @@ function _wkRenderProjects(){
     (rd.activities||[]).forEach(function(a){
       if(!a.content||!a.client) return;
       // 주간회의 선택된 항목만 표시
-      var _wk2=typeof _wkThisKey==='function'?_wkThisKey():'';
+      var _wk2=typeof _wkThisKey==='function'?((_wk&&_wk.weekMode==='last')?_wkLastKey():_wkThisKey()):'';
       if(!a.weeklyCheck||!a.weeklyCheck[_wk2]) return;
       var isNew=a.updatedAt&&new Date(a.updatedAt)>=weekStart;
       items.push({rep:rep, client:a.client, content:a.content, date:a.updatedAt, isNew:isNew});
@@ -16749,8 +16755,8 @@ function _wkRenderIssues(){
     var rd=store&&store.reps&&store.reps[rep];
     if(!rd) return;
     (rd.issuesList||[]).forEach(function(i){
-      if(i.status!=='open') return;
-      var _wkk=typeof _wkThisKey==='function'?_wkThisKey():'';
+      if(i.status==='closed') return; // closed만 제외, ''(미설정)도 표시
+      var _wkk=typeof _wkThisKey==='function'?((_wk&&_wk.weekMode==='last')?_wkLastKey():_wkThisKey()):'';
       if(!i.weeklyCheck||!i.weeklyCheck[_wkk]) return;
       var due=i.dueDate?new Date(i.dueDate):null;
       var diff=due?Math.round((due-today)/86400000):999;
@@ -17208,6 +17214,8 @@ window._wkSubmitReply=async function(entryId){
 // \u2500\u2500 sync (10\ucd08) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 window._syncWeeklyFeed=async function(){
   if(_wk.loading) return;
+  // 최근 3초 내 저장이 있으면 sync 스킵 (삭제/수정 직후 덮어쓰기 방지)
+  if(_wk.lastSaveAt && Date.now()-_wk.lastSaveAt < 3000) return;
   // \uc2a4\ud06c\ub864 \uc800\uc7a5
   var rv=document.getElementById('wk-report-view');
   var fl=document.getElementById('wk-feed-list');
@@ -17346,6 +17354,11 @@ async function _wkDismissNotifItem(id){
     var _mon=new Date(_d); _mon.setDate(_d.getDate()-(_dow===0?6:_dow-1)); _mon.setHours(0,0,0,0);
     n.dismissedAt=_mon.toISOString().slice(0,10);
     n.read=true;
+    // 세션 내 영구 보존
+    if(!_wk.contractDismissedAt) _wk.contractDismissedAt={};
+    _wk.contractDismissedAt[n.id]=n.dismissedAt;
+    if(!_wk.contractReadIds) _wk.contractReadIds={};
+    _wk.contractReadIds[n.id]=true;
     _wkUpdateNotifBadge();
     _wkRenderNotifDrop();
     if(window._isSPReady&&session&&session.rep){
@@ -17367,6 +17380,11 @@ window._wkClickNotif=async function(id){
   var n=notifs.find(function(x){return String(x.id)===String(id);});
   if(!n) return;
   n.read=true;
+  // 계약 알림 읽음은 세션 내 영구 보존 (sync 후 초기화 방지)
+  if(n.type==='contract'&&n.id){
+    if(!_wk.contractReadIds) _wk.contractReadIds={};
+    _wk.contractReadIds[n.id]=true;
+  }
   _wkUpdateNotifBadge();
   _wkRenderNotifDrop();
   var drop=document.getElementById('wk-notif-drop');
@@ -17378,7 +17396,14 @@ window._wkClickNotif=async function(id){
   if(typeof showPage==='function') showPage(n.targetPage||'weekly',null);
 };
 window._wkMarkAllRead=async function(){
-  ((_wk&&_wk.notifications)||[]).forEach(function(n){n.read=true;});
+  ((_wk&&_wk.notifications)||[]).forEach(function(n){
+    n.read=true;
+    // 계약 알림 읽음 상태 영구 보존
+    if(n.type==='contract'&&n.id){
+      if(!_wk.contractReadIds) _wk.contractReadIds={};
+      _wk.contractReadIds[n.id]=true;
+    }
+  });
   _wkUpdateNotifBadge();
   _wkRenderNotifDrop();
   // SP에 읽음 상태 저장
