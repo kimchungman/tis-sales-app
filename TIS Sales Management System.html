@@ -4707,12 +4707,29 @@ function showPage(id,navEl){
   if(id==='weekly'&&typeof _initWeeklyPage==='function') _initWeeklyPage();
   // 입력 페이지 500ms 안전망: 섹션이 안보이면 강제 표시
   if(id==='input'){
+    // 즉시: 탭 복원 + 계약 데이터 로드
+    setTimeout(function(){
+      var _it=window._intendedVTab;
+      if(_it&&_it.rep&&_it.tab&&_it.tab!=='main'){
+        if(typeof window._switchVTab==='function'){
+          window._switchVTab(_it.rep, _it.tab);
+        }
+        // 계약 탭이면 데이터 즉시 로드
+        if(_it.tab==='contract'&&typeof _lazyLoadContractData==='function'){
+          _lazyLoadContractData(_it.rep);
+        }
+        // 접점 탭이면 rebuildVisitTable
+        if(_it.tab==='visit'&&typeof _rebuildVisitTable==='function'){
+          _rebuildVisitTable(_it.rep);
+        }
+      }
+    }, 100);
+    // 600ms 안전망: 섹션이 없으면 강제 표시
     setTimeout(function(){
       var _pg2=document.getElementById('page-input');
       if(!_pg2||!_pg2.classList.contains('active')) return;
       var _vis=document.querySelector('.rep-sec[style*="display: block"],.rep-sec[style*="display:block"]');
       if(!_vis){
-        // 섹션이 하나도 안보임 - 첫번째 rep 강제 표시
         var _secs=document.querySelectorAll('.rep-sec');
         if(_secs.length>0){
           _secs[0].style.display='block';
@@ -4720,7 +4737,6 @@ function showPage(id,navEl){
           var _t0=document.querySelector('#rep-tabs .tab[data-rep="'+_r0+'"]');
           if(_t0&&typeof switchTab==='function') switchTab(_r0,_t0);
         } else {
-          // 섹션 자체가 없음 - buildRepInputs 강제 실행
           window._lastBuiltTeam=null;
           var _ia=document.getElementById('rep-input-area');
           if(_ia) _ia.innerHTML='';
@@ -8407,6 +8423,23 @@ async function _initSP() {
     try{ if(typeof renderIssues==='function') renderIssues(); }catch(e){}
     try{ if(typeof renderPipeline==='function') renderPipeline(); }catch(e){}
 
+    // 회의록 데이터 백그라운드 프리로드 (탭 진입 전 미리 캐시)
+    setTimeout(async function(){
+      try{
+        if(typeof window._wkLoad==='function'){
+          if(window._wk) window._wk.loading=false; // 혹시 loading 상태이면 해제
+          await window._wkLoad();
+        }
+        // 알림 로드
+        if(session&&session.rep&&typeof window._wkLoadNotif==='function'){
+          var _notifs=await window._wkLoadNotif(session.rep);
+          if(window._wk) window._wk.notifications=_notifs;
+          if(typeof _wkGenContractNotifs==='function') _wkGenContractNotifs();
+          if(typeof _wkUpdateNotifBadge==='function') _wkUpdateNotifBadge();
+        }
+      }catch(e){ console.warn('[wk preload]',e); }
+    }, 2000); // SP 연결 직후 2초 후 백그라운드 로드
+
     // 10초 자동 동기화 시작
     if(window._spSyncTimer) clearInterval(window._spSyncTimer);
     window._spSyncTimer = setInterval(async function(){
@@ -8418,7 +8451,11 @@ async function _initSP() {
         renderIssues();
         renderPipeline();
       }catch(e){}
-    }, 10000);
+      // 회의록 데이터 주기적 동기화 (페이지 열려있으면 즉시, 닫혀있으면 캐시만)
+      try{
+        if(typeof window._syncWeeklyFeed==='function') await window._syncWeeklyFeed();
+      }catch(e){}
+    }, 30000); // 30초마다 동기화 (10초는 너무 잦음)
 
   } catch (err) {
     window._isSPReady = false;
@@ -15530,12 +15567,8 @@ var _cLoaded={};
 function _lazyLoadContractData(rep){
   var el=document.getElementById('cpl-'+rep);
   if(!el)return;
-  // 실제 계약 데이터 렌더됐는지 확인 (placeholder vs 실제 내용)
-  var hasContent=el.querySelector('table,button.add-btn');
-  if(!hasContent){
-    _rebuildContractPanel(rep);
-  }
-  // store 변경 후 10초 sync에서 자동 재렌더됨
+  // 항상 최신 데이터로 렌더 (탭 재진입 시 내용 보장)
+  if(typeof _rebuildContractPanel==='function') _rebuildContractPanel(rep);
 }
 
 // ── 계약 현황 대시보드 ──
@@ -15870,7 +15903,11 @@ function _cTimelineView(cs){
         // mp만 숨기고 cp 보이기 (lazyLoad 없이 직접)
         if(mp)mp.style.display='none';
         if(vp)vp.style.display='none';
-        if(cp){cp.style.display='block';}
+        if(cp){
+          cp.style.display='block';
+          // 계약 데이터 로드 (placeholder면 실제 데이터로 교체)
+          if(typeof _lazyLoadContractData==='function') _lazyLoadContractData(it.rep);
+        }
         window._activeVTab={rep:it.rep,tab:it.tab};
         // 스크롤 복원
         if(_scrollEl&&_scrollTop>0)_scrollEl.scrollTop=_scrollTop;
@@ -16330,38 +16367,39 @@ function _wkGenContractNotifs(){
   if(!session||!session.rep) return;
   var rep=session.rep;
   var contracts=(typeof _getContracts==='function')?_getContracts(rep):[];
-  if(!contracts.length) return;
   var today=new Date(); today.setHours(0,0,0,0);
-  // 필터 전에 읽음 상태 기억 (contract_id로 매핑)
+  // 이번 주 월요일 계산
+  var dayOfWeek=today.getDay(); // 0=일,1=월,...
+  var daysToMon=dayOfWeek===0?1:(dayOfWeek===1?0:8-dayOfWeek);
+  var thisMonday=new Date(today); thisMonday.setDate(today.getDate()-(dayOfWeek===0?6:dayOfWeek-1));
+  var thisMondayStr=thisMonday.toISOString().slice(0,10);
+  // 기존 계약 알림 읽음 상태 보존
   var _contractReadMap={};
   _wk.notifications.forEach(function(n){
-    if(n.type==='contract'&&n.read) _contractReadMap[n.id]=true;
+    if(n.type==='contract') _contractReadMap[n.id]={read:n.read,dismissedAt:n.dismissedAt};
   });
-  // 기존 계약 알림 초기화 (중복 방지)
+  // 기존 계약 알림 제거 (재생성)
   _wk.notifications=_wk.notifications.filter(function(n){return n.type!=='contract';});
-  contracts.forEach(function(c){
-    if(c.status==='종료') return;
-    var endD=c.endDate?new Date(c.endDate):null;
+  contracts.forEach(function(con){
+    if(con.status==='종료') return;
+    if(con.managementType==='하자기간') return;
+    var endD=con.endDate?new Date(con.endDate):null;
     if(!endD) return;
     var diff=Math.round((endD-today)/86400000);
-    var notifId='contract_'+c.id;
-    // 사용자가 삭제한 알림은 재생성 안 함
-    var _delCheck=typeof _wkGetDeletedNotifIds==='function'?_wkGetDeletedNotifIds():{};
-    if(_delCheck[notifId]) return;
-    // 이미 같은 계약 알림 있으면 스킵
-    if(_wk.notifications.some(function(n){return n.id===notifId;})) return;
-    var _wasRead=!!_contractReadMap['contract_'+c.id];
-    // 하자기간인 경우 endDate 지나도 정상 (관리기간 중)
-    if(c.managementType==='하자기간') return;
-    if(diff<=30&&diff>=0){
-      var urgent=diff<=7;
-      _wk.notifications.unshift({
-        id:notifId, type:'contract', read:_wasRead||false, urgent:urgent,
-        title:urgent?'계약 만료 임박':'계약 만료 예정',
-        msg:'<b>'+c.client+'</b> '+c.projectName+' 계약 만료 <b>D-'+diff+'일</b>'+(urgent?' - 즉시 갱신 필요':''),
-        targetPage:'contract', time:_wkNowStr()
-      });
-        }
+    if(diff<0||diff>31) return; // 1개월 이내만
+    var notifId='contract_'+con.id;
+    var prev=_contractReadMap[notifId]||{};
+    // 삭제(dismiss)된 알림: 같은 주 월요일이면 숨김, 다음 주부터 재생성
+    if(prev.dismissedAt&&prev.dismissedAt>=thisMondayStr) return;
+    var urgent=diff<=7;
+    _wk.notifications.unshift({
+      id:notifId, type:'contract',
+      read:prev.read||false,
+      urgent:urgent,
+      title:urgent?'🔴 계약 만료 임박':'📋 계약 만료 예정',
+      msg:'<b>'+_wkEsc(con.client||'')+'</b> '+_wkEsc(con.projectName||con.client||'')+' 계약 만료 <b>D-'+diff+'일</b>'+(urgent?' ⚠️ 즉시 갱신 필요':''),
+      targetPage:'contract', time:_wkNowStr()
+    });
   });
 }
 // ── 복원된 렌더링 함수들
@@ -16473,17 +16511,26 @@ window._wkSetView=function(view){
 async function _wkLoad(){
   if(_wk.loading) return;
   _wk.loading=true;
-  // 1단계: 즉시 현재 캐시로 렌더 (화면 즉시 표시)
+  // 1단계: 즉시 현재 캐시로 렌더
   try{ _wkRenderReport(); _wkRenderFeed(); _wkUpdatePendingCnt(); }catch(e){}
-  // 2단계: SP 연결 완료 시 최신 데이터 로드 후 재렌더
+  // 2단계: SP 연결 완료 시 최신 데이터 로드
   if(window._isSPReady){
     try{
-      var thisKey=_wkThisKey();
-      var prevKey=_wkPrevKey();
-      var entries=await _wkLoadFeed(thisKey);
-      _wk.entries=entries;
-      if(prevKey){
-        _wk.prevEntries=await _wkLoadFeed(prevKey);
+      // weekMode에 따라 로드할 주차 결정
+      var loadKey, prevLoadKey=null;
+      if(_wk.weekMode==='last'){
+        loadKey=_wkLastKey();   // 지난주
+      } else if(_wk.weekMode==='period'){
+        loadKey=_wkThisKey();
+        prevLoadKey=null;
+      } else {
+        loadKey=_wkThisKey();   // 이번주
+        prevLoadKey=_wkLastKey(); // 이전주도 로드
+      }
+      var entries=await _wkLoadFeed(loadKey);
+      if(entries&&entries.length>0) _wk.entries=entries; // 빈배열이면 기존 캐시 유지
+      if(prevLoadKey){
+        _wk.prevEntries=await _wkLoadFeed(prevLoadKey);
       }
       _wkRenderReport();
       _wkRenderFeed();
@@ -16491,7 +16538,6 @@ async function _wkLoad(){
     }catch(e){ console.warn('[wk load]',e); }
     _wk.loading=false;
   } else {
-    // SP 미연결: 연결될 때까지 폴링
     _wk.loading=false;
     var _wkPoll=0;
     var _wkPollId=setInterval(function(){
@@ -17118,7 +17164,7 @@ window._syncWeeklyFeed=async function(){
   var fl=document.getElementById('wk-feed-list');
   if(rv) _wk.scrollReport=rv.scrollTop||0;
   if(fl) _wk.scrollFeed=fl.scrollTop||0;
-  var weekKey=_wkThisKey();
+  var weekKey=_wk.weekMode==='last'?_wkLastKey():_wkThisKey();
   var entries=await _wkLoadFeed(weekKey);
   // \ubcc0\uacbd \uc788\uc73c\uba74 \ub80c\ub354
   if(JSON.stringify(entries)!==JSON.stringify(_wk.entries)){
@@ -17243,26 +17289,53 @@ function _wkRenderNotifDrop(){
     return '<div class="wk-nd-item'+(n.read?'':' unread')+(n.urgent?' urgent':'')+'" onclick="_wkClickNotif(\''+nid+'\')"><div class="wk-nd-icon">'+icon+'</div><div class="wk-nd-content"><div class="wk-nd-msg">'+(n.msg||'')+'</div><div class="wk-nd-time">'+(n.time||'')+'</div></div><button class="wk-nd-del" onclick="event.stopPropagation();_wkDismissNotifItem(\''+nid+'\')">×</button></div>';
   }).join('');
 }
-function _wkDismissNotifItem(id){
+async function _wkDismissNotifItem(id){
+  // 계약 알림은 삭제하지 않고 dismissedAt만 기록 (다음 월요일에 재생성)
+  var n=(_wk&&_wk.notifications||[]).find(function(x){return String(x.id)===String(id);});
+  if(n&&n.type==='contract'){
+    var _d=new Date(); var _dow=_d.getDay();
+    var _mon=new Date(_d); _mon.setDate(_d.getDate()-(_dow===0?6:_dow-1)); _mon.setHours(0,0,0,0);
+    n.dismissedAt=_mon.toISOString().slice(0,10);
+    n.read=true;
+    _wkUpdateNotifBadge();
+    _wkRenderNotifDrop();
+    if(window._isSPReady&&session&&session.rep){
+      try{ await _wkSaveNotif(session.rep, _wk.notifications); }catch(e){}
+    }
+    return;
+  }
   if(_wk) _wk.notifications=(_wk.notifications||[]).filter(function(n){return String(n.id)!==String(id);});
   if(typeof _wkAddDeletedNotifId==='function') _wkAddDeletedNotifId(id);
   _wkUpdateNotifBadge();
   _wkRenderNotifDrop();
+  // SP 저장 (계약 알림은 deletedIds에 기록되어 재생성 방지)
+  if(window._isSPReady&&session&&session.rep){
+    try{ await _wkSaveNotif(session.rep, _wk.notifications); }catch(e){}
+  }
 }
-window._wkClickNotif=function(id){
+window._wkClickNotif=async function(id){
   var notifs=(_wk&&_wk.notifications)||[];
   var n=notifs.find(function(x){return String(x.id)===String(id);});
   if(!n) return;
   n.read=true;
   _wkUpdateNotifBadge();
+  _wkRenderNotifDrop();
   var drop=document.getElementById('wk-notif-drop');
   if(drop) drop.style.display='none';
+  // SP에 읽음 저장
+  if(window._isSPReady&&session&&session.rep){
+    try{ await _wkSaveNotif(session.rep, _wk.notifications); }catch(e){}
+  }
   if(typeof showPage==='function') showPage(n.targetPage||'weekly',null);
 };
-window._wkMarkAllRead=function(){
+window._wkMarkAllRead=async function(){
   ((_wk&&_wk.notifications)||[]).forEach(function(n){n.read=true;});
   _wkUpdateNotifBadge();
   _wkRenderNotifDrop();
+  // SP에 읽음 상태 저장
+  if(window._isSPReady&&session&&session.rep){
+    try{ await _wkSaveNotif(session.rep, _wk.notifications); }catch(e){}
+  }
 };
 window._wkDeleteAllNotif=async function(){
   if(!confirm('알림을 모두 삭제하시겠습니까?')) return;
