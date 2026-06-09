@@ -8423,22 +8423,39 @@ async function _initSP() {
     try{ if(typeof renderIssues==='function') renderIssues(); }catch(e){}
     try{ if(typeof renderPipeline==='function') renderPipeline(); }catch(e){}
 
-    // 회의록 데이터 백그라운드 프리로드 (탭 진입 전 미리 캐시)
+    // 백그라운드 프리로드: 계약 데이터 + 회의록 + 알림
     setTimeout(async function(){
       try{
+        // 1. 내 계약 데이터 SP에서 로드
+        if(session&&session.rep&&typeof _spLoadItem==='function'){
+          var _yr=new Date().getFullYear();
+          var _repKey=typeof _sanitizeDKey==='function'?_sanitizeDKey(session.rep):session.rep;
+          for(var _dy=0;_dy<=1;_dy++){
+            try{
+              var _cd=await _spLoadItem('contract_data',_repKey+'_'+(_yr-_dy));
+              if(_cd&&_cd.contracts&&_cd.contracts.length){
+                if(!store.reps[session.rep]) store.reps[session.rep]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[],contracts:[]};
+                if(!store.reps[session.rep].contracts) store.reps[session.rep].contracts=[];
+                var _existContracts=store.reps[session.rep].contracts.filter(function(c){return c.startDate?parseInt(c.startDate.substr(0,4))!==(_yr-_dy):true;});
+                store.reps[session.rep].contracts=_existContracts.concat(_cd.contracts);
+              }
+            }catch(e){}
+          }
+        }
+        // 2. 회의록 데이터
         if(typeof window._wkLoad==='function'){
-          if(window._wk) window._wk.loading=false; // 혹시 loading 상태이면 해제
+          if(window._wk) window._wk.loading=false;
           await window._wkLoad();
         }
-        // 알림 로드
+        // 3. 알림 로드
         if(session&&session.rep&&typeof window._wkLoadNotif==='function'){
           var _notifs=await window._wkLoadNotif(session.rep);
           if(window._wk) window._wk.notifications=_notifs;
           if(typeof _wkGenContractNotifs==='function') _wkGenContractNotifs();
           if(typeof _wkUpdateNotifBadge==='function') _wkUpdateNotifBadge();
         }
-      }catch(e){ console.warn('[wk preload]',e); }
-    }, 2000); // SP 연결 직후 2초 후 백그라운드 로드
+      }catch(e){ console.warn('[preload]',e); }
+    }, 2000);
 
     // 10초 자동 동기화 시작
     if(window._spSyncTimer) clearInterval(window._spSyncTimer);
@@ -13446,8 +13463,8 @@ async function _spSyncOtherReps(){
         var _cpl=JSON.parse(item.Payload||'{}');
         var _cr=_cpl.rep; var _cyr=parseInt(_cpl.year);
         var _cyNow=new Date().getFullYear();
-        // 내 rep 계약은 스킵 (로컬 store가 최신 - 덮어쓰기 방지)
-        if(_cr&&session&&session.rep&&_cr===session.rep){return;}
+        // 내 rep 계약도 SP에서 로드 (앱 재시작 시 복원 필요)
+        // 단, 로컬 데이터가 더 최신이면 유지
         if(_cr&&_cpl.contracts&&Math.abs(_cyr-_cyNow)<=2){
           if(!store.reps[_cr]) store.reps[_cr]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[],contracts:[]};
           if(!store.reps[_cr].contracts) store.reps[_cr].contracts=[];
@@ -16117,24 +16134,11 @@ async function _wkSaveNotif(rep, items){
 async function _wkLoadNotif(rep){
   if(!rep||!window._isSPReady) return [];
   try{
-    var _nkey=_sanitizeDKey('notif_'+rep);
-    var _ntitle='weeklyNotif_'+_nkey;
-    var url=_lUrl()+'?$select=Title,DataType,Payload&$top=500';
-    var res=await _spFetchAll(url);
-    var _nItems=(res&&res.value)||[];
-    // 동일 title 중 savedAt 최신 아이템 선택
-    var _matching=_nItems.filter(function(x){return x.Title===_ntitle;});
-    if(!_matching.length) return [];
-    _matching.sort(function(a,b){
-      try{
-        var sa=JSON.parse(a.Payload||'{}').savedAt||'';
-        var sb=JSON.parse(b.Payload||'{}').savedAt||'';
-        return sb.localeCompare(sa);
-      }catch(e){return 0;}
-    });
-    var d=JSON.parse((_matching[0].Payload)||'{}');
+    var key=_sanitizeDKey('notif_'+rep);
+    var d=await _spLoadItem('weeklyNotif', key);
+    if(!d) return [];
     var items=d.items||[];
-    // 삭제된 ID 필터링 (세션 내 즉시 반영)
+    // 삭제된 ID 필터링
     var _deleted=_wkGetDeletedNotifIds();
     if(Object.keys(_deleted).length){
       items=items.filter(function(n){return !_deleted[n.id];});
@@ -16142,7 +16146,6 @@ async function _wkLoadNotif(rep){
     return items;
   }catch(e){ return []; }
 }
-
 function _wkGetNotifWeekKey(){
   var d=new Date(); d.setHours(0,0,0,0);
   var day=d.getDay(); var diff=day===0?-6:1-day;
@@ -16497,6 +16500,9 @@ window._wkSetView=function(view){
   if(fp) fp.style.display=(view==='feed')?'flex':'none';
   if(vtr) vtr.classList.toggle('on', view==='report');
   if(vtf) vtf.classList.toggle('on', view==='feed');
+  // 뷰 전환 시 해당 뷰 즉시 렌더
+  if(view==='feed') _wkRenderFeed();
+  if(view==='report') _wkRenderReport();
   // \uc2a4\ud06c\ub864 \ubcf5\uc6d0
   if(view==='report'){
     var rv=document.getElementById('wk-report-view');
