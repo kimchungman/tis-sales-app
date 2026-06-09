@@ -8447,6 +8447,8 @@ async function _initSP() {
     await _spLoadSettings();
     await _spLoadToday();
     await _spLoadHistList();
+    // SP 로드 완료 표시 → autoSave가 SP에 저장 가능해짐
+    window._spDataLoaded = true;
 
     // 데이터 로드 후 대시보드 즉시 재렌더링 (모든 사용자)
     try{ if(typeof renderDashboard==='function') renderDashboard(); }catch(e){}
