@@ -14821,6 +14821,11 @@ function _cdbShowRepPopup(id){
   var manualReps=item.manualReps||[];
   var autoNames=autoReps.map(function(r){return r.rep;});
   var ALL_REPS=window.REPS&&window.REPS.length?window.REPS:Object.keys(store.reps||{});
+  // 이름+직책 형식 표시 함수 (중복 직책 방지)
+  function _repLabel(r){
+    if(typeof getRepDisplayName==='function') return _cdbEsc(getRepDisplayName(r));
+    return _cdbEsc(r);
+  }
   var old=document.getElementById('_cdb_rep_pop'); if(old) old.remove();
   var wrap=document.createElement('div');
   wrap.id='_cdb_rep_pop';
@@ -14828,17 +14833,27 @@ function _cdbShowRepPopup(id){
   var autoHTML=autoReps.map(function(r){
     return '<div style="display:flex;align-items:center;gap:10px;padding:9px 20px;border-bottom:1px solid #F8FAFC;cursor:default;">'
       +'<div style="width:32px;height:32px;border-radius:50%;background:#DBEAFE;color:#2563EB;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">'+r.rep.charAt(0)+'</div>'
-      +'<div><div style="font-size:12px;font-weight:600;color:#0D1B2E;">'+(typeof getRepDisplayName==='function'?_cdbEsc(getRepDisplayName(r.rep)):_cdbEsc(r.rep))+'</div><div style="font-size:10px;color:#94A3B8;">'+r.srcs.join(' · ')+' 자동감지</div></div>'
+      +'<div><div style="font-size:12px;font-weight:600;color:#0D1B2E;">'+_repLabel(r.rep)+'</div><div style="font-size:10px;color:#94A3B8;">'+r.srcs.join(' · ')+' 자동감지</div></div>'
       +'<div style="margin-left:auto;width:18px;height:18px;border-radius:5px;background:#EFF6FF;border:1.5px solid #4f7fff;display:flex;align-items:center;justify-content:center;color:#4f7fff;font-size:11px;font-weight:700;">✓</div>'
     +'</div>';
   }).join('');
   var manHTML=ALL_REPS.filter(function(r){return !autoNames.includes(r);}).map(function(r){
     var isMn=manualReps.includes(r);
-    return '<div style="display:flex;align-items:center;gap:10px;padding:9px 20px;border-bottom:1px solid #F8FAFC;cursor:pointer;" onclick="_cdbToggleManualRep(\''+id+'\',\''+r.replace(/'/g,"\\'")+'\',document.getElementById(\'_cdb_rep_pop\'))">'
-      +'<div style="width:32px;height:32px;border-radius:50%;background:#EDE9FE;color:#7C3AED;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">'+r.charAt(0)+'</div>'
-      +'<div><div style="font-size:12px;font-weight:600;color:#0D1B2E;">'+(typeof getRepDisplayName==='function'?_cdbEsc(getRepDisplayName(r)):_cdbEsc(r))+'</div><div style="font-size:10px;color:#94A3B8;">수동 추가</div></div>'
-      +'<div id="_cdb_rck_'+r.replace(/[^a-z0-9]/gi,'_')+'" style="margin-left:auto;width:18px;height:18px;border-radius:5px;border:1.5px solid '+(isMn?'#7C3AED':'#E2E8F0')+';background:'+(isMn?'#EDE9FE':'#fff')+';display:flex;align-items:center;justify-content:center;color:'+(isMn?'#7C3AED':'transparent')+';font-size:11px;font-weight:700;">✓</div>'
-    +'</div>';
+    var rEsc=r.replace(/'/g,"\\'");
+    var row='<div style="display:flex;align-items:center;gap:10px;padding:9px 20px;border-bottom:1px solid #F8FAFC;">';
+    row+='<div style="width:32px;height:32px;border-radius:50%;background:#EDE9FE;color:#7C3AED;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">'+(_cdbEsc(r)||'?').charAt(0)+'</div>';
+    row+='<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:600;color:#0D1B2E;">'+_repLabel(r)+'</div><div style="font-size:10px;color:#94A3B8;">수동 추가</div></div>';
+    row+='<div style="display:flex;align-items:center;gap:6px;">';
+    var chkStyle='cursor:pointer;width:18px;height:18px;border-radius:5px;border:1.5px solid '+(isMn?'#4f7fff':'#E2E8F0')+';background:'+(isMn?'#4f7fff':'transparent')+';display:flex;align-items:center;justify-content:center;';
+    row+='<div onclick="event.stopPropagation();_cdbToggleManualRep(\''+id+'\',\''+rEsc+'\',null)" style="'+chkStyle+'">';
+    if(isMn) row+='<svg width="10" height="10" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>';
+    row+='</div>';
+    row+='<button onclick="event.stopPropagation();var msg=_repLabel(\''+rEsc+'\')+ \' 담당자를 삭제하시겠습니까?\\n\\n경고: 해당 담당자의 모든 데이터가 삭제됩니다.\';if(confirm(msg)){document.getElementById(\'_cdb_rep_pop\').remove();deleteRep(\''+rEsc+'\')}" style="width:22px;height:22px;border-radius:5px;border:1.5px solid #FECACA;background:#FEF2F2;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="담당자 삭제">';
+    row+='<svg width="10" height="10" viewBox="0 0 10 10"><line x1="2" y1="2" x2="8" y2="8" stroke="#DC2626" stroke-width="1.8" stroke-linecap="round"/><line x1="8" y1="2" x2="2" y2="8" stroke="#DC2626" stroke-width="1.8" stroke-linecap="round"/></svg>';
+    row+='</button>';
+    row+='</div>';
+    row+='</div>';
+    return row;
   }).join('');
   wrap.innerHTML='<div style="background:#fff;border-radius:16px;width:100%;max-width:340px;max-height:80vh;box-shadow:0 20px 60px rgba(0,0,0,.16);border:1px solid #E2E8F0;overflow:hidden;display:flex;flex-direction:column;">'
     +'<div style="padding:16px 20px 12px;border-bottom:1px solid #F1F5F9;display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0;">'
