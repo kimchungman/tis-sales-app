@@ -15440,7 +15440,7 @@ function _rebuildContractPanel(rep){ try {
   h+='<div class="tbl-scroll-wrap" style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 280px);min-height:180px;border:1px solid #E2E8F0;border-radius:10px;background:#ffffff;width:100%;">';
   h+='<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:auto;">';
   h+='<colgroup>';
-  h+='<col style="width:28px;"><col style="width:90px;"><col style="width:75px;"><col><col style="width:75px;">';
+  h+='<col style="width:28px;"><col style="width:130px;"><col style="width:75px;"><col><col style="width:75px;">';
   h+='<col style="min-width:62px;"><col style="min-width:62px;"><col style="min-width:60px;">';
   h+='<col style="min-width:72px;"><col style="min-width:62px;"><col style="min-width:60px;">';
   h+='<col style="min-width:60px;">'+(canEdit?'<col style="width:30px;">':'');
@@ -15512,7 +15512,7 @@ function _rebuildContractPanel(rep){ try {
         h+=badge;
         h+='<div style="min-width:0;">';
         h+='<div style="display:flex;align-items:center;gap:5px;">';
-        h+='<span style="font-size:11px;font-weight:'+(isCur?'600':'400')+';color:'+(isCur?'#1D4ED8':'#374151')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;">'+(hc.projectName||hc.client||'—')+'</span>';
+        h+='<span style="font-size:11px;font-weight:'+(isCur?'600':'400')+';color:'+(isCur?'#1D4ED8':'#374151')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px;">'+(hc.projectName||hc.client||'—')+'</span>';
         h+=statusBadge;
         h+='</div>';
         h+='<div style="font-size:10px;color:#94A3B8;margin-top:2px;white-space:nowrap;">'+(hc.startDate?hc.startDate.substr(0,7):'?')+'~'+(hc.endDate?hc.endDate.substr(0,7):'?')+(hc.amount?'&nbsp;·&nbsp;'+Number(hc.amount).toLocaleString('ko-KR')+'천':'')+'</div>';
@@ -16442,7 +16442,10 @@ function _wkDisplayName(rep){
 
 // \u2500\u2500 \uc8fc\ucc28 \uc124\uc815 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 window._wkSetWeek=function(mode){
+  if(_wk.weekMode===mode) return; // 동일 모드면 스킵
   _wk.weekMode=mode;
+  _wk.entries=[]; // 이전 주차 캐시 초기화
+  _wk.loading=false; // 진행 중이던 로드 해제
   ['this','last'].forEach(function(m){
     var el=document.getElementById('wk-w-'+m);
     if(el) el.classList.toggle('on', m===mode);
@@ -16534,7 +16537,7 @@ async function _wkLoad(){
         prevLoadKey=_wkLastKey(); // 이전주도 로드
       }
       var entries=await _wkLoadFeed(loadKey);
-      if(entries&&entries.length>0) _wk.entries=entries; // 빈배열이면 기존 캐시 유지
+      _wk.entries=entries; // weekMode 변경 시 항상 업데이트
       if(prevLoadKey){
         _wk.prevEntries=await _wkLoadFeed(prevLoadKey);
       }
@@ -17357,7 +17360,7 @@ window._wkDeleteAllNotif=async function(){
 };
 function _wkUpdateNotifBadge(){
   var cnt=((_wk&&_wk.notifications)||[]).filter(function(n){return !n.read;}).length;
-  var badge=document.getElementById('notif-badge-global');
+  var badge=document.getElementById('wk-notif-badge-global');
   if(badge){ badge.textContent=cnt; badge.style.display=cnt>0?'':'none'; }
 }
 // ── 주간 설정
