@@ -13569,6 +13569,10 @@ async function _spSyncOtherReps(){
     var res=await _spFetchAll(qUrl);
     var items=(res&&res.value)||[];
     var _actIssItems=[]; // 2패스용 act/iss 아카이브 수집
+    // 디버그: SP 전체 키 목록
+    console.log('[SP sync] 전체 아이템 수:'+items.length);
+    var _repKeys=items.filter(function(i){return i.DataKey&&(i.DataKey.indexOf('김충만')>=0||i.DataKey.indexOf('전성현')>=0||i.DataKey.indexOf('허인수')>=0);});
+    _repKeys.forEach(function(i){ console.log('[SP key] '+i.DataKey+' type:'+i.DataType); });
 
     // 담당자별 최신 데이터 선택 (savedAt 기준 - $orderby 없으므로 직접 비교)
     var allByRep={};
@@ -13659,6 +13663,15 @@ async function _spSyncOtherReps(){
         }
       }catch(e){}
       latestByRep[repName]=best;
+      // 디버그: 선택된 키 로그
+      try{
+        var _bp=JSON.parse(best.Payload||'{}');
+        console.log('[SP sync] '+repName+' 선택키:'+best.DataKey
+          +' savedAt:'+(_bp.savedAt||'없음')
+          +' act:'+((_bp.activities||[]).length)+'건'
+          +' iss:'+((_bp.issuesList||[]).length)+'건'
+          +' clients:'+((_bp.clients||[]).length)+'건');
+      }catch(e){}
     });
 
     // 전체 팀 담당자 목록
