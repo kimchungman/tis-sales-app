@@ -13705,7 +13705,8 @@ async function _spSyncOtherReps(){
         var _cyNow=new Date().getFullYear();
         // 내 rep 계약도 SP에서 로드 (앱 재시작 시 복원 필요)
         // 단, 로컬 데이터가 더 최신이면 유지
-        console.log('[계약] _cr='+_cr+' _cyr='+_cyr+' contracts='+(_cpl.contracts||[]).length+'건');
+        // SP에서 온 계약 DataKey 로그
+console.log('[계약키] DataKey='+item.DataKey+' DataType='+item.DataType+' _cr='+(_cpl.rep||'?')+' contracts='+(_cpl.contracts||[]).length+'건');
         if(_cr&&_cpl.contracts&&Math.abs(_cyr-_cyNow)<=2){
           // _cr(이름만) → 실제 store.reps 키(이름+직책 가능) 매핑
           var _crKey = (typeof _findRepByKey==='function') ? _findRepByKey(_cr) : _cr;
@@ -13813,7 +13814,7 @@ async function _spSyncOtherReps(){
         // 신규팀/담당자는 authCfg 로드 전일 수 있으므로 허용
         // 단 숫자만으로 된 키(테스트 데이터) 제외
         if(repName && /^[\d]+$/.test(repName)) return; // 숫자만인 키 무시
-        console.log('[rep로드] repName='+repName+' 적용시작');
+        console.log('[rep로드] repName='+repName+' DataKey='+item.DataKey+' act='+(repData.activities||[]).length+'건 clients='+(repData.clients||[]).length+'건');
         var item=latestByRep[repName];
         var _rawPL=item.Payload||item.payload||item.Description||'{}'; var repData=JSON.parse(_rawPL);
         if(!store.reps[repName]) store.reps[repName]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[]};
@@ -15620,8 +15621,7 @@ function _sortContractChain(arr){
 }
 
 function _rebuildContractPanel(rep){ try {
-  console.log('[계약패널] rep='+rep+' store.reps keys='+Object.keys(store.reps||{}).filter(function(k){return k.indexOf(rep.split(' ')[0])>=0;}).join(','));
-  console.log('[계약패널] contracts='+(store.reps[rep]&&store.reps[rep].contracts||[]).length+'건');
+  console.log('[계약패널] rep='+rep+' contracts='+(store.reps[rep]&&store.reps[rep].contracts||[]).length+'건 store.reps키='+Object.keys(store.reps||{}).filter(function(k){return k.indexOf(rep.split(' ')[0])>=0;}).join(','));
   var el=document.getElementById('cpl-'+rep);
   if(!el)return;
   // 해시 비교: 데이터 변경 없으면 rebuild 스킵
