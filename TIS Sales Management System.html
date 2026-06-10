@@ -13894,6 +13894,16 @@ async function _spSyncOtherReps(){
       }catch(e){ console.warn('[act/iss 2pass]',e); }
     });
 
+  // 동기화 완료 후 store.reps 상태 출력
+  try{
+    var _storeKeys=Object.keys(store.reps||{});
+    console.log('[sync완료] store.reps 키 목록('+_storeKeys.length+'개):',_storeKeys.join(', '));
+    _storeKeys.forEach(function(k){
+      var d=store.reps[k]||{};
+      var planSum=(d.plan||[]).reduce(function(s,v){return s+(v||0);},0);
+      console.log('  ['+k+'] plan합='+planSum+' clients='+((d.clients||[]).length)+'건 act='+((d.activities||[]).length)+'건');
+    });
+  }catch(e){}
   // 계약/rep 데이터 로드 완료 → 계약 패널 해시 초기화 (재렌더 강제)
   if(changed){
     if(window._cPanelHash) window._cPanelHash={};
