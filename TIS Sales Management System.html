@@ -8508,7 +8508,16 @@ async function _initSP() {
     // 관리자: snapshot으로 전체 데이터 로드
     // rep/guest: rep_data로 최신 데이터 로드 (_spSyncOtherReps)
     if(session && session.role === 'admin'){
+      // 관리자: 스냅샷 로드 + rep_data 직접 로드 (최신 데이터 보장)
       await _spLoadToday();
+      try{
+        var _adminChanged = await _spSyncOtherReps();
+        if(_adminChanged){
+          try{ renderDashboard(); }catch(e){}
+          try{ renderIssues(); }catch(e){}
+          try{ renderPipeline(); }catch(e){}
+        }
+      }catch(e){ console.warn('[admin spSync]',e); }
     } else {
       // rep/guest: 최신 rep_data 직접 로드 (snapshot 의존 없음)
       try{
@@ -8580,6 +8589,7 @@ async function _initSP() {
       try{
         if(session && session.role === 'admin'){
           await _spLoadToday();
+          await _spSyncOtherReps(); // 관리자도 rep_data 최신 동기화
         } else {
           await _spSyncOtherReps();
         }
@@ -13593,7 +13603,24 @@ async function _spSaveRepByName(repName){
   });
   _d.savedAt = new Date().toISOString();
   _d.date = date;
-  var _repKey = (typeof _sanitizeDKey==='function') ? _sanitizeDKey(repName) : repName; // 날짜 제거 - 항상 동일 키
+  // 직책 제거 - rep/관리자 모두 동일 키 보장
+  var _repBaseName=repName;
+  if(typeof authCfg!=='undefined'&&authCfg.repTitles){
+    var _rts=authCfg.repTitles;
+    var _rfound=null;
+    Object.keys(_rts).forEach(function(base){
+      var t=_rts[base];
+      if(t&&(repName===base+' '+t||repName===base)) _rfound=base;
+    });
+    if(_rfound) _repBaseName=_rfound;
+    else{
+      var _rp=repName.trim().split(/\s+/);
+      if(_rp.length>1) _repBaseName=_rp.slice(0,-1).join(' ');
+    }
+    if(!_repBaseName||!_repBaseName.trim()) _repBaseName=repName;
+    _repBaseName=_repBaseName.trim();
+  }
+  var _repKey=(typeof _sanitizeDKey==='function')?_sanitizeDKey(_repBaseName):_repBaseName; // 날짜 제거 - 항상 동일 키
   // 크기 체크
   // visitLog는 visit_log:{rep} 별도 키로 저장 - rep_data에서 항상 제외
   // (관리자 save가 다른 담당자의 visitLog를 덮어쓰는 문제 방지)
@@ -13703,7 +13730,8 @@ async function _spSyncOtherReps(){
     if(item.DataType!=='rep_data'&&!(item.Title&&item.Title.indexOf('rep_data_')===0)) return;
     // 아카이브 키 제외 (act_, iss_, vl_ 포함된 것)
     if(item.DataKey&&(item.DataKey.indexOf('_act_')>=0||item.DataKey.indexOf('_iss_')>=0||item.DataKey.indexOf('_vl_')>=0)) return;
-        var repName=_parseRepDataKey(item.DataKey).rep;
+        var _parsedRep=_parseRepDataKey(item.DataKey).rep;
+        var repName=(typeof _findRepByKey==='function')?_findRepByKey(_parsedRep):_parsedRep;
         if(!repName) return;
         if(!allByRep[repName]) allByRep[repName]=[];
         allByRep[repName].push(item);
