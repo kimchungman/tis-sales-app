@@ -13791,6 +13791,18 @@ async function _spSyncOtherReps(){
       });
       // 최신 키(best)만 사용 - 다른 날짜 키 합산 없음
       // 삭제/수정은 최신 키에 반영됨. 이전 키 합산 시 삭제가 취소됨
+        // Payload 확인 (최신수/우종순)
+        if(['최신수','우종순','최신수 책임','우종순 팀장'].indexOf(repName)>=0){
+          allByRep[repName].forEach(function(itm){
+            try{
+              var _p=JSON.parse(itm.Payload||'{}');
+              console.log('[Payload] '+repName+'/'+itm.DataKey
+                +' len='+(itm.Payload||'').length
+                +' plan합='+(_p.plan||[]).reduce(function(s,v){return s+(v||0);},0)
+                +' preview='+((itm.Payload||'').substring(0,80)));
+            }catch(e){ console.log('[PayloadErr] '+itm.DataKey+' '+e.message); }
+          });
+        }
       // best 선택 결과 로그
       try{
         var _bp2=JSON.parse(best.Payload||'{}');
