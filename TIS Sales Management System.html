@@ -13791,6 +13791,17 @@ async function _spSyncOtherReps(){
       });
       // 최신 키(best)만 사용 - 다른 날짜 키 합산 없음
       // 삭제/수정은 최신 키에 반영됨. 이전 키 합산 시 삭제가 취소됨
+      // best 선택 결과 로그
+      try{
+        var _bp2=JSON.parse(best.Payload||'{}');
+        var _bScore=(_bp2.clients||[]).length+(_bp2.activities||[]).length+((_bp2.plan||[]).reduce(function(s,v){return s+(v||0);},0));
+        if(_bScore===0&&allByRep[repName].length>1){
+          console.log('[best선택실패] '+repName+': 선택키='+best.DataKey+' score='+_bScore+' 후보='+allByRep[repName].map(function(i){
+            var p=JSON.parse(i.Payload||'{}');
+            return i.DataKey+'(plan합='+(p.plan||[]).reduce(function(s,v){return s+(v||0);},0)+',clients='+(p.clients||[]).length+')';
+          }).join(' | '));
+        }
+      }catch(e){}
       latestByRep[repName]=best;
 
     });
