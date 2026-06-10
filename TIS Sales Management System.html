@@ -8013,6 +8013,7 @@ function autoSave(){
           return;
         }
         window._lastAutoSaveHash = _curHash;
+        window._lastAutoSaveTs = Date.now(); // 마지막 저장 시각
         if(session && session.role==='rep' && session.rep){
           if(typeof _spSaveMyRep==='function') await _spSaveMyRep();
           // 계약 데이터 변경 시 별도 저장 (rep_data에서 제외되므로)
@@ -13777,7 +13778,7 @@ async function _spSyncOtherReps(){
           var _myRepData={}; try{_myRepData=JSON.parse(_myRawPL);}catch(_e){}
           var _spSavedAt = new Date(_myRepData.savedAt||0).getTime();
           var _localSavedAt = new Date((store.reps[myRep]&&store.reps[myRep].savedAt)||0).getTime();
-          if(_spSavedAt > _localSavedAt + 5000){ // 5초 이상 차이날 때만
+          if(_spSavedAt > _localSavedAt + 5000 && (Date.now()-(_lastAutoSaveTs||0) > 30000)){ // SP가 최신이고 최근 30초내 저장 없을때
             if(!store.reps[myRep]) store.reps[myRep]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[]};
             // visitLog 보호: repData는 visitLog 제외 저장이므로 덮어쓰기 방지
             var _localVL = store.reps[myRep].visitLog||[];
@@ -13874,69 +13875,16 @@ async function _spLoadAllReps(){
     var res=await _spFetchAll(qUrl);
     var items=(res&&res.value)||[];
     // 담당자별 최신 데이터 선택 (savedAt 기준)
-    var allByRep2={};
-    items.forEach(function(item){
-      try{
-        // contract_data 동기화
-    if(item.DataType==='contract_data'||(item.Title&&item.Title.indexOf('contract_data_')===0)){
-      try{
-        var _cpl=JSON.parse(item.Payload||'{}');
-        var _cr=_cpl.rep; var _cyr=parseInt(_cpl.year);
-        var _cyNow=new Date().getFullYear();
-        // 내 rep 계약도 로드 (재접속 시 복원 필요)
-        if(_cr&&_cpl.contracts&&Math.abs(_cyr-_cyNow)<=2){
-          if(!store.reps[_cr]) store.reps[_cr]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[],contracts:[]};
-          if(!store.reps[_cr].contracts) store.reps[_cr].contracts=[];
-          // 해당 연도 계약만 교체
-          store.reps[_cr].contracts=store.reps[_cr].contracts
-            .filter(function(c){return c.startDate?parseInt(c.startDate.substr(0,4))!==_cyr:false;})
-            .concat(_cpl.contracts);
-        }
-      }catch(_ce){}
-      return;
+    // _spSyncOtherReps와 동일한 방식으로 처리
+    var changed2 = await _spSyncOtherReps();
+    if(changed2){
+      try{ renderDashboard(); }catch(e){}
+      try{ renderIssues(); }catch(e){}
+      try{ renderPipeline(); }catch(e){}
     }
-    if(item.DataType!=='rep_data'&&!(item.Title&&item.Title.indexOf('rep_data_')===0)) return;
-        var repName=_parseRepDataKey(item.DataKey).rep;
-        if(!repName) return;
-        if(!allByRep2[repName]) allByRep2[repName]=[];
-        allByRep2[repName].push(item);
-      }catch(e){}
-    });
-    var seen={};
-    var sortedItems=[];
-    Object.keys(allByRep2).forEach(function(repName){
-      var best=allByRep2[repName].reduce(function(b,item){
-        try{
-          var pl=JSON.parse(item.Payload||'{}');
-          var bp=JSON.parse(b.Payload||'{}');
-          return (pl.savedAt||'')>(bp.savedAt||'') ? item : b;
-        }catch(e){ return b; }
-      });
-      sortedItems.push(best);
-    });
-    var items=sortedItems;
-    var dummy={}; items.forEach(function(item){
-      try{
-        var parsed=_parseRepDataKey(item.DataKey);
-        var repName=parsed.rep;
-        if(!repName||seen[repName]) return;
-        seen[repName]=true;
-        var _rawPL=item.Payload||item.payload||item.Description||'{}'; var repData=JSON.parse(_rawPL);
-        if(!store.reps[repName]) store.reps[repName]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[]};
-        Object.assign(store.reps[repName], repData);
-        // 배열 타입 보장 (plan/actual/forecast는 반드시 Array)
-        var _rd2=store.reps[repName];
-        ['plan','actual','forecast'].forEach(function(k){
-          if(_rd2[k]&&!Array.isArray(_rd2[k])){
-            var _o=_rd2[k];
-            _rd2[k]=new Array(12).fill(0).map(function(_,i){return parseFloat(_o[i]||_o[String(i)]||0)||0;});
-          }
-        });
-      }catch(e){}
-    });
+
   }catch(e){}
 }
-
 function showStatDatePicker(){
   // 날짜 지정 탭 활성화 + 패널 표시
   ['week','month','all','custom'].forEach(function(r){
@@ -15893,8 +15841,23 @@ async function _spSaveContractData(rep){
     cs.forEach(function(c){var yr=c.startDate?parseInt(c.startDate.substr(0,4)):new Date().getFullYear();if(!bY[yr])bY[yr]=[];bY[yr].push(c);});
     var cy=new Date().getFullYear();if(!bY[cy])bY[cy]=[];
     for(var yr in bY){
-      var k=_sanitizeDKey(rep+'_'+yr);
-      await _spSaveItem('contract_data',k,{rep:rep,year:parseInt(yr),contracts:bY[yr],savedAt:new Date().toISOString()});
+      // 직책 제거 - 저장 키는 이름만 (rep/관리자 동일 키 보장)
+      var _cRepBase=rep;
+      if(typeof authCfg!=='undefined'&&authCfg.repTitles){
+        var _crts=authCfg.repTitles;
+        Object.keys(_crts).forEach(function(base){
+          var t=_crts[base];
+          if(t&&(rep===base+' '+t||rep===base)) _cRepBase=base;
+        });
+        if(_cRepBase===rep){
+          var _crp=rep.trim().split(/\s+/);
+          if(_crp.length>1) _cRepBase=_crp.slice(0,-1).join(' ');
+        }
+        if(!_cRepBase||!_cRepBase.trim()) _cRepBase=rep;
+        _cRepBase=_cRepBase.trim();
+      }
+      var k=_sanitizeDKey(_cRepBase+'_'+yr);
+      await _spSaveItem('contract_data',k,{rep:_cRepBase,year:parseInt(yr),contracts:bY[yr],savedAt:new Date().toISOString()});
     }
     // 저장 완료 (토스트 없음 - 자동저장이므로 UI 방해 안 함)
     // 저장 후 해시 캐시 갱신 (다음 rebuild가 스킵되지 않도록)
