@@ -13709,7 +13709,6 @@ async function _spSyncOtherReps(){
         // 내 rep 계약도 SP에서 로드 (앱 재시작 시 복원 필요)
         // 단, 로컬 데이터가 더 최신이면 유지
         // SP에서 온 계약 DataKey 로그
-console.log('[계약키] DataKey='+item.DataKey+' DataType='+item.DataType+' _cr='+(_cpl.rep||'?')+' contracts='+(_cpl.contracts||[]).length+'건');
         // 이전 키 데이터 복구 시도: 이름만 키(김충만)에 0건이면 다른 키 탐색
         if(_cr&&_cpl.contracts&&_cpl.contracts.length>0&&Math.abs(_cyr-_cyNow)<=2){
           // _cr(이름만) → 실제 store.reps 키(이름+직책 가능) 매핑
@@ -13728,14 +13727,12 @@ console.log('[계약키] DataKey='+item.DataKey+' DataType='+item.DataType+' _cr
               }
             }
           }
-          console.log('[계약매핑] _cr='+_cr+' → _crKey='+_crKey+' → _crActualKey='+_crActualKey);
           if(!store.reps[_crActualKey]) store.reps[_crActualKey]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[],contracts:[]};
           if(!store.reps[_crActualKey].contracts) store.reps[_crActualKey].contracts=[];
           // savedAt 비교: SP가 더 최신이면 해당 연도 교체
           var _cLocalAt=new Date((store.reps[_crActualKey]&&store.reps[_crActualKey].contractSavedAt||{})[ _cyr]||0).getTime();
           var _cSpAt=new Date(_cpl.savedAt||0).getTime();
           if(_cSpAt >= _cLocalAt){
-            console.log('[계약적용] _crActualKey='+_crActualKey+' 계약'+_cpl.contracts.length+'건 적용');
             store.reps[_crActualKey].contracts=store.reps[_crActualKey].contracts
               .filter(function(c){return c.startDate?parseInt(c.startDate.substr(0,4))!==_cyr:false;})
               .concat(_cpl.contracts);
@@ -13771,6 +13768,12 @@ console.log('[계약키] DataKey='+item.DataKey+' DataType='+item.DataType+' _cr
         try{
           var pl=JSON.parse(item.Payload||'{}');
           var bp=JSON.parse(b.Payload||'{}');
+          // 데이터 풍부도 점수 (clients+activities+plan합계)
+          var plScore=(pl.clients||[]).length+(pl.activities||[]).length+(pl.plan||[]).reduce(function(s,v){return s+(v||0);},0)+(pl.issuesList||[]).length;
+          var bpScore=(bp.clients||[]).length+(bp.activities||[]).length+(bp.plan||[]).reduce(function(s,v){return s+(v||0);},0)+(bp.issuesList||[]).length;
+          // 데이터가 있는 것 우선, 동점이면 savedAt 최신 우선
+          if(plScore>0&&bpScore===0) return item;
+          if(bpScore>0&&plScore===0) return b;
           return (pl.savedAt||'')>(bp.savedAt||'') ? item : b;
         }catch(e){ return b; }
       });
@@ -13826,7 +13829,6 @@ console.log('[계약키] DataKey='+item.DataKey+' DataType='+item.DataType+' _cr
             delete store.reps[ek];
           }
         });
-        console.log('[rep로드] repName='+repName+' DataKey='+item.DataKey+' act='+(repData.activities||[]).length+'건 clients='+(repData.clients||[]).length+'건');
         var item=latestByRep[repName];
         var _rawPL=item.Payload||item.payload||item.Description||'{}'; var repData=JSON.parse(_rawPL);
         if(!store.reps[repName]) store.reps[repName]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[]};
@@ -15659,7 +15661,6 @@ function _rebuildContractPanel(rep){ try {
       }
     }
   }
-  console.log('[계약패널] rep='+rep+' → actualKey='+_repActualKey+' contracts='+(store.reps[_repActualKey]&&store.reps[_repActualKey].contracts||[]).length+'건');
   var el=document.getElementById('cpl-'+rep);
   if(!el)return;
   // 해시 비교: 데이터 변경 없으면 rebuild 스킵
