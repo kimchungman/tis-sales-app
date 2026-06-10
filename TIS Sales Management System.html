@@ -13624,15 +13624,41 @@ async function _spSyncOtherReps(){
         allByRep[repName].push(item);
       }catch(e){}
     });
+    // 담당자별: 모든 키의 데이터를 병합 (날짜 키 문제 해결)
+    // savedAt 가장 큰 메인 데이터 선택 + activities/issuesList 없으면 다른 키에서 보완
     var latestByRep={};
     Object.keys(allByRep).forEach(function(repName){
-      latestByRep[repName]=allByRep[repName].reduce(function(best,item){
+      // 1. savedAt 기준 최신 메인 선택
+      var best=allByRep[repName].reduce(function(b,item){
         try{
           var pl=JSON.parse(item.Payload||'{}');
-          var bp=JSON.parse(best.Payload||'{}');
-          return (pl.savedAt||'') > (bp.savedAt||'') ? item : best;
-        }catch(e){ return best; }
+          var bp=JSON.parse(b.Payload||'{}');
+          return (pl.savedAt||'')>(bp.savedAt||'') ? item : b;
+        }catch(e){ return b; }
       });
+      // 2. 선택된 메인에 activities/issuesList 없으면 다른 키에서 보완
+      try{
+        var bestPL=JSON.parse(best.Payload||'{}');
+        if(!bestPL.activities||!bestPL.activities.length||
+           !bestPL.issuesList||!bestPL.issuesList.length||
+           !bestPL.clients||!bestPL.clients.length){
+          allByRep[repName].forEach(function(item){
+            if(item===best) return;
+            try{
+              var pl=JSON.parse(item.Payload||'{}');
+              if((!bestPL.activities||!bestPL.activities.length)&&pl.activities&&pl.activities.length)
+                bestPL.activities=pl.activities;
+              if((!bestPL.issuesList||!bestPL.issuesList.length)&&pl.issuesList&&pl.issuesList.length)
+                bestPL.issuesList=pl.issuesList;
+              if((!bestPL.clients||!bestPL.clients.length)&&pl.clients&&pl.clients.length)
+                bestPL.clients=pl.clients;
+            }catch(e){}
+          });
+          // 병합된 페이로드로 best 업데이트
+          best={Id:best.Id,DataKey:best.DataKey,Payload:JSON.stringify(bestPL)};
+        }
+      }catch(e){}
+      latestByRep[repName]=best;
     });
 
     // 전체 팀 담당자 목록
