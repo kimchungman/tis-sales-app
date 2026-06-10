@@ -8668,14 +8668,17 @@ function _findRepByKey(sk){
 
 // DataKey에서 rep명+날짜 분리 (신구 형식 모두)
 function _parseRepDataKey(dk){
+  // 날짜 포함: 김충만_2026-06-10
   var m=dk.match(/^(.+?)[-_]?(\d{4}-\d{2}-\d{2})$/);
   if(m){
     var sk=m[1].replace(/[-_]$/,'');
     return {rep:_findRepByKey(sk), date:m[2]};
   }
+  // 콜론 구분: 이름:날짜
   var parts=dk.split(':');
   if(parts.length>=2) return {rep:parts.slice(0,-1).join(':'), date:parts[parts.length-1]};
-  return {rep:dk, date:''};
+  // 날짜 없는 키: dk 자체가 rep명 (새 방식)
+  return {rep:_findRepByKey(dk), date:''};
 }
 
 
@@ -8695,6 +8698,23 @@ async function _spSaveItem(dtype, dkey, payload, _retry) {
 
   var _dkey  = _sanitizeDKey(dkey);
   var _title = dtype + '_' + _dkey;
+
+  // ── Payload 크기 체크: 50KB 초과 시 자동 분할 ──
+  var _payloadStr = JSON.stringify(payload);
+  var _MAX = 50000; // 50KB (여유 있게)
+  if(_payloadStr.length > _MAX){
+    // 데이터를 청크로 분할 저장
+    var _chunkSize = _MAX - 500; // 메타 공간 확보
+    var _totalChunks = Math.ceil(_payloadStr.length / _chunkSize);
+    for(var _ci=0; _ci<_totalChunks; _ci++){
+      var _chunk = _payloadStr.slice(_ci*_chunkSize, (_ci+1)*_chunkSize);
+      var _chunkPayload = {_chunk: _chunk, _ci: _ci, _total: _totalChunks, _key: _title};
+      await _spSaveItem(dtype, dkey + '_part' + _ci, _chunkPayload, _retry);
+    }
+    // 인덱스 저장 (파트 개수 기록)
+    await _spSaveItem(dtype, dkey + '_idx', {_parts: _totalChunks, _key: _title, savedAt: new Date().toISOString()}, _retry);
+    return;
+  }
   var _lock  = _title;
 
   // 중복 실행 방지
@@ -8794,10 +8814,24 @@ async function _spLoadItem(dtype, dkey) {
   try {
     var _ldkey = (typeof _sanitizeDKey==='function') ? _sanitizeDKey(dkey) : dkey;
     var _ltitle = dtype + '_' + _ldkey;
-    // $filter 대신 전체 로드 후 클라이언트 필터링 (SP $filter 정책 우회)
     const qUrl = _lUrl() + '?$select=Id,Title,Payload&$top=500';
     const res  = await _spFetchAll(qUrl);
     const items2 = (res && res.value) || [];
+    // 분할 저장 인덱스 확인
+    var _idxItem = items2.find(function(i){ return i.Title === _ltitle + '_idx'; });
+    if(_idxItem){
+      try{
+        var _idx = JSON.parse(_idxItem.Payload||'{}');
+        var _parts = _idx._parts||0;
+        var _fullStr = '';
+        for(var _ci=0; _ci<_parts; _ci++){
+          var _partItem = items2.find(function(i){ return i.Title === _ltitle + '_part' + _ci; });
+          if(_partItem){ _fullStr += JSON.parse(_partItem.Payload||'{}')._chunk||''; }
+        }
+        return _fullStr ? JSON.parse(_fullStr) : null;
+      }catch(e){ console.warn('[spLoadItem] 분할 로드 실패', e); }
+    }
+    // 일반 단일 아이템
     const item = items2.find(function(i){ return i.Title === _ltitle; });
     if(!item) return null;
     var _pl = item.Payload || item.payload || null;
@@ -13466,13 +13500,24 @@ async function _spSaveMyRep(){
   }
   // DataKey: 이름만 사용 (직책 제거 - 직책 변경해도 동일 키 유지)
   var _repName = session.rep;
-  if(typeof authCfg!=='undefined' && authCfg.repTitles && authCfg.repTitles[session.rep]){
-    // 이름에서 직책 suffix 제거 (키는 이름만)
-    var _title = authCfg.repTitles[session.rep];
-    _repName = session.rep.replace(new RegExp('\\s*'+_title.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s*$'),'').trim();
-    if(!_repName) _repName = session.rep; // 제거 실패 시 원래 이름 사용
+  if(typeof authCfg!=='undefined' && authCfg.repTitles){
+    // repTitles 키(이름)와 세션 rep 매칭
+    var _titles = authCfg.repTitles;
+    var _foundBase = null;
+    Object.keys(_titles).forEach(function(base){
+      var t = _titles[base];
+      if(t && (session.rep === base+' '+t || session.rep === base)) _foundBase = base;
+    });
+    if(_foundBase) _repName = _foundBase;
+    else{
+      // 직책 suffix 제거 (마지막 단어)
+      var _rp = session.rep.trim().split(/\s+/);
+      if(_rp.length > 1) _repName = _rp.slice(0,-1).join(' ');
+    }
+    if(!_repName || !_repName.trim()) _repName = session.rep;
+    _repName = _repName.trim();
   }
-  var _repKey = (typeof _sanitizeDKey==='function') ? _sanitizeDKey(_repName+'_'+date) : _repName+'-'+date;
+  var _repKey = (typeof _sanitizeDKey==='function') ? _sanitizeDKey(_repName) : _repName; // 날짜 제거 - 항상 동일 키
 
   // ── 크기 자동 체크 및 분리 저장 ──
   var _payload = JSON.stringify(_d);
@@ -13548,7 +13593,7 @@ async function _spSaveRepByName(repName){
   });
   _d.savedAt = new Date().toISOString();
   _d.date = date;
-  var _repKey = (typeof _sanitizeDKey==='function') ? _sanitizeDKey(repName+'_'+date) : repName+'-'+date;
+  var _repKey = (typeof _sanitizeDKey==='function') ? _sanitizeDKey(repName) : repName; // 날짜 제거 - 항상 동일 키
   // 크기 체크
   // visitLog는 visit_log:{rep} 별도 키로 저장 - rep_data에서 항상 제외
   // (관리자 save가 다른 담당자의 visitLog를 덮어쓰는 문제 방지)
@@ -13569,10 +13614,38 @@ async function _spSyncOtherReps(){
     var res=await _spFetchAll(qUrl);
     var items=(res&&res.value)||[];
     var _actIssItems=[]; // 2패스용 act/iss 아카이브 수집
-    // 디버그: SP 전체 키 목록
-    console.log('[SP sync] 전체 아이템 수:'+items.length);
-    var _repKeys=items.filter(function(i){return i.DataKey&&(i.DataKey.indexOf('김충만')>=0||i.DataKey.indexOf('전성현')>=0||i.DataKey.indexOf('허인수')>=0);});
-    _repKeys.forEach(function(i){ console.log('[SP key] '+i.DataKey+' type:'+i.DataType); });
+
+    // 분할 저장 아이템 병합 (_part0,_part1... → 원본 복원)
+    var _partMap={}; // title → [chunks]
+    var _idxTitles=[];
+    items.forEach(function(item){
+      if(item.DataKey&&item.DataKey.match(/_idx$/)) _idxTitles.push(item);
+      if(item.DataKey&&item.DataKey.match(/_part\d+$/)){
+        var _baseKey=item.DataKey.replace(/_part\d+$/,'');
+        var _baseTitle=item.DataType+'_'+_baseKey;
+        if(!_partMap[_baseTitle]) _partMap[_baseTitle]=[];
+        try{
+          var _pl=JSON.parse(item.Payload||'{}');
+          _partMap[_baseTitle][_pl._ci]=_pl._chunk||'';
+        }catch(e){}
+      }
+    });
+    // 분할 아이템을 items에 병합 복원
+    Object.keys(_partMap).forEach(function(baseTitle){
+      var _chunks=_partMap[baseTitle];
+      try{
+        var _fullStr=_chunks.join('');
+        if(_fullStr){
+          var _dtype=baseTitle.split('_')[0];
+          var _dkey=baseTitle.slice(_dtype.length+1);
+          items.push({DataType:_dtype, DataKey:_dkey, Title:baseTitle, Payload:_fullStr});
+        }
+      }catch(e){}
+    });
+    // _part, _idx 아이템은 처리 목록에서 제외
+    items=items.filter(function(item){
+      return !(item.DataKey&&(item.DataKey.match(/_part\d+$/)||item.DataKey.match(/_idx$/)));
+    });
 
     // 담당자별 최신 데이터 선택 (savedAt 기준 - $orderby 없으므로 직접 비교)
     var allByRep={};
@@ -13603,12 +13676,20 @@ async function _spSyncOtherReps(){
         // 내 rep 계약도 SP에서 로드 (앱 재시작 시 복원 필요)
         // 단, 로컬 데이터가 더 최신이면 유지
         if(_cr&&_cpl.contracts&&Math.abs(_cyr-_cyNow)<=2){
-          if(!store.reps[_cr]) store.reps[_cr]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[],contracts:[]};
-          if(!store.reps[_cr].contracts) store.reps[_cr].contracts=[];
-          // 해당 연도 계약만 교체
-          store.reps[_cr].contracts=store.reps[_cr].contracts
-            .filter(function(c){return c.startDate?parseInt(c.startDate.substr(0,4))!==_cyr:false;})
-            .concat(_cpl.contracts);
+          // _cr(이름만) → 실제 store.reps 키(이름+직책 가능) 매핑
+          var _crKey = (typeof _findRepByKey==='function') ? _findRepByKey(_cr) : _cr;
+          if(!store.reps[_crKey]) store.reps[_crKey]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[],contracts:[]};
+          if(!store.reps[_crKey].contracts) store.reps[_crKey].contracts=[];
+          // savedAt 비교: SP가 더 최신이면 해당 연도 교체
+          var _cLocalAt=new Date((store.reps[_crKey].contractSavedAt||{})[ _cyr]||0).getTime();
+          var _cSpAt=new Date(_cpl.savedAt||0).getTime();
+          if(_cSpAt >= _cLocalAt){
+            store.reps[_crKey].contracts=store.reps[_crKey].contracts
+              .filter(function(c){return c.startDate?parseInt(c.startDate.substr(0,4))!==_cyr:false;})
+              .concat(_cpl.contracts);
+            if(!store.reps[_crKey].contractSavedAt) store.reps[_crKey].contractSavedAt={};
+            store.reps[_crKey].contractSavedAt[_cyr]=_cpl.savedAt||'';
+          }
         }
       }catch(_ce){}
       return;
@@ -13640,45 +13721,10 @@ async function _spSyncOtherReps(){
           return (pl.savedAt||'')>(bp.savedAt||'') ? item : b;
         }catch(e){ return b; }
       });
-      // 2. 모든 날짜 키에서 activities/issuesList/clients 누적 합산 (중복 제거)
-      try{
-        var bestPL=JSON.parse(best.Payload||'{}');
-        // plan/actual/forecast/clients는 최신 키(best) 기준
-        // activities/issuesList는 모든 키 누적 (날짜별로 다를 수 있음)
-        var _allActs={}; // no_client 기준 중복 제거
-        var _allIss={}; // title_createdAt 기준 중복 제거
-        // best 먼저
-        (bestPL.activities||[]).forEach(function(a){ _allActs[(a.no||'')+'_'+(a.client||'')+a.content]=a; });
-        (bestPL.issuesList||[]).forEach(function(iss){ _allIss[(iss.title||'')+'_'+(iss.createdAt||iss.title||'')]=iss; });
-        // 다른 키들 순회 (저장일 내림차순)
-        var _others=allByRep[repName].filter(function(it){ return it!==best; });
-        _others.sort(function(a,b){
-          try{
-            var pa=JSON.parse(a.Payload||'{}'), pb=JSON.parse(b.Payload||'{}');
-            return (pb.savedAt||'')>(pa.savedAt||'')?1:-1;
-          }catch(e){ return 0; }
-        });
-        _others.forEach(function(item){
-          try{
-            var pl=JSON.parse(item.Payload||'{}');
-            (pl.activities||[]).forEach(function(a){ _allActs[(a.no||'')+'_'+(a.client||'')+a.content]=a; });
-            (pl.issuesList||[]).forEach(function(iss){ _allIss[(iss.title||'')+'_'+(iss.createdAt||iss.title||'')]=iss; });
-          }catch(e){}
-        });
-        bestPL.activities=Object.values(_allActs);
-        bestPL.issuesList=Object.values(_allIss);
-        best={Id:best.Id,DataKey:best.DataKey,Payload:JSON.stringify(bestPL)};
-      }catch(e){}
+      // 최신 키(best)만 사용 - 다른 날짜 키 합산 없음
+      // 삭제/수정은 최신 키에 반영됨. 이전 키 합산 시 삭제가 취소됨
       latestByRep[repName]=best;
-      // 디버그: 선택된 키 로그
-      try{
-        var _bp=JSON.parse(best.Payload||'{}');
-        console.log('[SP sync] '+repName+' 선택키:'+best.DataKey
-          +' savedAt:'+(_bp.savedAt||'없음')
-          +' act:'+((_bp.activities||[]).length)+'건'
-          +' iss:'+((_bp.issuesList||[]).length)+'건'
-          +' clients:'+((_bp.clients||[]).length)+'건');
-      }catch(e){}
+
     });
 
     // 전체 팀 담당자 목록
@@ -13715,8 +13761,15 @@ async function _spSyncOtherReps(){
           }
           return;
         }
-        // TEAM_REPS에 없는 rep 무시 (역매핑 실패 케이스)
-        if(allReps.length>0 && allReps.indexOf(repName)<0) return;
+        // TEAM_REPS 매칭: 이름 기준으로 유연하게 비교
+        if(allReps.length>0){
+          var _matched = allReps.some(function(r){
+            return r===repName ||
+              (typeof _sanitizeDKey==='function' && _sanitizeDKey(r)===_sanitizeDKey(repName)) ||
+              r.indexOf(repName)===0 || repName.indexOf(r)===0;
+          });
+          if(!_matched) return; // 완전히 다른 이름이면 무시
+        }
         var item=latestByRep[repName];
         var _rawPL=item.Payload||item.payload||item.Description||'{}'; var repData=JSON.parse(_rawPL);
         if(!store.reps[repName]) store.reps[repName]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[]};
