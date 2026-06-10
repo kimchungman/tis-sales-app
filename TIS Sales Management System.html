@@ -13703,9 +13703,11 @@ async function _spSyncOtherReps(){
         var _cyNow=new Date().getFullYear();
         // 내 rep 계약도 SP에서 로드 (앱 재시작 시 복원 필요)
         // 단, 로컬 데이터가 더 최신이면 유지
+        console.log('[계약] _cr='+_cr+' _cyr='+_cyr+' contracts='+(_cpl.contracts||[]).length+'건');
         if(_cr&&_cpl.contracts&&Math.abs(_cyr-_cyNow)<=2){
           // _cr(이름만) → 실제 store.reps 키(이름+직책 가능) 매핑
           var _crKey = (typeof _findRepByKey==='function') ? _findRepByKey(_cr) : _cr;
+          console.log('[계약매핑] _cr='+_cr+' → _crKey='+_crKey);
           if(!store.reps[_crKey]) store.reps[_crKey]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[],contracts:[]};
           if(!store.reps[_crKey].contracts) store.reps[_crKey].contracts=[];
           // savedAt 비교: SP가 더 최신이면 해당 연도 교체
@@ -13794,6 +13796,7 @@ async function _spSyncOtherReps(){
         // 신규팀/담당자는 authCfg 로드 전일 수 있으므로 허용
         // 단 숫자만으로 된 키(테스트 데이터) 제외
         if(repName && /^[\d]+$/.test(repName)) return; // 숫자만인 키 무시
+        console.log('[rep로드] repName='+repName+' 적용시작');
         var item=latestByRep[repName];
         var _rawPL=item.Payload||item.payload||item.Description||'{}'; var repData=JSON.parse(_rawPL);
         if(!store.reps[repName]) store.reps[repName]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[]};
