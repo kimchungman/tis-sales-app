@@ -8035,7 +8035,10 @@ function autoSave(){
               if(!window._lastContractHash)window._lastContractHash={};
               if(window._lastContractHash[_ar]!==_ch){
                 window._lastContractHash[_ar]=_ch;
-                await _spSaveContractData(_ar);
+                // 계약이 있을 때만 저장 (빈 배열로 덮어쓰기 방지)
+                if((store.reps[_ar]&&store.reps[_ar].contracts&&store.reps[_ar].contracts.length>0)){
+                  await _spSaveContractData(_ar);
+                }
               }
             }
           }
@@ -13814,6 +13817,14 @@ console.log('[계약키] DataKey='+item.DataKey+' DataType='+item.DataType+' _cr
         // 신규팀/담당자는 authCfg 로드 전일 수 있으므로 허용
         // 단 숫자만으로 된 키(테스트 데이터) 제외
         if(repName && /^[\d]+$/.test(repName)) return; // 숫자만인 키 무시
+        // 구 키(직책 없는 이름 등)가 있으면 병합 후 삭제
+        var _repSan=(typeof _sanitizeDKey==='function')?_sanitizeDKey(repName):repName;
+        Object.keys(store.reps).forEach(function(ek){
+          if(ek!==repName&&((typeof _sanitizeDKey==='function')&&_sanitizeDKey(ek)===_repSan)){
+            if(!store.reps[repName]) store.reps[repName]=store.reps[ek];
+            delete store.reps[ek];
+          }
+        });
         console.log('[rep로드] repName='+repName+' DataKey='+item.DataKey+' act='+(repData.activities||[]).length+'건 clients='+(repData.clients||[]).length+'건');
         var item=latestByRep[repName];
         var _rawPL=item.Payload||item.payload||item.Description||'{}'; var repData=JSON.parse(_rawPL);
@@ -14322,9 +14333,22 @@ function _cMgtBadge(t){var m={'하자기간':'#D97706','유지보수':'#0EA5A0',
 function _cStatusBadge(t){var m={'진행중':'#059669','종료':'#94A3B8','협의중':'#4f7fff'};var c=m[t]||'#94A3B8';return '<span style="display:inline-flex;align-items:center;justify-content:center;min-width:44px;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600;background:white;color:'+c+';border:1.5px solid '+c+';">'+(t||'—')+'</span>';}
 function _cNewId(){return 'c'+Date.now().toString(36)+Math.random().toString(36).substr(2,4);}
 function _getContracts(rep){
-  if(!store.reps[rep])return [];
-  if(!store.reps[rep].contracts)store.reps[rep].contracts=[];
-  return store.reps[rep].contracts;
+  // 직책 불일치 대응: store.reps에서 실제 키 찾기
+  var _repKey=rep;
+  if(!store.reps[rep]){
+    var _keys=Object.keys(store.reps||{});
+    for(var _gi=0;_gi<_keys.length;_gi++){
+      if((typeof _sanitizeDKey==='function')&&_sanitizeDKey(_keys[_gi])===_sanitizeDKey(rep)){
+        _repKey=_keys[_gi]; break;
+      }
+      if(_keys[_gi].indexOf(rep)===0||rep.indexOf(_keys[_gi])===0){
+        _repKey=_keys[_gi]; break;
+      }
+    }
+  }
+  if(!store.reps[_repKey])return [];
+  if(!store.reps[_repKey].contracts)store.reps[_repKey].contracts=[];
+  return store.reps[_repKey].contracts;
 }
 
 // ── 계약 모달 ──
@@ -15621,7 +15645,20 @@ function _sortContractChain(arr){
 }
 
 function _rebuildContractPanel(rep){ try {
-  console.log('[계약패널] rep='+rep+' contracts='+(store.reps[rep]&&store.reps[rep].contracts||[]).length+'건 store.reps키='+Object.keys(store.reps||{}).filter(function(k){return k.indexOf(rep.split(' ')[0])>=0;}).join(','));
+  // rep 이름으로 store.reps의 실제 키 찾기 (직책 불일치 대응)
+  var _repActualKey=rep;
+  if(store.reps&&!store.reps[rep]){
+    var _sk=Object.keys(store.reps);
+    for(var _ri=0;_ri<_sk.length;_ri++){
+      if((typeof _sanitizeDKey==='function')&&_sanitizeDKey(_sk[_ri])===_sanitizeDKey(rep)){
+        _repActualKey=_sk[_ri]; break;
+      }
+      if(_sk[_ri].indexOf(rep)===0||rep.indexOf(_sk[_ri])===0){
+        _repActualKey=_sk[_ri]; break;
+      }
+    }
+  }
+  console.log('[계약패널] rep='+rep+' → actualKey='+_repActualKey+' contracts='+(store.reps[_repActualKey]&&store.reps[_repActualKey].contracts||[]).length+'건');
   var el=document.getElementById('cpl-'+rep);
   if(!el)return;
   // 해시 비교: 데이터 변경 없으면 rebuild 스킵
@@ -15861,8 +15898,10 @@ async function _spSaveContractData(rep){
     var cs=_getContracts(rep);
     var bY={};
     cs.forEach(function(c){var yr=c.startDate?parseInt(c.startDate.substr(0,4)):new Date().getFullYear();if(!bY[yr])bY[yr]=[];bY[yr].push(c);});
-    var cy=new Date().getFullYear();if(!bY[cy])bY[cy]=[];
+    var cy=new Date().getFullYear();
+    // 빈 연도 저장 안 함 (0건으로 덮어쓰기 방지)
     for(var yr in bY){
+      if(!bY[yr]||!bY[yr].length) continue; // 계약 없으면 스킵
       // 직책 제거 - 저장 키는 이름만 (rep/관리자 동일 키 보장)
       var _cRepBase=rep;
       if(typeof authCfg!=='undefined'&&authCfg.repTitles){
