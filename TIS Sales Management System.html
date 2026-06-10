@@ -13874,8 +13874,11 @@ async function _spSyncOtherReps(){
         // savedAt 비교: SP가 로컬보다 최신일 때만 업데이트 (로컬 최신 데이터 보호)
         var _spSavedAt2 = new Date(repData.savedAt||0).getTime();
         var _localSavedAt2 = new Date((store.reps[repName]&&store.reps[repName].savedAt)||0).getTime();
-        // SP가 5초 이상 최신이거나, 로컬에 savedAt이 없을 때만 업데이트
-        if(_spSavedAt2 > _localSavedAt2 - 5000){
+        // SP 데이터가 있을 때만 적용 (빈 데이터로 덮어쓰기 방지)
+        var _spHasData=(repData.plan||[]).reduce(function(s,v){return s+(v||0);},0)>0
+          ||(repData.clients&&repData.clients.length>0)
+          ||(repData.activities&&repData.activities.length>0);
+        if(_spHasData || !store.reps[repName].savedAt){
           ['plan','actual','forecast','clients','activities'].forEach(function(k){
             if(repData[k]!==undefined) store.reps[repName][k]=repData[k];
           });
@@ -13935,7 +13938,8 @@ async function _spSyncOtherReps(){
     _storeKeys.forEach(function(k){
       var d=store.reps[k]||{};
       var planSum=(d.plan||[]).reduce(function(s,v){return s+(v||0);},0);
-      console.log('  ['+k+'] plan합='+planSum+' clients='+((d.clients||[]).length)+'건 act='+((d.activities||[]).length)+'건');
+      var actualSum=(d.actual||[]).reduce(function(s,v){return s+(v||0);},0);
+      console.log('  ['+k+'] plan합='+planSum+' actual합='+actualSum+' clients='+((d.clients||[]).length)+'건 act='+((d.activities||[]).length)+'건 savedAt='+(d.savedAt||'없음').substring(0,19));
     });
   }catch(e){}
   // 계약/rep 데이터 로드 완료 → 계약 패널 해시 초기화 (재렌더 강제)
