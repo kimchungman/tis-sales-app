@@ -8827,15 +8827,23 @@ async function _spLoadToday() {
 
   // 오늘 데이터 없으면 SP 히스토리에서 가장 최신 스냅샷 로드
   try{
-    const url = _lUrl() + '?$select=Id,Title,DataType,DataKey,Payload&$top=500';
+    // snapshot DataType만 필터 + Id 내림차순 (최신순)
+    const url = _lUrl() + '?$select=Id,Title,DataType,DataKey,Payload&$filter=DataType+eq+%27snapshot%27&$orderby=Id+desc&$top=10';
     const res = await _spFetch(url);
-    if(res && res.value && res.value[0] && res.value[0].Payload){
-      const latest = JSON.parse(res.value[0].Payload);
-      const latestKey = res.value[0].DataKey || today;
-      const latestDate = today; // 항상 오늘 날짜 사용 (SP 저장 날짜로 과거 이동 방지)
-      _applySnap(latest, latestDate);
+    if(res && res.value && res.value.length){
+      // 현재 팀 스냅샷 우선, 없으면 첫번째
+      var _snaps=res.value;
+      var _teamSnap=_snaps.find(function(s){ return s.DataKey&&s.DataKey.indexOf(currentTeam)===0; });
+      var _useSnap=_teamSnap||_snaps[0];
+      if(_useSnap&&_useSnap.Payload){
+        const latest = JSON.parse(_useSnap.Payload);
+        const latestDate = today; // 항상 오늘 날짜 사용
+        _applySnap(latest, latestDate);
+      }
     }
-  }catch(e){}
+  }catch(e){
+    console.warn('[spLoadToday fallback]',e);
+  }
 }
 
 // ── 스냅샷 적용 ────────────────────────────────────────────
@@ -13691,6 +13699,13 @@ async function _spSyncOtherReps(){
       }catch(e){}
     });
   }catch(e){}
+  // 계약/rep 데이터 로드 완료 → 계약 패널 해시 초기화 (재렌더 강제)
+  if(changed){
+    if(window._cPanelHash) window._cPanelHash={};
+    if(typeof _rebuildContractPanel==='function'&&typeof session!=='undefined'&&session&&session.rep){
+      try{ setTimeout(function(){ _rebuildContractPanel(session.rep); },100); }catch(e){}
+    }
+  }
   return changed;
 }
 
@@ -14880,6 +14895,7 @@ function _cdbConfirmDelete(id){
 
 // 영업담당 팝업
 function _cdbShowRepPopup(id){
+  window._cdbCurrentPopId=id; // 팝업 갱신용 id 저장
   var item=_cdbById(id); if(!item) return;
   var autoReps=_cdbGetReps(item.name);
   var manualReps=item.manualReps||[];
@@ -14896,15 +14912,16 @@ function _cdbShowRepPopup(id){
   var wrap=document.createElement('div');
   wrap.id='_cdb_rep_pop';
   wrap.style.cssText='position:fixed;inset:0;z-index:10001;background:rgba(15,23,42,.4);display:flex;align-items:center;justify-content:center;padding:20px;';
+  var excludedAuto=(item.excludedAutoReps||[]);
   var autoHTML=autoReps.map(function(r){
-    var isAuto=manualReps.includes(r.rep); // 수동 제외 여부 (체크 해제 상태)
+    var isChecked=excludedAuto.indexOf(r.rep)<0;
     var rEsc=r.rep.replace(/'/g,"\\'");
-    var chkStyle='cursor:pointer;width:18px;height:18px;border-radius:5px;border:1.5px solid '+(isAuto?'#4f7fff':'#E2E8F0')+';background:'+(isAuto?'#4f7fff':'transparent')+';display:flex;align-items:center;justify-content:center;flex-shrink:0;';
+    var chkStyle='cursor:pointer;width:18px;height:18px;border-radius:5px;border:1.5px solid '+(isChecked?'#4f7fff':'#E2E8F0')+';background:'+(isChecked?'#4f7fff':'transparent')+';display:flex;align-items:center;justify-content:center;flex-shrink:0;';
     var row='<div style="display:flex;align-items:center;gap:10px;padding:9px 20px;border-bottom:1px solid #F8FAFC;">';
-    row+='<div style="width:32px;height:32px;border-radius:50%;background:#DBEAFE;color:#2563EB;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">'+(_cdbEsc(r.rep)||'?').charAt(0)+'</div>';
-    row+='<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:600;color:#0D1B2E;">'+_repLabel(r.rep)+'</div><div style="font-size:10px;color:#94A3B8;">'+_cdbEsc(r.label||'자동')+'</div></div>';
-    row+='<div onclick="event.stopPropagation();_cdbToggleManualRep(\''+id+'\',\''+rEsc+'\',null)" style="'+chkStyle+'">';
-    if(isAuto) row+='<svg width="10" height="10" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>';
+    row+='<div style="width:32px;height:32px;border-radius:50%;background:#DBEAFE;color:#2563EB;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">'+((_cdbEsc(r.rep)||'?').charAt(0))+'</div>';
+    row+='<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:600;color:#0D1B2E;">'+_repLabel(r.rep)+'</div><div style="font-size:10px;color:#94A3B8;">'+(r.srcs&&r.srcs.join('·')||'자동')+'</div></div>';
+    row+='<div onclick="event.stopPropagation();_cdbToggleAutoRep(\''+id+'\',\''+rEsc+'\')" style="'+chkStyle+'">';
+    if(isChecked) row+='<svg width="10" height="10" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>';
     row+='</div></div>';
     return row;
   }).join('');
@@ -14962,6 +14979,16 @@ function _cdbShowRepPopup(id){
   +'</div>';
   document.body.appendChild(wrap);
   wrap.addEventListener('click',function(e){if(e.target===wrap)wrap.remove();});
+}
+function _cdbToggleAutoRep(id,rep){
+  var item=_cdbById(id); if(!item) return;
+  item.excludedAutoReps=item.excludedAutoReps||[];
+  var idx=item.excludedAutoReps.indexOf(rep);
+  if(idx>=0) item.excludedAutoReps.splice(idx,1);
+  else item.excludedAutoReps.push(rep);
+  _cdbSaveItem(item);
+  _cdbRenderDetail(id);
+  _cdbShowRepPopup(id);
 }
 function _cdbToggleManualRep(id,rep,popEl){
   var item=_cdbById(id); if(!item) return;
@@ -16731,9 +16758,12 @@ window._cdbConfirmHide=function(name){
   document.body.appendChild(overlay);
   document.getElementById('_cdb_hide_ok').onclick=function(){
     overlay.remove();
-    var pop=document.getElementById('_cdb_rep_pop');
-    if(pop) pop.remove();
     window._cdbHideRep(name);
+    // 팝업 유지: 현재 열린 고객사 팝업 id 찾아서 갱신
+    var pop=document.getElementById('_cdb_rep_pop');
+    if(pop&&window._cdbCurrentPopId){
+      _cdbShowRepPopup(window._cdbCurrentPopId);
+    }
   };
 };
 window._wkCloseLoadWeek=function(){
