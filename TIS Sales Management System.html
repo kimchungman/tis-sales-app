@@ -13710,7 +13710,8 @@ async function _spSyncOtherReps(){
         // 단, 로컬 데이터가 더 최신이면 유지
         // SP에서 온 계약 DataKey 로그
 console.log('[계약키] DataKey='+item.DataKey+' DataType='+item.DataType+' _cr='+(_cpl.rep||'?')+' contracts='+(_cpl.contracts||[]).length+'건');
-        if(_cr&&_cpl.contracts&&Math.abs(_cyr-_cyNow)<=2){
+        // 이전 키 데이터 복구 시도: 이름만 키(김충만)에 0건이면 다른 키 탐색
+        if(_cr&&_cpl.contracts&&_cpl.contracts.length>0&&Math.abs(_cyr-_cyNow)<=2){
           // _cr(이름만) → 실제 store.reps 키(이름+직책 가능) 매핑
           var _crKey = (typeof _findRepByKey==='function') ? _findRepByKey(_cr) : _cr;
           // store.reps에서 실제 키 찾기 (직책 포함 여부 불일치 대응)
