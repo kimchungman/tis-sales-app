@@ -13568,6 +13568,7 @@ async function _spSyncOtherReps(){
     var qUrl=_lUrl()+'?$select=Id,Title,DataType,DataKey,Payload&$top=500';
     var res=await _spFetchAll(qUrl);
     var items=(res&&res.value)||[];
+    var _actIssItems=[]; // 2패스용 act/iss 아카이브 수집
 
     // 담당자별 최신 데이터 선택 (savedAt 기준 - $orderby 없으므로 직접 비교)
     var allByRep={};
@@ -13608,32 +13609,9 @@ async function _spSyncOtherReps(){
       }catch(_ce){}
       return;
     }
-    // 활동/이슈 아카이브 처리 (_act_YYYY, _iss_YYYY)
+    // 활동/이슈 아카이브: 1패스에서는 수집만, 2패스에서 처리
     if(item.DataKey&&(item.DataKey.indexOf('_act_')>=0||item.DataKey.indexOf('_iss_')>=0)){
-      try{
-        var _apl=JSON.parse(item.Payload||'{}');
-        var _arep=_apl.rep||'';
-        if(!_arep&&item.DataKey){
-          _arep=item.DataKey.replace(/_act_\d{4}$/,'').replace(/_iss_\d{4}$/,'');
-          if(typeof _parseRepDataKey==='function') _arep=_parseRepDataKey(_arep).rep||_arep;
-        }
-        if(_arep&&store.reps[_arep]){
-          if(_apl.activities&&_apl.activities.length){
-            var _existing=store.reps[_arep].activities||[];
-            var _existIds=_existing.map(function(a){return a.no+'_'+a.client;});
-            _apl.activities.forEach(function(a){
-              if(_existIds.indexOf(a.no+'_'+a.client)<0) store.reps[_arep].activities.push(a);
-            });
-          }
-          if(_apl.issuesList&&_apl.issuesList.length){
-            var _existIss=store.reps[_arep].issuesList||[];
-            var _existIssIds=_existIss.map(function(iss){return iss.title+'_'+(iss.createdAt||'');});
-            _apl.issuesList.forEach(function(iss){
-              if(_existIssIds.indexOf(iss.title+'_'+(iss.createdAt||''))<0) store.reps[_arep].issuesList.push(iss);
-            });
-          }
-        }
-      }catch(e){}
+      _actIssItems.push(item);
       return;
     }
     if(item.DataType!=='rep_data'&&!(item.Title&&item.Title.indexOf('rep_data_')===0)) return;
@@ -13717,6 +13695,41 @@ async function _spSyncOtherReps(){
       }catch(e){}
     });
   }catch(e){}
+    // 2패스: act/iss 아카이브 처리 (store.reps 초기화 후 실행)
+    _actIssItems.forEach(function(item){
+      try{
+        var _apl=JSON.parse(item.Payload||'{}');
+        var _arep=_apl.rep||'';
+        if(!_arep&&item.DataKey){
+          _arep=item.DataKey.replace(/_act_[0-9]{4}$/,'').replace(/_iss_[0-9]{4}$/,'');
+          if(typeof _parseRepDataKey==='function') _arep=_parseRepDataKey(_arep).rep||_arep;
+        }
+        if(!_arep) return;
+        if(!store.reps[_arep]) store.reps[_arep]={
+          plan:new Array(12).fill(0),actual:new Array(12).fill(0),
+          forecast:new Array(12).fill(0),clients:[],activities:[],
+          issuesList:[],visitLog:[],contracts:[]
+        };
+        var _spAt=new Date(_apl.savedAt||0).getTime();
+        if(_apl.activities&&_apl.activities.length){
+          var _locAt=new Date(store.reps[_arep].actSavedAt||0).getTime();
+          if(_spAt>=_locAt){
+            store.reps[_arep].activities=_apl.activities;
+            store.reps[_arep].actSavedAt=_apl.savedAt||'';
+            changed=true;
+          }
+        }
+        if(_apl.issuesList&&_apl.issuesList.length){
+          var _locAtI=new Date(store.reps[_arep].issSavedAt||0).getTime();
+          if(_spAt>=_locAtI){
+            store.reps[_arep].issuesList=_apl.issuesList;
+            store.reps[_arep].issSavedAt=_apl.savedAt||'';
+            changed=true;
+          }
+        }
+      }catch(e){ console.warn('[act/iss 2pass]',e); }
+    });
+
   // 계약/rep 데이터 로드 완료 → 계약 패널 해시 초기화 (재렌더 강제)
   if(changed){
     if(window._cPanelHash) window._cPanelHash={};
