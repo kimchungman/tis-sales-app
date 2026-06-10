@@ -8437,16 +8437,19 @@ async function _getToken() {
 async function _spFetchAll(url) {
   var allItems = [];
   var nextUrl = url;
-  var maxPages = 20; // 무한루프 방지 (페이지당 500개 × 20 = 최대 10,000건)
+  var maxPages = 20;
+  var pageCount = 0;
   while(nextUrl && maxPages-- > 0) {
     try {
       var res = await _spFetch(nextUrl);
       if(!res || !res.value) break;
       allItems = allItems.concat(res.value);
-      // SP가 더 있으면 nextLink 제공
       nextUrl = res['odata.nextLink'] || res['@odata.nextLink'] || null;
+      pageCount++;
+      if(nextUrl) console.log('[spFetchAll] 페이지'+pageCount+' 누적:'+allItems.length+'개 nextLink 있음');
     } catch(e) { break; }
   }
+  console.log('[spFetchAll] 완료: 총'+allItems.length+'개 ('+pageCount+'페이지)');
   return { value: allItems };
 }
 
