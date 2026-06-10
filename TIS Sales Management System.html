@@ -13640,27 +13640,34 @@ async function _spSyncOtherReps(){
           return (pl.savedAt||'')>(bp.savedAt||'') ? item : b;
         }catch(e){ return b; }
       });
-      // 2. 선택된 메인에 activities/issuesList 없으면 다른 키에서 보완
+      // 2. 모든 날짜 키에서 activities/issuesList/clients 누적 합산 (중복 제거)
       try{
         var bestPL=JSON.parse(best.Payload||'{}');
-        if(!bestPL.activities||!bestPL.activities.length||
-           !bestPL.issuesList||!bestPL.issuesList.length||
-           !bestPL.clients||!bestPL.clients.length){
-          allByRep[repName].forEach(function(item){
-            if(item===best) return;
-            try{
-              var pl=JSON.parse(item.Payload||'{}');
-              if((!bestPL.activities||!bestPL.activities.length)&&pl.activities&&pl.activities.length)
-                bestPL.activities=pl.activities;
-              if((!bestPL.issuesList||!bestPL.issuesList.length)&&pl.issuesList&&pl.issuesList.length)
-                bestPL.issuesList=pl.issuesList;
-              if((!bestPL.clients||!bestPL.clients.length)&&pl.clients&&pl.clients.length)
-                bestPL.clients=pl.clients;
-            }catch(e){}
-          });
-          // 병합된 페이로드로 best 업데이트
-          best={Id:best.Id,DataKey:best.DataKey,Payload:JSON.stringify(bestPL)};
-        }
+        // plan/actual/forecast/clients는 최신 키(best) 기준
+        // activities/issuesList는 모든 키 누적 (날짜별로 다를 수 있음)
+        var _allActs={}; // no_client 기준 중복 제거
+        var _allIss={}; // title_createdAt 기준 중복 제거
+        // best 먼저
+        (bestPL.activities||[]).forEach(function(a){ _allActs[(a.no||'')+'_'+(a.client||'')+a.content]=a; });
+        (bestPL.issuesList||[]).forEach(function(iss){ _allIss[(iss.title||'')+'_'+(iss.createdAt||iss.title||'')]=iss; });
+        // 다른 키들 순회 (저장일 내림차순)
+        var _others=allByRep[repName].filter(function(it){ return it!==best; });
+        _others.sort(function(a,b){
+          try{
+            var pa=JSON.parse(a.Payload||'{}'), pb=JSON.parse(b.Payload||'{}');
+            return (pb.savedAt||'')>(pa.savedAt||'')?1:-1;
+          }catch(e){ return 0; }
+        });
+        _others.forEach(function(item){
+          try{
+            var pl=JSON.parse(item.Payload||'{}');
+            (pl.activities||[]).forEach(function(a){ _allActs[(a.no||'')+'_'+(a.client||'')+a.content]=a; });
+            (pl.issuesList||[]).forEach(function(iss){ _allIss[(iss.title||'')+'_'+(iss.createdAt||iss.title||'')]=iss; });
+          }catch(e){}
+        });
+        bestPL.activities=Object.values(_allActs);
+        bestPL.issuesList=Object.values(_allIss);
+        best={Id:best.Id,DataKey:best.DataKey,Payload:JSON.stringify(bestPL)};
       }catch(e){}
       latestByRep[repName]=best;
       // 디버그: 선택된 키 로그
