@@ -13787,7 +13787,14 @@ async function _spSyncOtherReps(){
         try{
           var pl=JSON.parse(item.Payload||'{}');
           var bp=JSON.parse(b.Payload||'{}');
-          // savedAt 기준 최신 선택 (저장 방지 로직으로 빈 데이터 업로드 차단됨)
+          // 데이터 있는 것 우선, 없으면 savedAt 최신
+          var plPlan=(pl.plan||[]).reduce(function(s,v){return s+(v||0);},0);
+          var bpPlan=(bp.plan||[]).reduce(function(s,v){return s+(v||0);},0);
+          if(plPlan>0&&bpPlan===0) return item;
+          if(bpPlan>0&&plPlan===0) return b;
+          var plCli=(pl.clients||[]).length; var bpCli=(bp.clients||[]).length;
+          if(plCli>0&&bpCli===0) return item;
+          if(bpCli>0&&plCli===0) return b;
           return (pl.savedAt||'')>(bp.savedAt||'') ? item : b;
         }catch(e){ return b; }
       });
