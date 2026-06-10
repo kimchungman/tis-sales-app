@@ -13607,6 +13607,13 @@ async function _spSaveRepByName(repName){
   if(!window._isSPReady || !repName) return;
   var repData = store.reps[repName];
   if(!repData) return;
+  // 빈 데이터는 저장 안 함 (SP의 실제 데이터를 덮어쓰기 방지)
+  var _planSum=(repData.plan||[]).reduce(function(s,v){return s+(v||0);},0);
+  var _hasData=_planSum>0||(repData.clients&&repData.clients.length>0)||(repData.activities&&repData.activities.length>0);
+  if(!_hasData){
+    console.log('[저장스킵] '+repName+' - 빈 데이터 저장 안 함');
+    return;
+  }
   // 저장 시 항상 현재 시각을 savedAt으로 기록 (sync 충돌 방지)
   repData.savedAt = new Date().toISOString();
   var date = document.getElementById('mtg-date')?document.getElementById('mtg-date').value:'';
@@ -13780,20 +13787,7 @@ async function _spSyncOtherReps(){
         try{
           var pl=JSON.parse(item.Payload||'{}');
           var bp=JSON.parse(b.Payload||'{}');
-          // plan합 기준 우선 (매출 데이터가 핵심)
-          var plPlan=(pl.plan||[]).reduce(function(s,v){return s+(v||0);},0);
-          var bpPlan=(bp.plan||[]).reduce(function(s,v){return s+(v||0);},0);
-          var plScore=plPlan+(pl.clients||[]).length*100+(pl.activities||[]).length;
-          var bpScore=bpPlan+(bp.clients||[]).length*100+(bp.activities||[]).length;
-          // plan이나 clients 데이터가 있는 것 강하게 우선
-          if(plPlan>0&&bpPlan===0) return item;
-          if(bpPlan>0&&plPlan===0) return b;
-          if((pl.clients||[]).length>0&&(bp.clients||[]).length===0) return item;
-          if((bp.clients||[]).length>0&&(pl.clients||[]).length===0) return b;
-          // 전체 점수 비교
-          if(plScore>bpScore) return item;
-          if(bpScore>plScore) return b;
-          // 동점이면 savedAt 최신 우선
+          // savedAt 기준 최신 선택 (저장 방지 로직으로 빈 데이터 업로드 차단됨)
           return (pl.savedAt||'')>(bp.savedAt||'') ? item : b;
         }catch(e){ return b; }
       });
