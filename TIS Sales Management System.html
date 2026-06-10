@@ -13789,15 +13789,10 @@ async function _spSyncOtherReps(){
           }
           return;
         }
-        // TEAM_REPS 매칭: 이름 기준으로 유연하게 비교
-        if(allReps.length>0){
-          var _matched = allReps.some(function(r){
-            return r===repName ||
-              (typeof _sanitizeDKey==='function' && _sanitizeDKey(r)===_sanitizeDKey(repName)) ||
-              r.indexOf(repName)===0 || repName.indexOf(r)===0;
-          });
-          if(!_matched) return; // 완전히 다른 이름이면 무시
-        }
+        // TEAM_REPS 매칭: allReps가 있으면 참고하지만 강제 제외 안 함
+        // 신규팀/담당자는 authCfg 로드 전일 수 있으므로 허용
+        // 단 숫자만으로 된 키(테스트 데이터) 제외
+        if(repName && /^[\d]+$/.test(repName)) return; // 숫자만인 키 무시
         var item=latestByRep[repName];
         var _rawPL=item.Payload||item.payload||item.Description||'{}'; var repData=JSON.parse(_rawPL);
         if(!store.reps[repName]) store.reps[repName]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[]};
