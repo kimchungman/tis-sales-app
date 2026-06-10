@@ -8503,9 +8503,23 @@ async function _initSP() {
     _setSPStatus('connected');
     showToast('✅ SharePoint 연결됨');
 
-    // 설정 + 오늘 데이터 자동 로드 (최초 접속 시 동기화)
+    // 설정 로드
     await _spLoadSettings();
-    await _spLoadToday();
+    // 관리자: snapshot으로 전체 데이터 로드
+    // rep/guest: rep_data로 최신 데이터 로드 (_spSyncOtherReps)
+    if(session && session.role === 'admin'){
+      await _spLoadToday();
+    } else {
+      // rep/guest: 최신 rep_data 직접 로드 (snapshot 의존 없음)
+      try{
+        var _changed = await _spSyncOtherReps();
+        if(_changed){
+          try{ renderDashboard(); }catch(e){}
+          try{ renderIssues(); }catch(e){}
+          try{ renderPipeline(); }catch(e){}
+        }
+      }catch(e){ console.warn('[spSync initial]',e); }
+    }
     await _spLoadHistList();
     // SP 로드 완료 표시 → autoSave가 SP에 저장 가능해짐
     window._spDataLoaded = true;
@@ -8564,7 +8578,11 @@ async function _initSP() {
     window._spSyncTimer = setInterval(async function(){
       if(!window._isSPReady) return;
       try{
-        await _spLoadToday();
+        if(session && session.role === 'admin'){
+          await _spLoadToday();
+        } else {
+          await _spSyncOtherReps();
+        }
         await _spLoadHistList();
         renderDashboard();
         renderIssues();
