@@ -4860,6 +4860,9 @@ function renderInputTeamTabs(){/* 통합탭으로 대체됨 */}
 
 function getDashReps(){
   // 대상 팀 목록
+  // 디버그: store.reps 전체 키 출력
+  console.log('[getDashReps] store.reps keys='+Object.keys(store.reps||{}).join(','));
+  console.log('[getDashReps] TEAM_REPS='+JSON.stringify(Object.keys(TEAM_REPS||{})));
   const teamsFilter = currentDashTeam==='all' ? TEAMS : [currentDashTeam];
   const all=[];
   teamsFilter.forEach(function(t){
