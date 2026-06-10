@@ -3815,6 +3815,9 @@ function loadAuthCfg(){
     authCfg.teams.forEach(function(t){ TEAMS.push(t); });
   }
   syncTeamData();
+  // TEAM_REPS 갱신 후 대시보드 재렌더
+  if(typeof renderDashboard==='function') try{ renderDashboard(); }catch(e){}
+  if(typeof renderPipeline==='function') try{ renderPipeline(); }catch(e){}
 }
 
 // 팀 데이터 동기화 (authCfg.teamReps → TEAM_REPS, REPS)
@@ -4859,17 +4862,18 @@ function renderInputTeamTabs(){/* 통합탭으로 대체됨 */}
 
 
 function getDashReps(){
-  // 대상 팀 목록
-  // 디버그: store.reps 전체 키 출력
-  console.log('[getDashReps] store.reps keys='+Object.keys(store.reps||{}).join(','));
-  console.log('[getDashReps] TEAM_REPS='+JSON.stringify(Object.keys(TEAM_REPS||{})));
   const teamsFilter = currentDashTeam==='all' ? TEAMS : [currentDashTeam];
   const all=[];
   teamsFilter.forEach(function(t){
-    (TEAM_REPS[t]||[]).forEach(function(r){
+    var teamReps = TEAM_REPS[t]||[];
+    // TEAM_REPS 비어있으면 authCfg.teamReps에서 즉시 갱신
+    if(!teamReps.length && typeof authCfg!=='undefined' && authCfg.teamReps && authCfg.teamReps[t] && authCfg.teamReps[t].length){
+      teamReps = authCfg.teamReps[t];
+      TEAM_REPS[t] = teamReps;
+    }
+    teamReps.forEach(function(r){
       if(all.indexOf(r)<0){
-        // store.reps 없으면 초기화
-        if(!store.reps[r]) store.reps[r]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[]};
+        if(!store.reps[r]) store.reps[r]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[],contracts:[]};
         all.push(r);
       }
     });
