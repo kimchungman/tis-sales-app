@@ -8657,14 +8657,14 @@ function _findRepByKey(sk){
   if(typeof TEAM_REPS!=='undefined'){
     Object.keys(TEAM_REPS).forEach(function(t){ (_allReps=_allReps.concat(TEAM_REPS[t]||[])); });
   } else if(typeof REPS!=='undefined'){ _allReps=REPS; }
-  // 1차: 정확히 일치
+  // 1차: _sanitizeDKey 비교 (공백↔언더스코어 통일)
   for(var _i=0;_i<_allReps.length;_i++){
-    if(_sanitizeDKey(_allReps[_i])===sk) return _allReps[_i];
+    if(_sanitizeDKey(_allReps[_i])===_sanitizeDKey(sk)) return _allReps[_i];
   }
-  // 2차: sk가 rep명으로 시작하는지 (구버전: '김충만_책임' → '김충만' 찾기)
+  // 2차: sk가 rep명으로 시작하는지
   for(var _j=0;_j<_allReps.length;_j++){
     var _san=_sanitizeDKey(_allReps[_j]);
-    if(sk.indexOf(_san)===0||(sk+' ').indexOf(_san+'_')===0||(sk+' ').indexOf(_san+' ')===0) return _allReps[_j];
+    if(_sanitizeDKey(sk).indexOf(_san)===0) return _allReps[_j];
   }
   // 3차: sk에서 마지막 _단어 제거 후 재시도 (직책 suffix)
   var _parts=sk.split('_');
@@ -8674,7 +8674,9 @@ function _findRepByKey(sk){
       if(_sanitizeDKey(_allReps[_k])===_skShort) return _allReps[_k];
     }
   }
-  return sk;
+  // 4차: TEAM_REPS에 없어도 언더스코어를 공백으로 변환해서 반환
+  // (신규팀 담당자: authCfg 로드 전일 수 있음)
+  return sk.replace(/_/g,' ');
 }
 
 // DataKey에서 rep명+날짜 분리 (신구 형식 모두)
@@ -13707,18 +13709,32 @@ async function _spSyncOtherReps(){
         if(_cr&&_cpl.contracts&&Math.abs(_cyr-_cyNow)<=2){
           // _cr(이름만) → 실제 store.reps 키(이름+직책 가능) 매핑
           var _crKey = (typeof _findRepByKey==='function') ? _findRepByKey(_cr) : _cr;
-          console.log('[계약매핑] _cr='+_cr+' → _crKey='+_crKey);
-          if(!store.reps[_crKey]) store.reps[_crKey]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[],contracts:[]};
-          if(!store.reps[_crKey].contracts) store.reps[_crKey].contracts=[];
+          // store.reps에서 실제 키 찾기 (직책 포함 여부 불일치 대응)
+          var _crActualKey=_crKey;
+          if(!store.reps[_crActualKey]){
+            // store.reps 키 중에서 _sanitizeDKey가 같은 것 찾기
+            var _storeKeys=Object.keys(store.reps);
+            for(var _ski=0;_ski<_storeKeys.length;_ski++){
+              if((typeof _sanitizeDKey==='function')&&_sanitizeDKey(_storeKeys[_ski])===_sanitizeDKey(_crKey)){
+                _crActualKey=_storeKeys[_ski]; break;
+              }
+              if(_storeKeys[_ski].indexOf(_crKey)===0||_crKey.indexOf(_storeKeys[_ski])===0){
+                _crActualKey=_storeKeys[_ski]; break;
+              }
+            }
+          }
+          console.log('[계약매핑] _cr='+_cr+' → _crKey='+_crKey+' → _crActualKey='+_crActualKey);
+          if(!store.reps[_crActualKey]) store.reps[_crActualKey]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[],contracts:[]};
+          if(!store.reps[_crActualKey].contracts) store.reps[_crActualKey].contracts=[];
           // savedAt 비교: SP가 더 최신이면 해당 연도 교체
-          var _cLocalAt=new Date((store.reps[_crKey].contractSavedAt||{})[ _cyr]||0).getTime();
+          var _cLocalAt=new Date((store.reps[_crActualKey]&&store.reps[_crActualKey].contractSavedAt||{})[ _cyr]||0).getTime();
           var _cSpAt=new Date(_cpl.savedAt||0).getTime();
           if(_cSpAt >= _cLocalAt){
-            store.reps[_crKey].contracts=store.reps[_crKey].contracts
+            store.reps[_crActualKey].contracts=store.reps[_crActualKey].contracts
               .filter(function(c){return c.startDate?parseInt(c.startDate.substr(0,4))!==_cyr:false;})
               .concat(_cpl.contracts);
-            if(!store.reps[_crKey].contractSavedAt) store.reps[_crKey].contractSavedAt={};
-            store.reps[_crKey].contractSavedAt[_cyr]=_cpl.savedAt||'';
+            if(!store.reps[_crActualKey].contractSavedAt) store.reps[_crActualKey].contractSavedAt={};
+            store.reps[_crActualKey].contractSavedAt[_cyr]=_cpl.savedAt||'';
           }
         }
       }catch(_ce){}
