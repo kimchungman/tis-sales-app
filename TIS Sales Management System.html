@@ -13614,7 +13614,10 @@ async function _spSyncOtherReps(){
       _actIssItems.push(item);
       return;
     }
+    // 메인 rep_data만 수집 (act_/iss_/vl_ 아카이브 제외)
     if(item.DataType!=='rep_data'&&!(item.Title&&item.Title.indexOf('rep_data_')===0)) return;
+    // 아카이브 키 제외 (act_, iss_, vl_ 포함된 것)
+    if(item.DataKey&&(item.DataKey.indexOf('_act_')>=0||item.DataKey.indexOf('_iss_')>=0||item.DataKey.indexOf('_vl_')>=0)) return;
         var repName=_parseRepDataKey(item.DataKey).rep;
         if(!repName) return;
         if(!allByRep[repName]) allByRep[repName]=[];
