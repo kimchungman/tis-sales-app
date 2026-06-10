@@ -13780,12 +13780,20 @@ async function _spSyncOtherReps(){
         try{
           var pl=JSON.parse(item.Payload||'{}');
           var bp=JSON.parse(b.Payload||'{}');
-          // 데이터 풍부도 점수 (clients+activities+plan합계)
-          var plScore=(pl.clients||[]).length+(pl.activities||[]).length+(pl.plan||[]).reduce(function(s,v){return s+(v||0);},0)+(pl.issuesList||[]).length;
-          var bpScore=(bp.clients||[]).length+(bp.activities||[]).length+(bp.plan||[]).reduce(function(s,v){return s+(v||0);},0)+(bp.issuesList||[]).length;
-          // 데이터가 있는 것 우선, 동점이면 savedAt 최신 우선
-          if(plScore>0&&bpScore===0) return item;
-          if(bpScore>0&&plScore===0) return b;
+          // plan합 기준 우선 (매출 데이터가 핵심)
+          var plPlan=(pl.plan||[]).reduce(function(s,v){return s+(v||0);},0);
+          var bpPlan=(bp.plan||[]).reduce(function(s,v){return s+(v||0);},0);
+          var plScore=plPlan+(pl.clients||[]).length*100+(pl.activities||[]).length;
+          var bpScore=bpPlan+(bp.clients||[]).length*100+(bp.activities||[]).length;
+          // plan이나 clients 데이터가 있는 것 강하게 우선
+          if(plPlan>0&&bpPlan===0) return item;
+          if(bpPlan>0&&plPlan===0) return b;
+          if((pl.clients||[]).length>0&&(bp.clients||[]).length===0) return item;
+          if((bp.clients||[]).length>0&&(pl.clients||[]).length===0) return b;
+          // 전체 점수 비교
+          if(plScore>bpScore) return item;
+          if(bpScore>plScore) return b;
+          // 동점이면 savedAt 최신 우선
           return (pl.savedAt||'')>(bp.savedAt||'') ? item : b;
         }catch(e){ return b; }
       });
