@@ -13730,6 +13730,7 @@ async function _spSyncOtherReps(){
           var _cLocalAt=new Date((store.reps[_crActualKey]&&store.reps[_crActualKey].contractSavedAt||{})[ _cyr]||0).getTime();
           var _cSpAt=new Date(_cpl.savedAt||0).getTime();
           if(_cSpAt >= _cLocalAt){
+            console.log('[계약적용] _crActualKey='+_crActualKey+' 계약'+_cpl.contracts.length+'건 적용');
             store.reps[_crActualKey].contracts=store.reps[_crActualKey].contracts
               .filter(function(c){return c.startDate?parseInt(c.startDate.substr(0,4))!==_cyr:false;})
               .concat(_cpl.contracts);
@@ -15619,6 +15620,8 @@ function _sortContractChain(arr){
 }
 
 function _rebuildContractPanel(rep){ try {
+  console.log('[계약패널] rep='+rep+' store.reps keys='+Object.keys(store.reps||{}).filter(function(k){return k.indexOf(rep.split(' ')[0])>=0;}).join(','));
+  console.log('[계약패널] contracts='+(store.reps[rep]&&store.reps[rep].contracts||[]).length+'건');
   var el=document.getElementById('cpl-'+rep);
   if(!el)return;
   // 해시 비교: 데이터 변경 없으면 rebuild 스킵
