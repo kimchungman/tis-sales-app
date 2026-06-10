@@ -13555,7 +13555,9 @@ async function _spSaveMyRep(){
   }
   if(_payload.length <= SP_LIMIT){
     delete _d.visitLog; // visitLog는 별도 키로 저장
+  console.log('[저장시도] repKey='+_repKey+' payload크기='+_payload.length+'자 act='+(_d.activities||[]).length+'건 clients='+(_d.clients||[]).length+'건 plan합='+(_d.plan||[]).reduce(function(s,v){return s+(v||0);},0));
   await _spSaveItem('rep_data', _repKey, _d);
+  console.log('[저장완료] repKey='+_repKey);
   } else {
     // 1단계: visitLog를 현재 연도만 남기고 분리
     var _curYear = new Date().getFullYear().toString();
@@ -13654,6 +13656,9 @@ async function _spSyncOtherReps(){
     var res=await _spFetchAll(qUrl);
     var items=(res&&res.value)||[];
     var _actIssItems=[]; // 2패스용 act/iss 아카이브 수집
+    // SP에서 가져온 rep_data 키 전체 출력
+    var _repDataItems=items.filter(function(i){ return i.DataType==='rep_data'&&i.DataKey&&i.DataKey.indexOf('_act_')<0&&i.DataKey.indexOf('_iss_')<0&&i.DataKey.indexOf('_vl_')<0&&i.DataKey.indexOf('_part')<0&&i.DataKey.indexOf('_idx')<0; });
+    console.log('[SP rep_data 목록] '+_repDataItems.length+'개: '+_repDataItems.map(function(i){return i.DataKey;}).join(', '));
 
     // 분할 저장 아이템 병합 (_part0,_part1... → 원본 복원)
     var _partMap={}; // title → [chunks]
