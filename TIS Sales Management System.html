@@ -2145,7 +2145,7 @@ document.addEventListener('mousedown',function(e){
 .wk-pi-rw{font-size:10px;font-weight:700;color:#B45309;}
 .wk-pi-rc{font-size:10px;color:#92400E;line-height:1.4;}
 .wk-carry-badge{display:inline-flex;align-items:center;gap:3px;background:#FEE2E2;border:1px solid #FECACA;border-radius:20px;padding:2px 7px;font-size:9px;color:#DC2626;font-weight:700;margin-top:4px;}
-.wk-ans-btn{display:block;width:100%;margin-top:6px;padding:5px;background:var(--blue);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;text-align:center;cursor:pointer;}
+.wk-ans-btn{font-size:11px;padding:3px 10px;border-radius:8px;border:1px solid var(--accent,#4f7fff);background:var(--accent,#4f7fff);color:#fff;cursor:pointer;margin-top:5px;font-weight:600;}
 /* 카드 */
 .wk-card{background:var(--card);border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px solid var(--border);}
 .wk-ch{padding:10px 14px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;}
@@ -2565,7 +2565,9 @@ window._wkSaveEntryEdit=async function(entryId){
   entry.text=ed.innerHTML;
   entry.editedAt=window._wkNowStr();
   // weekMode에 따라 올바른 주차 키 사용
-  var weekKey=(window._wk&&window._wk.weekMode==='last')?_wkLastKey():_wkThisKey();
+  var weekKey=(window._wk&&window._wk.weekMode==='last')?_wkLastKey()
+    :(window._wk&&window._wk.weekMode==='period'&&window._wk.selectedWeekKey)?window._wk.selectedWeekKey
+    :_wkThisKey();
   var myRep=window._wkGetMyName();
   var myEntries=window._wk.entries.filter(function(e){return e.rep===myRep;});
   try{ await window._wkSaveFeed(weekKey,myRep,myEntries); }catch(e){ console.warn('[edit save]',e); return; }
@@ -2580,7 +2582,9 @@ window._wkDeleteEntry=async function(entryId){
   if(idx<0) return;
   window._wk.entries.splice(idx,1);
   // weekMode에 따라 올바른 주차 키 사용
-  var weekKey=(window._wk&&window._wk.weekMode==='last')?_wkLastKey():_wkThisKey();
+  var weekKey=(window._wk&&window._wk.weekMode==='last')?_wkLastKey()
+    :(window._wk&&window._wk.weekMode==='period'&&window._wk.selectedWeekKey)?window._wk.selectedWeekKey
+    :_wkThisKey();
   var myRep=window._wkGetMyName();
   var myEntries=window._wk.entries.filter(function(e){return e.rep===myRep;});
   try{ await window._wkSaveFeed(weekKey,myRep,myEntries); }catch(e){ console.warn('[del save]',e); return; }
@@ -3582,8 +3586,51 @@ document.addEventListener('selectionchange',function(){
   <div class="wk-week-row">
     <div class="wk-wbtn on" id="wk-w-this" onclick="_wkSetWeek('this')">이번주</div>
     <div class="wk-wbtn" id="wk-w-last" onclick="_wkSetWeek('last')">지난주</div>
-    <div class="wk-wbtn-period" onclick="_wkOpenPeriod()">📅 기간 설정</div>
+    <div class="wk-wbtn-period" onclick="_wkOpenPeriod()">📅 주차 선택</div>
+
   </div>
+
+<!-- 이전 회차 불러오기 모달 -->
+<div id="wk-load-modal" style="position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:700;display:none;align-items:center;justify-content:center;backdrop-filter:blur(2px);">
+  <div style="background:#fff;border-radius:16px;width:340px;box-shadow:0 24px 64px rgba(15,23,42,.18);overflow:hidden;">
+    <!-- 헤더 -->
+    <div style="padding:20px 22px 16px;border-bottom:1px solid #F1F5F9;display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#0F172A;">이전 회차 불러오기</div>
+        <div style="font-size:11px;color:#94A3B8;margin-top:2px;">선택한 주차를 현재 회의록으로 복사합니다</div>
+      </div>
+      <button onclick="_wkCloseLoadWeek()" style="border:none;background:#F1F5F9;border-radius:8px;width:28px;height:28px;cursor:pointer;color:#64748B;font-size:14px;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+    <!-- 바디 -->
+    <div style="padding:18px 22px;">
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:600;color:#475569;margin-bottom:6px;letter-spacing:.04em;">년도</div>
+        <select id="wk-load-year" style="width:100%;padding:8px 10px;border:1.5px solid #E2E8F0;border-radius:8px;font-size:12px;color:#0F172A;background:#fff;cursor:pointer;"></select>
+      </div>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:600;color:#475569;margin-bottom:6px;letter-spacing:.04em;">주차 선택</div>
+        <select id="wk-load-week" style="width:100%;padding:8px 10px;border:1.5px solid #E2E8F0;border-radius:8px;font-size:12px;color:#0F172A;background:#fff;cursor:pointer;"></select>
+      </div>
+      <div style="margin-bottom:18px;">
+        <div style="font-size:11px;font-weight:600;color:#475569;margin-bottom:8px;letter-spacing:.04em;">복사 방식</div>
+        <div style="display:flex;gap:8px;">
+          <label style="flex:1;display:flex;align-items:center;gap:8px;padding:8px 12px;border:1.5px solid #E2E8F0;border-radius:8px;cursor:pointer;font-size:11px;color:#374151;" id="wk-load-opt-replace">
+            <input type="radio" name="wk-load-mode" value="replace" checked style="accent-color:#4f7fff;"> 현재 내용 대체
+          </label>
+          <label style="flex:1;display:flex;align-items:center;gap:8px;padding:8px 12px;border:1.5px solid #E2E8F0;border-radius:8px;cursor:pointer;font-size:11px;color:#374151;" id="wk-load-opt-append">
+            <input type="radio" name="wk-load-mode" value="append" style="accent-color:#4f7fff;"> 이어붙이기
+          </label>
+        </div>
+      </div>
+    </div>
+    <!-- 푸터 -->
+    <div style="padding:14px 22px;border-top:1px solid #F1F5F9;display:flex;gap:8px;justify-content:flex-end;">
+      <button onclick="_wkCloseLoadWeek()" style="padding:8px 18px;border:1.5px solid #E2E8F0;border-radius:8px;background:#fff;color:#64748B;font-size:12px;font-weight:600;cursor:pointer;">취소</button>
+      <button onclick="_wkApplyLoadWeek()" style="padding:8px 20px;border:none;border-radius:8px;background:#4f7fff;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">불러오기</button>
+    </div>
+  </div>
+</div>
+
   <!-- 보고서 / 회의록 탭 -->
   <div class="wk-view-tabs">
     <div class="wk-vtab on" id="wk-vt-report" onclick="_wkSetView('report')">보고서</div>
@@ -3637,6 +3684,10 @@ document.addEventListener('selectionchange',function(){
         <button class="wk-tb" title="기울임 (Ctrl+I)" onclick="_wkFmt('italic')"><i style="font-size:12px;">I</i></button>
         <button class="wk-tb" title="밑줄 (Ctrl+U)" onclick="_wkFmt('underline')"><u>U</u></button>
         <button class="wk-tb" title="취소선" onclick="_wkFmt('strikeThrough')"><s>S</s></button>
+        <div style="width:1px;height:14px;background:#E2E8F0;margin:0 4px;flex-shrink:0;"></div>
+        <button class="wk-tb" title="이전 회의록 불러오기" onclick="_wkOpenLoadWeek()" style="width:auto;gap:4px;color:#4f7fff;border-color:#BFDBFE;background:#EFF6FF;padding:3px 10px;font-size:10px;font-weight:700;white-space:nowrap;">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>이전 회의록 불러오기
+        </button>
       </div>
 
       <div class="wk-editor rich-ed" id="wk-editor" contenteditable="true" data-placeholder="보고 또는 지시 내용 입력... (@이름 으로 담당자 언급)"></div>
@@ -3693,14 +3744,14 @@ document.addEventListener('selectionchange',function(){
 <!-- 기간 설정 모달 -->
 <div class="wk-period-modal" id="wk-period-modal">
   <div class="wk-period-box">
-    <div class="wk-period-title">📅 기간 설정</div>
+    <div class="wk-period-title">📅 회의 주차 선택</div>
     <div class="wk-period-row">
-      <span class="wk-period-label">시작</span>
-      <input type="date" class="wk-period-input" id="wk-period-from">
+      <span class="wk-period-label">년도</span>
+      <select class="wk-period-input" id="wk-period-year" style="width:100%;"></select>
     </div>
     <div class="wk-period-row">
-      <span class="wk-period-label">종료</span>
-      <input type="date" class="wk-period-input" id="wk-period-to">
+      <span class="wk-period-label">주차</span>
+      <select class="wk-period-input" id="wk-period-week" style="width:100%;"></select>
     </div>
     <div class="wk-period-btns">
       <button class="wk-period-cancel" onclick="_wkClosePeriod()">취소</button>
@@ -3753,7 +3804,7 @@ let currentTeam = '솔루션영업팀'; // 현재 선택된 팀
 // ══════════════════════════════════════════
 let session = { role: 'locked', rep: null, team: null };
 let authCfg = { adminPw: '13579',
-  chartType: 'combo', guestPw: '', repPws: {}, repPerms: {}, repEmails: {}, repTitles: {}, hiddenReps: [], teamReps: {'솔루션영업팀':['전성현','허인수','김충만','최원진'],'그룹지원팀':[]}, teamColors: {'솔루션영업팀':['#1E5FBE','#00A882','#C05000','#7B2FBE'],'그룹지원팀':[]} };
+  chartType: 'combo', guestPw: '', repPws: {}, repPerms: {}, repEmails: {}, repTitles: {}, hiddenReps: [], cdbHiddenReps: [], teamReps: {'솔루션영업팀':['전성현','허인수','김충만','최원진'],'그룹지원팀':[]}, teamColors: {'솔루션영업팀':['#1E5FBE','#00A882','#C05000','#7B2FBE'],'그룹지원팀':[]} };
 
 function loadAuthCfg(){
   const saved = localStorage.getItem('weekly_auth');
@@ -4644,6 +4695,16 @@ function showPage(id,navEl){
         renderContractDashboard();
       }else{
         setTimeout(function(){if(typeof renderContractDashboard==='function')renderContractDashboard();},500);
+      }
+    }
+  }
+  if(id==='weekly'){
+    // 주간회의 진입 시 데이터가 없으면 로드, 있으면 즉시 렌더
+    if(typeof _wkSetView==='function' && typeof _wk!=='undefined'){
+      if(_wk.entries&&_wk.entries.length>0){
+        _wkRenderFeed(); _wkRenderReport();
+      } else {
+        if(typeof _wkLoad==='function'){ _wk.loading=false; _wkLoad(); }
       }
     }
   }
@@ -8154,7 +8215,6 @@ function renameRep(oldName, newName){
 }
 
 function deleteRep(name){
-  if(!confirm(`'${name}' 담당자를 삭제하시겠습니까?\n\n⚠️ 해당 담당자의 모든 데이터가 삭제됩니다.`))return;
   const idx=REPS.indexOf(name);
   if(idx===-1)return;
   REPS.splice(idx,1);
@@ -8772,7 +8832,7 @@ async function _spLoadToday() {
     if(res && res.value && res.value[0] && res.value[0].Payload){
       const latest = JSON.parse(res.value[0].Payload);
       const latestKey = res.value[0].DataKey || today;
-      const latestDate = latestKey.split('_').pop() || today;
+      const latestDate = today; // 항상 오늘 날짜 사용 (SP 저장 날짜로 과거 이동 방지)
       _applySnap(latest, latestDate);
     }
   }catch(e){}
@@ -13440,7 +13500,11 @@ async function _spSaveChangedReps(currentReps){
     }catch(e){}
   });
   for(var i=0;i<toSave.length;i++){
-    try{ await _spSaveRepByName(toSave[i]); }catch(e){}
+    try{ 
+      await _spSaveRepByName(toSave[i]);
+      // visitLog도 별도 저장 (관리자가 수정 시)
+      if(typeof _spSaveVisitLog==='function') await _spSaveVisitLog(toSave[i]);
+    }catch(e){}
   }
 }
 async function _spSaveRepByName(repName){
@@ -14820,22 +14884,29 @@ function _cdbShowRepPopup(id){
   var autoReps=_cdbGetReps(item.name);
   var manualReps=item.manualReps||[];
   var autoNames=autoReps.map(function(r){return r.rep;});
-  var ALL_REPS=window.REPS&&window.REPS.length?window.REPS:Object.keys(store.reps||{});
-  // 이름+직책 형식 표시 함수 (중복 직책 방지)
-  function _repLabel(r){
+  var _hiddenSet=(authCfg&&authCfg.cdbHiddenReps)||[];
+  var ALL_REPS=(window.REPS&&window.REPS.length?window.REPS:Object.keys(store.reps||{})).filter(function(r){ return _hiddenSet.indexOf(r)<0; });
+  // 이름+직책 형식 표시 함수 (중복 직책 방지) - 전역 노출
+  window._cdbRepLabel=function(r){
     if(typeof getRepDisplayName==='function') return _cdbEsc(getRepDisplayName(r));
     return _cdbEsc(r);
-  }
+  };
+  var _repLabel=window._cdbRepLabel;
   var old=document.getElementById('_cdb_rep_pop'); if(old) old.remove();
   var wrap=document.createElement('div');
   wrap.id='_cdb_rep_pop';
   wrap.style.cssText='position:fixed;inset:0;z-index:10001;background:rgba(15,23,42,.4);display:flex;align-items:center;justify-content:center;padding:20px;';
   var autoHTML=autoReps.map(function(r){
-    return '<div style="display:flex;align-items:center;gap:10px;padding:9px 20px;border-bottom:1px solid #F8FAFC;cursor:default;">'
-      +'<div style="width:32px;height:32px;border-radius:50%;background:#DBEAFE;color:#2563EB;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">'+r.rep.charAt(0)+'</div>'
-      +'<div><div style="font-size:12px;font-weight:600;color:#0D1B2E;">'+_repLabel(r.rep)+'</div><div style="font-size:10px;color:#94A3B8;">'+r.srcs.join(' · ')+' 자동감지</div></div>'
-      +'<div style="margin-left:auto;width:18px;height:18px;border-radius:5px;background:#EFF6FF;border:1.5px solid #4f7fff;display:flex;align-items:center;justify-content:center;color:#4f7fff;font-size:11px;font-weight:700;">✓</div>'
-    +'</div>';
+    var isAuto=manualReps.includes(r.rep); // 수동 제외 여부 (체크 해제 상태)
+    var rEsc=r.rep.replace(/'/g,"\\'");
+    var chkStyle='cursor:pointer;width:18px;height:18px;border-radius:5px;border:1.5px solid '+(isAuto?'#4f7fff':'#E2E8F0')+';background:'+(isAuto?'#4f7fff':'transparent')+';display:flex;align-items:center;justify-content:center;flex-shrink:0;';
+    var row='<div style="display:flex;align-items:center;gap:10px;padding:9px 20px;border-bottom:1px solid #F8FAFC;">';
+    row+='<div style="width:32px;height:32px;border-radius:50%;background:#DBEAFE;color:#2563EB;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">'+(_cdbEsc(r.rep)||'?').charAt(0)+'</div>';
+    row+='<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:600;color:#0D1B2E;">'+_repLabel(r.rep)+'</div><div style="font-size:10px;color:#94A3B8;">'+_cdbEsc(r.label||'자동')+'</div></div>';
+    row+='<div onclick="event.stopPropagation();_cdbToggleManualRep(\''+id+'\',\''+rEsc+'\',null)" style="'+chkStyle+'">';
+    if(isAuto) row+='<svg width="10" height="10" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>';
+    row+='</div></div>';
+    return row;
   }).join('');
   var manHTML=ALL_REPS.filter(function(r){return !autoNames.includes(r);}).map(function(r){
     var isMn=manualReps.includes(r);
@@ -14848,13 +14919,33 @@ function _cdbShowRepPopup(id){
     row+='<div onclick="event.stopPropagation();_cdbToggleManualRep(\''+id+'\',\''+rEsc+'\',null)" style="'+chkStyle+'">';
     if(isMn) row+='<svg width="10" height="10" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>';
     row+='</div>';
-    row+='<button onclick="event.stopPropagation();var msg=_repLabel(\''+rEsc+'\')+ \' 담당자를 삭제하시겠습니까?\\n\\n경고: 해당 담당자의 모든 데이터가 삭제됩니다.\';if(confirm(msg)){document.getElementById(\'_cdb_rep_pop\').remove();deleteRep(\''+rEsc+'\')}" style="width:22px;height:22px;border-radius:5px;border:1.5px solid #FECACA;background:#FEF2F2;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="담당자 삭제">';
+    row+='<button onclick="event.stopPropagation();window._cdbConfirmHide(\''+rEsc+'\')" style="width:22px;height:22px;border-radius:5px;border:1.5px solid #FECACA;background:#FEF2F2;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;" title="목록에서 숨기기">';
     row+='<svg width="10" height="10" viewBox="0 0 10 10"><line x1="2" y1="2" x2="8" y2="8" stroke="#DC2626" stroke-width="1.8" stroke-linecap="round"/><line x1="8" y1="2" x2="2" y2="8" stroke="#DC2626" stroke-width="1.8" stroke-linecap="round"/></svg>';
     row+='</button>';
     row+='</div>';
     row+='</div>';
     return row;
   }).join('');
+
+  // 숨겨진 담당자 섹션 (관리자만 복구 가능)
+  var _isAdmin=session&&session.role==='admin';
+  var _cdbHidden=_isAdmin?((authCfg&&authCfg.cdbHiddenReps)||[]):[];
+  var _allRepsRaw=window.REPS&&window.REPS.length?window.REPS:Object.keys(store.reps||{});
+  var hiddenHTML='';
+  if(_cdbHidden.length){
+    hiddenHTML='<div style="padding:10px 20px 6px;border-top:1px solid #F1F5F9;">';
+    hiddenHTML+='<div style="font-size:10px;font-weight:600;color:#94A3B8;letter-spacing:.04em;margin-bottom:6px;">숨긴 담당자</div>';
+    _cdbHidden.filter(function(r){ return _allRepsRaw.indexOf(r)>=0; }).forEach(function(r){
+      var rEsc2=r.replace(/'/g,"\'");
+      hiddenHTML+='<div style="display:flex;align-items:center;gap:10px;padding:7px 0;">';
+      hiddenHTML+='<div style="width:28px;height:28px;border-radius:50%;background:#F1F5F9;color:#94A3B8;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">'+(r||'?').charAt(0)+'</div>';
+      hiddenHTML+='<div style="flex:1;font-size:12px;color:#94A3B8;">'+_repLabel(r)+'</div>';
+      hiddenHTML+='<button onclick="event.stopPropagation();window._cdbUnhideRep(\''+rEsc2+'\');var p=document.getElementById(\'_cdb_rep_pop\');if(p)p.remove();setTimeout(function(){_cdbShowRepPopup(\''+id+'\');},100);" style="padding:3px 10px;border:1.5px solid #BFDBFE;border-radius:6px;background:#EFF6FF;color:#2563EB;font-size:11px;font-weight:600;cursor:pointer;">복구</button>';
+      hiddenHTML+='</div>';
+    });
+    hiddenHTML+='</div>';
+  }
+
   wrap.innerHTML='<div style="background:#fff;border-radius:16px;width:100%;max-width:340px;max-height:80vh;box-shadow:0 20px 60px rgba(0,0,0,.16);border:1px solid #E2E8F0;overflow:hidden;display:flex;flex-direction:column;">'
     +'<div style="padding:16px 20px 12px;border-bottom:1px solid #F1F5F9;display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0;">'
       +'<div><div style="font-size:14px;font-weight:700;color:#0D1B2E;">영업담당 관리</div><div style="font-size:11px;color:#94A3B8;margin-top:2px;">'+_cdbEsc(item.name)+'</div></div>'
@@ -14864,6 +14955,7 @@ function _cdbShowRepPopup(id){
     +(autoReps.length?'<div style="padding:8px 20px 4px;font-size:10px;font-weight:700;color:#94A3B8;letter-spacing:.07em;text-transform:uppercase;">자동 감지</div>'+autoHTML:'')
     +(ALL_REPS.filter(function(r){return !autoNames.includes(r);}).length?'<div style="padding:8px 20px 4px;font-size:10px;font-weight:700;color:#94A3B8;letter-spacing:.07em;text-transform:uppercase;">수동 추가</div>'+manHTML:'')
     +'</div>'
+    +(hiddenHTML||'')
     +'<div style="padding:12px 20px;border-top:1px solid #F1F5F9;flex-shrink:0;">'
       +'<button onclick="document.getElementById(\'_cdb_rep_pop\').remove()" style="width:100%;padding:9px;border-radius:9px;border:none;background:#4f7fff;color:#fff;font-size:12px;font-weight:600;cursor:pointer;">완료</button>'
     +'</div>'
@@ -15107,11 +15199,11 @@ window.showContractDetail=function(rep,cid){ try {
 
   // 이력 타임라인
   var tlHtml='';
-  var _visibleHist=history.slice(0,4);
-  var _moreHist=history.length>4?history.length-4:0;
+  var _visibleHist=history; // 전체 표시
+  // _moreHist 제거 (전체 표시로 변경)
   _visibleHist.forEach(function(h2,idx){
     var isCur=idx===0;                        // 최신 = 현재
-    var isOldest=idx===history.length-1;      // 가장 오래된 = 최초
+    var isOldest=idx===_visibleHist.length-1;      // 가장 오래된 = 최초
     var isViewing=h2.id===cid;           // 현재 보고있는 계약
     var dotCol=isCur?'#2563EB':isOldest?'#94A3B8':'#CBD5E1';
     var dotBg=isCur?'#EFF6FF':'#F8FAFC';
@@ -15180,7 +15272,7 @@ window.showContractDetail=function(rep,cid){ try {
     +'</div>'
 
     // RIGHT - 이력
-    +'<div style="width:220px;border-left:1px solid #F1F5F9;overflow-y:auto;padding:16px 14px;flex-shrink:0;">'
+    +'<div style="width:220px;border-left:1px solid #F1F5F9;overflow-y:auto;padding:16px 14px;flex-shrink:0;max-height:100%;">'
     +'<div style="font-size:11px;font-weight:600;color:#64748B;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px;">갱신 이력 ('+history.length+'건)</div>'
     +tlHtml
     +'</div>'
@@ -15802,9 +15894,9 @@ function renderContractDashboard(){
       h+='';
       var TH3='padding:8px 6px !important;font-weight:500;color:#94A3B8;font-size:11px;border-bottom:2px solid #E2E8F0;text-align:center !important;white-space:nowrap;background:#F8FAFC;';
       h+='<thead style="position:sticky;top:0;z-index:5;"><tr>';
-      ['담당자','고객사','계약유형','프로젝트','금액(천)','계약종료','계약D-day','관리유형','관리D-day','상태'].forEach(function(t){h+='<th style="'+TH3+'">'+t+'</th>';});
+      ['','담당자','고객사','계약유형','프로젝트','금액(천)','계약종료','계약D-day','관리유형','관리D-day','상태'].forEach(function(t){h+='<th style="'+TH3+'">'+t+'</th>';});
       h+='</tr></thead><tbody>';
-      var TD3='padding:7px 6px !important;text-align:center !important;vertical-align:middle !important;';
+      var TD3='padding:7px 6px;vertical-align:middle;';
       // 체인 그룹핑: rootId 기반 최신 계약만 표시
       var chainMap={};
       filtered.forEach(function(c){
@@ -15835,51 +15927,60 @@ function renderContractDashboard(){
         var hasHistory=c._chainCount>1;
         var rowId='_cdrow_'+c.id;
         var isExpanded=_expandedRows[c.id];
-        h+='<tr style="border-bottom:0.5px solid #F1F5F9;'+(cc?'border-top:2px solid #E8EEFF;':'')+'" class="contract-table-row">';
-        h+='<td style="'+TD3+'font-weight:600;font-size:11px;color:#374151;">'+c._rep+'</td>';
-        h+='<td style="'+TD3+'font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'+(cc?'color:#4f7fff;':'')+'">'+( c.client||'—')+'</td>';
-        h+='<td style="'+TD3+'">'+_cTypeBadge(c.contractType)+'</td>';
-        h+='<td style="'+TD3+'text-align:left !important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:#374151;padding-left:8px !important;">';
-        if(hasHistory)h+='<span onclick="var r=document.getElementById(\''+rowId+'\');r.style.display=r.style.display===\'none\'?\'\':\'none\';this.textContent=r.style.display===\'none\'?\'▶ \':\'▼ \'" style="cursor:pointer;color:#4f7fff;font-size:10px;margin-right:3px;">'+(isExpanded?'▼ ':'▶ ')+'</span>';
-        h+=(c.projectName||'—')+(hasHistory?'<span style="margin-left:4px;font-size:10px;color:#94A3B8;">+'+( c._chainCount-1)+'건</span>':'');
-        h+='</td>';
-        h+='<td style="'+TD3+'font-weight:500;">'+_cFmt(c.amount)+'</td>';
-        h+='<td style="'+TD3+'font-size:11px;color:#94A3B8;">'+(c.endDate||'—')+'</td>';
-        h+='<td style="'+TD3+'">'+_cContractDdayBadge(c)+'</td>';
-        h+='<td style="'+TD3+'">'+_cMgtBadge(c.managementType)+'</td>';
-        h+='<td style="'+TD3+'">'+_cMgtDdayBadge(c)+'</td>';
-        h+='<td style="'+TD3+'">'+_cStatusBadge(c.status)+'</td>';
+        var _arrowTd=hasHistory
+          ?'<td style="'+TD3+'width:22px;text-align:center;padding:0 2px;"><span onclick="var r=document.getElementById(\''+rowId+'\');if(r){var o=r.style.display!==\'none\';r.style.display=o?\'none\':\'table-row\';this.querySelector(\'svg\').style.transform=o?\'rotate(0)\':\'rotate(90deg)\'}" style="cursor:pointer;display:inline-flex;align-items:center;color:#94A3B8;"><svg width=\"11\" height=\"11\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\"><polyline points=\"9 18 15 12 9 6\"/></svg></span></td>'
+          :'<td style="'+TD3+'width:22px;"></td>';
+        h+=_arrowTd;
+        h+='<td style="'+TD3+'text-align:left;font-weight:600;font-size:11px;color:#374151;">'+c._rep+'</td>';
+        h+='<td style="'+TD3+'text-align:center;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'+(cc?'color:#4f7fff;':'')+'">'+(c.client||'—')+'</td>';
+        h+='<td style="'+TD3+'text-align:center;">'+_cTypeBadge(c.contractType)+'</td>';
+        h+='<td style="'+TD3+'text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;">'
+          +(c.projectName||'—')
+          +(hasHistory?'<span style="margin-left:4px;font-size:10px;color:#94A3B8;">('+( c._chainCount-1)+'건)</span>':'')
+          +'</td>';
+        h+='<td style="'+TD3+'text-align:right;font-weight:500;">'+_cFmt(c.amount)+'</td>';
+        h+='<td style="'+TD3+'text-align:center;font-size:11px;color:#94A3B8;">'+(c.endDate||'—')+'</td>';
+        h+='<td style="'+TD3+'text-align:center;">'+_cContractDdayBadge(c)+'</td>';
+        h+='<td style="'+TD3+'text-align:center;">'+_cMgtBadge(c.managementType)+'</td>';
+        h+='<td style="'+TD3+'text-align:center;">'+_cMgtDdayBadge(c)+'</td>';
+        h+='<td style="'+TD3+'text-align:center;">'+_cStatusBadge(c.status)+'</td>';
         h+='</tr>';
-        // 갱신 이력 (펼침)
+        // 갱신 이력 (펼침) - 계약관리 팝업과 동일한 스타일
         if(hasHistory){
-          // 이력 타임라인 (계약관리와 동일한 디자인)
-          var histRows='';
-          var _tl='<div style="background:#F8FAFC;border-top:1px solid #E2E8F0;border-bottom:1px solid #E2E8F0;padding:12px 16px 12px 36px;">'
-            +'<div style="font-size:10px;font-weight:600;color:#94A3B8;letter-spacing:.06em;margin-bottom:10px;">갱신 이력 ('+c._chainAll.slice(1).length+'건)</div>';
-          c._chainAll.slice(1).forEach(function(old,hi){
-            var isOld=hi===c._chainAll.slice(1).length-1;
-            var dBorder=isOld?'2px solid #94A3B8':'1.5px solid #D1D5DB';
-            var badge=isOld?'<span style="font-size:9px;background:#94A3B8;color:#fff;padding:1px 5px;border-radius:3px;margin-left:4px;">최초</span>':'';
-            _tl+='<div style="display:flex;gap:10px;padding:6px 8px;border-radius:8px;background:#fff;margin-bottom:4px;">'
-              +'<div style="display:flex;flex-direction:column;align-items:center;width:12px;">'
-                +'<div style="width:11px;height:11px;border-radius:50%;border:'+dBorder+';flex-shrink:0;"></div>'
-                +(isOld?'':'<div style="width:1px;flex:1;background:#E2E8F0;min-height:8px;"></div>')
-              +'</div>'
-              +'<div style="flex:1;min-width:0;">'
-                +'<div style="font-size:11px;color:#374151;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(old.projectName||old.client||'—')+badge+'</div>'
-                +'<div style="font-size:10px;color:#94A3B8;display:flex;gap:8px;flex-wrap:wrap;">'
-                  +'<span>'+( old.client||'')+'</span>'
-                  +'<span>'+_cFmt(old.amount)+'천</span>'
-                  +'<span>'+(old.startDate||'—')+' ~ '+(old.endDate||'—')+'</span>'
-                  +_cStatusBadge(old.status)
-                +'</div>'
-              +'</div>'
-            +'</div>';
+          h+='<tr id="'+rowId+'" style="display:none;"><td colspan="11" style="padding:0;">';
+          h+='<div style="background:#F8FAFC;border-top:1px solid #E2E8F0;border-bottom:1px solid #E2E8F0;padding:10px 16px 10px 36px;max-height:200px;overflow-y:auto;">';
+          h+='<div style="font-size:10px;font-weight:600;color:#94A3B8;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;">갱신 이력 ('+(c._chainAll.length)+'건)</div>';
+          c._chainAll.forEach(function(hc,hi){
+            var isCur=hi===0;
+            var isOldest=hi===c._chainAll.length-1;
+            var isLast=isOldest;
+            var dotBorder=isCur?'2px solid #2563EB':isOldest?'2px solid #94A3B8':'1.5px solid #D1D5DB';
+            var dotBg=isCur?'#2563EB':'transparent';
+            var badge='';
+            if(isCur) badge='<span style="display:inline-block;width:34px;font-size:9px;background:#2563EB;color:#fff;padding:1px 5px;border-radius:3px;text-align:center;flex-shrink:0;">현재</span>';
+            else if(isOldest) badge='<span style="display:inline-block;width:34px;font-size:9px;background:#F1F5F9;color:#64748B;border:0.5px solid #D1D5DB;padding:1px 5px;border-radius:3px;text-align:center;flex-shrink:0;">최초</span>';
+            else badge='<span style="display:inline-block;width:34px;flex-shrink:0;"></span>';
+            var statusBadge=_cStatusBadge(hc.status).replace('font-size:11px','font-size:10px').replace('padding:2px 8px','padding:1px 5px');
+            var _divOnclick=isCur?'':'onclick="showContractDetail(\''+c._rep+'\',\''+hc.id+'\')"';
+            h+='<div style="display:flex;gap:0;cursor:'+(isCur?'default':'pointer')+';padding:4px 0;" '+_divOnclick+'>';
+              ;
+            h+='<div style="width:14px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;margin-right:6px;">';
+            h+='<div style="width:8px;height:8px;border-radius:50%;background:'+dotBg+';border:'+dotBorder+';flex-shrink:0;margin-top:4px;"></div>';
+            if(!isLast)h+='<div style="width:1px;background:#E2E8F0;flex:1;margin-top:2px;"></div>';
+            h+='</div>';
+            h+='<div style="display:flex;align-items:flex-start;gap:6px;padding-bottom:'+(isLast?'4':'12')+'px;">';
+            h+=badge;
+            h+='<div style="min-width:0;">';
+            h+='<div style="display:flex;align-items:center;gap:5px;">';
+            h+='<span style="font-size:11px;font-weight:'+(isCur?'600':'400')+';color:'+(isCur?'#1D4ED8':'#374151')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px;">'+(hc.projectName||hc.client||'—')+'</span>';
+            h+=statusBadge;
+            h+='</div>';
+            h+='<div style="font-size:10px;color:#94A3B8;margin-top:2px;white-space:nowrap;">'+(hc.startDate?hc.startDate.substr(0,7):'?')+'~'+(hc.endDate?hc.endDate.substr(0,7):'?')+(hc.amount?'&nbsp;·&nbsp;'+Number(hc.amount).toLocaleString('ko-KR')+'천':'')+'</div>';
+            h+='</div>';
+            h+='</div></div>';
           });
-          _tl+='</div>';
-          h+='<tr id="'+rowId+'" style="display:none;"><td colspan="10" style="padding:0;">'+_tl+'</td></tr>';
+          h+='</div></td></tr>';
         }
-        prevC=c.client;
       });
       h+='</tbody></table></div>';
     }
@@ -16524,24 +16625,231 @@ window._wkSetWeek=function(mode){
 
 window._wkOpenPeriod=function(){
   var m=document.getElementById('wk-period-modal');
-  if(m){ m.style.display='flex'; }
+  if(!m) return;
+  // 년도 드롭다운 채우기 (현재년도 기준 ±1년)
+  var yEl=document.getElementById('wk-period-year');
+  var wEl=document.getElementById('wk-period-week');
+  if(yEl&&!yEl.options.length){
+    var curY=new Date().getFullYear();
+    for(var y=curY-1;y<=curY+1;y++){
+      var opt=document.createElement('option');
+      opt.value=y; opt.textContent=y+'년';
+      if(y===curY) opt.selected=true;
+      yEl.appendChild(opt);
+    }
+    yEl.onchange=function(){ _wkFillWeeks(parseInt(this.value)); };
+  }
+  _wkFillWeeks(parseInt(yEl.value)||new Date().getFullYear());
+  m.style.display='flex';
+};
+window._wkFillWeeks=function(year){
+  var wEl=document.getElementById('wk-period-week');
+  if(!wEl) return;
+  wEl.innerHTML='';
+  // 해당 년도의 주차 수 계산 (ISO week)
+  var lastDay=new Date(year,11,31);
+  var lastWk=_wkGetWeekKey(lastDay);
+  var maxW=parseInt(lastWk.split('W')[1]);
+  // 1월1일이 다음년도 W1이면 52주
+  if(lastWk.split('-')[0]>year) maxW=52;
+  var curWk=_wkGetWeekKey(new Date());
+  for(var w=1;w<=maxW;w++){
+    var wStr=(w<10?'0':'')+w;
+    var wKey=year+'-W'+wStr;
+    // 해당 주차의 월요일~금요일 계산
+    var jan4=new Date(year,0,4);
+    var jan4dow=(jan4.getDay()+6)%7;
+    var mon=new Date(jan4); mon.setDate(jan4.getDate()-jan4dow+(w-1)*7);
+    var fri=new Date(mon); fri.setDate(mon.getDate()+4);
+    var label=w+'주차 ('+mon.toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'})+' ~ '+fri.toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'})+')';
+    var opt=document.createElement('option');
+    opt.value=wKey; opt.textContent=label;
+    if(wKey===curWk) opt.selected=true;
+    wEl.appendChild(opt);
+  }
 };
 window._wkClosePeriod=function(){
   var m=document.getElementById('wk-period-modal');
   if(m) m.style.display='none';
 };
+
+// ── 이전 회차 불러오기 ──────────────────────────────
+window._wkOpenLoadWeek=function(){
+  var m=document.getElementById('wk-load-modal');
+  if(!m) return;
+  var yEl=document.getElementById('wk-load-year');
+  if(yEl){
+    // 매번 초기화 (최신 상태 반영)
+    yEl.innerHTML='';
+    var curY=new Date().getFullYear();
+    for(var y=curY-1;y<=curY;y++){
+      var opt=document.createElement('option');
+      opt.value=y; opt.textContent=y+'년';
+      if(y===curY) opt.selected=true;
+      yEl.appendChild(opt);
+    }
+    yEl.onchange=function(){ window._wkFillLoadWeeks(parseInt(this.value)); };
+    window._wkFillLoadWeeks(curY);
+  }
+  m.style.display='flex';
+};
+// 고객사 팝업에서 담당자 숨김 (데이터 삭제 없음)
+window._cdbHideRep=function(name){
+  if(!authCfg.cdbHiddenReps) authCfg.cdbHiddenReps=[];
+  if(authCfg.cdbHiddenReps.indexOf(name)<0){
+    authCfg.cdbHiddenReps.push(name);
+    saveAuthCfg();
+    if(typeof showToast==='function') showToast('🚫 '+name+' 담당자가 팝업 목록에서 숨겨졌습니다.');
+  }
+};
+// 팝업에서 담당자 복구
+window._cdbUnhideRep=function(name){
+  if(!authCfg.cdbHiddenReps) return;
+  var idx=authCfg.cdbHiddenReps.indexOf(name);
+  if(idx>=0){
+    authCfg.cdbHiddenReps.splice(idx,1);
+    saveAuthCfg();
+    if(typeof showToast==='function') showToast('👁 '+name+' 담당자가 팝업 목록에 복구되었습니다.');
+  }
+};
+// confirm 없이 동작하는 담당자 숨김 확인 팝업
+window._cdbConfirmHide=function(name){
+  var disp=typeof window._cdbRepLabel==='function'?window._cdbRepLabel(name):name;
+  // 기존 팝업 제거
+  var old=document.getElementById('_cdb_hide_confirm');
+  if(old) old.remove();
+  var overlay=document.createElement('div');
+  overlay.id='_cdb_hide_confirm';
+  overlay.style.cssText='position:fixed;inset:0;z-index:10100;background:rgba(15,23,42,.5);display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML='<div style="background:#fff;border-radius:14px;width:280px;padding:22px 20px 16px;box-shadow:0 20px 60px rgba(15,23,42,.2);">'
+    +'<div style="font-size:14px;font-weight:700;color:#0F172A;margin-bottom:8px;">담당자 숨기기</div>'
+    +'<div style="font-size:12px;color:#64748B;line-height:1.6;margin-bottom:18px;"><b>'+disp+'</b> 담당자를 목록에서 숨기시겠습니까?<br>데이터는 유지되며 관리자 설정에서 복구 가능합니다.</div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;">'
+      +'<button onclick="document.getElementById(\'_cdb_hide_confirm\').remove()" style="padding:7px 16px;border:1.5px solid #E2E8F0;border-radius:8px;background:#fff;color:#64748B;font-size:12px;font-weight:600;cursor:pointer;">취소</button>'
+      +'<button id="_cdb_hide_ok" style="padding:7px 16px;border:none;border-radius:8px;background:#EF4444;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">숨기기</button>'
+    +'</div></div>';
+  document.body.appendChild(overlay);
+  document.getElementById('_cdb_hide_ok').onclick=function(){
+    overlay.remove();
+    var pop=document.getElementById('_cdb_rep_pop');
+    if(pop) pop.remove();
+    window._cdbHideRep(name);
+  };
+};
+window._wkCloseLoadWeek=function(){
+  var m=document.getElementById('wk-load-modal');
+  if(m) m.style.display='none';
+};
+window._wkFillLoadWeeks=function(year){
+  var wEl=document.getElementById('wk-load-week');
+  if(!wEl) return;
+  wEl.innerHTML='';
+  var curWk=typeof _wkGetWeekKey==='function'?_wkGetWeekKey(new Date()):'';
+  // 현재 주차 번호
+  var curWn=curWk?parseInt(curWk.split('W')[1]):53;
+  var curYr=new Date().getFullYear();
+  for(var w=53;w>=1;w--){
+    var wStr=(w<10?'0':'')+w;
+    var wKey=year+'-W'+wStr;
+    // 유효한 주차인지 확인 (해당 주차 월요일이 실제 해당 년도에 속하는지)
+    var jan4=new Date(year,0,4);
+    var jan4dow=(jan4.getDay()+6)%7;
+    var mon=new Date(jan4); mon.setDate(jan4.getDate()-jan4dow+(w-1)*7);
+    if(mon.getFullYear()<year-1||mon.getFullYear()>year+1) continue;
+    // 현재/미래 주차 제외
+    if(year===curYr&&w>=curWn) continue;
+    if(year>curYr) continue;
+    var fri=new Date(mon); fri.setDate(mon.getDate()+4);
+    var label=w+'주차  '+mon.toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'})+' ~ '+fri.toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'});
+    var opt=document.createElement('option');
+    opt.value=wKey; opt.textContent=label;
+    wEl.appendChild(opt);
+  }
+};
+window._wkApplyLoadWeek=async function(){
+  var toast=typeof showToast==='function'?showToast:function(){};
+  var wEl=document.getElementById('wk-load-week');
+  if(!wEl||!wEl.value){ toast('주차를 선택해주세요'); return; }
+  var srcKey=wEl.value;
+  var modeEl=document.querySelector('input[name="wk-load-mode"]:checked');
+  var mode=modeEl?modeEl.value:'replace';
+  toast('📋 불러오는 중...');
+  try{
+    var myRep=typeof window._wkGetMyName==='function'?window._wkGetMyName():'';
+    var thisKey=typeof window._wkThisKey==='function'?window._wkThisKey():'';
+    // SP 연결 여부에 따라 로드 방식 분기
+    var srcEntries=[];
+    if(window._isSPReady&&typeof _wkLoadFeed==='function'){
+      srcEntries=await _wkLoadFeed(srcKey)||[];
+    }
+    // SP에서 없으면 _wk.prevEntries 활용 (지난주 선택 시)
+    if(!srcEntries.length && srcKey===window._wkLastKey()){
+      srcEntries=window._wk&&window._wk.prevEntries||[];
+    }
+    if(!srcEntries.length){
+      toast('⚠️ 선택한 주차에 회의록이 없습니다');
+      return;
+    }
+    // 내 rep 항목 (rep 이름으로 필터, 빈 경우 전체)
+    var myEntries=myRep?srcEntries.filter(function(e){return e.rep===myRep;}):srcEntries;
+    if(!myEntries.length){ myEntries=srcEntries; } // fallback: 전체
+    var now=typeof window._wkNowStr==='function'?window._wkNowStr():new Date().toLocaleString('ko-KR');
+    var genId=typeof _wkGenId==='function'?_wkGenId:function(){return 'cp_'+Date.now()+'_'+Math.random().toString(36).slice(2);};
+    var copied=myEntries.map(function(e){
+      var o=JSON.parse(JSON.stringify(e));
+      o.id=genId(); o.time=now; o.replies=[]; o.copiedFrom=srcKey;
+      return o;
+    });
+    if(!window._wk) window._wk={entries:[]};
+    var otherEntries=(window._wk.entries||[]).filter(function(e){return e.rep!==myRep;});
+    var curEntries=(window._wk.entries||[]).filter(function(e){return e.rep===myRep;});
+    if(mode==='replace'){
+      window._wk.entries=otherEntries.concat(copied);
+    } else {
+      window._wk.entries=otherEntries.concat(curEntries).concat(copied);
+    }
+    // 이번주 모드로 전환
+    window._wk.weekMode='this';
+    var btn=document.getElementById('wk-w-this');
+    if(btn){btn.classList.add('on');}
+    var btn2=document.getElementById('wk-w-last');
+    if(btn2){btn2.classList.remove('on');}
+    // SP 저장
+    if(window._isSPReady&&thisKey&&myRep&&typeof window._wkSaveFeed==='function'){
+      await window._wkSaveFeed(thisKey, myRep, copied);
+    }
+    if(typeof _wkRenderFeed==='function') _wkRenderFeed();
+    window._wkCloseLoadWeek();
+    var wn=srcKey.split('W')[1]||'?';
+    toast('✅ '+wn+'주차 회의록 '+copied.length+'건을 불러왔습니다');
+  }catch(e){
+    console.error('[wkApplyLoadWeek]',e);
+    toast('❌ 불러오기 실패: '+(e&&e.message||e));
+  }
+};
+
 window._wkApplyPeriod=function(){
-  var f=document.getElementById('wk-period-from');
-  var t=document.getElementById('wk-period-to');
-  if(!f||!t||!f.value||!t.value) return;
+  var wEl=document.getElementById('wk-period-week');
+  if(!wEl||!wEl.value) return;
+  var selectedKey=wEl.value; // 예: '2026-W21'
   _wk.weekMode='period';
-  _wk.periodFrom=f.value;
-  _wk.periodTo=t.value;
+  _wk.selectedWeekKey=selectedKey; // 선택된 주차 키 저장
+  // 선택 주차의 월요일~일요일 계산 (periodFrom/To 호환용)
+  var yr=parseInt(selectedKey.split('-W')[0]);
+  var wn=parseInt(selectedKey.split('-W')[1]);
+  var jan4=new Date(yr,0,4);
+  var jan4dow=(jan4.getDay()+6)%7;
+  var mon=new Date(jan4); mon.setDate(jan4.getDate()-jan4dow+(wn-1)*7);
+  var sun=new Date(mon); sun.setDate(mon.getDate()+6);
+  _wk.periodFrom=mon.toISOString().slice(0,10);
+  _wk.periodTo=sun.toISOString().slice(0,10);
   ['this','last'].forEach(function(m){
     var el=document.getElementById('wk-w-'+m);
     if(el) el.classList.remove('on');
   });
   _wkClosePeriod();
+  // 선택 주차 데이터 로드
+  _wk.loading=false;
   _wkLoad();
 };
 
@@ -16562,6 +16870,27 @@ window._wkSetRep=function(rep){
 };
 
 // \u2500\u2500 \ubdf0 \uc804\ud658 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+window._wkGoReply=function(entryId){
+  // 이번주 탭으로 전환 후 해당 entry 답변 입력 열기
+  if(window._wk&&window._wk.weekMode!=='this'){
+    window._wk.weekMode='this';
+    window._wk.entries=window._wk.entries||[];
+    var _btn=document.getElementById('wk-w-this');
+    if(_btn) _btn.classList.add('on');
+    var _btn2=document.getElementById('wk-w-last');
+    if(_btn2) _btn2.classList.remove('on');
+  }
+  _wkSetView('feed');
+  // 렌더 후 해당 entry 스크롤 + 답변창 열기
+  setTimeout(function(){
+    var _el=document.querySelector('[data-entry-id="'+entryId+'"]');
+    if(_el){
+      _el.scrollIntoView({behavior:'smooth',block:'center'});
+      // 답변창 자동 오픈
+      if(typeof _wkToggleReply==='function') _wkToggleReply(entryId);
+    }
+  }, 300);
+};
 window._wkSetView=function(view){
   _wk.view=view;
   var rp=document.getElementById('wk-report-view');
@@ -16599,7 +16928,8 @@ async function _wkLoad(){
       if(_wk.weekMode==='last'){
         loadKey=_wkLastKey();   // 지난주
       } else if(_wk.weekMode==='period'){
-        loadKey=_wkThisKey();
+        // 주차 선택 모드: selectedWeekKey 사용 (저장도 이 키 기준)
+        loadKey=_wk.selectedWeekKey||_wkThisKey();
         prevLoadKey=null;
       } else {
         loadKey=_wkThisKey();   // 이번주
@@ -16663,8 +16993,8 @@ function _wkRenderPrevSection(){
       });
       h+='</div>';
     } else {
-      h+='<span class="wk-carry-badge">\u2197 \ubbf8\ub2f5\ubcc0 \uc774\uc6d4</span>';
-      h+='<button class="wk-ans-btn" onclick="_wkSetView(\'feed\')">\u21a9 \uc774\ubc88\uc8fc \ub2f5\ubcc0\ud558\uae30</button>';
+      h+='<span class="wk-carry-badge">↗ 미답변 이월</span>';
+      h+='<button class="wk-ans-btn" onclick="_wkGoReply(\''+entry.id+'\')">↩ 답변</button>';
     }
     h+='</div>';
   });
