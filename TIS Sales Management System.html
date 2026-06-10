@@ -4885,6 +4885,7 @@ function renderDashboard(){try{
   // 탭은 showPage/initAllTabs에서 처리
   try{ extractIssues(); }catch(e){}
   const _dr = getDashReps().filter(r=>store.reps[r]);
+  console.log('[render] currentDashTeam='+currentDashTeam+' _dr='+_dr.join(','));
 
   // ── 연간 집계
   const tp = _dr.reduce((s,r)=>s+(store.reps[r].plan||[]).reduce((a,b)=>a+b,0),0);
