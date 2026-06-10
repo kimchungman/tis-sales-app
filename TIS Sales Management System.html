@@ -8825,24 +8825,24 @@ async function _spLoadToday() {
   if(!snap) snap = await _spLoadItem('snapshot', today).catch(()=>null);
   if(snap){ _applySnap(snap, today); return; }
 
-  // 오늘 데이터 없으면 SP 히스토리에서 가장 최신 스냅샷 로드
+  // 오늘 스냅샷 없으면 SP 전체 로드 후 JS에서 최신 스냅샷 찾기
+  // ($filter 미사용 - SP 인덱스 없는 컬럼에 filter 시 500 에러)
   try{
-    // snapshot DataType만 필터 + Id 내림차순 (최신순)
-    const url = _lUrl() + '?$select=Id,Title,DataType,DataKey,Payload&$filter=DataType+eq+%27snapshot%27&$orderby=Id+desc&$top=10';
-    const res = await _spFetch(url);
-    if(res && res.value && res.value.length){
-      // 현재 팀 스냅샷 우선, 없으면 첫번째
-      var _snaps=res.value;
-      var _teamSnap=_snaps.find(function(s){ return s.DataKey&&s.DataKey.indexOf(currentTeam)===0; });
-      var _useSnap=_teamSnap||_snaps[0];
-      if(_useSnap&&_useSnap.Payload){
-        const latest = JSON.parse(_useSnap.Payload);
-        const latestDate = today; // 항상 오늘 날짜 사용
-        _applySnap(latest, latestDate);
-      }
-    }
+    const url = _lUrl() + '?$select=Id,Title,DataType,DataKey,Payload&$top=500';
+    const res = await _spFetchAll(url);
+    const items = (res&&res.value)||[];
+    // snapshot DataType만 필터 (JS에서)
+    const snaps = items.filter(function(s){ return s.DataType==='snapshot' && s.Payload; });
+    if(!snaps.length) return;
+    // Id 내림차순 정렬 → 가장 최신 스냅샷
+    snaps.sort(function(a,b){ return (b.Id||0)-(a.Id||0); });
+    // 현재 팀 스냅샷 우선
+    var teamSnap = snaps.find(function(s){ return s.DataKey&&s.DataKey.indexOf(currentTeam)===0; });
+    var useSnap = teamSnap || snaps[0];
+    const latest = JSON.parse(useSnap.Payload);
+    _applySnap(latest, today);
   }catch(e){
-    console.warn('[spLoadToday fallback]',e);
+    console.warn('[spLoadToday]',e);
   }
 }
 
