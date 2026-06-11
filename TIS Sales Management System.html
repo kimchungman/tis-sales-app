@@ -5679,6 +5679,13 @@ function buildRepInputs(){
   }));
 }
 
+// 영업활동 드래그 바인딩 (buildRepInputs 완료 후)
+requestAnimationFrame(function(){
+  (typeof REPS!=='undefined'?REPS:[]).forEach(function(rep){
+    if(typeof _aBindDragRows==='function') _aBindDragRows(rep);
+  });
+});
+
 function cRow(rep,ci,c){
   var _cTypeOpts=getSelectOpts('clientType');
   // 저장된 값이 옵션에 없으면 보존
@@ -5715,8 +5722,8 @@ function aRow(rep,ai,a){
   const progOpts='<option value="" disabled'+((!a.progress||a.progress==='')?'selected':'')+' style="text-align:center">선택</option>'+progList.map(p=>`<option style="text-align:center"${(a.progress||'')===p?' selected':''}>${p}</option>`).join('');
   var _isOwn=(typeof session!=='undefined'&&session&&session.rep===rep)||(typeof session!=='undefined'&&session&&session.role==='admin');
   var _wkChecked=a.weeklyCheck&&a.weeklyCheck[_wkThisKey()]?'checked':'';
-  return`<tr draggable="true" data-rep="${rep}" data-ai="${ai}" class="act-drag-row">
-    <td class="act-drag-handle" title="드래그하여 순서 변경" style="width:18px;text-align:center;cursor:grab;color:#CBD5E1;font-size:14px;vertical-align:middle;padding:0 2px;user-select:none;">⠿</td>
+  return`<tr draggable="false" data-rep="${rep}" data-ai="${ai}" class="act-drag-row">
+    <td class="act-drag-handle" title="드래그하여 순서 변경" style="width:18px;text-align:center;cursor:grab;color:#CBD5E1;font-size:14px;vertical-align:middle;padding:0 2px;user-select:none;" onmousedown="this.closest('tr').draggable=true;" onmouseup="this.closest('tr').draggable=false;">⠿</td>
     <td class="wk-chk-cell">${_isOwn?`<input type="checkbox" class="wk-act-chk" ${_wkChecked} onchange="_wkToggleActCheck('${rep}',${ai},this.checked)" style="width:15px;height:15px;cursor:pointer;accent-color:#1A56DB;vertical-align:middle;display:block;" title="주간보고에 포함">`:'&nbsp;'}</td>
     <td class="wk-no-cell" style="color:var(--muted);font-weight:600;font-size:12px;">${a.no||ai+1}</td>
     <td style="width:90px;vertical-align:middle;">
@@ -5754,102 +5761,83 @@ function aRow(rep,ai,a){
     </td>
   </tr>`;
 }
-// ── 영업활동 드래그 앤 드롭 순서 변경 ──────────────────────────
-(function(){
-  var _dragSrc = null; // {rep, ai}
+// ── 영업활동 드래그 앤 드롭 ──────────────────────────────────
+var _aDragSrc = null;
 
-  function _atDragStart(e){
-    var tr = e.target.closest('.act-drag-row');
-    if(!tr) return;
-    // 핸들에서만 드래그 허용 (입력 셀 드래그 방지)
-    var handle = e.target.closest('.act-drag-handle');
-    if(!handle){ e.preventDefault(); return; }
-    _dragSrc = {rep: tr.dataset.rep, ai: parseInt(tr.dataset.ai)};
-    tr.classList.add('dragging');
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', String(tr.dataset.ai));
-  }
+function _aOnDragStart(e) {
+  var row = e.currentTarget;
+  _aDragSrc = { rep: row.dataset.rep, ai: parseInt(row.dataset.ai) };
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', row.dataset.ai);
+  setTimeout(function(){ row.style.opacity = '0.4'; }, 0);
+}
 
-  function _atDragOver(e){
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    var tr = e.target.closest('.act-drag-row');
-    if(!tr||!_dragSrc||tr.dataset.rep!==_dragSrc.rep) return;
-    // 드롭 위치 표시
-    document.querySelectorAll('.act-drag-row').forEach(function(r){ r.style.borderTop=''; r.style.borderBottom=''; });
-    var rect = tr.getBoundingClientRect();
-    var mid = rect.top + rect.height/2;
-    if(e.clientY < mid) tr.style.borderTop = '2px solid #4f7fff';
-    else tr.style.borderBottom = '2px solid #4f7fff';
-  }
-
-  function _atDragLeave(e){
-    var tr = e.target.closest('.act-drag-row');
-    if(tr){ tr.style.borderTop=''; tr.style.borderBottom=''; }
-  }
-
-  function _atDrop(e){
-    e.preventDefault();
-    document.querySelectorAll('.act-drag-row').forEach(function(r){
-      r.style.opacity=''; r.style.borderTop=''; r.style.borderBottom='';
-      r.classList.remove('dragging');
-    });
-    if(!_dragSrc) return;
-    var tr = e.target.closest('.act-drag-row');
-    if(!tr||tr.dataset.rep!==_dragSrc.rep) return;
-    var toAi = parseInt(tr.dataset.ai);
-    if(toAi===_dragSrc.ai) return;
-    // 드롭 위치 (위/아래)
-    var rect = tr.getBoundingClientRect();
-    var insertBefore = e.clientY < rect.top + rect.height/2;
-    var rep = _dragSrc.rep;
-    var acts = store.reps[rep].activities;
-    var moved = acts.splice(_dragSrc.ai, 1)[0];
-    var newIdx = toAi > _dragSrc.ai ? (insertBefore ? toAi-1 : toAi) : (insertBefore ? toAi : toAi+1);
-    newIdx = Math.max(0, Math.min(newIdx, acts.length));
-    acts.splice(newIdx, 0, moved);
-    // no 재번호
-    acts.forEach(function(a,i){ a.no = i+1; });
-    // 테이블 즉시 재렌더
-    var tbody = document.getElementById('at-'+rep);
-    if(tbody) tbody.innerHTML = acts.map(function(a,i){ return aRow(rep,i,a); }).join('');
-    // 즉각 저장
-    autoSave();
-    if(window._isSPReady&&typeof _spSaveMyRep==='function') _spSaveMyRep();
-    _dragSrc = null;
-  }
-
-  function _atDragEnd(e){
-    document.querySelectorAll('.act-drag-row').forEach(function(r){
-      r.style.opacity=''; r.style.borderTop=''; r.style.borderBottom='';
-      r.classList.remove('dragging');
-    });
-    _dragSrc = null;
-  }
-
-  // 이벤트 위임: page-input에서 처리
-  document.addEventListener('DOMContentLoaded', function(){
-    var pg = document.getElementById('page-input');
-    if(!pg) return;
-    pg.addEventListener('dragstart', _atDragStart);
-    pg.addEventListener('dragover', _atDragOver);
-    pg.addEventListener('dragleave', _atDragLeave);
-    pg.addEventListener('drop', _atDrop);
-    pg.addEventListener('dragend', _atDragEnd);
+function _aOnDragEnd(e) {
+  e.currentTarget.style.opacity = '';
+  document.querySelectorAll('.act-drag-row').forEach(function(r){
+    r.style.borderTop = '';
+    r.style.borderBottom = '';
   });
+  _aDragSrc = null;
+}
 
-  // page-input이 동적으로 렌더될 수 있으므로 body에서도 처리
-  document.addEventListener('dragstart', function(e){ if(e.target.closest('#page-input')) _atDragStart(e); });
-  document.addEventListener('dragover', function(e){ if(e.target.closest('#page-input')) _atDragOver(e); });
-  document.addEventListener('dragleave', function(e){ if(e.target.closest('#page-input')) _atDragLeave(e); });
-  document.addEventListener('drop', function(e){ if(e.target.closest('#page-input')) _atDrop(e); });
-  document.addEventListener('dragend', function(e){ if(e.target.closest('#page-input')) _atDragEnd(e); });
-})();
+function _aOnDragOver(e) {
+  e.preventDefault();
+  if(!_aDragSrc) return;
+  var row = e.currentTarget;
+  if(row.dataset.rep !== _aDragSrc.rep) return;
+  document.querySelectorAll('.act-drag-row').forEach(function(r){
+    r.style.borderTop = '';
+    r.style.borderBottom = '';
+  });
+  var rect = row.getBoundingClientRect();
+  if(e.clientY < rect.top + rect.height / 2) row.style.borderTop = '2px solid #4f7fff';
+  else row.style.borderBottom = '2px solid #4f7fff';
+}
+
+function _aOnDrop(e) {
+  e.preventDefault();
+  if(!_aDragSrc) return;
+  var row = e.currentTarget;
+  row.style.borderTop = '';
+  row.style.borderBottom = '';
+  if(row.dataset.rep !== _aDragSrc.rep) return;
+  var toAi = parseInt(row.dataset.ai);
+  if(toAi === _aDragSrc.ai) { _aDragSrc = null; return; }
+  var rep  = _aDragSrc.rep;
+  var acts = store.reps[rep].activities;
+  var moved = acts.splice(_aDragSrc.ai, 1)[0];
+  var rect  = row.getBoundingClientRect();
+  var insertBefore = e.clientY < rect.top + rect.height / 2;
+  var target = toAi > _aDragSrc.ai ? (insertBefore ? toAi - 1 : toAi) : (insertBefore ? toAi : toAi + 1);
+  target = Math.max(0, Math.min(target, acts.length));
+  acts.splice(target, 0, moved);
+  acts.forEach(function(a, i){ a.no = i + 1; });
+  var tbody = document.getElementById('at-' + rep);
+  if(tbody) tbody.innerHTML = acts.map(function(a, i){ return aRow(rep, i, a); }).join('');
+  // 드래그 후 이벤트 재바인딩
+  _aBindDragRows(rep);
+  autoSave();
+  if(window._isSPReady && typeof _spSaveMyRep === 'function') _spSaveMyRep();
+  _aDragSrc = null;
+}
+
+function _aBindDragRows(rep) {
+  var tbody = document.getElementById('at-' + rep);
+  if(!tbody) return;
+  tbody.querySelectorAll('.act-drag-row').forEach(function(row){
+    row.addEventListener('dragstart', _aOnDragStart);
+    row.addEventListener('dragend',   _aOnDragEnd);
+    row.addEventListener('dragover',  _aOnDragOver);
+    row.addEventListener('drop',      _aOnDrop);
+  });
+}
+
 
 function addClient(rep){const ci=store.reps[rep].clients.length;store.reps[rep].clients.push({name:'',type:'MA',status:'달성',plan:new Array(12).fill(0),actual:new Array(12).fill(0),issue:'',sev:'none'});document.getElementById('ct-'+rep).insertAdjacentHTML('beforeend',cRow(rep,ci,store.reps[rep].clients[ci]));}
 function delClient(rep,ci){store.reps[rep].clients.splice(ci,1);document.getElementById('ct-'+rep).innerHTML=store.reps[rep].clients.map((c,i)=>cRow(rep,i,c)).join('');refreshActualForecast(rep);extractIssues();renderIssues();autoSave();if(window._isSPReady&&typeof _spSaveMyRep==='function')_spSaveMyRep();}
-function addActivity(rep){const ai=store.reps[rep].activities.length;store.reps[rep].activities.push({no:ai+1,type:'신규영업',client:'',product:'',amount:0,prob:0,timing:'',content:'',sev:'mid',createdAt:new Date().toISOString()});document.getElementById('at-'+rep).insertAdjacentHTML('beforeend',aRow(rep,ai,store.reps[rep].activities[ai]));}
-function delActivity(rep,ai){store.reps[rep].activities.splice(ai,1);document.getElementById('at-'+rep).innerHTML=store.reps[rep].activities.map((a,i)=>aRow(rep,i,a)).join('');autoSave();if(window._isSPReady&&typeof _spSaveMyRep==='function')_spSaveMyRep();}
+function addActivity(rep){const ai=store.reps[rep].activities.length;store.reps[rep].activities.push({no:ai+1,type:'신규영업',client:'',product:'',amount:0,prob:0,timing:'',content:'',sev:'mid',createdAt:new Date().toISOString()});document.getElementById('at-'+rep).insertAdjacentHTML('beforeend',aRow(rep,ai,store.reps[rep].activities[ai]));_aBindDragRows(rep);}
+function delActivity(rep,ai){store.reps[rep].activities.splice(ai,1);document.getElementById('at-'+rep).innerHTML=store.reps[rep].activities.map((a,i)=>aRow(rep,i,a)).join('');_aBindDragRows(rep);autoSave();if(window._isSPReady&&typeof _spSaveMyRep==='function')_spSaveMyRep();}
 function showRepInput(rep){showPage('input',null);const t=[...document.querySelectorAll('.tab')].find(t=>t.textContent.trim()===rep);if(t)switchTab(rep,t);}
 
 // 달성/예상 자동계산
@@ -13685,30 +13673,9 @@ async function _spSaveMyRep(){
   });
   _d.savedAt=new Date().toISOString();
   _d.date=date;
-  // ── 활동/이슈 연도 분리 저장 ──
-  var _curY=new Date().getFullYear();
+  // 연도 분리 없이 전체 activities/issuesList 저장
   var _actArchive={};
-  (_d.activities||[]).forEach(function(a){
-    var yr=a.createdAt?new Date(a.createdAt).getFullYear():_curY;
-    if(yr<_curY){if(!_actArchive[yr])_actArchive[yr]=[];_actArchive[yr].push(a);}
-  });
-  if(Object.keys(_actArchive).length){
-    _d.activities=(_d.activities||[]).filter(function(a){
-      var yr=a.createdAt?new Date(a.createdAt).getFullYear():_curY;
-      return yr>=_curY;
-    });
-  }
   var _issArchive={};
-  (_d.issuesList||[]).forEach(function(iss){
-    var yr=iss.createdAt?new Date(iss.createdAt).getFullYear():_curY;
-    if(yr<_curY){if(!_issArchive[yr])_issArchive[yr]=[];_issArchive[yr].push(iss);}
-  });
-  if(Object.keys(_issArchive).length){
-    _d.issuesList=(_d.issuesList||[]).filter(function(iss){
-      var yr=iss.createdAt?new Date(iss.createdAt).getFullYear():_curY;
-      return yr>=_curY;
-    });
-  }
   // DataKey: 이름만 사용 (직책 제거 - 직책 변경해도 동일 키 유지)
   var _repName = session.rep;
   if(typeof authCfg!=='undefined' && authCfg.repTitles){
