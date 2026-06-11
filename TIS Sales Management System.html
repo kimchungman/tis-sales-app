@@ -5576,6 +5576,7 @@ function buildRepInputs(){
       <div class="sec-head"><h3>${rep} — 고객사별 실적</h3><button class="add-btn" onclick="addClient('${rep}')">＋ 추가</button></div>
       <div class="sec-body"><div style="overflow-x:auto;overflow-y:auto;max-height:380px;-webkit-overflow-scrolling:touch;"><table class="dt">
         <thead style="position:sticky;top:0;z-index:5;"><tr>
+          <th style="width:22px;background:#F8FAFC;"></th>
           <th style="min-width:140px;white-space:nowrap;background:#F8FAFC;">고객사명</th>
           <th style="white-space:nowrap;min-width:62px;">상태</th>
           <th style="white-space:nowrap;width:110px;text-align:center;">제품</th>
@@ -5691,15 +5692,15 @@ function buildRepInputs(){
       }
       if(typeof applyPermissions==='function') applyPermissions();
     }
+    // 영업활동/고객사별실적/이슈사항 드래그 바인딩
+    REPS.forEach(function(rep){
+      if(typeof _aBindDragRows==='function') _aBindDragRows(rep);
+      if(typeof _cBindDragRows==='function') _cBindDragRows(rep);
+      if(typeof _iBindDragRows==='function') _iBindDragRows(rep);
+    });
   }));
 }
 
-// 영업활동 드래그 바인딩 (buildRepInputs 완료 후)
-requestAnimationFrame(function(){
-  (typeof REPS!=='undefined'?REPS:[]).forEach(function(rep){
-    if(typeof _aBindDragRows==='function') _aBindDragRows(rep);
-  });
-});
 
 function cRow(rep,ci,c){
   var _cTypeOpts=getSelectOpts('clientType');
@@ -5709,7 +5710,8 @@ function cRow(rep,ci,c){
   var _cStOpts=getSelectOpts('clientStatus');
   if(c.status&&_cStOpts.indexOf(c.status)<0) _cStOpts=_cStOpts.concat([c.status]);
   const sOpts=_cStOpts.map(st=>`<option${(c.status||_cStOpts[0]||'')===st?' selected':''}>${st}</option>`).join('');
-  return`<tr id="cr-${rep}-${ci}">
+  return`<tr id="cr-${rep}-${ci}" draggable="false" data-rep="${rep}" data-ci="${ci}" class="cli-drag-row">
+    <td class="cli-drag-handle" title="드래그하여 순서 변경" style="width:18px;text-align:center;cursor:grab;color:#CBD5E1;font-size:14px;vertical-align:middle;padding:0 2px;user-select:none;" onmousedown="this.closest('tr').draggable=true;" onmouseup="this.closest('tr').draggable=false;">⠿</td>
     <td style="vertical-align:middle;padding:3px 4px;white-space:nowrap;"><input type="text" id="cli_${rep}_${ci}" value="${c.name||''}" style="width:100%;min-width:140px;text-align:center;" onchange="store.reps['${rep}'].clients[${ci}].name=this.value;autoSave();if(typeof renderDashboard==='function')renderDashboard();"></td>
     <td style="vertical-align:middle;padding:3px 4px;text-align:center;white-space:nowrap;">
       <select style="width:60px;font-size:12px;text-align:center;" onchange="store.reps['${rep}'].clients[${ci}].status=this.value;refreshActualForecast('${rep}');autoSave()">${sOpts}</select>
@@ -5849,8 +5851,126 @@ function _aBindDragRows(rep) {
 }
 
 
+// ── 고객사별 실적 드래그 ──────────────────────────────────────
+var _cDragSrc = null;
+function _cOnDragStart(e){
+  var row=e.currentTarget;
+  _cDragSrc={rep:row.dataset.rep,ci:parseInt(row.dataset.ci)};
+  e.dataTransfer.effectAllowed='move';
+  e.dataTransfer.setData('text/plain',row.dataset.ci);
+  setTimeout(function(){row.style.opacity='0.4';},0);
+}
+function _cOnDragEnd(e){
+  e.currentTarget.style.opacity='';
+  document.querySelectorAll('.cli-drag-row').forEach(function(r){r.style.borderTop='';r.style.borderBottom='';});
+  _cDragSrc=null;
+}
+function _cOnDragOver(e){
+  e.preventDefault();
+  if(!_cDragSrc) return;
+  var row=e.currentTarget;
+  if(row.dataset.rep!==_cDragSrc.rep) return;
+  document.querySelectorAll('.cli-drag-row').forEach(function(r){r.style.borderTop='';r.style.borderBottom='';});
+  var rect=row.getBoundingClientRect();
+  if(e.clientY<rect.top+rect.height/2) row.style.borderTop='2px solid #4f7fff';
+  else row.style.borderBottom='2px solid #4f7fff';
+}
+function _cOnDrop(e){
+  e.preventDefault();
+  if(!_cDragSrc) return;
+  var row=e.currentTarget;
+  row.style.borderTop='';row.style.borderBottom='';
+  if(row.dataset.rep!==_cDragSrc.rep) return;
+  var toCi=parseInt(row.dataset.ci);
+  if(toCi===_cDragSrc.ci){_cDragSrc=null;return;}
+  var rep=_cDragSrc.rep;
+  var clients=store.reps[rep].clients;
+  var moved=clients.splice(_cDragSrc.ci,1)[0];
+  var rect=row.getBoundingClientRect();
+  var insertBefore=e.clientY<rect.top+rect.height/2;
+  var target=toCi>_cDragSrc.ci?(insertBefore?toCi-1:toCi):(insertBefore?toCi:toCi+1);
+  target=Math.max(0,Math.min(target,clients.length));
+  clients.splice(target,0,moved);
+  var tbody=document.getElementById('ct-'+rep);
+  if(tbody) tbody.innerHTML=clients.map(function(cl,i){return cRow(rep,i,cl);}).join('');
+  _cBindDragRows(rep);
+  refreshActualForecast(rep);
+  autoSave();
+  if(window._isSPReady&&typeof _spSaveMyRep==='function') _spSaveMyRep();
+  _cDragSrc=null;
+}
+function _cBindDragRows(rep){
+  var tbody=document.getElementById('ct-'+rep);
+  if(!tbody) return;
+  tbody.querySelectorAll('.cli-drag-row').forEach(function(row){
+    row.addEventListener('dragstart',_cOnDragStart);
+    row.addEventListener('dragend',_cOnDragEnd);
+    row.addEventListener('dragover',_cOnDragOver);
+    row.addEventListener('drop',_cOnDrop);
+  });
+}
+
+// ── 이슈사항 드래그 ──────────────────────────────────────────
+var _iDragSrc=null;
+function _iOnDragStart(e){
+  var row=e.currentTarget;
+  _iDragSrc={rep:row.dataset.rep,ii:parseInt(row.dataset.ii)};
+  e.dataTransfer.effectAllowed='move';
+  e.dataTransfer.setData('text/plain',row.dataset.ii);
+  setTimeout(function(){row.style.opacity='0.4';},0);
+}
+function _iOnDragEnd(e){
+  e.currentTarget.style.opacity='';
+  document.querySelectorAll('.iss-drag-row').forEach(function(r){r.style.borderTop='';r.style.borderBottom='';});
+  _iDragSrc=null;
+}
+function _iOnDragOver(e){
+  e.preventDefault();
+  if(!_iDragSrc) return;
+  var row=e.currentTarget;
+  if(row.dataset.rep!==_iDragSrc.rep) return;
+  document.querySelectorAll('.iss-drag-row').forEach(function(r){r.style.borderTop='';r.style.borderBottom='';});
+  var rect=row.getBoundingClientRect();
+  if(e.clientY<rect.top+rect.height/2) row.style.borderTop='2px solid #4f7fff';
+  else row.style.borderBottom='2px solid #4f7fff';
+}
+function _iOnDrop(e){
+  e.preventDefault();
+  if(!_iDragSrc) return;
+  var row=e.currentTarget;
+  row.style.borderTop='';row.style.borderBottom='';
+  if(row.dataset.rep!==_iDragSrc.rep) return;
+  var toIi=parseInt(row.dataset.ii);
+  if(toIi===_iDragSrc.ii){_iDragSrc=null;return;}
+  var rep=_iDragSrc.rep;
+  var issList=store.reps[rep].issuesList;
+  var moved=issList.splice(_iDragSrc.ii,1)[0];
+  var rect=row.getBoundingClientRect();
+  var insertBefore=e.clientY<rect.top+rect.height/2;
+  var target=toIi>_iDragSrc.ii?(insertBefore?toIi-1:toIi):(insertBefore?toIi:toIi+1);
+  target=Math.max(0,Math.min(target,issList.length));
+  issList.splice(target,0,moved);
+  issList.forEach(function(iss,i){iss.no=i+1;});
+  var tbody=document.getElementById('it-'+rep);
+  if(tbody) tbody.innerHTML=issList.map(function(iss,i){return _iRow(rep,i,iss);}).join('');
+  _iBindDragRows(rep);
+  autoSave();
+  if(window._isSPReady&&typeof _spSaveMyRep==='function') _spSaveMyRep();
+  _iDragSrc=null;
+}
+function _iBindDragRows(rep){
+  var tbody=document.getElementById('it-'+rep);
+  if(!tbody) return;
+  tbody.querySelectorAll('.iss-drag-row').forEach(function(row){
+    row.addEventListener('dragstart',_iOnDragStart);
+    row.addEventListener('dragend',_iOnDragEnd);
+    row.addEventListener('dragover',_iOnDragOver);
+    row.addEventListener('drop',_iOnDrop);
+  });
+}
+
 function addClient(rep){const ci=store.reps[rep].clients.length;store.reps[rep].clients.push({name:'',type:'MA',status:'달성',plan:new Array(12).fill(0),actual:new Array(12).fill(0),issue:'',sev:'none'});document.getElementById('ct-'+rep).insertAdjacentHTML('beforeend',cRow(rep,ci,store.reps[rep].clients[ci]));}
-function delClient(rep,ci){store.reps[rep].clients.splice(ci,1);document.getElementById('ct-'+rep).innerHTML=store.reps[rep].clients.map((c,i)=>cRow(rep,i,c)).join('');refreshActualForecast(rep);extractIssues();renderIssues();autoSave();if(window._isSPReady&&typeof _spSaveMyRep==='function')_spSaveMyRep();}
+function delClient(rep,ci){store.reps[rep].clients.splice(ci,1);document.getElementById('ct-'+rep).innerHTML=store.reps[rep].clients.map((c,i)=>cRow(rep,i,c)).join('');_cBindDragRows(rep);refreshActualForecast(rep);extractIssues();renderIssues();autoSave();if(window._isSPReady&&typeof _spSaveMyRep==='function')_spSaveMyRep();}
 function addActivity(rep){const ai=store.reps[rep].activities.length;store.reps[rep].activities.push({no:ai+1,type:'신규영업',client:'',product:'',amount:0,prob:0,timing:'',content:'',sev:'mid',createdAt:new Date().toISOString()});document.getElementById('at-'+rep).insertAdjacentHTML('beforeend',aRow(rep,ai,store.reps[rep].activities[ai]));_aBindDragRows(rep);}
 function delActivity(rep,ai){store.reps[rep].activities.splice(ai,1);document.getElementById('at-'+rep).innerHTML=store.reps[rep].activities.map((a,i)=>aRow(rep,i,a)).join('');_aBindDragRows(rep);autoSave();if(window._isSPReady&&typeof _spSaveMyRep==='function')_spSaveMyRep();}
 function showRepInput(rep){showPage('input',null);const t=[...document.querySelectorAll('.tab')].find(t=>t.textContent.trim()===rep);if(t)switchTab(rep,t);}
@@ -9205,6 +9325,128 @@ async function _spRecoverArchiveActivities(){
     showToast('🔄 복구 중... 잠시 기다려주세요','info');
     var res = await _spFetchAll(_lUrl()+'?$select=Id,DataType,DataKey,Payload&$top=500');
     var items = (res&&res.value)||[];
+
+    // 담당자별로 모든 키의 데이터 수집
+    var byRep = {}; // repBase → [{acts,clients,isss,plan,actual,forecast,savedAt}]
+
+    items.forEach(function(item){
+      if(item.DataType!=='rep_data') return;
+      var dk = item.DataKey||'';
+      try{
+        var pl = JSON.parse(item.Payload||'{}');
+        // rep 이름 추출 (날짜, 직책, 언더스코어 모두 제거)
+        var repBase = dk
+          .replace(/_\d{4}-\d{2}-\d{2}$/, '')   // _YYYY-MM-DD
+          .replace(/:\d{4}-\d{2}-\d{2}$/, '')    // :YYYY-MM-DD
+          .replace(/_act_(old|\d{4})$/, '')       // _act_old, _act_2025
+          .replace(/_iss_\d{4}$/, '')             // _iss_2025
+          .replace(/_vl_\d{4}$/, '')              // _vl_2025
+          .replace(/_/g,' ').trim();
+        if(!repBase||/^\d+$/.test(repBase)) return;
+        // TEAM_REPS 매칭
+        var repKey = (typeof _findRepByKey==='function')?_findRepByKey(repBase):repBase;
+        if(!repKey||/^\d+$/.test(repKey)) return;
+        if(!byRep[repKey]) byRep[repKey]=[];
+        byRep[repKey].push({
+          acts: pl.activities||[],
+          clients: pl.clients||[],
+          isss: pl.issuesList||[],
+          plan: pl.plan||[],
+          actual: pl.actual||[],
+          forecast: pl.forecast||[],
+          savedAt: pl.savedAt||''
+        });
+      }catch(e){}
+    });
+
+    var total=0;
+    var saved=[];
+
+    Object.keys(byRep).forEach(function(repKey){
+      var all = byRep[repKey];
+      if(!all.length) return;
+
+      // clients: 가장 많은 것
+      var bestClients = all.reduce(function(b,d){ return d.clients.length>b.clients.length?d:b; }, all[0]);
+      // activities: 모든 키에서 합산 후 중복 제거
+      var allActs = [];
+      all.forEach(function(d){ allActs=allActs.concat(d.acts); });
+      var seenAct={};
+      var mergedActs=[];
+      allActs.forEach(function(a){
+        var k=(a.client||'')+'|'+(a.timing||'')+'|'+(a.product||'')+'|'+(a.amount||0);
+        if(!seenAct[k]){seenAct[k]=true;mergedActs.push(a);}
+      });
+      mergedActs.forEach(function(a,i){a.no=i+1;});
+      // issuesList: 합산 후 중복 제거
+      var allIsss=[];
+      all.forEach(function(d){ allIsss=allIsss.concat(d.isss); });
+      var seenIss={};
+      var mergedIsss=[];
+      allIsss.forEach(function(i){
+        var k=(i.content||'')+'|'+(i.client||'');
+        if(!seenIss[k]){seenIss[k]=true;mergedIsss.push(i);}
+      });
+      // plan: 합이 가장 큰 것
+      var bestPlan = all.reduce(function(b,d){
+        var bs=(b.plan||[]).reduce(function(s,v){return s+(v||0);},0);
+        var ds=(d.plan||[]).reduce(function(s,v){return s+(v||0);},0);
+        return ds>bs?d:b;
+      }, all[0]);
+
+      // 현재 store와 비교해서 더 많으면 교체
+      var cur = store.reps[repKey];
+      if(!cur) cur=store.reps[repKey]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[],contracts:[]};
+
+      var changed=false;
+      if(mergedActs.length>(cur.activities||[]).length){
+        cur.activities=mergedActs; changed=true; total+=mergedActs.length;
+      }
+      if(bestClients.clients.length>(cur.clients||[]).length){
+        cur.clients=bestClients.clients; changed=true; total+=bestClients.clients.length;
+      }
+      if(mergedIsss.length>(cur.issuesList||[]).length){
+        cur.issuesList=mergedIsss; changed=true; total+=mergedIsss.length;
+      }
+      var bestPlanSum=(bestPlan.plan||[]).reduce(function(s,v){return s+(v||0);},0);
+      var curPlanSum=(cur.plan||[]).reduce(function(s,v){return s+(v||0);},0);
+      if(bestPlanSum>curPlanSum){
+        cur.plan=bestPlan.plan; cur.actual=bestPlan.actual; cur.forecast=bestPlan.forecast; changed=true;
+      }
+
+      if(changed){
+        // 직책 포함 키도 동기화
+        Object.keys(store.reps||{}).forEach(function(k){
+          if(k===repKey) return;
+          var ks=_sanitizeDKey(k), rs=_sanitizeDKey(repKey);
+          if(ks.indexOf(rs)===0||rs.indexOf(ks)===0)
+            store.reps[k]=JSON.parse(JSON.stringify(cur));
+        });
+        saved.push(repKey);
+        _spSaveRepByName(repKey);
+      }
+    });
+
+    // SP 저장 완료 후 보호
+    window._lastAutoSaveTs=Date.now();
+    buildRepInputs();
+    // 매출 재계산
+    (typeof REPS!=='undefined'?REPS:[]).forEach(function(r){ if(store.reps[r]&&typeof refreshActualForecast==='function') refreshActualForecast(r); });
+    if(typeof renderDashboard==='function') renderDashboard();
+
+    if(total>0) showToast('✅ 복구 완료: '+saved.join(', ')+' — '+total+'개 항목 복원','info');
+    else showToast('현재 데이터가 이미 최신입니다.','info');
+  }catch(e){
+    console.error('[recover]',e);
+    showToast('❌ 복구 실패: '+e.message,'error');
+  }
+}
+async function _spRecoverArchiveActivities(){
+  if(!window._isSPReady||!session||session.role!=='admin') return;
+  try{
+    showToast('🔄 복구 중... 잠시 기다려주세요','info');
+    var res = await _spFetchAll(_lUrl()+'?$select=Id,DataType,DataKey,Payload&$top=500');
+    var items = (res&&res.value)||[];
     var recovered = {}; // repName → {acts[], isss[]}
 
     items.forEach(function(item){
@@ -11073,7 +11315,8 @@ function _iRow(rep, idx, iss){
   // 체크박스: data 속성으로 이벤트 위임 (onchange 이스케이프 문제 회피)
   var _issChkHtml=canEdit?'<input type="checkbox" class="wk-iss-chk" data-rep="'+r+'" data-idx="'+idx+'" '+(iss.weeklyCheck&&iss.weeklyCheck[_wkThisKey()]?'checked ':'')+' style="width:15px;height:15px;cursor:pointer;accent-color:#1A56DB;" title="주간보고에 포함">':'&nbsp;';
   // :'&nbsp;'; // (위 삼항연산자에 통합)
-  return '<tr id="ir-'+rep+'-'+idx+'">'
+  return '<tr id="ir-'+rep+'-'+idx+'" draggable="false" data-rep="'+rep+'" data-ii="'+idx+'" class="iss-drag-row">'
+    +'<td class="iss-drag-handle" title="드래그하여 순서 변경" style="width:18px;text-align:center;cursor:grab;color:#CBD5E1;font-size:14px;vertical-align:middle;padding:0 2px;user-select:none;" onmousedown="this.closest(\'tr\').draggable=true;" onmouseup="this.closest(\'tr\').draggable=false;">⠿</td>'
     +'<td class="wk-chk-cell">'+_issChkHtml+'</td>'    +'<td class="wk-no-cell" style="color:#94A3B8;font-weight:600;font-size:12px;">'+(iss.no||idx+1)+'</td>'    // 고객사
     +'<td style="width:175px;vertical-align:middle;text-align:center;">'
       +(canEdit?'<input type="text" class="cdb-client-input" value="'+(iss.client||'')+'" style="width:100%;height:28px;box-sizing:border-box;text-align:center;" onchange="store.reps[\''+r+'\'].issuesList['+idx+'].client=this.value;autoSave&&autoSave()">':'<span style="font-size:12px;">'+( iss.client||'─')+'</span>')
@@ -11130,6 +11373,7 @@ function _iRow(rep, idx, iss){
         +'<div class="sec-body"><div style="overflow-x:auto;overflow-y:auto;max-height:320px;-webkit-overflow-scrolling:touch;">'
         +'<table class="dt" style="min-width:max-content;width:100%;">'
         +'<thead style="position:sticky;top:0;z-index:5;background:#F8FAFC;"><tr>'
+        +'<th style="width:22px;background:#F8FAFC;"></th>'
         +'<th class="wk-chk-cell" style="background:#F8FAFC;white-space:nowrap;" title="주간보고 포함">📋</th>'
         +'<th class="wk-no-cell" style="background:#F8FAFC;white-space:nowrap;">No</th>'
         +'<th style="width:175px;text-align:center;">고객사</th>'
@@ -11191,6 +11435,7 @@ window.addIssueRow = function(rep){
     tr.outerHTML; // dummy
     tbody.insertAdjacentHTML('beforeend', _iRow(rep, idx, iss));
   }
+  if(typeof _iBindDragRows==='function') _iBindDragRows(rep);
   if(typeof autoSave==='function') autoSave();
   // 체크박스는 _iRow에서 직접 생성
 };
