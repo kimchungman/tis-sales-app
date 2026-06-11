@@ -3324,6 +3324,13 @@ document.addEventListener('selectionchange',function(){
       </div>
       <div class="sec-body">
 
+        <!-- 아카이브 복구 -->
+        <div style="margin-bottom:16px;padding:12px;background:#F0FDF4;border-radius:8px;border:1px solid #BBF7D0;">
+          <div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:8px;">🔁 영업활동/이슈 아카이브 복구</div>
+          <div style="font-size:11px;color:#14532D;margin-bottom:8px;">이전에 연도별로 분리 저장된 영업활동·이슈사항을 현재 데이터로 복원합니다.</div>
+          <button onclick="_spRecoverArchiveActivities()" style="padding:6px 14px;background:#16A34A;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">🔁 아카이브 복구</button>
+        </div>
+
         <!-- SP 데이터 정리 -->
         <div style="margin-bottom:16px;padding:12px;background:#FFF7ED;border-radius:8px;border:1px solid #FED7AA;">
           <div style="font-size:12px;font-weight:700;color:#C2410C;margin-bottom:8px;">🗄️ SP 데이터 정리</div>
@@ -9155,6 +9162,81 @@ async function spLoadAll() {
   showToast('✅ 최신 데이터를 불러왔습니다.');
 }
 
+
+// ── 아카이브 activities/issuesList 복구 (관리자 전용) ─────────────
+async function _spRecoverArchiveActivities(){
+  if(!window._isSPReady||!session||session.role!=='admin') return;
+  try{
+    showToast('🔄 아카이브 복구 중...','info');
+    var res = await _spFetchAll(_lUrl()+'?$select=Id,Title,DataType,DataKey,Payload&$top=500');
+    var items = (res&&res.value)||[];
+    var recovered = {};
+
+    // _act_, _iss_ 키 찾기
+    items.forEach(function(item){
+      var dk = item.DataKey||'';
+      if(!/_act_\d{4}$/.test(dk) && !/_iss_\d{4}$/.test(dk)) return;
+      try{
+        var pl = JSON.parse(item.Payload||'{}');
+        // rep 이름 추출
+        var repBase = dk.replace(/_act_\d{4}$/, '').replace(/_iss_\d{4}$/, '');
+        var repKey  = (typeof _findRepByKey==='function') ? _findRepByKey(repBase) : repBase;
+        if(!repKey) return;
+        if(!recovered[repKey]) recovered[repKey] = {activities:[], issuesList:[]};
+        if(pl.activities&&pl.activities.length)
+          recovered[repKey].activities = recovered[repKey].activities.concat(pl.activities);
+        if(pl.issuesList&&pl.issuesList.length)
+          recovered[repKey].issuesList = recovered[repKey].issuesList.concat(pl.issuesList);
+      }catch(e){}
+    });
+
+    var total = 0;
+    Object.keys(recovered).forEach(function(repKey){
+      if(!store.reps[repKey]) return;
+      var arc = recovered[repKey];
+
+      // activities 병합 (중복 no+client 제거)
+      var existKeys = {};
+      (store.reps[repKey].activities||[]).forEach(function(a){
+        existKeys[(a.no||'')+'|'+(a.client||'')+'|'+(a.timing||'')] = true;
+      });
+      var newActs = arc.activities.filter(function(a){
+        return !existKeys[(a.no||'')+'|'+(a.client||'')+'|'+(a.timing||'')];
+      });
+      if(newActs.length){
+        store.reps[repKey].activities = (store.reps[repKey].activities||[]).concat(newActs);
+        store.reps[repKey].activities.forEach(function(a,i){ a.no = i+1; });
+        total += newActs.length;
+      }
+
+      // issuesList 병합
+      var existIss = {};
+      (store.reps[repKey].issuesList||[]).forEach(function(iss){
+        existIss[(iss.content||'')+'|'+(iss.client||'')] = true;
+      });
+      var newIss = arc.issuesList.filter(function(iss){
+        return !existIss[(iss.content||'')+'|'+(iss.client||'')];
+      });
+      if(newIss.length){
+        store.reps[repKey].issuesList = (store.reps[repKey].issuesList||[]).concat(newIss);
+        total += newIss.length;
+      }
+
+      // SP에 즉각 저장
+      if(newActs.length||newIss.length) _spSaveRepByName(repKey);
+    });
+
+    if(total > 0){
+      buildRepInputs();
+      showToast('✅ 복구 완료: '+total+'개 항목 복원됨','info');
+    } else {
+      showToast('아카이브에 복구할 데이터가 없습니다.','info');
+    }
+  }catch(e){
+    console.error('[recover]',e);
+    showToast('❌ 복구 실패','error');
+  }
+}
 
 // ── SP 구버전 날짜 키 정리 (관리자 전용) ────────────────────────
 async function _spCleanupOldKeys(){
