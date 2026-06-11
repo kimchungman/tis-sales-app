@@ -3320,6 +3320,12 @@ document.addEventListener('selectionchange',function(){
       </div>
       <div class="sec-body">
 
+        <!-- SP 데이터 정리 -->
+        <div style="margin-bottom:16px;padding:12px;background:#FFF7ED;border-radius:8px;border:1px solid #FED7AA;">
+          <div style="font-size:12px;font-weight:700;color:#C2410C;margin-bottom:8px;">🗄️ SP 데이터 정리</div>
+          <div style="font-size:11px;color:#78350F;margin-bottom:8px;">날짜별 구버전 키를 삭제해 SP 용량을 최적화합니다. 관리자만 실행 가능합니다.</div>
+          <button onclick="_spCleanupOldKeys()" style="padding:6px 14px;background:#EA580C;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">🧹 SP 구버전 키 정리</button>
+        </div>
         <!-- 관리자 비밀번호 -->
         <div style="margin-bottom:16px;padding:12px;background:#EFF6FF;border-radius:8px;border:1px solid #BFDBFE;">
           <div style="font-size:12px;font-weight:700;color:#1E40AF;margin-bottom:8px;">🛡️ 관리자 비밀번호</div>
@@ -4015,8 +4021,8 @@ function saveAuthCfg(){
   authCfg.teamColors = JSON.parse(JSON.stringify(TEAM_COLORS));
   localStorage.setItem('weekly_auth', JSON.stringify(authCfg));
   if(window._isSPReady){
-    clearTimeout(window._spSettingsT);
-    window._spSettingsT = setTimeout(spSaveSettings, 1500);
+    // 즉각 저장 (팀/담당자 구성 변경은 즉시 반영 필요)
+    if(typeof spSaveSettings==='function') spSaveSettings();
   }
 }
 
@@ -5743,9 +5749,9 @@ function aRow(rep,ai,a){
   </tr>`;
 }
 function addClient(rep){const ci=store.reps[rep].clients.length;store.reps[rep].clients.push({name:'',type:'MA',status:'달성',plan:new Array(12).fill(0),actual:new Array(12).fill(0),issue:'',sev:'none'});document.getElementById('ct-'+rep).insertAdjacentHTML('beforeend',cRow(rep,ci,store.reps[rep].clients[ci]));}
-function delClient(rep,ci){store.reps[rep].clients.splice(ci,1);document.getElementById('ct-'+rep).innerHTML=store.reps[rep].clients.map((c,i)=>cRow(rep,i,c)).join('');extractIssues();renderIssues();}
+function delClient(rep,ci){store.reps[rep].clients.splice(ci,1);document.getElementById('ct-'+rep).innerHTML=store.reps[rep].clients.map((c,i)=>cRow(rep,i,c)).join('');extractIssues();renderIssues();autoSave();if(window._isSPReady&&typeof _spSaveMyRep==='function')_spSaveMyRep();}
 function addActivity(rep){const ai=store.reps[rep].activities.length;store.reps[rep].activities.push({no:ai+1,type:'신규영업',client:'',product:'',amount:0,prob:0,timing:'',content:'',sev:'mid',createdAt:new Date().toISOString()});document.getElementById('at-'+rep).insertAdjacentHTML('beforeend',aRow(rep,ai,store.reps[rep].activities[ai]));}
-function delActivity(rep,ai){store.reps[rep].activities.splice(ai,1);document.getElementById('at-'+rep).innerHTML=store.reps[rep].activities.map((a,i)=>aRow(rep,i,a)).join('');}
+function delActivity(rep,ai){store.reps[rep].activities.splice(ai,1);document.getElementById('at-'+rep).innerHTML=store.reps[rep].activities.map((a,i)=>aRow(rep,i,a)).join('');autoSave();if(window._isSPReady&&typeof _spSaveMyRep==='function')_spSaveMyRep();}
 function showRepInput(rep){showPage('input',null);const t=[...document.querySelectorAll('.tab')].find(t=>t.textContent.trim()===rep);if(t)switchTab(rep,t);}
 
 // 달성/예상 자동계산
@@ -8609,7 +8615,7 @@ async function _initSP() {
       try{
         if(typeof window._syncWeeklyFeed==='function') await window._syncWeeklyFeed();
       }catch(e){}
-    }, 60000); // 60초마다 동기화 (SP 부하 감소)
+    }, 10000); // 10초마다 동기화
 
   } catch (err) {
     window._isSPReady = false;
@@ -9039,6 +9045,71 @@ async function spLoadAll() {
   await _spLoadToday();
   await _spLoadHistList();
   showToast('✅ 최신 데이터를 불러왔습니다.');
+}
+
+
+// ── SP 구버전 날짜 키 정리 (관리자 전용) ────────────────────────
+async function _spCleanupOldKeys(){
+  if(!window._isSPReady||!session||session.role!=='admin') return;
+  try{
+    showToast('🔄 SP 데이터 정리 중... 잠시 기다려주세요','info');
+    var res=await _spFetchAll(_lUrl()+'?$select=Id,Title,DataType,DataKey,Payload&$top=500');
+    var items=(res&&res.value)||[];
+    var toDelete=[];
+
+    // DataType별로 중복 키 찾기
+    var byTitle={};
+    items.forEach(function(item){
+      // 날짜 포함 키 패턴: rep_data_김충만_2026-05-07
+      var dk=item.DataKey||'';
+      var hasDate=/\d{4}-\d{2}-\d{2}/.test(dk);
+      if(!hasDate) return; // 날짜 없는 키는 정리 대상 아님
+      // _part, _idx, _act_, _iss_, _vl_ 제외
+      if(dk.match(/(_part\d+|_idx|_act_|_iss_|_vl_)$/)) return;
+      var dtype=item.DataType||'';
+      var titleKey=dtype+'_'+dk.replace(/_\d{4}-\d{2}-\d{2}$/,'');
+      if(!byTitle[titleKey]) byTitle[titleKey]=[];
+      byTitle[titleKey].push(item);
+    });
+
+    // 각 그룹에서 최신 1개 빼고 삭제 대상 수집
+    Object.keys(byTitle).forEach(function(tk){
+      var group=byTitle[tk];
+      if(group.length<=1) return;
+      // savedAt 기준 정렬 (최신이 앞)
+      group.sort(function(a,b){
+        try{
+          var pa=JSON.parse(a.Payload||'{}');
+          var pb=JSON.parse(b.Payload||'{}');
+          return (pb.savedAt||'').localeCompare(pa.savedAt||'');
+        }catch(e){ return 0; }
+      });
+      // 2번째부터 삭제 대상
+      for(var i=1;i<group.length;i++) toDelete.push(group[i].Id);
+    });
+
+    if(!toDelete.length){
+      showToast('✅ 정리할 항목이 없습니다.','info');
+      return;
+    }
+
+    // 50개씩 배치 삭제
+    var deleted=0;
+    for(var i=0;i<toDelete.length;i++){
+      try{
+        await _spFetch(
+          _lUrl()+'('+toDelete[i]+')',
+          {method:'DELETE',headers:{'IF-MATCH':'*','X-HTTP-Method':'DELETE'}}
+        );
+        deleted++;
+      }catch(e){}
+      if(i%50===49) showToast('🔄 정리 중... '+deleted+'개 완료','info');
+    }
+    showToast('✅ SP 정리 완료: '+deleted+'개 삭제됨','info');
+  }catch(e){
+    console.error('[SP cleanup]',e);
+    showToast('❌ SP 정리 실패','error');
+  }
 }
 
 async function _spLoadSettings() {
@@ -10887,6 +10958,7 @@ window.deleteIssueRow = function(rep, idx){
   if(tbody) tbody.innerHTML = store.reps[rep].issuesList.map(function(iss,i){ return _iRow(rep,i,iss); }).join('');
   if(typeof extractIssues==='function'){ extractIssues(); if(typeof renderIssues==='function') renderIssues(); }
   if(typeof autoSave==='function') autoSave();
+  if(window._isSPReady&&typeof _spSaveMyRep==='function') _spSaveMyRep();
 };
 
 // ── buildRepInputs override: 이슈사항 섹션 추가 ──
@@ -13480,6 +13552,7 @@ async function _spLoadAllVisitLogs(){
 
 async function _spSaveMyRep(){
   if(!window._isSPReady || !session || !session.rep) return;
+  if(session.role==='guest') return; // 게스트는 rep_data 저장 불가
   var date=document.getElementById('mtg-date')?document.getElementById('mtg-date').value:'';
   if(!date) date=new Date().toISOString().split('T')[0];
   var myData=store.reps[session.rep];
@@ -13551,6 +13624,7 @@ async function _spSaveMyRep(){
   if(_payload.length <= SP_LIMIT){
     delete _d.visitLog; // visitLog는 별도 키로 저장
   await _spSaveItem('rep_data', _repKey, _d);
+  window._lastAutoSaveTs = Date.now(); // 저장 완료 시각 갱신
   } else {
     // 1단계: visitLog를 현재 연도만 남기고 분리
     var _curYear = new Date().getFullYear().toString();
@@ -13662,7 +13736,13 @@ async function _spSyncOtherReps(){
       try{
         var p = JSON.parse(item.Payload||'{}');
         if(p.clientDB&&Array.isArray(p.clientDB)){
-          // SP 데이터를 정답으로 사용 (이름 기준 중복 제거)
+          var spAt = new Date(p.savedAt||0).getTime();
+          var localAt = new Date(store._clientDBSavedAt||0).getTime();
+          // 로컬이 더 최신이면 SP 덮어쓰기 방지 (삭제/수정 보호)
+          // 최근 30초 내 로컬 저장이 있으면 로컬 우선
+          var recentlySaved = (Date.now() - (window._lastCdbSaveTs||0)) < 30000;
+          if(recentlySaved || localAt > spAt) return;
+          // SP가 더 최신이면 SP를 정답으로 (이름 기준 중복 제거)
           var deduped = {};
           p.clientDB.forEach(function(c){
             var k = (c.name||'').trim();
@@ -13671,12 +13751,8 @@ async function _spSyncOtherReps(){
               deduped[k] = c;
             }
           });
-          // 로컬에만 있는 항목 보완 (SP에 없는 최근 추가 항목)
-          (store.clientDB||[]).forEach(function(c){
-            var k = (c.name||'').trim();
-            if(k && !deduped[k]) deduped[k] = c;
-          });
           store.clientDB = Object.values(deduped);
+          store._clientDBSavedAt = p.savedAt||'';
         }
       }catch(e){}
     });
@@ -14367,11 +14443,14 @@ function _cdbSaveItem(item){
   var idx=all.findIndex(function(c){return c.id===item.id;});
   if(idx>=0) all[idx]=item; else all.push(item);
   if(typeof autoSave==='function') autoSave();
-  if(typeof _cdbDebounceSPSave==='function') _cdbDebounceSPSave();
+  // 즉각 SP 저장 (재접속 시 복원 방지)
+  if(window._isSPReady&&typeof _spSaveClientDB==='function') _spSaveClientDB();
 }
 function _cdbDeleteItem(id){
   store.clientDB=(store.clientDB||[]).filter(function(c){return c.id!==id;});
   if(typeof autoSave==='function') autoSave();
+  // 즉각 SP 저장 (삭제 후 재접속 시 복원 방지)
+  if(window._isSPReady&&typeof _spSaveClientDB==='function') _spSaveClientDB();
 }
 
 // 자동 등록 (이름이 없으면 추가)
@@ -15780,8 +15859,12 @@ var _cdbSPSaveTimer=null;
 async function _spSaveClientDB(){
   if(!window._isSPReady) return;
   try{
-    var payload={clientDB:_cdbAll(),savedAt:new Date().toISOString()};
+    var _now = new Date().toISOString();
+    var payload={clientDB:_cdbAll(),savedAt:_now};
     await _spSaveItem('client_db','clientDB',payload);
+    // 저장 시각 기록 (sync 덮어쓰기 방지)
+    store._clientDBSavedAt = _now;
+    window._lastCdbSaveTs = Date.now();
   }catch(e){ console.error('[clientDB SP save]',e); }
 }
 function _cdbDebounceSPSave(){
@@ -15791,6 +15874,7 @@ function _cdbDebounceSPSave(){
 
 async function _spSaveContractData(rep){
   if(!rep)return;
+  if(session&&session.role==='guest') return; // 게스트는 계약 저장 불가
   if(!window._isSPReady){
     if(typeof showToast==='function')showToast('⚠️ SP 미연결 - 계약 데이터를 저장할 수 없습니다','warn');
     return;
@@ -16350,6 +16434,7 @@ async function _wkSaveFeed(weekKey, rep, entries){
     }
     await _spSaveItem('weeklyFeed', key, {week:weekKey, rep:rep, entries:entries, savedAt:new Date().toISOString()});
     _wk.lastSaveAt=Date.now();
+    window._wkFeedCache=null; // 저장 후 캐시 무효화
   }catch(e){
     console.warn('[wk feed save error]',e);
     if(typeof showToast==='function') showToast('⚠️ 회의록 저장 실패 - 네트워크를 확인해주세요');
@@ -16359,13 +16444,38 @@ async function _wkSaveFeed(weekKey, rep, entries){
 async function _wkLoadFeed(weekKey){
   if(!weekKey||!window._isSPReady) return [];
   try{
-    // weeklyFeed DataType만 로드 (전체 로드 대신)
-    // $filter 미지원 환경 대응: _spFetchAll로 전체 로드 후 필터
+    // weeklyFeed 캐시 활용 (10초 내 재사용으로 불필요한 전체 로드 방지)
+    var _now=Date.now();
+    if(window._wkFeedCache&&window._wkFeedCache.ts&&_now-window._wkFeedCache.ts<10000){
+      var _items=window._wkFeedCache.items||[];
+      // 캐시 사용 (아래 필터 로직 바로 적용)
+      var _repLatest={};
+      _items.forEach(function(item){
+        if(!item.Title||item.Title.indexOf('weeklyFeed_'+weekKey)!==0) return;
+        try{
+          var d=JSON.parse(item.Payload||'{}');
+          var _rep=d.rep||'';
+          if(!_rep) return;
+          if(!_repLatest[_rep]||(d.savedAt||'')>(_repLatest[_rep].savedAt||'')) _repLatest[_rep]=d;
+        }catch(e){}
+      });
+      var all=[];
+      Object.keys(_repLatest).forEach(function(rep){
+        var d=_repLatest[rep];
+        if(d.entries&&Array.isArray(d.entries)) all=all.concat(d.entries);
+      });
+      var seen={};
+      all=all.filter(function(e){ if(seen[e.id]) return false; seen[e.id]=true; return true; });
+      all.sort(function(a,b){ return (a.time||'').localeCompare(b.time||''); });
+      return all;
+    }
     var url=_lUrl()+'?$select=Title,DataType,DataKey,Payload&$top=500';
     var res=await _spFetchAll(url);
     var _items=((res&&res.value)||[]).filter(function(i){
       return i.DataType==='weeklyFeed'||(i.Title&&i.Title.indexOf('weeklyFeed_')===0);
     });
+    // 캐시 저장
+    window._wkFeedCache={ts:Date.now(),items:_items};
     // rep별 최신 savedAt 기준으로 1건만 사용 (중복 SP 아이템 방지)
     var _repLatest={};
     _items.forEach(function(item){
