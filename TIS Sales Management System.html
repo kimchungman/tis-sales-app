@@ -2547,7 +2547,7 @@ window._wkEditEntry=function(entryId){
   if(!entry) return;
   var cont=document.getElementById('wk-entry-cont-'+entryId);
   if(!cont) return;
-  cont.innerHTML='<div class="rich-ed" contenteditable="true" id="wk-edit-ta-'+entryId+'" style="min-height:60px;padding:8px;border:1.5px solid var(--blue);border-radius:6px;font-size:13px;line-height:1.5;outline:none;background:var(--bg);">'+window._wkSanitize(entry.text||'')+'</div>'    +'<div style="margin-top:6px;display:flex;gap:6px;">'    +'<button class="wk-reply-submit" onclick="_wkSaveEntryEdit(\''+entryId+'\')">저장</button>'    +'<button class="wk-reply-cancel" onclick="_wkCancelEntryEdit(\''+entryId+'\')">취소</button>'    +'</div>';
+  cont.innerHTML='<div class="rich-ed" contenteditable="true" draggable="false" id="wk-edit-ta-'+entryId+'" style="min-height:60px;padding:8px;border:1.5px solid var(--blue);border-radius:6px;font-size:13px;line-height:1.5;outline:none;background:var(--bg);">'+window._wkSanitize(entry.text||'')+'</div>'    +'<div style="margin-top:6px;display:flex;gap:6px;">'    +'<button class="wk-reply-submit" onclick="_wkSaveEntryEdit(\''+entryId+'\')">저장</button>'    +'<button class="wk-reply-cancel" onclick="_wkCancelEntryEdit(\''+entryId+'\')">취소</button>'    +'</div>';
   var ed=document.getElementById('wk-edit-ta-'+entryId);
   if(ed){ed.focus();var rng=document.createRange();rng.selectNodeContents(ed);rng.collapse(false);var sel=window.getSelection();sel.removeAllRanges();sel.addRange(rng);}
 };
@@ -5578,9 +5578,9 @@ function buildRepInputs(){
       <div class="sec-head"><h3>${rep} — 영업활동</h3><button class="add-btn" onclick="addActivity('${rep}')">＋ 추가</button></div>
       <div class="sec-body"><div style="overflow-x:auto;overflow-y:auto;max-height:380px;-webkit-overflow-scrolling:touch;"><table class="dt" style="min-width:max-content;table-layout:auto;">
         <thead style="position:sticky;top:0;z-index:5;"><tr>
+          <th style="width:22px;background:#F8FAFC;"></th>
           <th class="wk-chk-cell" style="background:#F8FAFC;white-space:nowrap;" title="주간보고 포함">📋</th>
           <th class="wk-no-cell" style="background:#F8FAFC;white-space:nowrap;">순번</th>
-          <th style="width:18px;background:#F8FAFC;"></th>
           <th style="text-align:center;width:90px;white-space:nowrap;background:#F8FAFC;">구분</th>
           <th style="text-align:center;width:175px;white-space:nowrap;background:#F8FAFC;">고객사</th>
           <th style="text-align:center;width:160px;white-space:nowrap;background:#F8FAFC;">제품</th>
@@ -5702,7 +5702,7 @@ function cRow(rep,ci,c){
       <select style="width:60px;font-size:12px;" onchange="store.reps['${rep}'].clients[${ci}].type=this.value;updateProductSummary('${rep}');autoSave();refreshActualForecast('${rep}');updateProductSummary('${rep}');renderDashboard();autoSave();\">${tOpts}</select>
     </td>
     ${MONTHS.map((_,i)=>{const v=(c.actual&&c.actual[i])||0;const disp=v?v.toLocaleString('ko-KR'):'';return`<td style="vertical-align:middle;padding:3px 4px;text-align:right;white-space:nowrap;"><input type="text" value="${disp}" style="width:68px;text-align:right;" onfocus="this.value=this.value.replace(/,/g,'')" onblur="const n=parseFloat(this.value.replace(/,/g,''));this.value=n?n.toLocaleString('ko-KR'):'';" onchange="store.reps['${rep}'].clients[${ci}].actual[${i}]=Math.max(0,parseFloat(String(this.value).replace(/,/g,''))||0);refreshActualForecast('${rep}')"></td>`;}).join('')}
-    <td class="content-cell" style="vertical-align:middle;padding:3px 4px;min-width:240px;text-align:left;"><div class="rich-ed" contenteditable="true" data-ph="이슈사항..." onmouseup="_showRTB(this)" onkeydown="_ctrlB(event)" onpaste="event.preventDefault();var _pt=(event.clipboardData||window.clipboardData).getData('text/plain');document.execCommand('insertText',false,_pt);" oninput="store.reps['${rep}'].clients[${ci}].issue=_sanitizeRich(this.innerHTML);extractIssues();renderIssues();autoSave();" onfocus="this.style.borderColor='#4f7fff'" onblur="this.style.borderColor='#E2E8F0'">${c.issue||''}</div></td>
+    <td class="content-cell" style="vertical-align:middle;padding:3px 4px;min-width:240px;text-align:left;"><div class="rich-ed" contenteditable="true" draggable="false" data-ph="이슈사항..." onmouseup="_showRTB(this)" onkeydown="_ctrlB(event)" onpaste="event.preventDefault();var _pt=(event.clipboardData||window.clipboardData).getData('text/plain');document.execCommand('insertText',false,_pt);" oninput="store.reps['${rep}'].clients[${ci}].issue=_sanitizeRich(this.innerHTML);extractIssues();renderIssues();autoSave();" onfocus="this.style.borderColor='#4f7fff'" onblur="this.style.borderColor='#E2E8F0'">${c.issue||''}</div></td>
     <td style="vertical-align:middle;padding:3px 4px;text-align:center;width:36px;min-width:36px;position:sticky;right:0;background:white;"><button class="del-btn" onclick="delClient('${rep}',${ci})">×</button></td>
   </tr>`;
 }
@@ -5741,7 +5741,7 @@ function aRow(rep,ai,a){
       <input type="text" value="${a.timing||''}" style="width:100%;text-align:center;" onchange="store.reps['${rep}'].activities[${ai}].timing=this.value;autoSave()">
     </td>
     <td style="min-width:240px;vertical-align:top;">
-      <div class="rich-ed" contenteditable="true" data-ph="활동 내용..." onmouseup="_showRTB(this)" onkeydown="_ctrlB(event)" onpaste="event.preventDefault();var _pt=(event.clipboardData||window.clipboardData).getData('text/plain');document.execCommand('insertText',false,_pt);" oninput="store.reps['${rep}'].activities[${ai}].content=_sanitizeRich(this.innerHTML);autoSave();" onfocus="this.style.borderColor='#4f7fff'" onblur="this.style.borderColor='#E2E8F0'">${a.content||''}</div>
+      <div class="rich-ed" contenteditable="true" draggable="false" data-ph="활동 내용..." onmouseup="_showRTB(this)" onkeydown="_ctrlB(event)" onpaste="event.preventDefault();var _pt=(event.clipboardData||window.clipboardData).getData('text/plain');document.execCommand('insertText',false,_pt);" oninput="store.reps['${rep}'].activities[${ai}].content=_sanitizeRich(this.innerHTML);autoSave();" onfocus="this.style.borderColor='#4f7fff'" onblur="this.style.borderColor='#E2E8F0'">${a.content||''}</div>
     </td>
     <td style="width:100px;vertical-align:middle;padding:2px 4px;">
       <div style="position:relative;display:block;width:100%;height:28px;">
@@ -5761,14 +5761,13 @@ function aRow(rep,ai,a){
   function _atDragStart(e){
     var tr = e.target.closest('.act-drag-row');
     if(!tr) return;
-    // 핸들에서만 드래그 허용
-    if(!e.target.closest('.act-drag-handle')){
-      e.preventDefault(); return;
-    }
+    // 핸들에서만 드래그 허용 (입력 셀 드래그 방지)
+    var handle = e.target.closest('.act-drag-handle');
+    if(!handle){ e.preventDefault(); return; }
     _dragSrc = {rep: tr.dataset.rep, ai: parseInt(tr.dataset.ai)};
-    tr.style.opacity = '0.5';
+    tr.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', tr.dataset.ai);
+    e.dataTransfer.setData('text/plain', String(tr.dataset.ai));
   }
 
   function _atDragOver(e){
@@ -5793,6 +5792,7 @@ function aRow(rep,ai,a){
     e.preventDefault();
     document.querySelectorAll('.act-drag-row').forEach(function(r){
       r.style.opacity=''; r.style.borderTop=''; r.style.borderBottom='';
+      r.classList.remove('dragging');
     });
     if(!_dragSrc) return;
     var tr = e.target.closest('.act-drag-row');
@@ -5822,6 +5822,7 @@ function aRow(rep,ai,a){
   function _atDragEnd(e){
     document.querySelectorAll('.act-drag-row').forEach(function(r){
       r.style.opacity=''; r.style.borderTop=''; r.style.borderBottom='';
+      r.classList.remove('dragging');
     });
     _dragSrc = null;
   }
@@ -10950,7 +10951,7 @@ function _iRow(rep, idx, iss){
     +'</td>'
     // 이슈 내용
     +'<td class="content-cell" style="min-width:240px;vertical-align:middle;text-align:left;">'
-      +(canEdit?'<div class="rich-ed" contenteditable="true" data-ph="이슈 내용..." onmouseup="_showRTB(this)" onkeydown="_ctrlB(event)" onpaste="event.preventDefault();var _pt=(event.clipboardData||window.clipboardData).getData(\'text/plain\');document.execCommand(\'insertText\',false,_pt);" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" oninput="store.reps[\''+r+'\'].issuesList['+idx+'].content=_sanitizeRich(this.innerHTML);if(typeof extractIssues===\'function\'){extractIssues();renderIssues&&renderIssues();}autoSave&&autoSave();">'+_sanitizeRich(iss.content||'')+'</div>':'<span style="font-size:12px;white-space:pre-wrap;">'+_renderRich(iss.content||'─')+'</span>')
+      +(canEdit?'<div class="rich-ed" contenteditable="true" draggable="false" data-ph="이슈 내용..." onmouseup="_showRTB(this)" onkeydown="_ctrlB(event)" onpaste="event.preventDefault();var _pt=(event.clipboardData||window.clipboardData).getData(\'text/plain\');document.execCommand(\'insertText\',false,_pt);" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" oninput="store.reps[\''+r+'\'].issuesList['+idx+'].content=_sanitizeRich(this.innerHTML);if(typeof extractIssues===\'function\'){extractIssues();renderIssues&&renderIssues();}autoSave&&autoSave();">'+_sanitizeRich(iss.content||'')+'</div>':'<span style="font-size:12px;white-space:pre-wrap;">'+_renderRich(iss.content||'─')+'</span>')
     +'</td>'
     // 등록날짜
     +'<td style="width:110px;vertical-align:middle;padding:2px 4px;text-align:center;">'
@@ -13019,7 +13020,7 @@ function _vRow(rep,idx,v){
   function ta(field,val){
     var safeVal=(typeof _sanitizeRich==='function')?_sanitizeRich(val||''):(val||'');
     if(!canEdit) return '<span style="font-size:12px;color:#374151;padding:2px 4px;display:block;line-height:1.5;white-space:pre-wrap;text-align:left;">'+(typeof _renderRich==='function'?_renderRich(val||'─'):(val||'─'))+'</span>';
-    return '<div class="rich-ed" contenteditable="true" data-ph="내용 입력..." onmouseup="_showRTB(this)" onkeydown="_ctrlB(event)" onpaste="event.preventDefault();var _pt=(event.clipboardData||window.clipboardData).getData(\'text/plain\');document.execCommand(\'insertText\',false,_pt);" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" oninput="store.reps[\''+r+'\'].visitLog['+idx+'].'+field+'=_sanitizeRich(this.innerHTML);autoSave&&autoSave();_markVisitLogDirty(\''+r+'\');">'+safeVal+'</div>';
+    return '<div class="rich-ed" contenteditable="true" draggable="false" data-ph="내용 입력..." onmouseup="_showRTB(this)" onkeydown="_ctrlB(event)" onpaste="event.preventDefault();var _pt=(event.clipboardData||window.clipboardData).getData(\'text/plain\');document.execCommand(\'insertText\',false,_pt);" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" oninput="store.reps[\''+r+'\'].visitLog['+idx+'].'+field+'=_sanitizeRich(this.innerHTML);autoSave&&autoSave();_markVisitLogDirty(\''+r+'\');">'+safeVal+'</div>';
   }
   function sel(field, val, opts, colorMap){
     var currVal=(val===undefined||val===null)?'':(val);
