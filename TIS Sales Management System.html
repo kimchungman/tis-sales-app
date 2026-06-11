@@ -6075,7 +6075,7 @@ async function manualRefresh(){
       window._spIdCache = {};
 
       await _spLoadSettings();       // 관리자 설정 (배너/팝업 포함)
-      await _spLoadAllReps();        // 모든 담당자 최신 데이터
+      await _spSyncOtherReps();        // 모든 담당자 최신 데이터
       await _spLoadAllVisitLogs();   // 접점기록
       await _loadAccessLog();        // 접속이력
 
@@ -6955,7 +6955,7 @@ function doGuestWithName(name, skipPwCheck){
   setTimeout(async function(){
     try{
       if(window._isSPReady){
-        await _spLoadAllReps();
+        await _spSyncOtherReps();
         await _spLoadAllVisitLogs();
         try{ if(typeof renderDashboard==='function') renderDashboard(); }catch(e){}
         try{ if(typeof renderIssues==='function') renderIssues(); }catch(e){}
@@ -13673,13 +13673,8 @@ async function _spSaveRepByName(repName){
   if(!window._isSPReady || !repName) return;
   var repData = store.reps[repName];
   if(!repData) return;
-  // 빈 데이터는 저장 안 함 (SP의 실제 데이터를 덮어쓰기 방지)
-  // 단, 관리자가 직접 편집한 경우(window._adminEditActive)는 빈 데이터도 저장 허용
-  var _planSum=(repData.plan||[]).reduce(function(s,v){return s+(v||0);},0);
-  var _hasData=_planSum>0||(repData.clients&&repData.clients.length>0)||(repData.activities&&repData.activities.length>0);
-  if(!_hasData && !window._adminEditActive){
-    return;
-  }
+  // 저장 허용 - 빈 데이터도 저장 (삭제 후 SP에 반영 필요)
+  // 단, 초기 접속 시 자동 저장은 _spDataLoaded + _repSavedHashes로 차단됨
   // 저장 시 항상 현재 시각을 savedAt으로 기록 (sync 충돌 방지)
   repData.savedAt = new Date().toISOString();
   var date = document.getElementById('mtg-date')?document.getElementById('mtg-date').value:'';
@@ -13846,8 +13841,9 @@ async function _spSyncOtherReps(){
           ((typeof _sanitizeDKey==='function')&&_sanitizeDKey(repName)===_sanitizeDKey(myRep));
         if(isMyRep){
           var localAt = new Date((store.reps[myRep]&&store.reps[myRep].savedAt)||0).getTime();
-          // SP가 30초 이상 최신이고 내가 최근 30초 내 저장 안 했으면 SP 반영
-          if(spAt > localAt+5000 && (Date.now()-(window._lastAutoSaveTs||0) > 30000) && spHasData){
+          // SP가 로컬보다 5초 이상 최신이면 반영 (관리자 수정 포함)
+          // 단, 내가 방금(3초 내) 저장했으면 로컬 우선 (내 입력 보호)
+          if(spAt > localAt+5000 && (Date.now()-(window._lastAutoSaveTs||0) > 3000) && spHasData){
             if(!store.reps[myRep]) store.reps[myRep] = {plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[],contracts:[]};
             var localVL = store.reps[myRep].visitLog||[];
             ['plan','actual','forecast','clients','activities','issuesList'].forEach(function(k){
@@ -13864,12 +13860,13 @@ async function _spSyncOtherReps(){
         // 다른 담당자 처리
         if(!store.reps[repName]) store.reps[repName] = {plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[],contracts:[]};
         var before = JSON.stringify(store.reps[repName]);
-        if(spHasData){
-          ['plan','actual','forecast','clients','activities'].forEach(function(k){
+        // savedAt 기준: SP가 로컬보다 최신이면 항상 적용 (빈 데이터 포함)
+        var _spAt2 = new Date(repData.savedAt||0).getTime();
+        var _localAt2 = new Date((store.reps[repName]&&store.reps[repName].savedAt)||0).getTime();
+        if(_spAt2 >= _localAt2){
+          ['plan','actual','forecast','clients','activities','issuesList'].forEach(function(k){
             if(repData[k]!==undefined) store.reps[repName][k]=repData[k];
           });
-          if((repData.issuesList||[]).length>=(store.reps[repName].issuesList||[]).length)
-            store.reps[repName].issuesList = repData.issuesList||[];
           if((repData.visitLog||[]).length>=(store.reps[repName].visitLog||[]).length)
             store.reps[repName].visitLog = repData.visitLog||[];
           if(repData.savedAt) store.reps[repName].savedAt = repData.savedAt;
@@ -13904,6 +13901,14 @@ async function _spSyncOtherReps(){
 
   }catch(e){ console.error('[spSync]',e); }
   finally{ window._syncInProgress = false; }
+
+  // 동기화 완료 후 _repSavedHashes 초기화 (접속 시 자동 저장 방지)
+  // 실제 변경된 rep만 저장되도록 현재 상태로 해시 갱신
+  if(typeof _repSavedHashes !== 'undefined'){
+    Object.keys(store.reps||{}).forEach(function(rep){
+      try{ _repSavedHashes[rep] = JSON.stringify(store.reps[rep]||{}); }catch(e){}
+    });
+  }
 
   // 계약 패널 갱신
   if(changed){
