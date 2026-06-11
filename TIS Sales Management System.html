@@ -9230,8 +9230,11 @@ async function _spRecoverArchiveActivities(){
         if(!recovered[repKey]) recovered[repKey]={acts:[],isss:[]};
         if(pl.activities&&pl.activities.length)
           recovered[repKey].acts = recovered[repKey].acts.concat(pl.activities);
-        if(pl.clients&&pl.clients.length&&!(pl.activities===undefined&&pl.clients.length===0))
-          recovered[repKey].clients = pl.clients; // clients는 최신 것만 (덮어쓰기)
+             // clients: 가장 많은 것 선택
+        if(pl.clients&&pl.clients.length){
+          if(!recovered[repKey].clients||pl.clients.length>recovered[repKey].clients.length)
+            recovered[repKey].clients=pl.clients;
+        }
         if(pl.issuesList&&pl.issuesList.length)
           recovered[repKey].isss = recovered[repKey].isss.concat(pl.issuesList);
       }catch(e){}
@@ -9254,9 +9257,12 @@ async function _spRecoverArchiveActivities(){
         cur.activities=merged;
       }
 
-      // clients: 아카이브에 더 많으면 교체
+      // clients: 아카이브에 더 많으면 교체 (actual/plan 포함)
       if(arc.clients&&arc.clients.length>(cur.clients||[]).length){
-        cur.clients=arc.clients; total+=arc.clients.length;
+        cur.clients=arc.clients;
+        total+=arc.clients.length;
+        // actual/plan 재계산
+        if(typeof refreshActualForecast==='function') setTimeout(function(){ refreshActualForecast(repKey); },200);
       }
 
       // issuesList 병합
@@ -9266,11 +9272,24 @@ async function _spRecoverArchiveActivities(){
         arc.isss.forEach(function(i){ var k=(i.content||'')+'|'+(i.client||''); if(!seenI[k]){seenI[k]=true;(cur.issuesList=cur.issuesList||[]).push(i);total++;} });
       }
 
-      if(total>0) _spSaveRepByName(repKey);
+      if(total>0){
+        _spSaveRepByName(repKey);
+        // 직책 포함 키도 동기화 (store.reps['김충만'] → store.reps['김충만 책임'])
+        Object.keys(store.reps||{}).forEach(function(k){
+          if(k!==repKey && typeof _sanitizeDKey==='function'){
+            var ks=_sanitizeDKey(k), rs=_sanitizeDKey(repKey);
+            if(ks.indexOf(rs)===0||rs.indexOf(ks)===0){
+              store.reps[k]=JSON.parse(JSON.stringify(cur));
+            }
+          }
+        });
+      }
     });
 
     buildRepInputs();
-    if(total>0) showToast('✅ 복구 완료: '+total+'개 항목 복원됨','info');
+    // 복구 후 sync 덮어쓰기 방지 (30초 보호)
+    window._lastAutoSaveTs = Date.now();
+    if(total>0) showToast('✅ 복구 완료: '+total+'개 항목 복원됨 — 지금 바로 저장됩니다.','info');
     else showToast('복구할 추가 데이터가 없습니다 (현재 데이터가 최신).','info');
   }catch(e){
     console.error('[recover]',e);
