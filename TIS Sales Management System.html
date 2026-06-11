@@ -5683,12 +5683,12 @@ function cRow(rep,ci,c){
   if(c.status&&_cStOpts.indexOf(c.status)<0) _cStOpts=_cStOpts.concat([c.status]);
   const sOpts=_cStOpts.map(st=>`<option${(c.status||_cStOpts[0]||'')===st?' selected':''}>${st}</option>`).join('');
   return`<tr id="cr-${rep}-${ci}">
-    <td style="vertical-align:middle;padding:3px 4px;white-space:nowrap;"><input type="text" id="cli_${rep}_${ci}" value="${c.name||''}" style="width:100%;min-width:140px;text-align:center;" onchange="store.reps['${rep}'].clients[${ci}].name=this.value;autoSave()"></td>
+    <td style="vertical-align:middle;padding:3px 4px;white-space:nowrap;"><input type="text" id="cli_${rep}_${ci}" value="${c.name||''}" style="width:100%;min-width:140px;text-align:center;" onchange="store.reps['${rep}'].clients[${ci}].name=this.value;autoSave();if(typeof renderDashboard==='function')renderDashboard();"></td>
     <td style="vertical-align:middle;padding:3px 4px;text-align:center;white-space:nowrap;">
       <select style="width:60px;font-size:12px;text-align:center;" onchange="store.reps['${rep}'].clients[${ci}].status=this.value;refreshActualForecast('${rep}');autoSave()">${sOpts}</select>
     </td>
     <td style="vertical-align:middle;padding:3px 2px;text-align:center;white-space:nowrap;">
-      <select style="width:108px;font-size:11px;text-align:center;" onchange="store.reps['${rep}'].clients[${ci}].product=this.value;autoSave()">
+      <select style="width:108px;font-size:11px;text-align:center;" onchange="store.reps['${rep}'].clients[${ci}].product=this.value;updateProductSummary('${rep}');refreshActualForecast('${rep}');autoSave()">
         <option value="">-</option>
         ${(function(){ var _opts=getSelectOpts('clientProduct'); if(c.product&&_opts.indexOf(c.product)<0) _opts=_opts.concat([c.product]); return _opts; })().map(p=>`<option value="${p}"${(c.product||'')===p?' selected':''}>${p}</option>`).join('')}
       </select>
@@ -5749,7 +5749,7 @@ function aRow(rep,ai,a){
   </tr>`;
 }
 function addClient(rep){const ci=store.reps[rep].clients.length;store.reps[rep].clients.push({name:'',type:'MA',status:'달성',plan:new Array(12).fill(0),actual:new Array(12).fill(0),issue:'',sev:'none'});document.getElementById('ct-'+rep).insertAdjacentHTML('beforeend',cRow(rep,ci,store.reps[rep].clients[ci]));}
-function delClient(rep,ci){store.reps[rep].clients.splice(ci,1);document.getElementById('ct-'+rep).innerHTML=store.reps[rep].clients.map((c,i)=>cRow(rep,i,c)).join('');extractIssues();renderIssues();autoSave();if(window._isSPReady&&typeof _spSaveMyRep==='function')_spSaveMyRep();}
+function delClient(rep,ci){store.reps[rep].clients.splice(ci,1);document.getElementById('ct-'+rep).innerHTML=store.reps[rep].clients.map((c,i)=>cRow(rep,i,c)).join('');refreshActualForecast(rep);extractIssues();renderIssues();autoSave();if(window._isSPReady&&typeof _spSaveMyRep==='function')_spSaveMyRep();}
 function addActivity(rep){const ai=store.reps[rep].activities.length;store.reps[rep].activities.push({no:ai+1,type:'신규영업',client:'',product:'',amount:0,prob:0,timing:'',content:'',sev:'mid',createdAt:new Date().toISOString()});document.getElementById('at-'+rep).insertAdjacentHTML('beforeend',aRow(rep,ai,store.reps[rep].activities[ai]));}
 function delActivity(rep,ai){store.reps[rep].activities.splice(ai,1);document.getElementById('at-'+rep).innerHTML=store.reps[rep].activities.map((a,i)=>aRow(rep,i,a)).join('');autoSave();if(window._isSPReady&&typeof _spSaveMyRep==='function')_spSaveMyRep();}
 function showRepInput(rep){showPage('input',null);const t=[...document.querySelectorAll('.tab')].find(t=>t.textContent.trim()===rep);if(t)switchTab(rep,t);}
