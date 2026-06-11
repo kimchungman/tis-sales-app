@@ -6251,8 +6251,15 @@ function refresh(){
   REPS.forEach(r=>{ if(store.reps[r]) refreshActualForecast(r); });
   renderDashboard();
   autoSave();
-  // 즉각 SP 저장 (디바운스 전 sync로 덮어쓰기 방지)
-  if(window._isSPReady&&typeof _spSaveMyRep==='function') _spSaveMyRep();
+  // 즉각 SP 저장
+  window._lastAutoSaveTs=Date.now();
+  if(window._isSPReady){
+    if(typeof session!=='undefined'&&session&&session.role==='admin'){
+      if(typeof _spSaveChangedReps==='function') _spSaveChangedReps(store.reps);
+    } else {
+      if(typeof _spSaveMyRep==='function') _spSaveMyRep();
+    }
+  }
 }
 
 // ISSUES
@@ -9362,7 +9369,8 @@ async function _spRecoverArchiveActivities(){
     var total=0;
     var saved=[];
 
-    Object.keys(byRep).forEach(function(repKey){
+    var _repKeys = Object.keys(byRep);
+    for(var _ri=0; _ri<_repKeys.length; _ri++){ var repKey=_repKeys[_ri];
       var all = byRep[repKey];
       if(!all.length) return;
 
@@ -9423,9 +9431,9 @@ async function _spRecoverArchiveActivities(){
             store.reps[k]=JSON.parse(JSON.stringify(cur));
         });
         saved.push(repKey);
-        _spSaveRepByName(repKey);
+        await _spSaveRepByName(repKey);
       }
-    });
+    }
 
     // SP 저장 완료 후 보호
     window._lastAutoSaveTs=Date.now();
@@ -14311,8 +14319,12 @@ async function _spSyncOtherReps(){
           || (repData.activities||[]).length>0;
 
         // 내 rep 처리 (수정 보호)
-        var isMyRep = repName===myRep||
-          ((typeof _sanitizeDKey==='function')&&_sanitizeDKey(repName)===_sanitizeDKey(myRep));
+        // 내 rep 판단: 이름 기준 (직책 제거 후 비교)
+        var _myRepBase = myRep ? myRep.replace(/\s+\S+$/, '').trim() : '';
+        var _repNameBase = repName ? repName.replace(/\s+\S+$/, '').trim() : '';
+        var isMyRep = repName===myRep
+          || ((typeof _sanitizeDKey==='function')&&_sanitizeDKey(repName)===_sanitizeDKey(myRep))
+          || (_myRepBase && _repNameBase && (_myRepBase===_repNameBase || _myRepBase===repName || repName===myRep.split(' ')[0]));
         if(isMyRep){
           var localAt = new Date((store.reps[myRep]&&store.reps[myRep].savedAt)||0).getTime();
           // SP가 로컬보다 5초 이상 최신이면 반영 (관리자 수정 포함)
