@@ -13937,14 +13937,18 @@ async function _spSyncOtherReps(){
         try{
           var pl = JSON.parse(item.Payload||'{}');
           var bp = JSON.parse(b.Payload||'{}');
-          // plan합 > 0 우선, 같으면 clients 수 우선, 같으면 savedAt 최신
+          // 데이터 풍부도: plan합, clients, activities, savedAt 순
           var plPlan = (pl.plan||[]).reduce(function(s,v){return s+(v||0);},0);
           var bpPlan = (bp.plan||[]).reduce(function(s,v){return s+(v||0);},0);
-          if(plPlan>0&&bpPlan===0) return item;
-          if(bpPlan>0&&plPlan===0) return b;
+          var plAct = (pl.activities||[]).length, bpAct = (bp.activities||[]).length;
           var plCli=(pl.clients||[]).length, bpCli=(bp.clients||[]).length;
-          if(plCli>bpCli) return item;
-          if(bpCli>plCli) return b;
+          // 전체 데이터 점수 비교 (plan합/1000 + clients*10 + activities)
+          var plScore = plPlan/1000 + plCli*10 + plAct;
+          var bpScore = bpPlan/1000 + bpCli*10 + bpAct;
+          if(plScore>0&&bpScore===0) return item;
+          if(bpScore>0&&plScore===0) return b;
+          if(plScore>bpScore+1) return item;
+          if(bpScore>plScore+1) return b;
           return (pl.savedAt||'')>(bp.savedAt||'') ? item : b;
         }catch(e){ return b; }
       });
@@ -14009,8 +14013,11 @@ async function _spSyncOtherReps(){
         if(!store.reps[arKey]) store.reps[arKey] = {plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[],contracts:[]};
         var spAt = new Date(apl.savedAt||0).getTime();
         if(apl.activities&&apl.activities.length){
-          var locAt = new Date(store.reps[arKey].actSavedAt||0).getTime();
-          if(spAt>=locAt){ store.reps[arKey].activities=apl.activities; store.reps[arKey].actSavedAt=apl.savedAt||''; changed=true; }
+          // 아카이브는 현재 activities와 병합 (아카이브가 덮어쓰기 방지)
+          var existIds = {};
+          (store.reps[arKey].activities||[]).forEach(function(a){ if(a.no||a.client) existIds[(a.no||'')+'_'+(a.client||'')] = true; });
+          var newActs = apl.activities.filter(function(a){ return !existIds[(a.no||'')+'_'+(a.client||'')]; });
+          if(newActs.length) store.reps[arKey].activities = (store.reps[arKey].activities||[]).concat(newActs);
         }
         if(apl.issuesList&&apl.issuesList.length){
           var locAtI = new Date(store.reps[arKey].issSavedAt||0).getTime();
