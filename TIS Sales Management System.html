@@ -9202,74 +9202,79 @@ async function _spDiagnose(){
 async function _spRecoverArchiveActivities(){
   if(!window._isSPReady||!session||session.role!=='admin') return;
   try{
-    showToast('🔄 아카이브 복구 중...','info');
-    var res = await _spFetchAll(_lUrl()+'?$select=Id,Title,DataType,DataKey,Payload&$top=500');
+    showToast('🔄 복구 중... 잠시 기다려주세요','info');
+    var res = await _spFetchAll(_lUrl()+'?$select=Id,DataType,DataKey,Payload&$top=500');
     var items = (res&&res.value)||[];
-    var recovered = {};
+    var recovered = {}; // repName → {acts[], isss[]}
 
-    // _act_, _iss_ 키 찾기
     items.forEach(function(item){
+      if(item.DataType!=='rep_data') return;
       var dk = item.DataKey||'';
-      if(!/_act_(\d{4}|old)$/.test(dk) && !/_iss_\d{4}$/.test(dk)) return;
       try{
         var pl = JSON.parse(item.Payload||'{}');
+        // 날짜 포함 키(이름_YYYY-MM-DD, 이름_책임_YYYY-MM-DD 등) 또는 _act_/_iss_ 키
+        var isDateKey = /\d{4}-\d{2}-\d{2}/.test(dk);
+        var isActKey  = /_act_(\d{4}|old)$/.test(dk);
+        var isIssKey  = /_iss_\d{4}$/.test(dk);
+        if(!isDateKey && !isActKey && !isIssKey) return;
         // rep 이름 추출
-        var repBase = dk.replace(/_act_\d{4}$/, '').replace(/_iss_\d{4}$/, '');
-        var repKey  = (typeof _findRepByKey==='function') ? _findRepByKey(repBase) : repBase;
+        var repBase = dk
+          .replace(/_\d{4}-\d{2}-\d{2}$/, '')
+          .replace(/_act_(\d{4}|old)$/, '')
+          .replace(/_iss_\d{4}$/, '');
+        repBase = repBase.replace(/_/g,' ').trim();
+        if(!repBase) return;
+        // TEAM_REPS에서 매칭
+        var repKey = (typeof _findRepByKey==='function') ? _findRepByKey(repBase) : repBase;
         if(!repKey) return;
-        if(!recovered[repKey]) recovered[repKey] = {activities:[], issuesList:[]};
+        if(!recovered[repKey]) recovered[repKey]={acts:[],isss:[]};
         if(pl.activities&&pl.activities.length)
-          recovered[repKey].activities = recovered[repKey].activities.concat(pl.activities);
+          recovered[repKey].acts = recovered[repKey].acts.concat(pl.activities);
+        if(pl.clients&&pl.clients.length&&!(pl.activities===undefined&&pl.clients.length===0))
+          recovered[repKey].clients = pl.clients; // clients는 최신 것만 (덮어쓰기)
         if(pl.issuesList&&pl.issuesList.length)
-          recovered[repKey].issuesList = recovered[repKey].issuesList.concat(pl.issuesList);
+          recovered[repKey].isss = recovered[repKey].isss.concat(pl.issuesList);
       }catch(e){}
     });
 
-    var total = 0;
+    var total=0;
     Object.keys(recovered).forEach(function(repKey){
-      if(!store.reps[repKey]) return;
-      var arc = recovered[repKey];
+      if(!store.reps[repKey]) store.reps[repKey]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[],contracts:[]};
+      var arc=recovered[repKey];
+      var cur=store.reps[repKey];
 
-      // activities 병합 (중복 no+client 제거)
-      var existKeys = {};
-      (store.reps[repKey].activities||[]).forEach(function(a){
-        existKeys[(a.no||'')+'|'+(a.client||'')+'|'+(a.timing||'')] = true;
-      });
-      var newActs = arc.activities.filter(function(a){
-        return !existKeys[(a.no||'')+'|'+(a.client||'')+'|'+(a.timing||'')];
-      });
-      if(newActs.length){
-        store.reps[repKey].activities = (store.reps[repKey].activities||[]).concat(newActs);
-        store.reps[repKey].activities.forEach(function(a,i){ a.no = i+1; });
-        total += newActs.length;
+      // activities: 현재보다 많으면 병합
+      if(arc.acts.length > (cur.activities||[]).length){
+        var seen={};
+        var merged=[];
+        // 현재 것 우선, 아카이브에서 없는 것 추가
+        (cur.activities||[]).forEach(function(a){ var k=(a.client||'')+'|'+(a.timing||'')+'|'+(a.product||''); seen[k]=true; merged.push(a); });
+        arc.acts.forEach(function(a){ var k=(a.client||'')+'|'+(a.timing||'')+'|'+(a.product||''); if(!seen[k]){seen[k]=true;merged.push(a);total++;} });
+        merged.forEach(function(a,i){a.no=i+1;});
+        cur.activities=merged;
+      }
+
+      // clients: 아카이브에 더 많으면 교체
+      if(arc.clients&&arc.clients.length>(cur.clients||[]).length){
+        cur.clients=arc.clients; total+=arc.clients.length;
       }
 
       // issuesList 병합
-      var existIss = {};
-      (store.reps[repKey].issuesList||[]).forEach(function(iss){
-        existIss[(iss.content||'')+'|'+(iss.client||'')] = true;
-      });
-      var newIss = arc.issuesList.filter(function(iss){
-        return !existIss[(iss.content||'')+'|'+(iss.client||'')];
-      });
-      if(newIss.length){
-        store.reps[repKey].issuesList = (store.reps[repKey].issuesList||[]).concat(newIss);
-        total += newIss.length;
+      if(arc.isss.length){
+        var seenI={};
+        (cur.issuesList||[]).forEach(function(i){ seenI[(i.content||'')+'|'+(i.client||'')]=true; });
+        arc.isss.forEach(function(i){ var k=(i.content||'')+'|'+(i.client||''); if(!seenI[k]){seenI[k]=true;(cur.issuesList=cur.issuesList||[]).push(i);total++;} });
       }
 
-      // SP에 즉각 저장
-      if(newActs.length||newIss.length) _spSaveRepByName(repKey);
+      if(total>0) _spSaveRepByName(repKey);
     });
 
-    if(total > 0){
-      buildRepInputs();
-      showToast('✅ 복구 완료: '+total+'개 항목 복원됨','info');
-    } else {
-      showToast('아카이브에 복구할 데이터가 없습니다.','info');
-    }
+    buildRepInputs();
+    if(total>0) showToast('✅ 복구 완료: '+total+'개 항목 복원됨','info');
+    else showToast('복구할 추가 데이터가 없습니다 (현재 데이터가 최신).','info');
   }catch(e){
     console.error('[recover]',e);
-    showToast('❌ 복구 실패','error');
+    showToast('❌ 복구 실패: '+e.message,'error');
   }
 }
 
