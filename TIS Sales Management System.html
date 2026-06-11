@@ -3324,6 +3324,14 @@ document.addEventListener('selectionchange',function(){
       </div>
       <div class="sec-body">
 
+
+        <!-- SP 데이터 진단 -->
+        <div style="margin-bottom:16px;padding:12px;background:#EFF6FF;border-radius:8px;border:1px solid #BFDBFE;">
+          <div style="font-size:12px;font-weight:700;color:#1E40AF;margin-bottom:8px;">🔍 SP 데이터 진단</div>
+          <div style="font-size:11px;color:#1E3A8A;margin-bottom:8px;">SP에 저장된 실제 데이터를 확인합니다.</div>
+          <button onclick="_spDiagnose()" style="padding:6px 14px;background:#2563EB;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">🔍 SP 데이터 조회</button>
+          <div id="sp-diag-result" style="margin-top:8px;font-size:11px;font-family:monospace;white-space:pre-wrap;max-height:300px;overflow-y:auto;background:#F8FAFC;padding:8px;border-radius:4px;display:none;"></div>
+        </div>
         <!-- 아카이브 복구 -->
         <div style="margin-bottom:16px;padding:12px;background:#F0FDF4;border-radius:8px;border:1px solid #BBF7D0;">
           <div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:8px;">🔁 영업활동/이슈 아카이브 복구</div>
@@ -9163,6 +9171,33 @@ async function spLoadAll() {
 }
 
 
+async function _spDiagnose(){
+  var el = document.getElementById('sp-diag-result');
+  if(!el) return;
+  el.style.display = 'block';
+  el.textContent = '로딩 중...';
+  try{
+    var res = await _spFetchAll(_lUrl()+'?$select=Id,DataType,DataKey,Payload&$top=500');
+    var items = (res&&res.value)||[];
+    var lines = ['총 '+items.length+'개 아이템\n'];
+    // rep_data만 상세 출력
+    var repItems = items.filter(function(i){ return i.DataType==='rep_data'; });
+    lines.push('=== rep_data ('+repItems.length+'개) ===');
+    repItems.forEach(function(item){
+      try{
+        var p = JSON.parse(item.Payload||'{}');
+        var acts = (p.activities||[]).length;
+        var clients = (p.clients||[]).length;
+        var plan = (p.plan||[]).reduce(function(s,v){return s+(v||0);},0);
+        lines.push('['+item.DataKey+'] acts='+acts+' clients='+clients+' plan='+plan+' savedAt='+(p.savedAt||'없음'));
+      }catch(e){ lines.push('['+item.DataKey+'] 파싱오류'); }
+    });
+    el.textContent = lines.join('\n');
+  }catch(e){
+    el.textContent = '오류: '+e.message;
+  }
+}
+
 // ── 아카이브 activities/issuesList 복구 (관리자 전용) ─────────────
 async function _spRecoverArchiveActivities(){
   if(!window._isSPReady||!session||session.role!=='admin') return;
@@ -9175,7 +9210,7 @@ async function _spRecoverArchiveActivities(){
     // _act_, _iss_ 키 찾기
     items.forEach(function(item){
       var dk = item.DataKey||'';
-      if(!/_act_\d{4}$/.test(dk) && !/_iss_\d{4}$/.test(dk)) return;
+      if(!/_act_(\d{4}|old)$/.test(dk) && !/_iss_\d{4}$/.test(dk)) return;
       try{
         var pl = JSON.parse(item.Payload||'{}');
         // rep 이름 추출
@@ -13780,42 +13815,39 @@ async function _spSaveMyRep(){
   var _repKey = (typeof _sanitizeDKey==='function') ? _sanitizeDKey(_repName) : _repName; // 날짜 제거 - 항상 동일 키
 
   // ── 크기 자동 체크 및 분리 저장 ──
-  var _payload = JSON.stringify(_d);
   var SP_LIMIT = 50000; // 50,000자 기준 (SP 한도 63,999자)
+  delete _d.visitLog; // visitLog는 항상 별도 키로 저장
 
-  // archive 저장 (이전 연도 활동/이슈)
-  for(var _ay in _actArchive){
-    await _spSaveItem('rep_data',_sanitizeDKey(_repName+'_act_'+_ay),{activities:_actArchive[_ay],rep:_repName,savedAt:new Date().toISOString()});
-  }
-  for(var _iy in _issArchive){
-    await _spSaveItem('rep_data',_sanitizeDKey(_repName+'_iss_'+_iy),{issuesList:_issArchive[_iy],rep:_repName,savedAt:new Date().toISOString()});
-  }
+  var _payload = JSON.stringify(_d);
+
   if(_payload.length <= SP_LIMIT){
-    delete _d.visitLog; // visitLog는 별도 키로 저장
-  await _spSaveItem('rep_data', _repKey, _d);
-  window._lastAutoSaveTs = Date.now(); // 저장 완료 시각 갱신
+    // 정상: 한 키에 전부 저장
+    await _spSaveItem('rep_data', _repKey, _d);
+    window._lastAutoSaveTs = Date.now();
   } else {
-    // 1단계: visitLog를 현재 연도만 남기고 분리
-    var _curYear = new Date().getFullYear().toString();
-    var _allVL = _d.visitLog || [];
-    var _curVL  = _allVL.filter(function(v){ return v.date && v.date.startsWith(_curYear); });
-    var _oldVL  = _allVL.filter(function(v){ return !v.date || !v.date.startsWith(_curYear); });
-    _d.visitLog = _curVL;
-
-    if(JSON.stringify(_d).length <= SP_LIMIT){
-      await _spSaveItem('rep_data', _repKey, _d);
-      if(_oldVL.length > 0){
-        var _oldYear = (_oldVL[0].date||'').slice(0,4)||(parseInt(_curYear)-1).toString();
-        await _spSaveItem('rep_data', _sanitizeDKey(_repName+'_vl_'+_oldYear), {visitLog:_oldVL});
-      }
-    } else {
-      // 2단계: visitLog 전체 제거 후 저장
-      _d.visitLog = [];
-      await _spSaveItem('rep_data', _repKey, _d);
-      if(_allVL.length > 0){
-        await _spSaveItem('rep_data', _sanitizeDKey(_repName+'_vl_'+_curYear), {visitLog:_allVL});
-      }
-      console.warn('[SP] 크기 초과 - visitLog 완전 분리 저장');
+    // 50KB 초과: activities 오래된 것부터 분리
+    var _acts = _d.activities || [];
+    var _overflow = [];
+    // activities를 절반씩 분리해서 메인 키가 한도 내로 들어올 때까지
+    while(JSON.stringify(_d).length > SP_LIMIT && _acts.length > 1){
+      // 앞쪽(오래된) 절반을 overflow로 이동
+      var _half = Math.ceil(_acts.length / 2);
+      _overflow = _acts.slice(0, _half).concat(_overflow);
+      _acts = _acts.slice(_half);
+      _d.activities = _acts;
+    }
+    // 메인 키 저장
+    await _spSaveItem('rep_data', _repKey, _d);
+    window._lastAutoSaveTs = Date.now();
+    // overflow(오래된 activities) 별도 키로 저장
+    if(_overflow.length > 0){
+      var _ovKey = _sanitizeDKey(_repName + '_act_old');
+      await _spSaveItem('rep_data', _ovKey, {
+        activities: _overflow,
+        rep: _repName,
+        savedAt: _d.savedAt,
+        _isOverflow: true
+      });
     }
   }
 }
