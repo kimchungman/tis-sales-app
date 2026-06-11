@@ -2031,6 +2031,10 @@ select._bsl-sel {
 .wk-action-menu button:hover{background:var(--bg2,#F1F5F9);}
 .wk-action-menu button.wk-del-action{color:#DC2626;}
 .wk-action-menu button.wk-del-action:hover{background:#FEF2F2;}
+
+.act-drag-handle{cursor:grab!important;color:#CBD5E1;font-size:16px;transition:color .12s;}
+.act-drag-handle:hover{color:#4f7fff;}
+.act-drag-row.dragging{opacity:0.4;}
 </style>
 
 <script>
@@ -5576,15 +5580,16 @@ function buildRepInputs(){
         <thead style="position:sticky;top:0;z-index:5;"><tr>
           <th class="wk-chk-cell" style="background:#F8FAFC;white-space:nowrap;" title="주간보고 포함">📋</th>
           <th class="wk-no-cell" style="background:#F8FAFC;white-space:nowrap;">순번</th>
-          <th style="width:90px;white-space:nowrap;background:#F8FAFC;">구분</th>
-          <th style="width:175px;white-space:nowrap;background:#F8FAFC;">고객사</th>
-          <th style="width:160px;white-space:nowrap;background:#F8FAFC;">제품</th>
-          <th style="width:115px;white-space:nowrap;">금액</th>
-          <th style="width:80px;white-space:nowrap;">확도</th>
-          <th style="width:150px;white-space:nowrap;">시기</th>
-          <th style="min-width:240px;white-space:nowrap;">내용</th>
-          <th style="width:80px;white-space:nowrap;">진행사항</th>
-          <th style="width:34px;"></th>
+          <th style="width:18px;background:#F8FAFC;"></th>
+          <th style="text-align:center;width:90px;white-space:nowrap;background:#F8FAFC;">구분</th>
+          <th style="text-align:center;width:175px;white-space:nowrap;background:#F8FAFC;">고객사</th>
+          <th style="text-align:center;width:160px;white-space:nowrap;background:#F8FAFC;">제품</th>
+          <th style="text-align:center;width:115px;white-space:nowrap;">금액</th>
+          <th style="text-align:center;width:80px;white-space:nowrap;">확도</th>
+          <th style="text-align:center;width:150px;white-space:nowrap;">시기</th>
+          <th style="text-align:center;min-width:240px;white-space:nowrap;">내용</th>
+          <th style="text-align:center;width:80px;white-space:nowrap;">진행사항</th>
+          <th style="text-align:center;width:34px;"></th>
         </tr></thead>
         <tbody id="at-${rep}">${store.reps[rep].activities.map((a,ai)=>aRow(rep,ai,a)).join('')}</tbody>
       </table></div></div>
@@ -5710,7 +5715,8 @@ function aRow(rep,ai,a){
   const progOpts='<option value="" disabled'+((!a.progress||a.progress==='')?'selected':'')+' style="text-align:center">선택</option>'+progList.map(p=>`<option style="text-align:center"${(a.progress||'')===p?' selected':''}>${p}</option>`).join('');
   var _isOwn=(typeof session!=='undefined'&&session&&session.rep===rep)||(typeof session!=='undefined'&&session&&session.role==='admin');
   var _wkChecked=a.weeklyCheck&&a.weeklyCheck[_wkThisKey()]?'checked':'';
-  return`<tr>
+  return`<tr draggable="true" data-rep="${rep}" data-ai="${ai}" class="act-drag-row">
+    <td class="act-drag-handle" title="드래그하여 순서 변경" style="width:18px;text-align:center;cursor:grab;color:#CBD5E1;font-size:14px;vertical-align:middle;padding:0 2px;user-select:none;">⠿</td>
     <td class="wk-chk-cell">${_isOwn?`<input type="checkbox" class="wk-act-chk" ${_wkChecked} onchange="_wkToggleActCheck('${rep}',${ai},this.checked)" style="width:15px;height:15px;cursor:pointer;accent-color:#1A56DB;vertical-align:middle;display:block;" title="주간보고에 포함">`:'&nbsp;'}</td>
     <td class="wk-no-cell" style="color:var(--muted);font-weight:600;font-size:12px;">${a.no||ai+1}</td>
     <td style="width:90px;vertical-align:middle;">
@@ -5748,6 +5754,97 @@ function aRow(rep,ai,a){
     </td>
   </tr>`;
 }
+// ── 영업활동 드래그 앤 드롭 순서 변경 ──────────────────────────
+(function(){
+  var _dragSrc = null; // {rep, ai}
+
+  function _atDragStart(e){
+    var tr = e.target.closest('.act-drag-row');
+    if(!tr) return;
+    // 핸들에서만 드래그 허용
+    if(!e.target.closest('.act-drag-handle')){
+      e.preventDefault(); return;
+    }
+    _dragSrc = {rep: tr.dataset.rep, ai: parseInt(tr.dataset.ai)};
+    tr.style.opacity = '0.5';
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', tr.dataset.ai);
+  }
+
+  function _atDragOver(e){
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    var tr = e.target.closest('.act-drag-row');
+    if(!tr||!_dragSrc||tr.dataset.rep!==_dragSrc.rep) return;
+    // 드롭 위치 표시
+    document.querySelectorAll('.act-drag-row').forEach(function(r){ r.style.borderTop=''; r.style.borderBottom=''; });
+    var rect = tr.getBoundingClientRect();
+    var mid = rect.top + rect.height/2;
+    if(e.clientY < mid) tr.style.borderTop = '2px solid #4f7fff';
+    else tr.style.borderBottom = '2px solid #4f7fff';
+  }
+
+  function _atDragLeave(e){
+    var tr = e.target.closest('.act-drag-row');
+    if(tr){ tr.style.borderTop=''; tr.style.borderBottom=''; }
+  }
+
+  function _atDrop(e){
+    e.preventDefault();
+    document.querySelectorAll('.act-drag-row').forEach(function(r){
+      r.style.opacity=''; r.style.borderTop=''; r.style.borderBottom='';
+    });
+    if(!_dragSrc) return;
+    var tr = e.target.closest('.act-drag-row');
+    if(!tr||tr.dataset.rep!==_dragSrc.rep) return;
+    var toAi = parseInt(tr.dataset.ai);
+    if(toAi===_dragSrc.ai) return;
+    // 드롭 위치 (위/아래)
+    var rect = tr.getBoundingClientRect();
+    var insertBefore = e.clientY < rect.top + rect.height/2;
+    var rep = _dragSrc.rep;
+    var acts = store.reps[rep].activities;
+    var moved = acts.splice(_dragSrc.ai, 1)[0];
+    var newIdx = toAi > _dragSrc.ai ? (insertBefore ? toAi-1 : toAi) : (insertBefore ? toAi : toAi+1);
+    newIdx = Math.max(0, Math.min(newIdx, acts.length));
+    acts.splice(newIdx, 0, moved);
+    // no 재번호
+    acts.forEach(function(a,i){ a.no = i+1; });
+    // 테이블 즉시 재렌더
+    var tbody = document.getElementById('at-'+rep);
+    if(tbody) tbody.innerHTML = acts.map(function(a,i){ return aRow(rep,i,a); }).join('');
+    // 즉각 저장
+    autoSave();
+    if(window._isSPReady&&typeof _spSaveMyRep==='function') _spSaveMyRep();
+    _dragSrc = null;
+  }
+
+  function _atDragEnd(e){
+    document.querySelectorAll('.act-drag-row').forEach(function(r){
+      r.style.opacity=''; r.style.borderTop=''; r.style.borderBottom='';
+    });
+    _dragSrc = null;
+  }
+
+  // 이벤트 위임: page-input에서 처리
+  document.addEventListener('DOMContentLoaded', function(){
+    var pg = document.getElementById('page-input');
+    if(!pg) return;
+    pg.addEventListener('dragstart', _atDragStart);
+    pg.addEventListener('dragover', _atDragOver);
+    pg.addEventListener('dragleave', _atDragLeave);
+    pg.addEventListener('drop', _atDrop);
+    pg.addEventListener('dragend', _atDragEnd);
+  });
+
+  // page-input이 동적으로 렌더될 수 있으므로 body에서도 처리
+  document.addEventListener('dragstart', function(e){ if(e.target.closest('#page-input')) _atDragStart(e); });
+  document.addEventListener('dragover', function(e){ if(e.target.closest('#page-input')) _atDragOver(e); });
+  document.addEventListener('dragleave', function(e){ if(e.target.closest('#page-input')) _atDragLeave(e); });
+  document.addEventListener('drop', function(e){ if(e.target.closest('#page-input')) _atDrop(e); });
+  document.addEventListener('dragend', function(e){ if(e.target.closest('#page-input')) _atDragEnd(e); });
+})();
+
 function addClient(rep){const ci=store.reps[rep].clients.length;store.reps[rep].clients.push({name:'',type:'MA',status:'달성',plan:new Array(12).fill(0),actual:new Array(12).fill(0),issue:'',sev:'none'});document.getElementById('ct-'+rep).insertAdjacentHTML('beforeend',cRow(rep,ci,store.reps[rep].clients[ci]));}
 function delClient(rep,ci){store.reps[rep].clients.splice(ci,1);document.getElementById('ct-'+rep).innerHTML=store.reps[rep].clients.map((c,i)=>cRow(rep,i,c)).join('');refreshActualForecast(rep);extractIssues();renderIssues();autoSave();if(window._isSPReady&&typeof _spSaveMyRep==='function')_spSaveMyRep();}
 function addActivity(rep){const ai=store.reps[rep].activities.length;store.reps[rep].activities.push({no:ai+1,type:'신규영업',client:'',product:'',amount:0,prob:0,timing:'',content:'',sev:'mid',createdAt:new Date().toISOString()});document.getElementById('at-'+rep).insertAdjacentHTML('beforeend',aRow(rep,ai,store.reps[rep].activities[ai]));}
@@ -8000,6 +8097,7 @@ function autoSave(){
   }catch(e){}
   // 디바운스: 1000ms (SP 저장용)
   clearTimeout(saveTimer);
+  window._lastAutoSaveTs = Date.now(); // 입력 시작 즉시 sync 보호 (3초)
   saveTimer = setTimeout(async ()=>{
     try{
       const data = {
@@ -14671,7 +14769,7 @@ function _cdbRenderDetail(id){
     ccHTML+='<div class="cdb-cc">'
       +'<div style="margin-bottom:5px;"><input class="cdb-inline" style="font-size:12px;font-weight:600;color:#0D1B2E;width:100%;" value="'+_cdbEsc(ct.name||'')+'" placeholder="이름" onchange="_cdbUpdateContact(\''+id+'\','+ci+',\'name\',this.value)"></div>'
       +'<div class="cdb-cc-r"><span class="cdb-ck">부서</span><input class="cdb-inline" value="'+_cdbEsc(ct.dept||'')+'" placeholder="부서명 입력" onchange="_cdbUpdateContact(\''+id+'\','+ci+',\'dept\',this.value)"></div>'
-      +'<div class="cdb-cc-r"><span class="cdb-ck">이메일</span><input class="cdb-inline" value="'+_cdbEsc(ct.email||'')+'" placeholder="이메일 입력" onchange="_cdbUpdateContact(\''+id+'\','+ci+',\'dept\',this.value)"></div>'
+      +'<div class="cdb-cc-r"><span class="cdb-ck">이메일</span><input class="cdb-inline" value="'+_cdbEsc(ct.email||'')+'" placeholder="이메일 입력" onchange="_cdbUpdateContact(\''+id+'\','+ci+',\'email\',this.value)"></div>'
       +'<div class="cdb-cc-r"><span class="cdb-ck">연락처</span><input class="cdb-inline" value="'+_cdbEsc(ct.phone||'')+'" placeholder="숫자만 입력" inputmode="tel" oninput="_phoneInput(this,event)" onchange="_cdbUpdateContact(\''+id+'\','+ci+',\'phone\',this.value)"></div>'
       +'<button class="cdb-cc-x" onclick="event.stopPropagation();_cdbDeleteContact(\''+id+'\','+ci+')" title="삭제">×</button>'
       +'</div>';
@@ -15337,11 +15435,11 @@ function _initClientsPage(){
     _cdbInitDone=true;
     _cdbSyncFromStore();
   }
-  // SP에서 최신 clientDB 즉각 로드 후 렌더 (플래시 방지)
+  // 즉시 현재 데이터로 렌더 (이미 접속 시 sync 완료됨)
+  _cdbRenderList('');
+  // 백그라운드에서 최신 데이터 확인 후 필요 시 갱신
   if(window._isSPReady){
-    _spSyncOtherReps().then(function(){ _cdbRenderList(''); }).catch(function(){ _cdbRenderList(''); });
-  } else {
-    _cdbRenderList('');
+    _spSyncOtherReps().then(function(changed){ if(changed) _cdbRenderList(''); }).catch(function(){});
   }
   var all=_cdbAll();
   if(all.length>0&&!_cdbSelectedId){
