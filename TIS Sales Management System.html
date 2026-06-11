@@ -5794,6 +5794,8 @@ function refreshActualForecast(rep){
   updateProductSummary(rep);
   renderDashboard();
   autoSave();
+  // 즉각 SP 저장 (sync 덮어쓰기 방지)
+  if(window._isSPReady&&typeof _spSaveMyRep==='function') _spSaveMyRep();
 }
 
 // 품목별 매출 집계
@@ -6028,6 +6030,8 @@ function refresh(){
   REPS.forEach(r=>{ if(store.reps[r]) refreshActualForecast(r); });
   renderDashboard();
   autoSave();
+  // 즉각 SP 저장 (디바운스 전 sync로 덮어쓰기 방지)
+  if(window._isSPReady&&typeof _spSaveMyRep==='function') _spSaveMyRep();
 }
 
 // ISSUES
@@ -6135,6 +6139,23 @@ function extractIssues(){
       store.issues.push({rep,client:a.client||'미지정',content:a.content,sev,status:a.status||'open',type:a.type||'',source:'activity'});
     });
 
+  });
+
+  // ── 이슈사항 탭 직접 등록 이슈 포함 ──
+  getIssueReps().forEach(function(rep){
+    (store.reps[rep].issuesList||[]).forEach(function(iss){
+      if(!iss.sev||iss.sev==='none'||iss.sev==='') return;
+      store.issues.push({
+        rep:rep,
+        client:iss.client||'미지정',
+        content:iss.content||iss.title||'',
+        sev:iss.sev,
+        status:iss.status||'open',
+        type:'이슈',
+        source:'issuesList',
+        regDate:iss.regDate||iss.createdAt||''
+      });
+    });
   });
 
   // 사이드바 카운트 — 높음만
@@ -15316,7 +15337,12 @@ function _initClientsPage(){
     _cdbInitDone=true;
     _cdbSyncFromStore();
   }
-  _cdbRenderList('');
+  // SP에서 최신 clientDB 즉각 로드 후 렌더 (플래시 방지)
+  if(window._isSPReady){
+    _spSyncOtherReps().then(function(){ _cdbRenderList(''); }).catch(function(){ _cdbRenderList(''); });
+  } else {
+    _cdbRenderList('');
+  }
   var all=_cdbAll();
   if(all.length>0&&!_cdbSelectedId){
     _cdbSelectedId=all[0].id;
