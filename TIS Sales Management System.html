@@ -16072,12 +16072,7 @@ function saveContractFromModal(rep,cid){
     if(_pid) _chainFields.parentId=_pid;
     if(_rid) _chainFields.rootId=_rid;
     else if(_pid) _chainFields.rootId=_newId; // 최초 갱신이면 자신이 root
-    // 동일 고객사명 있으면 rootId 자동 설정 (병합)
-  if(!_chainFields.rootId && !cid){
-    var _existRoot = contracts.find(function(ct){ return (ct.client||'').trim()===(client||'').trim(); });
-    if(_existRoot) _chainFields.rootId = _existRoot.rootId || _existRoot.id;
-  }
-  contracts.push(Object.assign({id:_newId,createdAt:new Date().toISOString()},data,_chainFields));
+    contracts.push(Object.assign({id:_newId,createdAt:new Date().toISOString()},data,_chainFields));
   }
   closeContractModal();
   _rebuildContractPanel(rep);
@@ -16294,9 +16289,15 @@ function _rebuildContractPanel(rep){ try {
     chainContracts.forEach(function(c, cIdx){
       var chainFull=allChains[rootKey]||[];
       // 같은 rootId 체인 내 갱신이력 (동일 계약의 갱신)
-      var sameChain=chainFull.filter(function(x){
-        return (x.rootId||x.id)===(c.rootId||c.id);
-      });
+      // sameChain: 명시적 rootId가 있을 때만 갱신이력으로 처리
+      var sameChain=[];
+      if(c.rootId){
+        sameChain=chainFull.filter(function(x){
+          return (x.rootId||x.id)===c.rootId;
+        });
+      } else {
+        sameChain=[c];
+      }
       var hasHist=sameChain.length>1;
       var hasMgt=c.managementType&&c.managementType!=='해당없음';
       var chId='cch_'+c.id.replace(/[^a-z0-9]/gi,'_');
