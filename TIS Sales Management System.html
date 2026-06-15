@@ -9549,28 +9549,45 @@ async function _spCleanupOldKeys(){
   if(!window._isSPReady||!session||session.role!=='admin') return;
   try{
     showToast('🔄 SP 데이터 정리 중... 잠시 기다려주세요','info');
-    var res=await _spFetchAll(_lUrl()+'?$select=Id,Title,DataType,DataKey,Payload&$top=500');
+    var res=await _spFetchAll(_lUrl()+'?$select=Id,DataType,DataKey&$top=500');
     var items=(res&&res.value)||[];
     var toDelete=[];
 
+    // 유효한 rep_data 키 목록 (TEAM_REPS 이름 기반)
+    var _validKeys=[];
+    if(typeof TEAM_REPS!=='undefined'){
+      Object.values(TEAM_REPS).forEach(function(arr){
+        (arr||[]).forEach(function(name){
+          // 직책 제거 (마지막 공백+단어 제거)
+          var base=name.replace(/\s+\S+$/,'').trim()||name;
+          _validKeys.push(base.toLowerCase());
+          _validKeys.push(name.toLowerCase());
+        });
+      });
+    }
+
     items.forEach(function(item){
-      var dk=item.DataKey||'';
+      var dk=(item.DataKey||'').trim();
       var dtype=item.DataType||'';
+      if(dtype!=='rep_data') return; // rep_data만 정리
 
-      // 1. 날짜 포함 키 무조건 삭제 (이름_YYYY-MM-DD, 이름:YYYY-MM-DD)
-      if(/[\d]{4}-[\d]{2}-[\d]{2}/.test(dk)){
+      // 1. 날짜 포함 키 → 삭제
+      if(/\d{4}-\d{2}-\d{2}/.test(dk)){
         toDelete.push(item.Id); return;
       }
 
-      // 2. 숫자만인 키 삭제 (1, 2, 11, 111 등 테스트 키)
-      if(dtype==='rep_data' && /^\d+$/.test(dk.trim())){
+      // 2. _act_old, _act_YYYY, _iss_YYYY, _vl_YYYY 키 → 삭제
+      if(/_act_(old|\d{4})$/.test(dk)||/_iss_\d{4}$/.test(dk)||/_vl_\d{4}$/.test(dk)){
         toDelete.push(item.Id); return;
       }
 
-      // 3. 테스트 이름 키 삭제 (홍길동, 아저씨, ㅁㄴㅇㄹ 등)
-      var _testNames=['홍길동','아저씨','ㅁㄴㅇㄹ','ㅁㄴ','가나다','null','_'];
-      if(dtype==='rep_data' && _testNames.indexOf(dk.trim())>=0){
-        toDelete.push(item.Id); return;
+      // 3. 직책 포함 키 (이름_직책, 이름 직책) → 삭제
+      // 유효 키 목록에 없으면 삭제
+      if(_validKeys.length && _validKeys.indexOf(dk.toLowerCase())<0){
+        // _part, _idx 제외
+        if(!/_part\d+$/.test(dk) && !/_idx$/.test(dk)){
+          toDelete.push(item.Id); return;
+        }
       }
     });
 
@@ -9584,14 +9601,13 @@ async function _spCleanupOldKeys(){
       try{
         await _spFetch(
           _lUrl()+'('+toDelete[i]+')',
-          {method:'DELETE',headers:{'IF-MATCH':'*','X-HTTP-Method':'DELETE'}}
+          {method:'DELETE',headers:{'IF-MATCH':'*'}}
         );
         deleted++;
       }catch(e){}
       if(i%50===49) showToast('🔄 정리 중... '+deleted+'개 완료','info');
     }
     showToast('✅ SP 정리 완료: '+deleted+'개 삭제됨. 조회 버튼으로 확인하세요.','info');
-    // ID 캐시 초기화 (삭제된 아이템 캐시 제거)
     localStorage.removeItem('sp_id_cache');
     if(window._spIdCache) window._spIdCache={};
   }catch(e){
@@ -16261,8 +16277,10 @@ function _rebuildContractPanel(rep){ try {
   h+='<col style="min-width:60px;">'+(canEdit?'<col style="width:30px;">':'');
   h+='</colgroup>';
   var TH='padding:8px 6px !important;font-weight:600;color:#94A3B8;font-size:11px;border-bottom:2px solid #E2E8F0;text-align:center !important;white-space:nowrap;background:#F8FAFC !important;';
-  h+='<thead style="position:sticky;top:0;z-index:5;"><tr><th style="'+TH+'"></th>';
-  ['고객사','계약유형','프로젝트명','금액(천)','계약시작','계약종료','계약D-day','관리유형','관리종료','관리D-day','상태'].forEach(function(t){h+='<th style="'+TH+'">'+t+'</th>';});
+  h+='<thead style="position:sticky;top:0;z-index:5;"><tr>';
+  h+='<th style="'+TH+'text-align:center !important;">고객사</th>';
+  h+='<th style="'+TH+'width:28px;"></th>';
+  ['계약유형','프로젝트명','금액(천)','계약시작','계약종료','계약D-day','관리유형','관리종료','관리D-day','상태'].forEach(function(t){h+='<th style="'+TH+'">'+t+'</th>';});
   if(canEdit)h+='<th style="'+TH+'"></th>';
   h+='</tr></thead><tbody>';
   var TD='padding:7px 6px !important;text-align:center !important;vertical-align:middle !important;';
@@ -16293,19 +16311,18 @@ function _rebuildContractPanel(rep){ try {
       var rowTopB=(ci>0&&cIdx===0)?topB:'';
 
       h+='<tr data-rp="'+rep+'" data-cid="'+c.id+'" class="contract-table-row" style="border-bottom:0.5px solid #F1F5F9;'+rowTopB+'" onclick="(function(el){showContractDetail(el.dataset.rp,el.dataset.cid);})(this)">';
-      // 첫 번째 열: 갱신이력 토글 버튼 (같은 계약 갱신이력만)
-      h+='<td style="'+TD+'padding:0 !important;">';
-      if(hasHist){
-        var _chIdEsc=chId.replace(/'/g,"\\'");
-        h+='<button onclick="event.stopPropagation();_cToggleChain(\''+_chIdEsc+'\',this)" style="border:none;background:none;cursor:pointer;color:#94A3B8;width:44px;height:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0;-webkit-tap-highlight-color:transparent;">'
-        +'<svg style="transition:transform .2s ease;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>'
-        +'</button>';
-      }
-      h+='</td>';
 
-      // 고객사명: 첫 번째 계약에만 rowspan
+      // td[1]: 고객사명 + td[2]: 화살표 (첫 번째 계약만, rowspan)
       if(cIdx===0){
-        h+='<td rowspan="'+clientRowspan+'" style="'+TD+'font-weight:700;color:#1E293B;text-align:center !important;vertical-align:middle !important;background:#F8FAFC;border-right:2px solid #E2E8F0;">'+clientName+'</td>';
+        h+='<td rowspan="'+clientRowspan+'" style="'+TD+'font-weight:700;color:#1E293B;text-align:center !important;vertical-align:middle !important;background:#F8FAFC;border-right:1px solid #E2E8F0;">'+clientName+'</td>';
+        if(hasHist){
+          var _chIdEsc2=chId.replace(/'/g,String.fromCharCode(92,39));
+          h+='<td rowspan="'+clientRowspan+'" style="'+TD+'padding:0 !important;width:28px;background:#F8FAFC;border-right:2px solid #E2E8F0;">';
+          h+='<button onclick="event.stopPropagation();_cToggleChain('+JSON.stringify(chId)+',this)" style="border:none;background:none;cursor:pointer;color:#94A3B8;width:100%;height:44px;display:flex;align-items:center;justify-content:center;"><svg style="transition:transform .2s ease;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>';
+          h+='</td>';
+        } else {
+          h+='<td rowspan="'+clientRowspan+'" style="'+TD+'width:28px;background:#F8FAFC;border-right:2px solid #E2E8F0;"></td>';
+        }
       }
 
       h+='<td style="'+TD+'">'+_cTypeBadge(c.contractType)+'</td>';
@@ -16336,7 +16353,6 @@ function _rebuildContractPanel(rep){ try {
           else if(isOldest) badge='<span style="display:inline-block;width:34px;font-size:9px;background:#F1F5F9;color:#64748B;border-radius:4px;padding:1px 4px;text-align:center;flex-shrink:0;">최초</span>';
           else badge='<span style="display:inline-block;width:34px;flex-shrink:0;"></span>';
           var statusBadge=_cStatusBadge(hc.status).replace('font-size:11px','font-size:10px').replace('padding:2px 8px','padding:1px 6px');
-          h+='<div style="display:flex;gap:0;cursor:'+(isCur?'default':'pointer')+';padding:4px 0;"'
           h+='<div style="display:flex;gap:0;cursor:'+(isCur?'default':'pointer')+';padding:4px 0;"'
             +(isCur?'':' data-rep="'+rep+'" data-hcid="'+hc.id+'" onclick="(function(el){showContractDetail(el.dataset.rep,el.dataset.hcid);})(this)"')+'>';
           h+='<div style="width:8px;height:8px;border-radius:50%;background:'+dotBg+';border:'+dotBorder+';flex-shrink:0;"></div>';
