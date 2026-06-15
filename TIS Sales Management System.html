@@ -15052,7 +15052,14 @@ function _cdbRename(id, newName){
 function _cdbGetHistory(name,typeFilter){
   var items=[];
   var _cdbSeenIds={};
+  var items=[];
+  var _cdbSeenIds={};
+  // TEAM_REPS 기반 유효 rep만 (구버전 이름/직책 키 제외)
+  var _validR={};
+  if(typeof TEAM_REPS!=='undefined')
+    Object.values(TEAM_REPS).forEach(function(a){(a||[]).forEach(function(r){_validR[r]=true;});});
   Object.keys(store.reps||{}).forEach(function(rep){
+    if(Object.keys(_validR).length && !_validR[rep]) return; // 구버전 키 무시
     var d=store.reps[rep]; if(!d) return;
     if(!typeFilter||typeFilter==='계약'||typeFilter==='all')
       (d.contracts||[]).forEach(function(c){
@@ -15103,7 +15110,12 @@ function _cdbGetReps(name, item){
 // KPI
 function _cdbGetKPI(name){
   var kpi={contracts:0,activities:0,amount:0,issues:0};
+  var kpi={contracts:0,activities:0,amount:0,issues:0};
+  var _validR2={};
+  if(typeof TEAM_REPS!=='undefined')
+    Object.values(TEAM_REPS).forEach(function(a){(a||[]).forEach(function(r){_validR2[r]=true;});});
   Object.keys(store.reps||{}).forEach(function(rep){
+    if(Object.keys(_validR2).length && !_validR2[rep]) return;
     var d=store.reps[rep]; if(!d) return;
     (d.contracts||[]).forEach(function(c){ if(c.client===name){ kpi.contracts++; kpi.amount+=(Number(c.amount)||0); }});
     (d.activities||[]).forEach(function(a){ if(a.client===name) kpi.activities++; });
@@ -17612,14 +17624,20 @@ window._wkFillLoadWeeks=function(year){
   if(!wEl) return;
   wEl.innerHTML='<option value="">-- 주차 선택 --</option>';
 
-  // SP에 저장된 주차 키 목록 (데이터 있는 주차)
+  // SP 캐시에서 저장된 모든 주차 키 추출
   var existingWeeks={};
-  if(_wk&&_wk.allEntries){
-    _wk.allEntries.forEach(function(e){ if(e.week) existingWeeks[e.week]=true; });
+  // weeklyFeed 캐시에서 Title 파싱 (가장 정확)
+  if(window._wkFeedCache&&window._wkFeedCache.items){
+    window._wkFeedCache.items.forEach(function(item){
+      var t=item.Title||item.DataKey||'';
+      // Title 형식: weeklyFeed_YYYY-WNN_담당자명
+      var m=t.match(/weeklyFeed_(\d{4}-W\d{2})/);
+      if(m) existingWeeks[m[1]]=true;
+    });
   }
-  if(_wk&&_wk.entries){
-    _wk.entries.forEach(function(e){ if(e.week) existingWeeks[e.week]=true; });
-  }
+  // 추가: _wk.entries, prevEntries의 week 필드
+  if(_wk&&_wk.entries) _wk.entries.forEach(function(e){ if(e.week) existingWeeks[e.week]=true; });
+  if(_wk&&_wk.prevEntries) _wk.prevEntries.forEach(function(e){ if(e.week) existingWeeks[e.week]=true; });
 
   var curWk=typeof _wkThisKey==='function'?_wkThisKey():'';
   var curWn=curWk?parseInt(curWk.split('W')[1]||'53'):53;
