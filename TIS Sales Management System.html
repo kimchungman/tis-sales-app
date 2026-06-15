@@ -9319,6 +9319,68 @@ async function _spDiagnose(){
   try{
     var res = await _spFetchAll(_lUrl()+'?$select=Id,DataType,DataKey,Payload&$top=500');
     var items = (res&&res.value)||[];
+    var diagLines = ['총 '+items.length+'개 아이템\n'];
+    var dateKeys = items.filter(function(i){ return /\d{4}-\d{2}-\d{2}/.test(i.DataKey||''); });
+    diagLines.push('날짜 포함 키: '+dateKeys.length+'개 (정리 대상)');
+    var repItems = items.filter(function(i){ return i.DataType==='rep_data'; });
+    diagLines.push('\n=== rep_data ('+repItems.length+'개) ===');
+    // 중복 키 찾기
+    var keyCount={};
+    repItems.forEach(function(item){ var dk=item.DataKey||''; keyCount[dk]=(keyCount[dk]||0)+1; });
+    var dupKeys=Object.keys(keyCount).filter(function(k){ return keyCount[k]>1; });
+    if(dupKeys.length) diagLines.push('⚠️ 중복 키: '+dupKeys.join(', '));
+    repItems.forEach(function(item){
+      try{
+        var p = JSON.parse(item.Payload||'{}');
+        var acts = (p.activities||[]).length;
+        var clients = (p.clients||[]).length;
+        var plan = (p.plan||[]).reduce(function(s,v){return s+(v||0);},0);
+        var dup = keyCount[item.DataKey]>1 ? ' ⚠️중복' : '';
+        diagLines.push('['+item.DataKey+'] acts='+acts+' clients='+clients+' plan='+plan+' savedAt='+(p.savedAt||'없음')+dup);
+      }catch(e){ diagLines.push('['+item.DataKey+'] 파싱오류'); }
+    });
+    el.textContent = diagLines.join('\n');
+    // 중복 키 즉시 삭제 버튼
+    if(dupKeys.length){
+      var btn=document.createElement('button');
+      btn.textContent='🗑️ 중복 키 즉시 삭제 (구버전 유지)';
+      btn.style.cssText='margin-top:8px;padding:6px 12px;background:#EF4444;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;display:block;';
+      btn.onclick=async function(){
+        btn.disabled=true; btn.textContent='삭제 중...';
+        var deleted=0;
+        // 같은 DataKey 중 오래된 것(savedAt 기준) 삭제
+        var groups={};
+        repItems.forEach(function(item){
+          var dk=item.DataKey||'';
+          if(!groups[dk]) groups[dk]=[];
+          try{ var p=JSON.parse(item.Payload||'{}'); item._sat=p.savedAt||''; }catch(e){ item._sat=''; }
+          groups[dk].push(item);
+        });
+        for(var dk in groups){
+          var g=groups[dk];
+          if(g.length<=1) continue;
+          g.sort(function(a,b){ return b._sat.localeCompare(a._sat); });
+          for(var i=1;i<g.length;i++){
+            try{ await _spFetch(_lUrl()+'('+g[i].Id+')',{method:'DELETE',headers:{'IF-MATCH':'*'}}); deleted++; }catch(e){}
+          }
+        }
+        btn.textContent='✅ '+deleted+'개 삭제 완료. 조회 다시 누르세요.';
+        if(window._spIdCache) window._spIdCache={};
+      };
+      el.appendChild(btn);
+    }
+  }catch(e){
+    el.textContent = '오류: '+e.message;
+  }
+}
+async function _spDiagnose(){
+  var el = document.getElementById('sp-diag-result');
+  if(!el) return;
+  el.style.display = 'block';
+  el.textContent = '로딩 중...';
+  try{
+    var res = await _spFetchAll(_lUrl()+'?$select=Id,DataType,DataKey,Payload&$top=500');
+    var items = (res&&res.value)||[];
     var lines = ['총 '+items.length+'개 아이템\n'];
     // rep_data만 상세 출력
     var repItems = items.filter(function(i){ return i.DataType==='rep_data'; });
@@ -14180,7 +14242,12 @@ var _repSavedHashes = {};
 async function _spSaveChangedReps(currentReps){
   if(!window._isSPReady||!window._spDataLoaded||!currentReps) return;
   var toSave=[];
+  var _validSaveReps={};
+  if(typeof TEAM_REPS!=='undefined')
+    Object.values(TEAM_REPS).forEach(function(a){(a||[]).forEach(function(r){_validSaveReps[r]=true;});});
   Object.keys(currentReps).forEach(function(rep){
+    // TEAM_REPS에 없는 rep는 저장 안 함 (구버전 키 순환 방지)
+    if(Object.keys(_validSaveReps).length && !_validSaveReps[rep]) return;
     try{
       var h=JSON.stringify(currentReps[rep]||{});
       if(_repSavedHashes[rep]!==h){_repSavedHashes[rep]=h;toSave.push(rep);}
@@ -14342,6 +14409,12 @@ async function _spSyncOtherReps(){
         var parsedRep = (typeof _parseRepDataKey==='function') ? _parseRepDataKey(dk).rep : dk;
         var repName = (typeof _findRepByKey==='function') ? _findRepByKey(parsedRep) : parsedRep;
         if(!repName||/^\d+$/.test(repName)) return;
+        // TEAM_REPS에 없는 rep 키는 store에 로드 안 함 (구버전 순환 방지)
+        if(typeof TEAM_REPS!=='undefined' && Object.keys(TEAM_REPS).length){
+          var _allValidR=[];
+          Object.values(TEAM_REPS).forEach(function(a){(a||[]).forEach(function(r){_allValidR.push(r);});});
+          if(_allValidR.length && _allValidR.indexOf(repName)<0) return;
+        }
         if(!allByRep[repName]) allByRep[repName] = [];
         allByRep[repName].push(item);
       }catch(e){}
