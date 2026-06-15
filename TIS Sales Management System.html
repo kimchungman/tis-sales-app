@@ -4214,11 +4214,13 @@ document.addEventListener('DOMContentLoaded',()=>{
       if(data.reps && !session.team){REPS.length=0;data.reps.forEach(r=>REPS.push(r));}
       if(data.repColors){REP_COLORS.length=0;data.repColors.forEach(c=>REP_COLORS.push(c));}
       if(data.store){
-        // 깊은 병합: 새 담당자 구조 유지하면서 저장된 데이터 덮어쓰기
-        Object.keys(data.store.reps||{}).forEach(rep=>{
-          store.reps[rep] = data.store.reps[rep];
-        });
-        if(data.store.clientDB) store.clientDB=data.store.clientDB;
+        // SP 로드 완료 전에만 localStorage 복원 (SP 최신 데이터 보호)
+        if(!window._spDataLoaded){
+          Object.keys(data.store.reps||{}).forEach(rep=>{
+            store.reps[rep] = data.store.reps[rep];
+          });
+          if(data.store.clientDB) store.clientDB=data.store.clientDB;
+        }
       // 기존 데이터에서 고객사 자동 수집
       setTimeout(function(){if(typeof _cdbSyncFromStore==='function')_cdbSyncFromStore();},1000);
       }
