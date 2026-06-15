@@ -16347,8 +16347,8 @@ function _rebuildContractPanel(rep){ try {
           else badge='<span style="display:inline-block;width:34px;flex-shrink:0;"></span>';
           var statusBadge=_cStatusBadge(hc.status).replace('font-size:11px','font-size:10px').replace('padding:2px 8px','padding:1px 6px');
           h+='<div style="display:flex;gap:0;cursor:'+(isCur?'default':'pointer')+';padding:4px 0;"'
-            +(isCur?'':' onclick="showContractDetail(\''+_repEsc+'\',\''+hc.id.replace(/\'/g,"\\\\'")+'\')\"')+'>'; 
-          h+='<div style="width:14px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;margin-right:10px;">';
+          h+='<div style="display:flex;gap:0;cursor:'+(isCur?'default':'pointer')+';padding:4px 0;"'
+            +(isCur?'':' data-rep="'+rep+'" data-hcid="'+hc.id+'" onclick="(function(el){showContractDetail(el.dataset.rep,el.dataset.hcid);})(this)"')+'>';
           h+='<div style="width:8px;height:8px;border-radius:50%;background:'+dotBg+';border:'+dotBorder+';flex-shrink:0;"></div>';
           if(!isOldest)h+='<div style="width:1px;background:#E2E8F0;flex:1;margin-top:2px;"></div>';
           h+='</div>';
