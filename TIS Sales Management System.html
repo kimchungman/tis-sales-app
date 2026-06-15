@@ -16271,7 +16271,7 @@ function _rebuildContractPanel(rep){ try {
   h+='<div class="tbl-scroll-wrap" style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 280px);min-height:180px;border:1px solid #E2E8F0;border-radius:10px;background:#ffffff;width:100%;">';
   h+='<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:auto;">';
   h+='<colgroup>';
-  h+='<col style="width:28px;"><col style="width:130px;"><col style="width:75px;"><col><col style="width:75px;">';
+  h+='<col style="width:120px;"><col style="width:28px;"><col style="width:75px;"><col><col style="width:75px;">';
   h+='<col style="min-width:62px;"><col style="min-width:62px;"><col style="min-width:60px;">';
   h+='<col style="min-width:72px;"><col style="min-width:62px;"><col style="min-width:60px;">';
   h+='<col style="min-width:60px;">'+(canEdit?'<col style="width:30px;">':'');
@@ -16287,23 +16287,18 @@ function _rebuildContractPanel(rep){ try {
   var NCOLS=12+(canEdit?1:0);
 
   chainOrder.forEach(function(rootKey,ci){
-    var chainContracts=chains[rootKey]||[]; // 동일 고객사의 모든 계약
+    var chainContracts=chains[rootKey]||[];
     if(!chainContracts.length) return;
     var clientName=(chainContracts[0].client||'미입력');
     var clientRowspan=chainContracts.length;
     var topB=ci>0?'border-top:2px solid #F1F5F9;':'';
 
-    chainContracts.forEach(function(c, cIdx){
-      var chainFull=allChains[rootKey]||[];
-      // 같은 rootId 체인 내 갱신이력 (동일 계약의 갱신)
-      // sameChain: 명시적 rootId가 있을 때만 갱신이력으로 처리
+    chainContracts.forEach(function(c,cIdx){
+      // 갱신이력: 동일 rootId 체인 (명시적 rootId 있을 때만)
       var sameChain=[];
       if(c.rootId){
-        sameChain=chainFull.filter(function(x){
-          return (x.rootId||x.id)===c.rootId;
-        });
-      } else {
-        sameChain=[c];
+        var allC=allChains[rootKey]||[];
+        sameChain=allC.filter(function(x){ return (x.rootId||x.id)===c.rootId; });
       }
       var hasHist=sameChain.length>1;
       var hasMgt=c.managementType&&c.managementType!=='해당없음';
@@ -16312,19 +16307,20 @@ function _rebuildContractPanel(rep){ try {
 
       h+='<tr data-rp="'+rep+'" data-cid="'+c.id+'" class="contract-table-row" style="border-bottom:0.5px solid #F1F5F9;'+rowTopB+'" onclick="(function(el){showContractDetail(el.dataset.rp,el.dataset.cid);})(this)">';
 
-      // td[1]: 고객사명 + td[2]: 화살표 (첫 번째 계약만, rowspan)
+      // td[0]: 고객사명 (첫 번째 계약에만 rowspan)
       if(cIdx===0){
-        h+='<td rowspan="'+clientRowspan+'" style="'+TD+'font-weight:700;color:#1E293B;text-align:center !important;vertical-align:middle !important;background:#F8FAFC;border-right:1px solid #E2E8F0;">'+clientName+'</td>';
+        h+='<td rowspan="'+clientRowspan+'" style="'+TD+'font-weight:700;color:#1E293B;text-align:center !important;vertical-align:middle !important;background:#F8FAFC;border-right:1px solid #E2E8F0;word-break:keep-all;padding:8px 6px !important;">'+clientName+'</td>';
+        // td[1]: 화살표 (갱신이력 있을 때만, rowspan)
         if(hasHist){
-          var _chIdEsc2=chId.replace(/'/g,String.fromCharCode(92,39));
-          h+='<td rowspan="'+clientRowspan+'" style="'+TD+'padding:0 !important;width:28px;background:#F8FAFC;border-right:2px solid #E2E8F0;">';
-          h+='<button onclick="event.stopPropagation();_cToggleChain('+JSON.stringify(chId)+',this)" style="border:none;background:none;cursor:pointer;color:#94A3B8;width:100%;height:44px;display:flex;align-items:center;justify-content:center;"><svg style="transition:transform .2s ease;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>';
+          h+='<td rowspan="'+clientRowspan+'" style="'+TD+'padding:0 !important;width:28px;background:#F8FAFC;border-right:2px solid #E2E8F0;vertical-align:middle !important;">';
+          h+='<button class="c-toggle-btn" data-chid="'+chId+'" onclick="event.stopPropagation();_cToggleChain(this.dataset.chid,this)" style="border:none;background:none;cursor:pointer;color:#94A3B8;width:100%;height:100%;min-height:40px;display:flex;align-items:center;justify-content:center;"><svg style="transition:transform .2s ease;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>';
           h+='</td>';
         } else {
           h+='<td rowspan="'+clientRowspan+'" style="'+TD+'width:28px;background:#F8FAFC;border-right:2px solid #E2E8F0;"></td>';
         }
       }
 
+      // 나머지 열
       h+='<td style="'+TD+'">'+_cTypeBadge(c.contractType)+'</td>';
       h+='<td style="'+TD+'text-align:left !important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px;padding-left:8px !important;">'+(c.projectName||'—')+'</td>';
       h+='<td style="'+TD+'font-weight:500;">'+_cFmt(c.amount)+'</td>';
@@ -16335,11 +16331,11 @@ function _rebuildContractPanel(rep){ try {
       h+='<td style="'+TD+'font-size:11px;color:#64748B;">'+(hasMgt&&c.managementEndDate||'—')+'</td>';
       h+='<td style="'+TD+'">'+_cMgtDdayBadge(c)+'</td>';
       h+='<td style="'+TD+'">'+_cStatusBadge(c.status)+'</td>';
-      if(canEdit)h+='<td style="'+TD+'"><span style="color:#CBD5E1;font-size:14px;">&#9998;</span></td>';
+      if(canEdit)h+='<td style="'+TD+'"><span data-rep="'+rep+'" data-cid="'+c.id+'" style="color:#CBD5E1;font-size:14px;cursor:pointer;" onclick="event.stopPropagation();(function(el){showContractDetail(el.dataset.rep,el.dataset.cid);})(this)">&#9998;</span></td>';
       h+='</tr>';
 
-      // 갱신이력 (같은 계약의 이전 버전들)
-      if(hasHist){
+      // 갱신이력 펼침 행 (hasHist이고 첫 번째 계약일 때만)
+      if(hasHist&&cIdx===0){
         h+='<tr id="'+chId+'" style="display:none;"><td colspan="'+NCOLS+'" style="padding:0;">';
         h+='<div style="background:#F8FAFC;border-top:1px solid #E2E8F0;border-bottom:1px solid #E2E8F0;padding:10px 20px;">';
         h+='<div style="font-size:10px;font-weight:600;color:#94A3B8;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;">계약 갱신 이력</div>';
@@ -16348,13 +16344,14 @@ function _rebuildContractPanel(rep){ try {
           var isOldest=hi===sameChain.length-1;
           var dotBorder=isCur?'2px solid #2563EB':isOldest?'2px solid #94A3B8':'1.5px solid #D1D5DB';
           var dotBg=isCur?'#2563EB':'transparent';
-          var badge='';
-          if(isCur) badge='<span style="display:inline-block;width:34px;font-size:9px;background:#2563EB;color:#fff;border-radius:4px;padding:1px 4px;text-align:center;flex-shrink:0;">현재</span>';
-          else if(isOldest) badge='<span style="display:inline-block;width:34px;font-size:9px;background:#F1F5F9;color:#64748B;border-radius:4px;padding:1px 4px;text-align:center;flex-shrink:0;">최초</span>';
-          else badge='<span style="display:inline-block;width:34px;flex-shrink:0;"></span>';
+          var badge=isCur
+            ?'<span style="display:inline-block;width:34px;font-size:9px;background:#2563EB;color:#fff;border-radius:4px;padding:1px 4px;text-align:center;flex-shrink:0;">현재</span>'
+            :isOldest
+              ?'<span style="display:inline-block;width:34px;font-size:9px;background:#F1F5F9;color:#64748B;border-radius:4px;padding:1px 4px;text-align:center;flex-shrink:0;">최초</span>'
+              :'<span style="display:inline-block;width:34px;flex-shrink:0;"></span>';
           var statusBadge=_cStatusBadge(hc.status).replace('font-size:11px','font-size:10px').replace('padding:2px 8px','padding:1px 6px');
-          h+='<div style="display:flex;gap:0;cursor:'+(isCur?'default':'pointer')+';padding:4px 0;"'
-            +(isCur?'':' data-rep="'+rep+'" data-hcid="'+hc.id+'" onclick="(function(el){showContractDetail(el.dataset.rep,el.dataset.hcid);})(this)"')+'>';
+          h+='<div style="display:flex;align-items:flex-start;gap:0;cursor:'+(isCur?'default':'pointer')+';padding:4px 0;"'+(isCur?'':' data-rep="'+rep+'" data-hcid="'+hc.id+'" onclick="(function(el){showContractDetail(el.dataset.rep,el.dataset.hcid);})(this)"')+'>';
+          h+='<div style="width:14px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;margin-right:10px;">';
           h+='<div style="width:8px;height:8px;border-radius:50%;background:'+dotBg+';border:'+dotBorder+';flex-shrink:0;"></div>';
           if(!isOldest)h+='<div style="width:1px;background:#E2E8F0;flex:1;margin-top:2px;"></div>';
           h+='</div>';
@@ -16366,13 +16363,12 @@ function _rebuildContractPanel(rep){ try {
           h+=statusBadge;
           h+='</div>';
           h+='<div style="font-size:10px;color:#94A3B8;margin-top:2px;white-space:nowrap;">'+(hc.startDate?hc.startDate+' ~ '+(hc.endDate||''):'')+'</div>';
-          h+='</div></div>';
+          h+='</div></div></div>';
         });
         h+='</div></td></tr>';
       }
     });
   });
-  h+='</tbody></table></div>';
   var _cSt=window._saveScroll?window._saveScroll(el):0;
   el.innerHTML=h;
   if(_cSt>0&&window._restoreScroll)window._restoreScroll(el,_cSt);
