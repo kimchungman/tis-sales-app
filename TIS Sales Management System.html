@@ -3614,42 +3614,48 @@ document.addEventListener('selectionchange',function(){
   </div>
 
 <!-- 이전 회차 불러오기 모달 -->
-<div id="wk-load-modal" style="position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:700;display:none;align-items:center;justify-content:center;backdrop-filter:blur(2px);">
-  <div style="background:#fff;border-radius:16px;width:340px;box-shadow:0 24px 64px rgba(15,23,42,.18);overflow:hidden;">
+<div id="wk-load-modal" style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:700;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+  <div style="background:#fff;border-radius:20px;width:380px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 32px 80px rgba(15,23,42,.22);overflow:hidden;">
     <!-- 헤더 -->
-    <div style="padding:20px 22px 16px;border-bottom:1px solid #F1F5F9;display:flex;align-items:center;justify-content:space-between;">
+    <div style="padding:22px 24px 16px;border-bottom:1px solid #F1F5F9;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
       <div>
-        <div style="font-size:14px;font-weight:700;color:#0F172A;">이전 회차 불러오기</div>
-        <div style="font-size:11px;color:#94A3B8;margin-top:2px;">선택한 주차를 현재 회의록으로 복사합니다</div>
+        <div style="font-size:15px;font-weight:700;color:#0F172A;letter-spacing:-.02em;">📋 이전 회차 불러오기</div>
+        <div style="font-size:11px;color:#94A3B8;margin-top:3px;">선택한 주차 회의록을 현재로 복사합니다</div>
       </div>
-      <button onclick="_wkCloseLoadWeek()" style="border:none;background:#F1F5F9;border-radius:8px;width:28px;height:28px;cursor:pointer;color:#64748B;font-size:14px;display:flex;align-items:center;justify-content:center;">✕</button>
+      <button onclick="_wkCloseLoadWeek()" style="border:none;background:#F1F5F9;border-radius:10px;width:30px;height:30px;cursor:pointer;color:#64748B;font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
     </div>
     <!-- 바디 -->
-    <div style="padding:18px 22px;">
-      <div style="margin-bottom:14px;">
-        <div style="font-size:11px;font-weight:600;color:#475569;margin-bottom:6px;letter-spacing:.04em;">년도</div>
-        <select id="wk-load-year" style="width:100%;padding:8px 10px;border:1.5px solid #E2E8F0;border-radius:8px;font-size:12px;color:#0F172A;background:#fff;cursor:pointer;"></select>
+    <div style="padding:20px 24px;flex:1;overflow-y:auto;">
+      <!-- 년도 선택 -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:8px;letter-spacing:.05em;text-transform:uppercase;">년도</div>
+        <select id="wk-load-year" style="width:100%;padding:10px 14px;border:1.5px solid #E2E8F0;border-radius:10px;font-size:14px;color:#1E293B;background:#fff;cursor:pointer;appearance:none;background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2394A3B8%22 stroke-width=%222%22><polyline points=%226 9 12 15 18 9%22/></svg>');background-repeat:no-repeat;background-position:right 12px center;background-size:16px;"></select>
       </div>
-      <div style="margin-bottom:14px;">
-        <div style="font-size:11px;font-weight:600;color:#475569;margin-bottom:6px;letter-spacing:.04em;">주차 선택</div>
-        <select id="wk-load-week" style="width:100%;padding:8px 10px;border:1.5px solid #E2E8F0;border-radius:8px;font-size:12px;color:#0F172A;background:#fff;cursor:pointer;"></select>
+      <!-- 주차 선택 -->
+      <div style="margin-bottom:20px;">
+        <div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:8px;letter-spacing:.05em;text-transform:uppercase;">주차 선택</div>
+        <select id="wk-load-week" style="width:100%;padding:10px 14px;border:1.5px solid #E2E8F0;border-radius:10px;font-size:13px;color:#1E293B;background:#fff;cursor:pointer;appearance:none;background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2394A3B8%22 stroke-width=%222%22><polyline points=%226 9 12 15 18 9%22/></svg>');background-repeat:no-repeat;background-position:right 12px center;background-size:16px;"></select>
+        <div id="wk-load-week-info" style="margin-top:6px;font-size:11px;color:#94A3B8;min-height:16px;"></div>
       </div>
-      <div style="margin-bottom:18px;">
-        <div style="font-size:11px;font-weight:600;color:#475569;margin-bottom:8px;letter-spacing:.04em;">복사 방식</div>
-        <div style="display:flex;gap:8px;">
-          <label style="flex:1;display:flex;align-items:center;gap:8px;padding:8px 12px;border:1.5px solid #E2E8F0;border-radius:8px;cursor:pointer;font-size:11px;color:#374151;" id="wk-load-opt-replace">
-            <input type="radio" name="wk-load-mode" value="replace" checked style="accent-color:#4f7fff;"> 현재 내용 대체
+      <!-- 복사 방식 -->
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:10px;letter-spacing:.05em;text-transform:uppercase;">복사 방식</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid #E2E8F0;border-radius:10px;cursor:pointer;transition:all .15s;" id="wk-mode-replace-label">
+            <input type="radio" name="wk-load-mode" value="replace" checked style="accent-color:#4f7fff;width:15px;height:15px;">
+            <div><div style="font-size:12px;font-weight:600;color:#1E293B;">덮어쓰기</div><div style="font-size:10px;color:#94A3B8;">현재 내용 교체</div></div>
           </label>
-          <label style="flex:1;display:flex;align-items:center;gap:8px;padding:8px 12px;border:1.5px solid #E2E8F0;border-radius:8px;cursor:pointer;font-size:11px;color:#374151;" id="wk-load-opt-append">
-            <input type="radio" name="wk-load-mode" value="append" style="accent-color:#4f7fff;"> 이어붙이기
+          <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid #E2E8F0;border-radius:10px;cursor:pointer;transition:all .15s;" id="wk-mode-append-label">
+            <input type="radio" name="wk-load-mode" value="append" style="accent-color:#4f7fff;width:15px;height:15px;">
+            <div><div style="font-size:12px;font-weight:600;color:#1E293B;">이어붙이기</div><div style="font-size:10px;color:#94A3B8;">현재에 추가</div></div>
           </label>
         </div>
       </div>
     </div>
     <!-- 푸터 -->
-    <div style="padding:14px 22px;border-top:1px solid #F1F5F9;display:flex;gap:8px;justify-content:flex-end;">
-      <button onclick="_wkCloseLoadWeek()" style="padding:8px 18px;border:1.5px solid #E2E8F0;border-radius:8px;background:#fff;color:#64748B;font-size:12px;font-weight:600;cursor:pointer;">취소</button>
-      <button onclick="_wkApplyLoadWeek()" style="padding:8px 20px;border:none;border-radius:8px;background:#4f7fff;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">불러오기</button>
+    <div style="padding:16px 24px;border-top:1px solid #F1F5F9;display:flex;gap:8px;flex-shrink:0;">
+      <button onclick="_wkCloseLoadWeek()" style="flex:1;padding:10px;border:1.5px solid #E2E8F0;border-radius:10px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:#64748B;">취소</button>
+      <button onclick="_wkApplyLoadWeek()" style="flex:2;padding:10px;border:none;border-radius:10px;background:#4f7fff;font-size:13px;font-weight:700;cursor:pointer;color:#fff;">불러오기</button>
     </div>
   </div>
 </div>
@@ -4724,12 +4730,13 @@ function showPage(id,navEl){
     }
   }
   if(id==='weekly'){
-    // 주간회의 진입 시 데이터가 없으면 로드, 있으면 즉시 렌더
-    if(typeof _wkSetView==='function' && typeof _wk!=='undefined'){
-      if(_wk.entries&&_wk.entries.length>0){
-        _wkRenderFeed(); _wkRenderReport();
-      } else {
-        if(typeof _wkLoad==='function'){ _wk.loading=false; _wkLoad(); }
+    if(typeof _wk!=='undefined'){
+      // 즉시 현재 데이터로 렌더 (있으면 바로, 없으면 로딩 표시)
+      if(typeof _wkRenderFeed==='function') try{_wkRenderFeed();}catch(e){}
+      if(typeof _wkRenderReport==='function') try{_wkRenderReport();}catch(e){}
+      // 백그라운드 SP 동기화 (데이터 없을 때만)
+      if((!_wk.entries||!_wk.entries.length) && typeof _wkLoad==='function'){
+        _wk.loading=false; _wkLoad();
       }
     }
   }
@@ -9547,6 +9554,67 @@ async function _spRecoverArchiveActivities(){
 }
 
 // ── SP 구버전 날짜 키 정리 (관리자 전용) ────────────────────────
+async function _spCleanupOldKeys(){
+  if(!window._isSPReady||!session||session.role!=='admin') return;
+  try{
+    showToast('🔄 SP 데이터 정리 중...','info');
+    var res=await _spFetchAll(_lUrl()+'?$select=Id,DataType,DataKey,Payload&$top=500');
+    var items=(res&&res.value)||[];
+    var toDelete=[];
+
+    // TEAM_REPS 유효 이름 목록
+    var validNames=[];
+    if(typeof TEAM_REPS!=='undefined'){
+      Object.values(TEAM_REPS).forEach(function(arr){
+        (arr||[]).forEach(function(name){
+          validNames.push(name.toLowerCase().replace(/_/g,' ').trim());
+          validNames.push(name.toLowerCase().trim());
+          var base=name.replace(/\s+\S+$/,'').trim();
+          if(base) validNames.push(base.toLowerCase());
+        });
+      });
+    }
+
+    // rep_data 키별로 그룹핑 (중복 제거)
+    var repGroups={};
+    items.forEach(function(item){
+      if(item.DataType!=='rep_data') return;
+      var dk=(item.DataKey||'').trim();
+      // 날짜/아카이브 키
+      if(/\d{4}-\d{2}-\d{2}/.test(dk)||/_act_(old|\d{4})$/.test(dk)||/_iss_\d{4}$/.test(dk)||/_vl_\d{4}$/.test(dk)){
+        toDelete.push(item.Id); return;
+      }
+      // TEAM_REPS에 없는 키
+      if(validNames.length){
+        var dkn=dk.toLowerCase().replace(/_/g,' ').trim();
+        if(validNames.indexOf(dkn)<0&&validNames.indexOf(dk.toLowerCase())<0){
+          if(!/_part\d+$/.test(dk)&&!/_idx$/.test(dk)){ toDelete.push(item.Id); return; }
+        }
+      }
+      // 중복 키 그룹핑 (같은 DataKey, 최신 savedAt만 유지)
+      var dkLower=dk.toLowerCase();
+      if(!repGroups[dkLower]) repGroups[dkLower]=[];
+      try{ var p=JSON.parse(item.Payload||'{}'); item._savedAt=p.savedAt||''; }catch(e){ item._savedAt=''; }
+      repGroups[dkLower].push(item);
+    });
+
+    // 중복 키: 최신 제외 나머지 삭제
+    Object.values(repGroups).forEach(function(group){
+      if(group.length<=1) return;
+      group.sort(function(a,b){ return b._savedAt.localeCompare(a._savedAt); });
+      group.slice(1).forEach(function(item){ toDelete.push(item.Id); });
+    });
+
+    if(!toDelete.length){ showToast('✅ 정리할 항목이 없습니다.','info'); return; }
+    var deleted=0;
+    for(var i=0;i<toDelete.length;i++){
+      try{ await _spFetch(_lUrl()+'('+toDelete[i]+')',{method:'DELETE',headers:{'IF-MATCH':'*'}}); deleted++; }catch(e){}
+      if(i%50===49) showToast('🔄 정리 중... '+deleted+'개 완료','info');
+    }
+    showToast('✅ SP 정리 완료: '+deleted+'개 삭제됨','info');
+    if(window._spIdCache) window._spIdCache={};
+  }catch(e){ console.error('[cleanup]',e); showToast('❌ SP 정리 실패','error'); }
+}
 async function _spCleanupOldKeys(){
   if(!window._isSPReady||!session||session.role!=='admin') return;
   try{
@@ -15011,16 +15079,23 @@ function _cdbGetHistory(name,typeFilter){
 }
 
 // 영업담당 수집
-function _cdbGetReps(name){
+function _cdbGetReps(name, item){
+  if(!item) item=(_cdbAll&&_cdbAll()||[]).find(function(c){return c.name===name;})||null;
+  var excluded=(item&&item.excludedAutoReps)||[];
+  // TEAM_REPS 기반 유효 이름만 사용
+  var validReps={};
+  if(typeof TEAM_REPS!=='undefined')
+    Object.values(TEAM_REPS).forEach(function(arr){ (arr||[]).forEach(function(r){validReps[r]=true;}); });
   var repMap={};
   Object.keys(store.reps||{}).forEach(function(rep){
+    if(Object.keys(validReps).length && !validReps[rep]) return;
     var d=store.reps[rep]; if(!d) return;
     var srcs=[];
-    (d.contracts||[]).forEach(function(c){ if(c.client===name&&!srcs.includes('계약')) srcs.push('계약'); });
+    (d.contracts||[]).forEach(function(ct){ if(ct.client===name&&!srcs.includes('계약')) srcs.push('계약'); });
     (d.activities||[]).forEach(function(a){ if(a.client===name&&!srcs.includes('활동')) srcs.push('활동'); });
     (d.issuesList||[]).forEach(function(iss){ if(iss.client===name&&!srcs.includes('이슈')) srcs.push('이슈'); });
-    (d.visitLog||[]).forEach(function(v){ if(((v.company||v.client||'')===name)&&!srcs.includes('방문')) srcs.push('방문'); });
-    if(srcs.length) repMap[rep]={rep:rep,srcs:srcs};
+    (d.visitLog||[]).forEach(function(v){ if((v.company||v.client||'')==name&&!srcs.includes('방문')) srcs.push('방문'); });
+    if(srcs.length&&excluded.indexOf(rep)<0) repMap[rep]={rep:rep,srcs:srcs};
   });
   return Object.values(repMap);
 }
@@ -15097,8 +15172,11 @@ function _cdbRenderDetail(id){
 
   var kpi=_cdbGetKPI(item.name);
   var hist=_cdbGetHistory(item.name,'all');
-  var autoReps=_cdbGetReps(item.name);
+  var autoReps=_cdbGetReps(item.name, item);
   var manualReps=item.manualReps||[];
+  var _excluded=item.excludedAutoReps||[];
+  // excludedAutoReps에 있는 담당자는 autoReps에서 제외
+  autoReps=autoReps.filter(function(r){ return _excluded.indexOf(r.rep)<0; });
   var autoNames=autoReps.map(function(r){return r.rep;});
   var hasInfo=item.contacts&&item.contacts.some(function(ct){return ct.name||ct.phone;});
   var col=_cdbColor(item.name);
@@ -17527,6 +17605,64 @@ window._cdbConfirmHide=function(name){
 window._wkCloseLoadWeek=function(){
   var m=document.getElementById('wk-load-modal');
   if(m) m.style.display='none';
+};
+window._wkFillLoadWeeks=function(year){
+  var wEl=document.getElementById('wk-load-week');
+  var infoEl=document.getElementById('wk-load-week-info');
+  if(!wEl) return;
+  wEl.innerHTML='<option value="">-- 주차 선택 --</option>';
+
+  // SP에 저장된 주차 키 목록 (데이터 있는 주차)
+  var existingWeeks={};
+  if(_wk&&_wk.allEntries){
+    _wk.allEntries.forEach(function(e){ if(e.week) existingWeeks[e.week]=true; });
+  }
+  if(_wk&&_wk.entries){
+    _wk.entries.forEach(function(e){ if(e.week) existingWeeks[e.week]=true; });
+  }
+
+  var curWk=typeof _wkThisKey==='function'?_wkThisKey():'';
+  var curWn=curWk?parseInt(curWk.split('W')[1]||'53'):53;
+  var curYr=new Date().getFullYear();
+
+  var addedCount=0;
+  for(var w=53;w>=1;w--){
+    var wStr=(w<10?'0':'')+w;
+    var wKey=year+'-W'+wStr;
+    // 유효한 주차인지 (해당 주차 월요일이 해당 년도에 속하는지)
+    var jan4=new Date(year,0,4);
+    var jan4dow=(jan4.getDay()+6)%7;
+    var mon=new Date(jan4); mon.setDate(jan4.getDate()-jan4dow+(w-1)*7);
+    if(mon.getFullYear()<year-1||mon.getFullYear()>year+1) continue;
+    // 현재/미래 주차 제외
+    if(year===curYr&&w>=curWn) continue;
+    if(year>curYr) continue;
+
+    var fri=new Date(mon); fri.setDate(mon.getDate()+4);
+    var monStr=mon.toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'});
+    var friStr=fri.toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'});
+    var hasData=existingWeeks[wKey]||false;
+
+    var label=(hasData?'✅ ':'    ')+w+'주차  '+monStr+' ~ '+friStr+(hasData?' (데이터 있음)':'');
+    var opt=document.createElement('option');
+    opt.value=wKey;
+    opt.textContent=label;
+    if(hasData){ opt.style.fontWeight='700'; opt.style.color='#1E293B'; }
+    else { opt.style.color='#94A3B8'; }
+    wEl.appendChild(opt);
+    addedCount++;
+  }
+
+  // 주차 변경 시 정보 표시
+  wEl.onchange=function(){
+    if(!infoEl) return;
+    var val=this.value;
+    if(!val){ infoEl.textContent=''; return; }
+    var hasD=existingWeeks[val]||false;
+    infoEl.innerHTML=hasD
+      ?'<span style="color:#16A34A;font-weight:600;">✅ 회의 데이터가 있습니다</span>'
+      :'<span style="color:#94A3B8;">해당 주차에 저장된 회의록이 없습니다</span>';
+  };
 };
 window._wkFillLoadWeeks=function(year){
   var wEl=document.getElementById('wk-load-week');
