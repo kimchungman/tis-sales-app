@@ -8986,8 +8986,8 @@ async function _spSaveItem(dtype, dkey, payload, _retry) {
   var _dkey  = _sanitizeDKey(dkey);
   var _title = dtype + '_' + _dkey;
 
+  var _lock = _title;
 
-  // 중복 실행 방지
   if(!window._spSaveLocks) window._spSaveLocks = {};
   if(window._spSaveLocks[_lock] && !_retry){ return; }
   window._spSaveLocks[_lock] = true;
