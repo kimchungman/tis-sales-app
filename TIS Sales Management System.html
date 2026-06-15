@@ -8986,23 +8986,6 @@ async function _spSaveItem(dtype, dkey, payload, _retry) {
   var _dkey  = _sanitizeDKey(dkey);
   var _title = dtype + '_' + _dkey;
 
-  // ── Payload 크기 체크: 50KB 초과 시 자동 분할 ──
-  var _payloadStr = JSON.stringify(payload);
-  var _MAX = 50000; // 50KB (여유 있게)
-  if(_payloadStr.length > _MAX){
-    // 데이터를 청크로 분할 저장
-    var _chunkSize = _MAX - 500; // 메타 공간 확보
-    var _totalChunks = Math.ceil(_payloadStr.length / _chunkSize);
-    for(var _ci=0; _ci<_totalChunks; _ci++){
-      var _chunk = _payloadStr.slice(_ci*_chunkSize, (_ci+1)*_chunkSize);
-      var _chunkPayload = {_chunk: _chunk, _ci: _ci, _total: _totalChunks, _key: _title};
-      await _spSaveItem(dtype, dkey + '_part' + _ci, _chunkPayload, _retry);
-    }
-    // 인덱스 저장 (파트 개수 기록)
-    await _spSaveItem(dtype, dkey + '_idx', {_parts: _totalChunks, _key: _title, savedAt: new Date().toISOString()}, _retry);
-    return;
-  }
-  var _lock  = _title;
 
   // 중복 실행 방지
   if(!window._spSaveLocks) window._spSaveLocks = {};
@@ -9317,20 +9300,23 @@ async function _spDiagnose(){
   try{
     var res = await _spFetchAll(_lUrl()+'?$select=Id,DataType,DataKey,Payload&$top=500');
     var items = (res&&res.value)||[];
-    var lines = ['총 '+items.length+'개 아이템\n'];
+    var diagLines = ['총 '+items.length+'개 아이템\n'];
+    // 날짜 키 개수
+    var dateKeys = items.filter(function(i){ return /\d{4}-\d{2}-\d{2}/.test(i.DataKey||''); });
+    diagLines.push('날짜 포함 키: '+dateKeys.length+'개 (정리 대상)');
     // rep_data만 상세 출력
     var repItems = items.filter(function(i){ return i.DataType==='rep_data'; });
-    lines.push('=== rep_data ('+repItems.length+'개) ===');
+    diagLines.push('\n=== rep_data ('+repItems.length+'개) ===');
     repItems.forEach(function(item){
       try{
         var p = JSON.parse(item.Payload||'{}');
         var acts = (p.activities||[]).length;
         var clients = (p.clients||[]).length;
         var plan = (p.plan||[]).reduce(function(s,v){return s+(v||0);},0);
-        lines.push('['+item.DataKey+'] acts='+acts+' clients='+clients+' plan='+plan+' savedAt='+(p.savedAt||'없음'));
-      }catch(e){ lines.push('['+item.DataKey+'] 파싱오류'); }
+        diagLines.push('['+item.DataKey+'] acts='+acts+' clients='+clients+' plan='+plan+' savedAt='+(p.savedAt||'없음'));
+      }catch(e){ diagLines.push('['+item.DataKey+'] 파싱오류'); }
     });
-    el.textContent = lines.join('\n');
+    el.textContent = diagLines.join('\n');
   }catch(e){
     el.textContent = '오류: '+e.message;
   }
@@ -9604,7 +9590,10 @@ async function _spCleanupOldKeys(){
       }catch(e){}
       if(i%50===49) showToast('🔄 정리 중... '+deleted+'개 완료','info');
     }
-    showToast('✅ SP 정리 완료: '+deleted+'개 삭제됨','info');
+    showToast('✅ SP 정리 완료: '+deleted+'개 삭제됨. 조회 버튼으로 확인하세요.','info');
+    // ID 캐시 초기화 (삭제된 아이템 캐시 제거)
+    localStorage.removeItem('sp_id_cache');
+    if(window._spIdCache) window._spIdCache={};
   }catch(e){
     console.error('[SP cleanup]',e);
     showToast('❌ SP 정리 실패','error');
