@@ -9404,13 +9404,14 @@ async function _spRecoverArchiveActivities(){
       if(!cur) cur=store.reps[repKey]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[],contracts:[]};
 
       var changed=false;
-      if(mergedActs.length>(cur.activities||[]).length){
+      // SP 데이터를 현재보다 많거나 같으면 적용
+      if(mergedActs.length>0){
         cur.activities=mergedActs; changed=true; total+=mergedActs.length;
       }
-      if(bestClients.clients.length>(cur.clients||[]).length){
+      if(bestClients.clients.length>0){
         cur.clients=bestClients.clients; changed=true; total+=bestClients.clients.length;
       }
-      if(mergedIsss.length>(cur.issuesList||[]).length){
+      if(mergedIsss.length>0){
         cur.issuesList=mergedIsss; changed=true; total+=mergedIsss.length;
       }
       var bestPlanSum=(bestPlan.plan||[]).reduce(function(s,v){return s+(v||0);},0);
@@ -9583,7 +9584,10 @@ async function _spCleanupOldKeys(){
 
       // 3. 직책 포함 키 (이름_직책, 이름 직책) → 삭제
       // 유효 키 목록에 없으면 삭제
-      if(_validKeys.length && _validKeys.indexOf(dk.toLowerCase())<0){
+      // 언더스코어→공백 변환 후 비교 (최원진_주임 = 최원진 주임)
+      var _dkNorm=dk.toLowerCase().replace(/_/g,' ').trim();
+      var _dkOrig=dk.toLowerCase().trim();
+      if(_validKeys.length && _validKeys.indexOf(_dkNorm)<0 && _validKeys.indexOf(_dkOrig)<0){
         // _part, _idx 제외
         if(!/_part\d+$/.test(dk) && !/_idx$/.test(dk)){
           toDelete.push(item.Id); return;
