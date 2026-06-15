@@ -16032,21 +16032,34 @@ function _initClientsPage(){
     _cdbInitDone=true;
     _cdbSyncFromStore();
   }
-  // 즉시 현재 데이터로 렌더 (이미 접속 시 sync 완료됨)
-  _cdbRenderList('');
-  // 백그라운드에서 최신 데이터 확인 후 필요 시 갱신
   if(window._isSPReady){
-    _spSyncOtherReps().then(function(changed){ if(changed) _cdbRenderList(''); }).catch(function(){});
-  }
-  var all=_cdbAll();
-  if(all.length>0&&!_cdbSelectedId){
-    _cdbSelectedId=all[0].id;
-    _cdbRenderDetail(all[0].id);
-  } else if(_cdbSelectedId&&_cdbById(_cdbSelectedId)){
-    _cdbRenderDetail(_cdbSelectedId);
+    // SP에서 최신 clientDB + rep 데이터 로드 후 렌더
+    Promise.all([
+      _spSyncOtherReps().catch(function(){}),
+      _spSyncClientDB ? _spSyncClientDB().catch(function(){}) : Promise.resolve()
+    ]).then(function(){
+      _cdbRenderList('');
+      var all=_cdbAll();
+      if(all.length>0&&!_cdbSelectedId){
+        _cdbSelectedId=all[0].id;
+        _cdbRenderDetail(all[0].id);
+      } else if(_cdbSelectedId&&_cdbById(_cdbSelectedId)){
+        _cdbRenderDetail(_cdbSelectedId);
+      }
+    });
+    // 로딩 중 표시
+    var listEl=document.getElementById('cdb-list');
+    if(listEl&&!_cdbAll().length) listEl.innerHTML='<div style="padding:40px;text-align:center;color:#94A3B8;font-size:12px;">데이터 로딩 중...</div>';
+    else _cdbRenderList(''); // 기존 데이터 있으면 즉시 표시
   } else {
-    var el=document.getElementById('cdb-detail');
-    if(el) el.innerHTML='<div style="padding:60px 40px;text-align:center;color:#94A3B8;font-size:13px;"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.5" style="display:block;margin:0 auto 16px;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>＋ 버튼으로 고객사를 추가하거나<br>다른 메뉴에서 고객사를 입력하면<br>자동으로 등록됩니다.</div>';
+    _cdbRenderList('');
+    var all=_cdbAll();
+    if(all.length>0&&!_cdbSelectedId){
+      _cdbSelectedId=all[0].id;
+      _cdbRenderDetail(all[0].id);
+    } else if(_cdbSelectedId&&_cdbById(_cdbSelectedId)){
+      _cdbRenderDetail(_cdbSelectedId);
+    }
   }
 }
 // ═══════════════════════════════════════
