@@ -2854,7 +2854,7 @@ document.addEventListener('selectionchange',function(){
       </div>
       <div class="sec-body" style="padding-top:4px;">
         <div class="tbl-scroll-wrap">
-          <table class="dt" style="min-width:900px;width:100%;table-layout:fixed;">
+          <table class="dt" style="min-width:900px;width:100%;border-collapse:collapse;">
             <thead>
               <tr>
                 <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;width:72px;text-align:center;white-space:nowrap;">팀</th>
@@ -13907,7 +13907,7 @@ window.renderVisits=function(){
   }
 
   // ── 날짜 범위 필터 UI ──
-  var customFilter='<div id="visit-custom-range" style="display:'+(_visitPeriod==='custom'?'flex':'none')+';padding:8px 0;align-items:center;gap:8px;flex-wrap:wrap;">'
+  var customFilter='<div id="visit-custom-range" style="display:'+(_visitPeriod==='custom'?'flex':'none')+';padding:10px 16px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;margin-bottom:8px;align-items:center;gap:8px;flex-wrap:wrap;">'
     +'<input type="date" id="vdf-from" value="'+(_visitDateFrom||'')+'" style="height:28px;border:1.5px solid #E2E8F0;border-radius:8px;padding:0 8px;font-size:13px;font-family:inherit;outline:none;" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" onchange="window._visitDateFrom=this.value;">'
     +'<span style="font-size:13px;color:#94A3B8;">~</span>'
     +'<input type="date" id="vdf-to" value="'+(_visitDateTo||'')+'" style="height:28px;border:1.5px solid #E2E8F0;border-radius:8px;padding:0 8px;font-size:13px;font-family:inherit;outline:none;" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" onchange="window._visitDateTo=this.value;">'
@@ -13948,6 +13948,7 @@ window.renderVisits=function(){
     +'</div>'
 
     // 기록 테이블
+    +customFilter
     +'<div class="sec-card">'
     +'<div class="sec-head" style="flex-direction:column;align-items:stretch;gap:10px;">'
     +'<div style="display:flex;align-items:center;gap:8px;">'
@@ -13960,13 +13961,12 @@ window.renderVisits=function(){
     +'</div>'
     +'<div style="display:flex;gap:6px;flex-wrap:wrap;">'+repPills+'</div>'
     +'</div>'
-    +customFilter
     +'<div class="sec-body" style="padding-top:4px;overflow:hidden;">'
     +'<div style="max-height:calc(100vh - 320px);overflow-y:auto;overflow-x:auto;border-radius:0 0 10px 10px;">'
     +'<table class="dt" style="min-width:900px;width:100%;">'
     +'<thead><tr>'
     +'<th style="background:#F8FAFC;color:#64748B;width:62px;white-space:nowrap;position:sticky;top:0;z-index:5;">팀</th>'
-    +'<th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;width:100px;white-space:nowrap;">담당자</th>'
+    +'<th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;min-width:90px;white-space:nowrap;">담당자</th>'
     +'<th style="background:#F8FAFC;color:#64748B;position:sticky;top:0;z-index:5;width:100px;">접점일자</th>'
     +'<th style="background:#F8FAFC;color:#64748B;position:sticky;top:0;z-index:5;width:180px;white-space:nowrap;">고객사명</th>'
     +'<th style="background:#F8FAFC;color:#64748B;position:sticky;top:0;z-index:5;width:80px;">접점 유형</th>'
@@ -17602,7 +17602,6 @@ window._wkFillLoadWeeks=function(year){
   var curWk=typeof _wkGetWeekKey==='function'?_wkGetWeekKey(new Date()):'';
   var curWn=curWk?parseInt(curWk.split('W')[1]):53;
   var curYr=new Date().getFullYear();
-  // SP 캐시에서 데이터 있는 주차 추출
   var existingWeeks={};
   if(window._wkFeedCache&&window._wkFeedCache.items){
     window._wkFeedCache.items.forEach(function(item){
@@ -17626,7 +17625,8 @@ window._wkFillLoadWeeks=function(year){
     var hasData=!!existingWeeks[wKey];
     var opt=document.createElement('option');
     opt.value=wKey;
-    opt.textContent=(hasData?'📋 ':'· ')+w+'주차  '+mStr+' ~ '+fStr;
+    // option은 textContent만 가능 - 유니코드 컬러 원형 아이콘
+    opt.textContent=(hasData?'🟢 ':'🔴 ')+w+'주차  '+mStr+' ~ '+fStr;
     if(hasData){ opt.style.fontWeight='700'; opt.style.color='#0D1B2E'; }
     else { opt.style.color='#94A3B8'; }
     wEl.appendChild(opt);
