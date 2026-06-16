@@ -9391,32 +9391,6 @@ async function _spDiagnose(){
     el.textContent = '오류: '+e.message;
   }
 }
-async function _spDiagnose(){
-  var el = document.getElementById('sp-diag-result');
-  if(!el) return;
-  el.style.display = 'block';
-  el.textContent = '로딩 중...';
-  try{
-    var res = await _spFetchAll(_lUrl()+'?$select=Id,DataType,DataKey,Payload&$top=500');
-    var items = (res&&res.value)||[];
-    var lines = ['총 '+items.length+'개 아이템\n'];
-    // rep_data만 상세 출력
-    var repItems = items.filter(function(i){ return i.DataType==='rep_data'; });
-    lines.push('=== rep_data ('+repItems.length+'개) ===');
-    repItems.forEach(function(item){
-      try{
-        var p = JSON.parse(item.Payload||'{}');
-        var acts = (p.activities||[]).length;
-        var clients = (p.clients||[]).length;
-        var plan = (p.plan||[]).reduce(function(s,v){return s+(v||0);},0);
-        lines.push('['+item.DataKey+'] acts='+acts+' clients='+clients+' plan='+plan+' savedAt='+(p.savedAt||'없음'));
-      }catch(e){ lines.push('['+item.DataKey+'] 파싱오류'); }
-    });
-    el.textContent = lines.join('\n');
-  }catch(e){
-    el.textContent = '오류: '+e.message;
-  }
-}
 
 // ── 아카이브 activities/issuesList 복구 (관리자 전용) ─────────────
 async function _spRecoverArchiveActivities(){
