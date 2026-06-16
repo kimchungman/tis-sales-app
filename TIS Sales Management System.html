@@ -15189,7 +15189,7 @@ function _cdbGetReps(name){
 
 // KPI
 function _cdbGetKPI(name){
-  var kpi={contracts:0,activities:0,amount:0,issues:0};
+  var kpi={contracts:0,activities:0,amount:0,issues:0,visits:0};
   var _vReps={};
   if(typeof TEAM_REPS!=='undefined')
     Object.values(TEAM_REPS).forEach(function(a){(a||[]).forEach(function(r){_vReps[r]=true;});});
@@ -15200,6 +15200,7 @@ function _cdbGetKPI(name){
     (d.contracts||[]).forEach(function(c){ if(c.client===name){ kpi.contracts++; kpi.amount+=(Number(c.amount)||0); }});
     (d.activities||[]).forEach(function(a){ if(a.client===name) kpi.activities++; });
     (d.issuesList||[]).forEach(function(iss){ if(iss.client===name&&iss.status!=='완료') kpi.issues++; });
+    (d.visitLog||[]).forEach(function(v){ if((v.company||v.client||'')===name) kpi.visits++; });
   });
   return kpi;
 }
@@ -15238,6 +15239,7 @@ function _cdbRenderList(q){
     var meta=[];
     if(kpi.contracts) meta.push('계약 '+kpi.contracts+'건');
     if(kpi.activities) meta.push('활동 '+kpi.activities+'건');
+    if(kpi.visits) meta.push('접점 '+kpi.visits+'건');
     if(!meta.length) meta.push(c.autoAdded?'자동등록':'이력없음');
     var isSel=_cdbSelectedId===c.id;
     h+='<div class="cdb-cr'+(isSel?' cdb-sel':'')+'" onclick="_cdbSelectId(\''+c.id+'\')">'
@@ -15349,6 +15351,7 @@ function _cdbRenderDetail(id){
       +'<div class="cdb-ki"><div class="cdb-kn" style="font-size:'+(amtDisp.length>6?'14':'18')+'px;">'+amtDisp+'</div><div class="cdb-kl">누적수주액</div></div>'
       +'<div class="cdb-ki"><div class="cdb-kn"'+(kpi.issues>0?' style="color:#EF4444;"':'')+'>'+kpi.issues+'</div><div class="cdb-kl">오픈이슈</div></div>'
     +'</div>'
+      +'<div class="cdb-ki"><div class="cdb-kn">'+kpi.visits+'</div><div class="cdb-kl">고객접점</div></div>'
     +'<div class="cdb-body">'
       +'<div class="cdb-info">'
         +'<div class="cdb-st">담당자 (고객사 측)</div>'+ccHTML
@@ -15610,6 +15613,7 @@ function _cdbRefreshStatus(id){
     var meta=[];
     if(kpi.contracts) meta.push('계약 '+kpi.contracts+'건');
     if(kpi.activities) meta.push('활동 '+kpi.activities+'건');
+    if(kpi.visits) meta.push('접점 '+kpi.visits+'건');
     if(!meta.length) meta.push(item.autoAdded?'자동등록':'이력없음');
     listItem.innerHTML=(hasInfo?'<span style="color:#10B981;font-size:9px;">●</span> ':'<span style="color:#CBD5E1;font-size:9px;">●</span> ')+meta.join(' · ');
     var selBdg=document.querySelector('.cdb-sel .cdb-bdg');
