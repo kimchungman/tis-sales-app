@@ -8306,7 +8306,15 @@ function autoSave(){
         window._lastAutoSaveTs = Date.now(); // 마지막 저장 시각
         window._adminEditActive = false; // 저장 완료 후 플래그 해제
         if(session && session.role==='rep' && session.rep){
-          if(typeof _spSaveMyRep==='function') await _spSaveMyRep();
+          if(typeof _spSaveMyRep==='function'){
+            await _spSaveMyRep();
+            // SP 저장 완료 후 localStorage도 최신으로 갱신
+            try{
+              var _ls2=JSON.parse(localStorage.getItem('weekly_meeting_data')||'{}');
+              if(_ls2.store) Object.keys(store.reps).forEach(function(r){ _ls2.store.reps[r]=store.reps[r]; });
+              localStorage.setItem('weekly_meeting_data', JSON.stringify(_ls2));
+            }catch(e){}
+          }
           // 계약 데이터 변경 시 별도 저장 (rep_data에서 제외되므로)
           if(typeof _spSaveContractData==='function'){
             var _cHash=JSON.stringify((store.reps[session.rep]||{}).contracts||[]);
@@ -8317,7 +8325,15 @@ function autoSave(){
           }
         } else if(session && session.role==='admin') {
           // 관리자: 변경된 모든 rep 저장 (activeRep 의존 제거)
-          if(typeof _spSaveChangedReps==='function') await _spSaveChangedReps(data.store.reps);
+          if(typeof _spSaveChangedReps==='function'){
+            await _spSaveChangedReps(data.store.reps);
+            // 관리자 SP 저장 후 localStorage 갱신
+            try{
+              var _ls3=JSON.parse(localStorage.getItem('weekly_meeting_data')||'{}');
+              if(_ls3.store) Object.keys(store.reps).forEach(function(r){ _ls3.store.reps[r]=store.reps[r]; });
+              localStorage.setItem('weekly_meeting_data', JSON.stringify(_ls3));
+            }catch(e){}
+          }
           if(typeof _spSaveSnap==='function') await _spSaveSnap();
           // 관리자: 모든 rep 계약 변경분 저장
           if(typeof _spSaveContractData==='function'){
@@ -9662,11 +9678,14 @@ async function _spCleanupOldKeys(){
       repGroups[dkLower].push(item);
     });
 
-    // 중복 키: 최신 제외 나머지 삭제
+    // 중복 키: 최신 savedAt 제외 나머지 삭제 (toDelete 중복 방지)
+    var toDeleteSet=new Set(toDelete);
     Object.values(repGroups).forEach(function(group){
       if(group.length<=1) return;
-      group.sort(function(a,b){ return b._savedAt.localeCompare(a._savedAt); });
-      group.slice(1).forEach(function(item){ toDelete.push(item.Id); });
+      group.sort(function(a,b){ return (b._savedAt||'').localeCompare(a._savedAt||''); });
+      group.slice(1).forEach(function(item){
+        if(!toDeleteSet.has(item.Id)){ toDeleteSet.add(item.Id); toDelete.push(item.Id); }
+      });
     });
 
     if(!toDelete.length){ showToast('✅ 정리할 항목이 없습니다.','info'); return; }
@@ -14458,7 +14477,7 @@ async function _spSyncOtherReps(){
           var localAt = new Date((store.reps[myRep]&&store.reps[myRep].savedAt)||0).getTime();
           // SP가 로컬보다 5초 이상 최신이면 반영 (관리자 수정 포함)
           // 단, 내가 방금(3초 내) 저장했으면 로컬 우선 (내 입력 보호)
-          if(spAt > localAt+5000 && (Date.now()-(window._lastAutoSaveTs||0) > 3000) && spHasData){
+          if(spAt > localAt && (Date.now()-(window._lastAutoSaveTs||0) > 5000) && spHasData){
             if(!store.reps[myRep]) store.reps[myRep] = {plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[],contracts:[]};
             var localVL = store.reps[myRep].visitLog||[];
             ['plan','actual','forecast','clients','activities','issuesList'].forEach(function(k){
@@ -16030,38 +16049,25 @@ document.addEventListener('blur', function(e) {
 var _cdbInitDone=false;
 function _initClientsPage(){
   if(!store.clientDB) store.clientDB=[];
-  if(!_cdbInitDone){
-    _cdbInitDone=true;
-    _cdbSyncFromStore();
+  if(!_cdbInitDone){ _cdbInitDone=true; _cdbSyncFromStore(); }
+
+  // 즉시 현재 데이터로 렌더 (로딩 중 표시 없음)
+  _cdbRenderList('');
+  var all=_cdbAll();
+  if(all.length>0&&!_cdbSelectedId){
+    _cdbSelectedId=all[0].id; _cdbRenderDetail(all[0].id);
+  } else if(_cdbSelectedId&&_cdbById(_cdbSelectedId)){
+    _cdbRenderDetail(_cdbSelectedId);
   }
+
+  // 백그라운드 SP sync 후 갱신
   if(window._isSPReady){
-    // SP에서 최신 clientDB + rep 데이터 로드 후 렌더
-    Promise.all([
-      _spSyncOtherReps().catch(function(){}),
-      _spSyncClientDB ? _spSyncClientDB().catch(function(){}) : Promise.resolve()
-    ]).then(function(){
-      _cdbRenderList('');
-      var all=_cdbAll();
-      if(all.length>0&&!_cdbSelectedId){
-        _cdbSelectedId=all[0].id;
-        _cdbRenderDetail(all[0].id);
-      } else if(_cdbSelectedId&&_cdbById(_cdbSelectedId)){
-        _cdbRenderDetail(_cdbSelectedId);
+    _spSyncOtherReps().then(function(changed){
+      if(changed){
+        _cdbRenderList('');
+        if(_cdbSelectedId&&_cdbById(_cdbSelectedId)) _cdbRenderDetail(_cdbSelectedId);
       }
-    });
-    // 로딩 중 표시
-    var listEl=document.getElementById('cdb-list');
-    if(listEl&&!_cdbAll().length) listEl.innerHTML='<div style="padding:40px;text-align:center;color:#94A3B8;font-size:12px;">데이터 로딩 중...</div>';
-    else _cdbRenderList(''); // 기존 데이터 있으면 즉시 표시
-  } else {
-    _cdbRenderList('');
-    var all=_cdbAll();
-    if(all.length>0&&!_cdbSelectedId){
-      _cdbSelectedId=all[0].id;
-      _cdbRenderDetail(all[0].id);
-    } else if(_cdbSelectedId&&_cdbById(_cdbSelectedId)){
-      _cdbRenderDetail(_cdbSelectedId);
-    }
+    }).catch(function(){});
   }
 }
 // ═══════════════════════════════════════
