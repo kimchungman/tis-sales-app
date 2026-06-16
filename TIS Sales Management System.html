@@ -2587,6 +2587,9 @@ window._wkSaveEntryEdit=async function(entryId){
   var myRep=window._wkGetMyName();
   var myEntries=window._wk.entries.filter(function(e){return e.rep===myRep;});
   try{ await window._wkSaveFeed(weekKey,myRep,myEntries); }catch(e){ console.warn('[edit save]',e); return; }
+  // sync 덮어쓰기 방지
+  if(window._wk) window._wk.lastSaveAt=Date.now();
+  window._wkFeedCache=null; // 캐시 무효화
   window._wkRenderFeed();
   if(typeof showToast==='function') showToast('✅ 수정되었습니다');
 };
@@ -14468,11 +14471,11 @@ async function _spSyncOtherReps(){
               if(repData[k]!==undefined) store.reps[myRep][k]=repData[k];
             });
             // visitLog: SP savedAt이 더 최신이면 SP로 교체 (삭제 반영)
-            if((repData.visitLogSavedAt||repData.savedAt||'') >= localVLSavedAt){
-              store.reps[myRep].visitLog = repData.visitLog||[];
-            } else {
-              store.reps[myRep].visitLog = localVL;
+            // visitLog: rep_data에 실제 데이터 있을 때만 교체 (별도 visit_log 키로 저장됨)
+            if(repData.visitLog&&repData.visitLog.length>0){
+              store.reps[myRep].visitLog = repData.visitLog;
             }
+            // visit_log 별도 키는 _spSyncOtherReps에서 별도 처리
             if(repData.savedAt) store.reps[myRep].savedAt = repData.savedAt;
             changed = true;
           }
@@ -14489,8 +14492,8 @@ async function _spSyncOtherReps(){
           ['plan','actual','forecast','clients','activities','issuesList'].forEach(function(k){
             if(repData[k]!==undefined) store.reps[repName][k]=repData[k];
           });
-          // visitLog: savedAt 기준 (length 비교 제거 - 삭제 반영)
-          store.reps[repName].visitLog = repData.visitLog||[];
+          // visitLog: rep_data에 실제 데이터 있을 때만 교체 (빈 배열로 덮어쓰기 방지)
+          if(repData.visitLog&&repData.visitLog.length>0) store.reps[repName].visitLog = repData.visitLog;
           if(repData.savedAt) store.reps[repName].savedAt = repData.savedAt;
         }
         if(JSON.stringify(store.reps[repName])!==before) changed = true;
@@ -17756,7 +17759,8 @@ window._wkApplyPeriod=function(){
     if(el) el.classList.remove('on');
   });
   _wkClosePeriod();
-  // 선택 주차 데이터 로드
+  // 캐시 무효화 후 선택 주차 데이터 로드 (캐시에 없을 수 있음)
+  window._wkFeedCache=null;
   _wk.loading=false;
   _wkLoad();
 };
@@ -17844,11 +17848,14 @@ async function _wkLoad(){
         prevLoadKey=_wkLastKey();
       }
       var entries=await _wkLoadFeed(loadKey);
-      // period 모드: 선택 주차 데이터로 교체 (이전 entries 잔류 방지)
-      if(_wk.weekMode==='period'){
-        _wk.entries=entries||[];
-      } else {
-        _wk.entries=entries;
+      // 최근 10초 내 저장한 경우 SP 로드로 entries 덮어쓰기 방지
+      var _recentSave = _wk.lastSaveAt && (Date.now()-_wk.lastSaveAt < 10000);
+      if(!_recentSave){
+        if(_wk.weekMode==='period'){
+          _wk.entries=entries||[];
+        } else {
+          _wk.entries=entries;
+        }
       }
       if(prevLoadKey){
         _wk.prevEntries=await _wkLoadFeed(prevLoadKey);
