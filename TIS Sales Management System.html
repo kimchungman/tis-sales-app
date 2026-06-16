@@ -2037,7 +2037,18 @@ select._bsl-sel {
 .act-drag-row.dragging{opacity:0.4;}
 
 /* 영업활동 확도/시기 placeholder 중앙 정렬 */
-td.at-cell-prob input::placeholder, td.at-cell-timing input::placeholder { text-align: center; }
+td.at-cell-prob input::placeholder, td.at-cell-timing input::placeholder { text-align: center !important; }
+td.at-cell-prob input[type="text"], td.at-cell-timing input[type="text"] { text-align: center !important; }
+
+/* 영업활동 확도/시기 input 중앙정렬 강제 */
+td.at-cell-prob input[type="text"],
+td.at-cell-timing input[type="text"] {
+  text-align: center !important;
+}
+td.at-cell-prob input[type="text"]::placeholder,
+td.at-cell-timing input[type="text"]::placeholder {
+  text-align: center !important;
+}
 </style>
 
 <script>
@@ -17693,7 +17704,8 @@ window._wkApplyLoadWeek=async function(){
     var genId=typeof _wkGenId==='function'?_wkGenId:function(){return 'cp_'+Date.now()+'_'+Math.random().toString(36).slice(2);};
     var copied=myEntries.map(function(e){
       var o=JSON.parse(JSON.stringify(e));
-      o.id=genId(); o.time=now; o.replies=[]; o.copiedFrom=srcKey;
+      o.id=genId(); o.time=now; o.copiedFrom=srcKey;
+      o.rep=myRep||o.rep; // 현재 사용자 rep로 설정 (수정/삭제 버튼 표시 보장)
       return o;
     });
     if(!window._wk) window._wk={entries:[]};
@@ -17832,7 +17844,12 @@ async function _wkLoad(){
         prevLoadKey=_wkLastKey();
       }
       var entries=await _wkLoadFeed(loadKey);
-      _wk.entries=entries;
+      // period 모드: 선택 주차 데이터로 교체 (이전 entries 잔류 방지)
+      if(_wk.weekMode==='period'){
+        _wk.entries=entries||[];
+      } else {
+        _wk.entries=entries;
+      }
       if(prevLoadKey){
         _wk.prevEntries=await _wkLoadFeed(prevLoadKey);
       }
