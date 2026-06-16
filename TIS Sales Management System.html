@@ -4231,6 +4231,7 @@ document.addEventListener('DOMContentLoaded',()=>{
             store.reps[rep] = data.store.reps[rep];
           });
           if(data.store.clientDB) store.clientDB=data.store.clientDB;
+          if(data.store.clientDB_deletedNames) store.clientDB_deletedNames=data.store.clientDB_deletedNames;
         }
       // 기존 데이터에서 고객사 자동 수집
       setTimeout(function(){if(typeof _cdbSyncFromStore==='function')_cdbSyncFromStore();},1000);
@@ -15095,6 +15096,8 @@ function _cdbAutoRegister(name){
   if(!_cdbByName(n)){
     _cdbAll().push({id:_cdbNewId(),name:n,contacts:[],note:'',autoAdded:true,createdAt:new Date().toISOString()});
     if(typeof autoSave==='function') autoSave();
+    // 즉시 SP 저장 (sync 덮어쓰기 방지)
+    if(window._isSPReady&&typeof _spSaveClientDB==='function') _spSaveClientDB();
     var pg=document.getElementById('page-clients');
     if(pg&&pg.style.display!=='none') _cdbRenderList(document.getElementById('cdb-search')&&document.getElementById('cdb-search').value||'');
   }
@@ -15207,7 +15210,11 @@ var _cdbSelectedId=null;
 function _cdbRenderList(q){
   var el=document.getElementById('cdb-list'); if(!el) return;
   var pos=window._saveScroll?window._saveScroll(el):el.scrollTop||0;
-  var items=_cdbAll().slice().sort(function(a,b){
+  // deletedNames 필터 (store 직접 수정 없이 렌더 시 제외)
+  var _dn=store.clientDB_deletedNames||[];
+  var items=_cdbAll().filter(function(item){
+    return _dn.indexOf((item.name||'').trim())<0;
+  }).slice().sort(function(a,b){
   function ctype(s){if(!s)return 3;var c=s.charCodeAt(0);if(c>=48&&c<=57)return 0;if((c>=65&&c<=90)||(c>=97&&c<=122))return 1;return 2;}
   var ta=ctype(a.name),tb=ctype(b.name);
   if(ta!==tb)return ta-tb;
@@ -15960,7 +15967,7 @@ var _cdbInitDone=false;
 function _initClientsPage(){
   if(!store.clientDB) store.clientDB=[];
   if(!_cdbInitDone){ _cdbInitDone=true; _cdbSyncFromStore(); }
-  // 즉시 렌더
+  // 즉시 렌더 (deletedNames 필터는 _cdbRenderList 내부에서 처리)
   _cdbRenderList('');
   var _all=_cdbAll();
   if(_all.length>0&&!_cdbSelectedId){ _cdbSelectedId=_all[0].id; _cdbRenderDetail(_all[0].id); }
