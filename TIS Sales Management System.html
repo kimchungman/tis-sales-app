@@ -13907,7 +13907,7 @@ window.renderVisits=function(){
   }
 
   // ── 날짜 범위 필터 UI ──
-  var customFilter='<div id="visit-custom-range" style="display:'+(_visitPeriod==='custom'?'flex':'none')+';align-items:center;gap:8px;flex-wrap:wrap;">'
+  var customFilter='<div id="visit-custom-range" style="display:'+(_visitPeriod==='custom'?'flex':'none')+';padding:8px 0;align-items:center;gap:8px;flex-wrap:wrap;">'
     +'<input type="date" id="vdf-from" value="'+(_visitDateFrom||'')+'" style="height:28px;border:1.5px solid #E2E8F0;border-radius:8px;padding:0 8px;font-size:13px;font-family:inherit;outline:none;" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" onchange="window._visitDateFrom=this.value;">'
     +'<span style="font-size:13px;color:#94A3B8;">~</span>'
     +'<input type="date" id="vdf-to" value="'+(_visitDateTo||'')+'" style="height:28px;border:1.5px solid #E2E8F0;border-radius:8px;padding:0 8px;font-size:13px;font-family:inherit;outline:none;" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" onchange="window._visitDateTo=this.value;">'
@@ -13958,9 +13958,9 @@ window.renderVisits=function(){
     +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
     +periodBtn('week','이번 주')+periodBtn('month','이번 달')+periodBtn('3month','지난달')+periodBtn('custom','기간 설정')+periodBtn('all','전체')
     +'</div>'
-    +customFilter
     +'<div style="display:flex;gap:6px;flex-wrap:wrap;">'+repPills+'</div>'
     +'</div>'
+    +customFilter
     +'<div class="sec-body" style="padding-top:4px;overflow:hidden;">'
     +'<div style="max-height:calc(100vh - 320px);overflow-y:auto;overflow-x:auto;border-radius:0 0 10px 10px;">'
     +'<table class="dt" style="min-width:900px;width:100%;">'
@@ -17626,7 +17626,7 @@ window._wkFillLoadWeeks=function(year){
     var hasData=!!existingWeeks[wKey];
     var opt=document.createElement('option');
     opt.value=wKey;
-    opt.textContent=(hasData?'✅ ':'☐ ')+w+'주차  '+mStr+' ~ '+fStr+(hasData?' (데이터 있음)':'');
+    opt.textContent=(hasData?'📋 ':'· ')+w+'주차  '+mStr+' ~ '+fStr;
     if(hasData){ opt.style.fontWeight='700'; opt.style.color='#0D1B2E'; }
     else { opt.style.color='#94A3B8'; }
     wEl.appendChild(opt);
