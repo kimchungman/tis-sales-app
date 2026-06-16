@@ -15074,7 +15074,12 @@ function _cdbRename(id, newName){
 function _cdbGetHistory(name,typeFilter){
   var items=[];
   var _cdbSeenIds={};
+  var _vReps={};
+  if(typeof TEAM_REPS!=='undefined')
+    Object.values(TEAM_REPS).forEach(function(a){(a||[]).forEach(function(r){_vReps[r]=true;});});
+  function _isValidRep(r){ return !Object.keys(_vReps).length || _vReps[r]; }
   Object.keys(store.reps||{}).forEach(function(rep){
+    if(!_isValidRep(rep)) return;
     var d=store.reps[rep]; if(!d) return;
     if(!typeFilter||typeFilter==='계약'||typeFilter==='all')
       (d.contracts||[]).forEach(function(c){
@@ -15103,7 +15108,12 @@ function _cdbGetHistory(name,typeFilter){
 // 영업담당 수집
 function _cdbGetReps(name){
   var repMap={};
+  var _vReps={};
+  if(typeof TEAM_REPS!=='undefined')
+    Object.values(TEAM_REPS).forEach(function(a){(a||[]).forEach(function(r){_vReps[r]=true;});});
+  function _isValidRep(r){ return !Object.keys(_vReps).length || _vReps[r]; }
   Object.keys(store.reps||{}).forEach(function(rep){
+    if(!_isValidRep(rep)) return;
     var d=store.reps[rep]; if(!d) return;
     var srcs=[];
     (d.contracts||[]).forEach(function(c){ if(c.client===name&&!srcs.includes('계약')) srcs.push('계약'); });
@@ -15118,7 +15128,12 @@ function _cdbGetReps(name){
 // KPI
 function _cdbGetKPI(name){
   var kpi={contracts:0,activities:0,amount:0,issues:0};
+  var _vReps={};
+  if(typeof TEAM_REPS!=='undefined')
+    Object.values(TEAM_REPS).forEach(function(a){(a||[]).forEach(function(r){_vReps[r]=true;});});
+  function _isValidRep(r){ return !Object.keys(_vReps).length || _vReps[r]; }
   Object.keys(store.reps||{}).forEach(function(rep){
+    if(!_isValidRep(rep)) return;
     var d=store.reps[rep]; if(!d) return;
     (d.contracts||[]).forEach(function(c){ if(c.client===name){ kpi.contracts++; kpi.amount+=(Number(c.amount)||0); }});
     (d.activities||[]).forEach(function(a){ if(a.client===name) kpi.activities++; });
