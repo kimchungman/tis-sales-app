@@ -2854,7 +2854,7 @@ document.addEventListener('selectionchange',function(){
       </div>
       <div class="sec-body" style="padding-top:4px;">
         <div class="tbl-scroll-wrap">
-          <table class="dt" style="min-width:900px;width:100%;">
+          <table class="dt" style="min-width:900px;width:100%;table-layout:fixed;">
             <thead>
               <tr>
                 <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;width:72px;text-align:center;white-space:nowrap;">팀</th>
@@ -9017,6 +9017,37 @@ function _spClearCachedId(title){
   try{ localStorage.removeItem('_spid_'+title); }catch(e){}
 }
 
+
+// 청크 전용 직접 저장 함수 (재귀 없음)
+async function _spSaveItemDirect(dtype, dkey, payload, _retry){
+  if(!window._isSPReady) return;
+  var _dkey = _sanitizeDKey(dkey);
+  var _title = dtype + '_' + _dkey;
+  var _lock = _title;
+  if(!window._spSaveLocks) window._spSaveLocks = {};
+  if(window._spSaveLocks[_lock] && !_retry) return;
+  window._spSaveLocks[_lock] = true;
+  try{
+    var _body = JSON.stringify({
+      Title: _title, DataType: dtype, DataKey: _dkey,
+      Payload: JSON.stringify(payload)
+    });
+    var _id = _spGetCachedId ? _spGetCachedId(_title) : null;
+    var url = _lUrl ? _lUrl() : null;
+    if(!url){ window._spSaveLocks[_lock]=false; return; }
+    if(_id){
+      await _spFetch(url+'('+_id+')', {method:'PATCH', headers:{'Content-Type':'application/json','IF-MATCH':'*'}, body:_body});
+    } else {
+      var res = await _spFetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:_body});
+      if(res && res.Id && _spSetCachedId) _spSetCachedId(_title, res.Id);
+    }
+  }catch(e){
+    console.warn('[spSaveItemDirect]', e);
+  }finally{
+    window._spSaveLocks[_lock] = false;
+  }
+}
+
 async function _spSaveItem(dtype, dkey, payload, _retry) {
   if(!window._isSPReady) return;
 
@@ -9026,17 +9057,20 @@ async function _spSaveItem(dtype, dkey, payload, _retry) {
   // ── Payload 크기 체크: 50KB 초과 시 자동 분할 ──
   var _payloadStr = JSON.stringify(payload);
   var _MAX = 50000; // 50KB (여유 있게)
-  if(_payloadStr.length > _MAX){
+  // 이미 청크 데이터면 재분할 하지 않음 (무한 재귀 방지)
+  var _isChunk = payload && (payload._chunk !== undefined || payload._parts !== undefined);
+  if(_payloadStr.length > _MAX && !_isChunk){
     // 데이터를 청크로 분할 저장
     var _chunkSize = _MAX - 500; // 메타 공간 확보
     var _totalChunks = Math.ceil(_payloadStr.length / _chunkSize);
     for(var _ci=0; _ci<_totalChunks; _ci++){
       var _chunk = _payloadStr.slice(_ci*_chunkSize, (_ci+1)*_chunkSize);
       var _chunkPayload = {_chunk: _chunk, _ci: _ci, _total: _totalChunks, _key: _title};
-      await _spSaveItem(dtype, dkey + '_part' + _ci, _chunkPayload, _retry);
+      // 청크는 직접 SP API 호출 (재귀 없음)
+      await _spSaveItemDirect(dtype, dkey + '_part' + _ci, _chunkPayload, _retry);
     }
-    // 인덱스 저장 (파트 개수 기록)
-    await _spSaveItem(dtype, dkey + '_idx', {_parts: _totalChunks, _key: _title, savedAt: new Date().toISOString()}, _retry);
+    // 인덱스 저장
+    await _spSaveItemDirect(dtype, dkey + '_idx', {_parts: _totalChunks, _key: _title, savedAt: new Date().toISOString()}, _retry);
     return;
   }
   var _lock  = _title;
@@ -13932,7 +13966,7 @@ window.renderVisits=function(){
     +'<table class="dt" style="min-width:900px;width:100%;">'
     +'<thead><tr>'
     +'<th style="background:#F8FAFC;color:#64748B;width:62px;white-space:nowrap;position:sticky;top:0;z-index:5;">팀</th>'
-    +'<th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;width:80px;">담당자</th>'
+    +'<th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;width:100px;white-space:nowrap;">담당자</th>'
     +'<th style="background:#F8FAFC;color:#64748B;position:sticky;top:0;z-index:5;width:100px;">접점일자</th>'
     +'<th style="background:#F8FAFC;color:#64748B;position:sticky;top:0;z-index:5;width:180px;white-space:nowrap;">고객사명</th>'
     +'<th style="background:#F8FAFC;color:#64748B;position:sticky;top:0;z-index:5;width:80px;">접점 유형</th>'
@@ -15697,8 +15731,8 @@ function _cdbShowRepPopup(id){
     +'<div style="overflow-y:auto;flex:1;">'
     +(autoReps.length?'<div style="padding:8px 20px 4px;font-size:10px;font-weight:700;color:#94A3B8;letter-spacing:.07em;text-transform:uppercase;">자동 감지</div>'+autoHTML:'')
     +(ALL_REPS.filter(function(r){return !autoNames.includes(r);}).length?'<div style="padding:8px 20px 4px;font-size:10px;font-weight:700;color:#94A3B8;letter-spacing:.07em;text-transform:uppercase;">수동 추가</div>'+manHTML:'')
-    +'</div>'
     +(hiddenHTML||'')
+    +'</div>'
     +'<div style="padding:12px 20px;border-top:1px solid #F1F5F9;flex-shrink:0;">'
       +'<button onclick="document.getElementById(\'_cdb_rep_pop\').remove()" style="width:100%;padding:9px;border-radius:9px;border:none;background:#4f7fff;color:#fff;font-size:12px;font-weight:600;cursor:pointer;">완료</button>'
     +'</div>'
@@ -17566,24 +17600,35 @@ window._wkFillLoadWeeks=function(year){
   if(!wEl) return;
   wEl.innerHTML='';
   var curWk=typeof _wkGetWeekKey==='function'?_wkGetWeekKey(new Date()):'';
-  // 현재 주차 번호
   var curWn=curWk?parseInt(curWk.split('W')[1]):53;
   var curYr=new Date().getFullYear();
+  // SP 캐시에서 데이터 있는 주차 추출
+  var existingWeeks={};
+  if(window._wkFeedCache&&window._wkFeedCache.items){
+    window._wkFeedCache.items.forEach(function(item){
+      var t=item.Title||item.DataKey||'';
+      var wm=t.match(/(\d{4}-W\d{2})/);
+      if(wm) existingWeeks[wm[1]]=true;
+    });
+  }
   for(var w=53;w>=1;w--){
     var wStr=(w<10?'0':'')+w;
     var wKey=year+'-W'+wStr;
-    // 유효한 주차인지 확인 (해당 주차 월요일이 실제 해당 년도에 속하는지)
     var jan4=new Date(year,0,4);
     var jan4dow=(jan4.getDay()+6)%7;
     var mon=new Date(jan4); mon.setDate(jan4.getDate()-jan4dow+(w-1)*7);
     if(mon.getFullYear()<year-1||mon.getFullYear()>year+1) continue;
-    // 현재/미래 주차 제외
     if(year===curYr&&w>=curWn) continue;
     if(year>curYr) continue;
     var fri=new Date(mon); fri.setDate(mon.getDate()+4);
-    var label=w+'주차  '+mon.toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'})+' ~ '+fri.toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'});
+    var mStr=(mon.getMonth()+1)+'.'+mon.getDate()+'.';
+    var fStr=(fri.getMonth()+1)+'.'+fri.getDate()+'.';
+    var hasData=!!existingWeeks[wKey];
     var opt=document.createElement('option');
-    opt.value=wKey; opt.textContent=label;
+    opt.value=wKey;
+    opt.textContent=(hasData?'✅ ':'☐ ')+w+'주차  '+mStr+' ~ '+fStr+(hasData?' (데이터 있음)':'');
+    if(hasData){ opt.style.fontWeight='700'; opt.style.color='#0D1B2E'; }
+    else { opt.style.color='#94A3B8'; }
     wEl.appendChild(opt);
   }
 };
