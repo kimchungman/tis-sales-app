@@ -8836,6 +8836,7 @@ async function _initSP() {
       await _spLoadToday();
       try{
         var _adminChanged = await _spSyncOtherReps();
+      await _spLoadAllVisitLogs(); // 접점기록 복구 (rep_data에서 visitLog 제외되므로 별도 로드)
         if(_adminChanged){
           try{ renderDashboard(); }catch(e){}
           try{ renderIssues(); }catch(e){}
@@ -8846,6 +8847,7 @@ async function _initSP() {
       // rep/guest: 최신 rep_data 직접 로드 (snapshot 의존 없음)
       try{
         var _changed = await _spSyncOtherReps();
+      await _spLoadAllVisitLogs(); // 접점기록 복구
         if(_changed){
           try{ renderDashboard(); }catch(e){}
           try{ renderIssues(); }catch(e){}
@@ -8914,6 +8916,7 @@ async function _initSP() {
         if(session && session.role === 'admin'){
           // 관리자: 스냅샷 재로드 금지 (수정 내용 덮어쓰기 방지)
           var _chg = await _spSyncOtherReps();
+        await _spLoadAllVisitLogs(); // 접점기록 주기적 갱신
           if(_chg){
             try{renderDashboard();}catch(e){}
             try{renderIssues();}catch(e){}
@@ -14176,19 +14179,26 @@ async function _spLoadAllVisitLogs(){
     var qUrl=_lUrl()+'?$select=Id,Title,DataType,DataKey,Payload&$top=500';
     var res=await _spFetchAll(qUrl);
     var items=(res&&res.value)||[];
-    items.forEach(function(item){
+    // visit_log 타입만 처리
+    var vlItems=items.filter(function(i){
+      return i.DataType==='visit_log'||(i.Title&&i.Title.indexOf('visit_log_')===0);
+    });
+    console.log('[visitLog] SP에서 visit_log 키:', vlItems.length, '개');
+    vlItems.forEach(function(item){
       try{
         var _rawKey=item.DataKey;
-        var rep=_findRepByKey(_rawKey); // sanitized→원본 역매핑
-        var d=JSON.parse(item.Payload);
-        if(d&&Array.isArray(d.visitLog)&&store.reps[rep]){
-          var existing=store.reps[rep].visitLog||[];
-          // savedAt 기준으로 교체 (length 조건 제거 - 삭제 반영)
+        var rep=_findRepByKey(_rawKey);
+        if(!rep) rep=_rawKey;
+        var d=JSON.parse(item.Payload||'{}');
+        console.log('[visitLog]', rep, ':', (d.visitLog||[]).length, '건');
+        if(d&&Array.isArray(d.visitLog)&&d.visitLog.length>0&&store.reps[rep]){
           store.reps[rep].visitLog=d.visitLog;
         }
       }catch(e){}
     });
-  }catch(e){}
+    // 로드 완료 후 화면 갱신
+    if(typeof renderVisits==='function') try{ renderVisits(); }catch(e){}
+  }catch(e){ console.error('[visitLog load]',e); }
 }
 
 async function _spSaveMyRep(){
