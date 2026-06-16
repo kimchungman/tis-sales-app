@@ -4705,6 +4705,11 @@ function _initApp(){
     _pg.addEventListener('blur',function(e){
       if(e.target&&e.target.classList&&e.target.classList.contains('rich-ed'))
         if(typeof autoSave==='function') autoSave();
+      // 접점 company 입력 시 고객사관리 자동 등록
+      if(e.target&&e.target.id&&e.target.id.indexOf('vco_')===0){
+        var _v=(e.target.value||'').trim();
+        if(_v&&typeof _cdbAutoRegister==='function') _cdbAutoRegister(_v);
+      }
     },true);
   },500);
 
@@ -13612,7 +13617,7 @@ function _vRow(rep,idx,v){
         +'<table class="dt" style="min-width:max-content;width:100%;">'
         +'<thead style="position:sticky;top:0;z-index:5;"><tr>'
         +'<th style="'+BG+'width:100px;text-align:center;">접점일자</th>'
-        +'<th style="'+BG+'width:160px;text-align:center;">고객사명</th>'
+        +'<th style="'+BG+'width:160px;text-align:center;">고객사</th>'
         +'<th style="'+BG+'width:110px;text-align:center;">접점 유형</th>'
         +'<th style="'+BG+'width:125px;text-align:center;">접점 목적</th>'
         +'<th style="'+BG+'width:150px;text-align:center;">접점 담당자</th>'
@@ -13986,7 +13991,7 @@ window.renderVisits=function(){
     +'<th style="background:#F8FAFC;color:#64748B;width:62px;white-space:nowrap;position:sticky;top:0;z-index:5;">팀</th>'
     +'<th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;min-width:90px;white-space:nowrap;">담당자</th>'
     +'<th style="background:#F8FAFC;color:#64748B;position:sticky;top:0;z-index:5;width:100px;">접점일자</th>'
-    +'<th style="background:#F8FAFC;color:#64748B;position:sticky;top:0;z-index:5;width:180px;white-space:nowrap;">고객사명</th>'
+    +'<th style="background:#F8FAFC;color:#64748B;position:sticky;top:0;z-index:5;width:180px;white-space:nowrap;">고객사</th>'
     +'<th style="background:#F8FAFC;color:#64748B;position:sticky;top:0;z-index:5;width:80px;">접점 유형</th>'
     +'<th style="background:#F8FAFC;color:#64748B;position:sticky;top:0;z-index:5;width:90px;">접점 목적</th>'
     +'<th style="background:#F8FAFC;color:#64748B;position:sticky;top:0;z-index:5;text-align:left;padding-left:14px;">접점 내용</th>'
@@ -15895,6 +15900,8 @@ function _cdbSyncFromStore(){
     (d.contracts||[]).forEach(function(c){ if(c.client&&c.client.trim()) names[c.client.trim()]=true; });
     (d.activities||[]).forEach(function(a){ if(a.client&&a.client.trim()) names[a.client.trim()]=true; });
     (d.issuesList||[]).forEach(function(iss){ if(iss.client&&iss.client.trim()) names[iss.client.trim()]=true; });
+    // 접점기록(visitLog) company 수집
+    (d.visitLog||[]).forEach(function(v){ if(v.company&&v.company.trim()) names[v.company.trim()]=true; });
   });
   var changed=false;
   Object.keys(names).forEach(function(n){
@@ -15963,10 +15970,10 @@ document.addEventListener('blur', function(e) {
   }
 }, true);
 
-var _cdbInitDone=false;
 function _initClientsPage(){
   if(!store.clientDB) store.clientDB=[];
-  if(!_cdbInitDone){ _cdbInitDone=true; _cdbSyncFromStore(); }
+  // 매번 store.reps에서 고객사 자동 수집 (영업활동/이슈/실적 모두 실시간 반영)
+  _cdbSyncFromStore();
   // 즉시 렌더 (deletedNames 필터는 _cdbRenderList 내부에서 처리)
   _cdbRenderList('');
   var _all=_cdbAll();
