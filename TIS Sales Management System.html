@@ -6007,7 +6007,7 @@ function delClient(rep,ci){
     }
   }
 }
-function addActivity(rep){const ai=store.reps[rep].activities.length;store.reps[rep].activities.push({no:ai+1,type:'신규영업',client:'',product:'',amount:0,prob:0,timing:'',content:'',sev:'mid',createdAt:new Date().toISOString()});document.getElementById('at-'+rep).insertAdjacentHTML('beforeend',aRow(rep,ai,store.reps[rep].activities[ai]));_aBindDragRows(rep);}
+function addActivity(rep){const ai=store.reps[rep].activities.length;store.reps[rep].activities.push({no:ai+1,type:'신규영업',client:'',product:'',amount:0,prob:0,timing:'',content:'',sev:'mid',createdAt:new Date().toISOString()});document.getElementById('at-'+rep).insertAdjacentHTML('beforeend',aRow(rep,ai,store.reps[rep].activities[ai]));_aBindDragRows(rep);;autoSave();window._lastAutoSaveTs=Date.now();if(window._isSPReady&&typeof session!=='undefined'&&session&&session.role==='admin'&&typeof _spSaveRepByName==='function')_spSaveRepByName(rep);}
 function delActivity(rep,ai){
   store.reps[rep].activities.splice(ai,1);
   document.getElementById('at-'+rep).innerHTML=store.reps[rep].activities.map((a,i)=>aRow(rep,i,a)).join('');
