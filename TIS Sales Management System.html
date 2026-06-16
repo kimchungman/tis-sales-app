@@ -8898,17 +8898,21 @@ async function _initSP() {
       if(!window._isSPReady) return;
       try{
         if(session && session.role === 'admin'){
-          await _spLoadToday();
-          await _spSyncOtherReps(); // 관리자도 rep_data 최신 동기화
+          // 관리자: 스냅샷 재로드 금지, rep_data 직접 동기화만
+          var _changed = await _spSyncOtherReps();
+          if(_changed){
+            try{ renderDashboard(); }catch(e){}
+            try{ renderIssues(); }catch(e){}
+            try{ renderPipeline(); }catch(e){}
+          }
         } else {
           await _spSyncOtherReps();
+          await _spLoadHistList();
+          renderDashboard();
+          renderIssues();
+          renderPipeline();
         }
-        await _spLoadHistList();
-        renderDashboard();
-        renderIssues();
-        renderPipeline();
       }catch(e){}
-      // 회의록 데이터 주기적 동기화 (페이지 열려있으면 즉시, 닫혀있으면 캐시만)
       try{
         if(typeof window._syncWeeklyFeed==='function') await window._syncWeeklyFeed();
       }catch(e){}
@@ -9207,6 +9211,12 @@ async function _spLoadToday() {
 
 // ── 스냅샷 적용 ────────────────────────────────────────────
 function _applySnap(snap, date) {
+  // 관리자가 최근 60초 내 수정 중이면 스냅샷 적용 차단
+  if((typeof session!=='undefined') && session && session.role==='admin'){
+    if((Date.now() - (window._lastAutoSaveTs||0)) < 60000){
+      return; // 관리자 수정 보호
+    }
+  }
   if (snap.reps)      { REPS.length=0;      snap.reps.forEach(r=>REPS.push(r)); }
   if (snap.repColors) { REP_COLORS.length=0; snap.repColors.forEach(c=>REP_COLORS.push(c)); }
   if (snap.store)     Object.keys(snap.store.reps||{}).forEach(rep=>{
@@ -9274,15 +9284,10 @@ async function _spSaveSnap() {
         var d=s.reps[r]; if(!d) return;
         d.visitLog=[]; // 별도 visit_log 키로 저장
         // clients: plan 배열 제외 (rep_data에 있음), 핵심 필드만 유지
-        if(d.clients) d.clients=d.clients.map(function(c){
-          return {name:c.name,type:c.type,status:c.status,product:c.product,
-                  actual:c.actual,plan:c.plan,issue:c.issue,sev:c.sev};
-        });
+        // clients: 모든 필드 유지
         // activities: content/client/progress만 유지
-        if(d.activities) d.activities=d.activities.map(function(a){
-          return {client:a.client,content:a.content,progress:a.progress,
-                  sev:a.sev,status:a.status,type:a.type,no:a.no};
-        });
+        // activities: 모든 필드 유지 (삭제/수정 반영 보장)
+        // (크기 최적화 제거 - 수정 내용 소실 방지 우선)
       });
       return s;
     })(),
@@ -9299,9 +9304,13 @@ async function _spSaveSnap() {
   var _snapDataHash = JSON.stringify({
     d: payload.date,
     t: payload.team,
-    r: payload.store&&payload.store.reps?Object.keys(payload.store.reps).map(function(r){
+    r: payload.store&&payload.store.reps?Object.keys(payload.store.reps).sort().map(function(r){
       var d=(payload.store.reps[r]||{});
-      return r+':'+(d.actual||[]).reduce(function(a,b){return a+b;},0)+':'+(d.clients||[]).length;
+      return r+':'+(d.actual||[]).reduce(function(a,b){return a+b;},0)
+        +':'+(d.clients||[]).length
+        +':'+(d.activities||[]).length
+        +':'+(d.issuesList||[]).length
+        +':'+(d.clients||[]).map(function(c){return (c.status||'')+(c.actual||0);}).join(',');
     }).join('|'):''
   });
   if(window._lastSnapHash === _snapDataHash) {
@@ -14421,19 +14430,8 @@ async function _spSyncOtherReps(){
         try{
           var pl = JSON.parse(item.Payload||'{}');
           var bp = JSON.parse(b.Payload||'{}');
-          // 데이터 풍부도: plan합, clients, activities, savedAt 순
-          var plPlan = (pl.plan||[]).reduce(function(s,v){return s+(v||0);},0);
-          var bpPlan = (bp.plan||[]).reduce(function(s,v){return s+(v||0);},0);
-          var plAct = (pl.activities||[]).length, bpAct = (bp.activities||[]).length;
-          var plCli=(pl.clients||[]).length, bpCli=(bp.clients||[]).length;
-          // 전체 데이터 점수 비교 (plan합/1000 + clients*10 + activities)
-          var plScore = plPlan/1000 + plCli*10 + plAct;
-          var bpScore = bpPlan/1000 + bpCli*10 + bpAct;
-          if(plScore>0&&bpScore===0) return item;
-          if(bpScore>0&&plScore===0) return b;
-          if(plScore>bpScore+1) return item;
-          if(bpScore>plScore+1) return b;
-          return (pl.savedAt||'')>(bp.savedAt||'') ? item : b;
+          // savedAt 기준으로만 최신 선택 (삭제/수정 반영 보장)
+          return (pl.savedAt||'') > (bp.savedAt||'') ? item : b;
         }catch(e){ return b; }
       });
 
