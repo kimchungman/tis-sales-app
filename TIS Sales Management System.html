@@ -3614,48 +3614,42 @@ document.addEventListener('selectionchange',function(){
   </div>
 
 <!-- 이전 회차 불러오기 모달 -->
-<div id="wk-load-modal" style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:700;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
-  <div style="background:#fff;border-radius:20px;width:380px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 32px 80px rgba(15,23,42,.22);overflow:hidden;">
+<div id="wk-load-modal" style="position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:700;display:none;align-items:center;justify-content:center;backdrop-filter:blur(2px);">
+  <div style="background:#fff;border-radius:16px;width:340px;box-shadow:0 24px 64px rgba(15,23,42,.18);overflow:hidden;">
     <!-- 헤더 -->
-    <div style="padding:22px 24px 16px;border-bottom:1px solid #F1F5F9;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+    <div style="padding:20px 22px 16px;border-bottom:1px solid #F1F5F9;display:flex;align-items:center;justify-content:space-between;">
       <div>
-        <div style="font-size:15px;font-weight:700;color:#0F172A;letter-spacing:-.02em;">📋 이전 회차 불러오기</div>
-        <div style="font-size:11px;color:#94A3B8;margin-top:3px;">선택한 주차 회의록을 현재로 복사합니다</div>
+        <div style="font-size:14px;font-weight:700;color:#0F172A;">이전 회차 불러오기</div>
+        <div style="font-size:11px;color:#94A3B8;margin-top:2px;">선택한 주차를 현재 회의록으로 복사합니다</div>
       </div>
-      <button onclick="_wkCloseLoadWeek()" style="border:none;background:#F1F5F9;border-radius:10px;width:30px;height:30px;cursor:pointer;color:#64748B;font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
+      <button onclick="_wkCloseLoadWeek()" style="border:none;background:#F1F5F9;border-radius:8px;width:28px;height:28px;cursor:pointer;color:#64748B;font-size:14px;display:flex;align-items:center;justify-content:center;">✕</button>
     </div>
     <!-- 바디 -->
-    <div style="padding:20px 24px;flex:1;overflow-y:auto;">
-      <!-- 년도 선택 -->
-      <div style="margin-bottom:16px;">
-        <div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:8px;letter-spacing:.05em;text-transform:uppercase;">년도</div>
-        <select id="wk-load-year" style="width:100%;padding:10px 14px;border:1.5px solid #E2E8F0;border-radius:10px;font-size:14px;color:#1E293B;background:#fff;cursor:pointer;appearance:none;background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2394A3B8%22 stroke-width=%222%22><polyline points=%226 9 12 15 18 9%22/></svg>');background-repeat:no-repeat;background-position:right 12px center;background-size:16px;"></select>
+    <div style="padding:18px 22px;">
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:600;color:#475569;margin-bottom:6px;letter-spacing:.04em;">년도</div>
+        <select id="wk-load-year" style="width:100%;padding:8px 10px;border:1.5px solid #E2E8F0;border-radius:8px;font-size:12px;color:#0F172A;background:#fff;cursor:pointer;"></select>
       </div>
-      <!-- 주차 선택 -->
-      <div style="margin-bottom:20px;">
-        <div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:8px;letter-spacing:.05em;text-transform:uppercase;">주차 선택</div>
-        <select id="wk-load-week" style="width:100%;padding:10px 14px;border:1.5px solid #E2E8F0;border-radius:10px;font-size:13px;color:#1E293B;background:#fff;cursor:pointer;appearance:none;background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2394A3B8%22 stroke-width=%222%22><polyline points=%226 9 12 15 18 9%22/></svg>');background-repeat:no-repeat;background-position:right 12px center;background-size:16px;"></select>
-        <div id="wk-load-week-info" style="margin-top:6px;font-size:11px;color:#94A3B8;min-height:16px;"></div>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:600;color:#475569;margin-bottom:6px;letter-spacing:.04em;">주차 선택</div>
+        <select id="wk-load-week" style="width:100%;padding:8px 10px;border:1.5px solid #E2E8F0;border-radius:8px;font-size:12px;color:#0F172A;background:#fff;cursor:pointer;"></select>
       </div>
-      <!-- 복사 방식 -->
-      <div>
-        <div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:10px;letter-spacing:.05em;text-transform:uppercase;">복사 방식</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid #E2E8F0;border-radius:10px;cursor:pointer;transition:all .15s;" id="wk-mode-replace-label">
-            <input type="radio" name="wk-load-mode" value="replace" checked style="accent-color:#4f7fff;width:15px;height:15px;">
-            <div><div style="font-size:12px;font-weight:600;color:#1E293B;">덮어쓰기</div><div style="font-size:10px;color:#94A3B8;">현재 내용 교체</div></div>
+      <div style="margin-bottom:18px;">
+        <div style="font-size:11px;font-weight:600;color:#475569;margin-bottom:8px;letter-spacing:.04em;">복사 방식</div>
+        <div style="display:flex;gap:8px;">
+          <label style="flex:1;display:flex;align-items:center;gap:8px;padding:8px 12px;border:1.5px solid #E2E8F0;border-radius:8px;cursor:pointer;font-size:11px;color:#374151;" id="wk-load-opt-replace">
+            <input type="radio" name="wk-load-mode" value="replace" checked style="accent-color:#4f7fff;"> 현재 내용 대체
           </label>
-          <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid #E2E8F0;border-radius:10px;cursor:pointer;transition:all .15s;" id="wk-mode-append-label">
-            <input type="radio" name="wk-load-mode" value="append" style="accent-color:#4f7fff;width:15px;height:15px;">
-            <div><div style="font-size:12px;font-weight:600;color:#1E293B;">이어붙이기</div><div style="font-size:10px;color:#94A3B8;">현재에 추가</div></div>
+          <label style="flex:1;display:flex;align-items:center;gap:8px;padding:8px 12px;border:1.5px solid #E2E8F0;border-radius:8px;cursor:pointer;font-size:11px;color:#374151;" id="wk-load-opt-append">
+            <input type="radio" name="wk-load-mode" value="append" style="accent-color:#4f7fff;"> 이어붙이기
           </label>
         </div>
       </div>
     </div>
     <!-- 푸터 -->
-    <div style="padding:16px 24px;border-top:1px solid #F1F5F9;display:flex;gap:8px;flex-shrink:0;">
-      <button onclick="_wkCloseLoadWeek()" style="flex:1;padding:10px;border:1.5px solid #E2E8F0;border-radius:10px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:#64748B;">취소</button>
-      <button onclick="_wkApplyLoadWeek()" style="flex:2;padding:10px;border:none;border-radius:10px;background:#4f7fff;font-size:13px;font-weight:700;cursor:pointer;color:#fff;">불러오기</button>
+    <div style="padding:14px 22px;border-top:1px solid #F1F5F9;display:flex;gap:8px;justify-content:flex-end;">
+      <button onclick="_wkCloseLoadWeek()" style="padding:8px 18px;border:1.5px solid #E2E8F0;border-radius:8px;background:#fff;color:#64748B;font-size:12px;font-weight:600;cursor:pointer;">취소</button>
+      <button onclick="_wkApplyLoadWeek()" style="padding:8px 20px;border:none;border-radius:8px;background:#4f7fff;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">불러오기</button>
     </div>
   </div>
 </div>
@@ -4677,6 +4671,25 @@ function _initApp(){
       }, 150);
     }
   }, 100); // 100ms마다 체크, 최대 2초 대기
+
+  // ── 전역 입력 이벤트 위임 ──
+  setTimeout(function(){
+    var _pg=document.getElementById('page-input');
+    if(!_pg) return;
+    _pg.addEventListener('input',function(e){
+      if(['INPUT','TEXTAREA','SELECT'].indexOf((e.target&&e.target.tagName)||'')>=0)
+        if(typeof autoSave==='function') autoSave();
+    },true);
+    _pg.addEventListener('change',function(e){
+      if(['INPUT','SELECT'].indexOf((e.target&&e.target.tagName)||'')>=0)
+        if(typeof autoSave==='function') autoSave();
+    },true);
+    _pg.addEventListener('blur',function(e){
+      if(e.target&&e.target.classList&&e.target.classList.contains('rich-ed'))
+        if(typeof autoSave==='function') autoSave();
+    },true);
+  },500);
+
 }
 function showPage(id,navEl){
   if(typeof closeMobileMenu==="function") closeMobileMenu();
@@ -4732,13 +4745,12 @@ function showPage(id,navEl){
     }
   }
   if(id==='weekly'){
-    if(typeof _wk!=='undefined'){
-      // 즉시 현재 데이터로 렌더 (있으면 바로, 없으면 로딩 표시)
-      if(typeof _wkRenderFeed==='function') try{_wkRenderFeed();}catch(e){}
-      if(typeof _wkRenderReport==='function') try{_wkRenderReport();}catch(e){}
-      // 백그라운드 SP 동기화 (데이터 없을 때만)
-      if((!_wk.entries||!_wk.entries.length) && typeof _wkLoad==='function'){
-        _wk.loading=false; _wkLoad();
+    // 주간회의 진입 시 데이터가 없으면 로드, 있으면 즉시 렌더
+    if(typeof _wkSetView==='function' && typeof _wk!=='undefined'){
+      if(_wk.entries&&_wk.entries.length>0){
+        _wkRenderFeed(); _wkRenderReport();
+      } else {
+        if(typeof _wkLoad==='function'){ _wk.loading=false; _wkLoad(); }
       }
     }
   }
@@ -5528,7 +5540,7 @@ function buildRepInputs(){
         <tbody>
           <tr>
             <td style="font-weight:700;white-space:nowrap;padding:4px 8px;" class="lbl-row-plan">경영 계획</td>
-            ${MONTHS.map((_,i)=>{const v=store.reps[rep].plan[i]||0;return`<td style="${TD}"><input type="text" value="${v?v.toLocaleString('ko-KR'):''}" style="${IS}" onfocus="this.value=this.value.replace(/,/g,'')" onblur="const n=parseFloat(this.value.replace(/,/g,''));this.value=n?n.toLocaleString('ko-KR'):'';" onchange="store.reps['${rep}'].plan[${i}]=Math.max(0,parseFloat(String(this.value).replace(/,/g,''))||0);refresh()"></td>`;}).join('')}
+            ${MONTHS.map((_,i)=>{const v=store.reps[rep].plan[i]||0;return`<td style="${TD}"><input type="text" value="${v?v.toLocaleString('ko-KR'):''}" style="${IS}" onfocus="this.value=this.value.replace(/,/g,'')" onblur="const n=parseFloat(this.value.replace(/,/g,''));this.value=n?n.toLocaleString('ko-KR'):'';" onchange="store.reps['${rep}'].plan[${i}]=Math.max(0,parseFloat(String(this.value).replace(/,/g,''))||0);refresh();autoSave()"></td>`;}).join('')}
             <td class="nt" id="${rep}-pt" style="padding:4px 8px;">${store.reps[rep].plan.slice(0,12).reduce((a,b)=>a+b,0).toLocaleString()}</td>
           </tr>
           <tr>
@@ -5747,7 +5759,7 @@ function aRow(rep,ai,a){
   const progList=getSelectOpts('activityProgress');
   const progOpts='<option value="" disabled'+((!a.progress||a.progress==='')?'selected':'')+' style="text-align:center">선택</option>'+progList.map(p=>`<option style="text-align:center"${(a.progress||'')===p?' selected':''}>${p}</option>`).join('');
   var _isOwn=(typeof session!=='undefined'&&session&&session.rep===rep)||(typeof session!=='undefined'&&session&&session.role==='admin');
-  var _wkChecked=a.weeklyCheck&&a.weeklyCheck[typeof window._wkThisKey==='function'?window._wkThisKey():'']?'checked':'';
+  var _wkChecked=a.weeklyCheck&&a.weeklyCheck[_wkThisKey()]?'checked':'';
   return`<tr draggable="false" data-rep="${rep}" data-ai="${ai}" class="act-drag-row">
     <td class="act-drag-handle" title="드래그하여 순서 변경" style="width:18px;text-align:center;cursor:grab;color:#CBD5E1;font-size:14px;vertical-align:middle;padding:0 2px;user-select:none;" onmousedown="this.closest('tr').draggable=true;" onmouseup="this.closest('tr').draggable=false;">⠿</td>
     <td class="wk-chk-cell">${_isOwn?`<input type="checkbox" class="wk-act-chk" ${_wkChecked} onchange="_wkToggleActCheck('${rep}',${ai},this.checked)" style="width:15px;height:15px;cursor:pointer;accent-color:#1A56DB;vertical-align:middle;display:block;" title="주간보고에 포함">`:'&nbsp;'}</td>
@@ -5978,7 +5990,7 @@ function _iBindDragRows(rep){
   });
 }
 
-function addClient(rep){const ci=store.reps[rep].clients.length;store.reps[rep].clients.push({name:'',type:'MA',status:'달성',plan:new Array(12).fill(0),actual:new Array(12).fill(0),issue:'',sev:'none'});document.getElementById('ct-'+rep).insertAdjacentHTML('beforeend',cRow(rep,ci,store.reps[rep].clients[ci]));}
+function addClient(rep){const ci=store.reps[rep].clients.length;store.reps[rep].clients.push({name:'',type:'MA',status:'달성',plan:new Array(12).fill(0),actual:new Array(12).fill(0),issue:'',sev:'none'});document.getElementById('ct-'+rep).insertAdjacentHTML('beforeend',cRow(rep,ci,store.reps[rep].clients[ci]));;autoSave();window._lastAutoSaveTs=Date.now();if(window._isSPReady&&session&&session.role==='admin'&&typeof _spSaveRepByName==='function')_spSaveRepByName(rep);}
 function delClient(rep,ci){
   store.reps[rep].clients.splice(ci,1);
   document.getElementById('ct-'+rep).innerHTML=store.reps[rep].clients.map((c,i)=>cRow(rep,i,c)).join('');
@@ -8306,15 +8318,7 @@ function autoSave(){
         window._lastAutoSaveTs = Date.now(); // 마지막 저장 시각
         window._adminEditActive = false; // 저장 완료 후 플래그 해제
         if(session && session.role==='rep' && session.rep){
-          if(typeof _spSaveMyRep==='function'){
-            await _spSaveMyRep();
-            // SP 저장 완료 후 localStorage도 최신으로 갱신
-            try{
-              var _ls2=JSON.parse(localStorage.getItem('weekly_meeting_data')||'{}');
-              if(_ls2.store) Object.keys(store.reps).forEach(function(r){ _ls2.store.reps[r]=store.reps[r]; });
-              localStorage.setItem('weekly_meeting_data', JSON.stringify(_ls2));
-            }catch(e){}
-          }
+          if(typeof _spSaveMyRep==='function') await _spSaveMyRep();
           // 계약 데이터 변경 시 별도 저장 (rep_data에서 제외되므로)
           if(typeof _spSaveContractData==='function'){
             var _cHash=JSON.stringify((store.reps[session.rep]||{}).contracts||[]);
@@ -8325,15 +8329,7 @@ function autoSave(){
           }
         } else if(session && session.role==='admin') {
           // 관리자: 변경된 모든 rep 저장 (activeRep 의존 제거)
-          if(typeof _spSaveChangedReps==='function'){
-            await _spSaveChangedReps(data.store.reps);
-            // 관리자 SP 저장 후 localStorage 갱신
-            try{
-              var _ls3=JSON.parse(localStorage.getItem('weekly_meeting_data')||'{}');
-              if(_ls3.store) Object.keys(store.reps).forEach(function(r){ _ls3.store.reps[r]=store.reps[r]; });
-              localStorage.setItem('weekly_meeting_data', JSON.stringify(_ls3));
-            }catch(e){}
-          }
+          if(typeof _spSaveChangedReps==='function') await _spSaveChangedReps(data.store.reps);
           if(typeof _spSaveSnap==='function') await _spSaveSnap();
           // 관리자: 모든 rep 계약 변경분 저장
           if(typeof _spSaveContractData==='function'){
@@ -8898,21 +8894,22 @@ async function _initSP() {
       if(!window._isSPReady) return;
       try{
         if(session && session.role === 'admin'){
-          // 관리자: 스냅샷 재로드 금지, rep_data 직접 동기화만
-          var _changed = await _spSyncOtherReps();
-          if(_changed){
-            try{ renderDashboard(); }catch(e){}
-            try{ renderIssues(); }catch(e){}
-            try{ renderPipeline(); }catch(e){}
+          // 관리자: 스냅샷 재로드 금지 (수정 내용 덮어쓰기 방지)
+          var _chg = await _spSyncOtherReps();
+          if(_chg){
+            try{renderDashboard();}catch(e){}
+            try{renderIssues();}catch(e){}
+            try{renderPipeline();}catch(e){}
           }
         } else {
           await _spSyncOtherReps();
-          await _spLoadHistList();
-          renderDashboard();
-          renderIssues();
-          renderPipeline();
         }
+        await _spLoadHistList();
+        renderDashboard();
+        renderIssues();
+        renderPipeline();
       }catch(e){}
+      // 회의록 데이터 주기적 동기화 (페이지 열려있으면 즉시, 닫혀있으면 캐시만)
       try{
         if(typeof window._syncWeeklyFeed==='function') await window._syncWeeklyFeed();
       }catch(e){}
@@ -9026,6 +9023,22 @@ async function _spSaveItem(dtype, dkey, payload, _retry) {
   var _dkey  = _sanitizeDKey(dkey);
   var _title = dtype + '_' + _dkey;
 
+  // ── Payload 크기 체크: 50KB 초과 시 자동 분할 ──
+  var _payloadStr = JSON.stringify(payload);
+  var _MAX = 50000; // 50KB (여유 있게)
+  if(_payloadStr.length > _MAX){
+    // 데이터를 청크로 분할 저장
+    var _chunkSize = _MAX - 500; // 메타 공간 확보
+    var _totalChunks = Math.ceil(_payloadStr.length / _chunkSize);
+    for(var _ci=0; _ci<_totalChunks; _ci++){
+      var _chunk = _payloadStr.slice(_ci*_chunkSize, (_ci+1)*_chunkSize);
+      var _chunkPayload = {_chunk: _chunk, _ci: _ci, _total: _totalChunks, _key: _title};
+      await _spSaveItem(dtype, dkey + '_part' + _ci, _chunkPayload, _retry);
+    }
+    // 인덱스 저장 (파트 개수 기록)
+    await _spSaveItem(dtype, dkey + '_idx', {_parts: _totalChunks, _key: _title, savedAt: new Date().toISOString()}, _retry);
+    return;
+  }
   var _lock  = _title;
 
   // 중복 실행 방지
@@ -9211,11 +9224,9 @@ async function _spLoadToday() {
 
 // ── 스냅샷 적용 ────────────────────────────────────────────
 function _applySnap(snap, date) {
-  // 관리자가 최근 60초 내 수정 중이면 스냅샷 적용 차단
-  if((typeof session!=='undefined') && session && session.role==='admin'){
-    if((Date.now() - (window._lastAutoSaveTs||0)) < 60000){
-      return; // 관리자 수정 보호
-    }
+  // 관리자 60초 내 수정 보호
+  if(typeof session!=='undefined' && session && session.role==='admin'){
+    if((Date.now() - (window._lastAutoSaveTs||0)) < 60000) return;
   }
   if (snap.reps)      { REPS.length=0;      snap.reps.forEach(r=>REPS.push(r)); }
   if (snap.repColors) { REP_COLORS.length=0; snap.repColors.forEach(c=>REP_COLORS.push(c)); }
@@ -9286,8 +9297,7 @@ async function _spSaveSnap() {
         // clients: plan 배열 제외 (rep_data에 있음), 핵심 필드만 유지
         // clients: 모든 필드 유지
         // activities: content/client/progress만 유지
-        // activities: 모든 필드 유지 (삭제/수정 반영 보장)
-        // (크기 최적화 제거 - 수정 내용 소실 방지 우선)
+        // activities: 모든 필드 유지 (수정/삭제 반영 보장)
       });
       return s;
     })(),
@@ -9310,7 +9320,7 @@ async function _spSaveSnap() {
         +':'+(d.clients||[]).length
         +':'+(d.activities||[]).length
         +':'+(d.issuesList||[]).length
-        +':'+(d.clients||[]).map(function(c){return (c.status||'')+(c.actual||0);}).join(',');
+        +':'+(d.clients||[]).map(function(cl){return (cl.status||'')+(cl.actual||0);}).join(',');
     }).join('|'):''
   });
   if(window._lastSnapHash === _snapDataHash) {
@@ -9346,36 +9356,33 @@ async function _spDiagnose(){
   try{
     var res = await _spFetchAll(_lUrl()+'?$select=Id,DataType,DataKey,Payload&$top=500');
     var items = (res&&res.value)||[];
-    var diagLines = ['총 '+items.length+'개 아이템\n'];
-    var dateKeys = items.filter(function(i){ return /\d{4}-\d{2}-\d{2}/.test(i.DataKey||''); });
-    diagLines.push('날짜 포함 키: '+dateKeys.length+'개 (정리 대상)');
+    var lines = ['총 '+items.length+'개 아이템\n'];
+    // rep_data만 상세 출력
     var repItems = items.filter(function(i){ return i.DataType==='rep_data'; });
-    diagLines.push('\n=== rep_data ('+repItems.length+'개) ===');
-    // 중복 키 찾기
-    var keyCount={};
-    repItems.forEach(function(item){ var dk=item.DataKey||''; keyCount[dk]=(keyCount[dk]||0)+1; });
-    var dupKeys=Object.keys(keyCount).filter(function(k){ return keyCount[k]>1; });
-    if(dupKeys.length) diagLines.push('⚠️ 중복 키: '+dupKeys.join(', '));
+    lines.push('=== rep_data ('+repItems.length+'개) ===');
     repItems.forEach(function(item){
       try{
         var p = JSON.parse(item.Payload||'{}');
         var acts = (p.activities||[]).length;
         var clients = (p.clients||[]).length;
         var plan = (p.plan||[]).reduce(function(s,v){return s+(v||0);},0);
-        var dup = keyCount[item.DataKey]>1 ? ' ⚠️중복' : '';
-        diagLines.push('['+item.DataKey+'] acts='+acts+' clients='+clients+' plan='+plan+' savedAt='+(p.savedAt||'없음')+dup);
-      }catch(e){ diagLines.push('['+item.DataKey+'] 파싱오류'); }
+        lines.push('['+item.DataKey+'] acts='+acts+' clients='+clients+' plan='+plan+' savedAt='+(p.savedAt||'없음'));
+      }catch(e){ lines.push('['+item.DataKey+'] 파싱오류'); }
     });
+    var diagLines = lines;
+    // 중복 키 찾기
+    var keyCount={};
+    repItems.forEach(function(item){ var dk=item.DataKey||''; keyCount[dk]=(keyCount[dk]||0)+1; });
+    var dupKeys=Object.keys(keyCount).filter(function(k){ return keyCount[k]>1; });
+    if(dupKeys.length) diagLines.push('⚠️ 중복 키: '+dupKeys.join(', '));
     el.textContent = diagLines.join('\n');
-    // 중복 키 즉시 삭제 버튼
     if(dupKeys.length){
       var btn=document.createElement('button');
-      btn.textContent='🗑️ 중복 키 즉시 삭제 (구버전 유지)';
+      btn.textContent='🗑️ 중복 키 즉시 삭제';
       btn.style.cssText='margin-top:8px;padding:6px 12px;background:#EF4444;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;display:block;';
       btn.onclick=async function(){
         btn.disabled=true; btn.textContent='삭제 중...';
         var deleted=0;
-        // 같은 DataKey 중 오래된 것(savedAt 기준) 삭제
         var groups={};
         repItems.forEach(function(item){
           var dk=item.DataKey||'';
@@ -9386,7 +9393,7 @@ async function _spDiagnose(){
         for(var dk in groups){
           var g=groups[dk];
           if(g.length<=1) continue;
-          g.sort(function(a,b){ return b._sat.localeCompare(a._sat); });
+          g.sort(function(a,b){ return (b._sat||'').localeCompare(a._sat||''); });
           for(var i=1;i<g.length;i++){
             try{ await _spFetch(_lUrl()+'('+g[i].Id+')',{method:'DELETE',headers:{'IF-MATCH':'*'}}); deleted++; }catch(e){}
           }
@@ -9482,9 +9489,15 @@ async function _spRecoverArchiveActivities(){
       if(!cur) cur=store.reps[repKey]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[],contracts:[]};
 
       var changed=false;
-      if(mergedActs.length>0){ cur.activities=mergedActs; changed=true; total+=mergedActs.length; }
-      if(bestClients.clients.length>0){ cur.clients=bestClients.clients; changed=true; total+=bestClients.clients.length; }
-      if(mergedIsss.length>0){ cur.issuesList=mergedIsss; changed=true; total+=mergedIsss.length; }
+      if(mergedActs.length>(cur.activities||[]).length){
+        cur.activities=mergedActs; changed=true; total+=mergedActs.length;
+      }
+      if(bestClients.clients.length>(cur.clients||[]).length){
+        cur.clients=bestClients.clients; changed=true; total+=bestClients.clients.length;
+      }
+      if(mergedIsss.length>(cur.issuesList||[]).length){
+        cur.issuesList=mergedIsss; changed=true; total+=mergedIsss.length;
+      }
       var bestPlanSum=(bestPlan.plan||[]).reduce(function(s,v){return s+(v||0);},0);
       var curPlanSum=(cur.plan||[]).reduce(function(s,v){return s+(v||0);},0);
       if(bestPlanSum>curPlanSum){
@@ -9620,108 +9633,64 @@ async function _spRecoverArchiveActivities(){
 async function _spCleanupOldKeys(){
   if(!window._isSPReady||!session||session.role!=='admin') return;
   try{
-    showToast('🔄 SP 데이터 정리 중...','info');
-    var res=await _spFetchAll(_lUrl()+'?$select=Id,DataType,DataKey,Payload&$top=500');
+    showToast('🔄 SP 데이터 정리 중... 잠시 기다려주세요','info');
+    var res=await _spFetchAll(_lUrl()+'?$select=Id,Title,DataType,DataKey,Payload&$top=500');
     var items=(res&&res.value)||[];
     var toDelete=[];
 
-    // TEAM_REPS 유효 이름 목록
-    var validNames=[];
-    if(typeof TEAM_REPS!=='undefined'){
-      Object.values(TEAM_REPS).forEach(function(arr){
-        (arr||[]).forEach(function(name){
-          validNames.push(name.toLowerCase().replace(/_/g,' ').trim());
-          validNames.push(name.toLowerCase().trim());
-          var base=name.replace(/\s+\S+$/,'').trim();
-          if(base) validNames.push(base.toLowerCase());
-        });
+    // DataType별로 중복 키 찾기
+    var byTitle={};
+    items.forEach(function(item){
+      // 날짜 포함 키 패턴: rep_data_김충만_2026-05-07
+      var dk=item.DataKey||'';
+      var hasDate=/\d{4}-\d{2}-\d{2}/.test(dk);
+      if(!hasDate) return; // 날짜 없는 키는 정리 대상 아님
+      // _part, _idx, _act_, _iss_, _vl_ 제외
+      if(dk.match(/(_part\d+|_idx|_act_|_iss_|_vl_)$/)) return;
+      var dtype=item.DataType||'';
+      var titleKey=dtype+'_'+dk.replace(/_\d{4}-\d{2}-\d{2}$/,'');
+      if(!byTitle[titleKey]) byTitle[titleKey]=[];
+      byTitle[titleKey].push(item);
+    });
+
+    // 각 그룹에서 최신 1개 빼고 삭제 대상 수집
+    Object.keys(byTitle).forEach(function(tk){
+      var group=byTitle[tk];
+      if(group.length<=1) return;
+      // savedAt 기준 정렬 (최신이 앞)
+      group.sort(function(a,b){
+        try{
+          var pa=JSON.parse(a.Payload||'{}');
+          var pb=JSON.parse(b.Payload||'{}');
+          return (pb.savedAt||'').localeCompare(pa.savedAt||'');
+        }catch(e){ return 0; }
       });
+      // 2번째부터 삭제 대상
+      for(var i=1;i<group.length;i++) toDelete.push(group[i].Id);
+    });
+
+    if(!toDelete.length){
+      showToast('✅ 정리할 항목이 없습니다.','info');
+      return;
     }
 
-    // rep_data 키별로 그룹핑 (중복 제거)
-    var repGroups={};
-    items.forEach(function(item){
-      if(item.DataType!=='rep_data') return;
-      var dk=(item.DataKey||'').trim();
-      // 날짜/아카이브 키
-      if(/\d{4}-\d{2}-\d{2}/.test(dk)||/_act_(old|\d{4})$/.test(dk)||/_iss_\d{4}$/.test(dk)||/_vl_\d{4}$/.test(dk)){
-        toDelete.push(item.Id); return;
-      }
-      // TEAM_REPS에 없는 키
-      if(validNames.length){
-        var dkn=dk.toLowerCase().replace(/_/g,' ').trim();
-        if(validNames.indexOf(dkn)<0&&validNames.indexOf(dk.toLowerCase())<0){
-          if(!/_part\d+$/.test(dk)&&!/_idx$/.test(dk)){ toDelete.push(item.Id); return; }
-        }
-      }
-      // 중복 키 그룹핑 (같은 DataKey, 최신 savedAt만 유지)
-      var dkLower=dk.toLowerCase();
-      if(!repGroups[dkLower]) repGroups[dkLower]=[];
-      try{ var p=JSON.parse(item.Payload||'{}'); item._savedAt=p.savedAt||''; }catch(e){ item._savedAt=''; }
-      repGroups[dkLower].push(item);
-    });
-
-    // 중복 키: 최신 savedAt 제외 나머지 삭제 (toDelete 중복 방지)
-    var toDeleteSet=new Set(toDelete);
-    Object.values(repGroups).forEach(function(group){
-      if(group.length<=1) return;
-      group.sort(function(a,b){ return (b._savedAt||'').localeCompare(a._savedAt||''); });
-      group.slice(1).forEach(function(item){
-        if(!toDeleteSet.has(item.Id)){ toDeleteSet.add(item.Id); toDelete.push(item.Id); }
-      });
-    });
-
-    if(!toDelete.length){ showToast('✅ 정리할 항목이 없습니다.','info'); return; }
+    // 50개씩 배치 삭제
     var deleted=0;
     for(var i=0;i<toDelete.length;i++){
-      try{ await _spFetch(_lUrl()+'('+toDelete[i]+')',{method:'DELETE',headers:{'IF-MATCH':'*'}}); deleted++; }catch(e){}
+      try{
+        await _spFetch(
+          _lUrl()+'('+toDelete[i]+')',
+          {method:'DELETE',headers:{'IF-MATCH':'*','X-HTTP-Method':'DELETE'}}
+        );
+        deleted++;
+      }catch(e){}
       if(i%50===49) showToast('🔄 정리 중... '+deleted+'개 완료','info');
     }
     showToast('✅ SP 정리 완료: '+deleted+'개 삭제됨','info');
-    if(window._spIdCache) window._spIdCache={};
-  }catch(e){ console.error('[cleanup]',e); showToast('❌ SP 정리 실패','error'); }
-}
-async function _spCleanupOldKeys(){
-  if(!window._isSPReady||!session||session.role!=='admin') return;
-  try{
-    showToast('🔄 SP 데이터 정리 중... 잠시 기다려주세요','info');
-    var res=await _spFetchAll(_lUrl()+'?$select=Id,DataType,DataKey&$top=500');
-    var items=(res&&res.value)||[];
-    var toDelete=[];
-    var _validKeys=[];
-    if(typeof TEAM_REPS!=='undefined'){
-      Object.values(TEAM_REPS).forEach(function(arr){
-        (arr||[]).forEach(function(name){
-          _validKeys.push(name.toLowerCase().replace(/_/g,' ').trim());
-          _validKeys.push(name.toLowerCase().trim());
-          var base=name.replace(/\s+\S+$/,'').trim();
-          if(base) _validKeys.push(base.toLowerCase());
-        });
-      });
-    }
-    items.forEach(function(item){
-      var dk=(item.DataKey||'').trim();
-      var dtype=item.DataType||'';
-      if(dtype!=='rep_data') return;
-      if(/\d{4}-\d{2}-\d{2}/.test(dk)){ toDelete.push(item.Id); return; }
-      if(/_act_(old|\d{4})$/.test(dk)||/_iss_\d{4}$/.test(dk)||/_vl_\d{4}$/.test(dk)){ toDelete.push(item.Id); return; }
-      if(_validKeys.length){
-        var dkNorm=dk.toLowerCase().replace(/_/g,' ').trim();
-        if(_validKeys.indexOf(dkNorm)<0&&_validKeys.indexOf(dk.toLowerCase())<0){
-          if(!/_part\d+$/.test(dk)&&!/_idx$/.test(dk)){ toDelete.push(item.Id); return; }
-        }
-      }
-    });
-    if(!toDelete.length){ showToast('✅ 정리할 항목이 없습니다.','info'); return; }
-    var deleted=0;
-    for(var i=0;i<toDelete.length;i++){
-      try{ await _spFetch(_lUrl()+'('+toDelete[i]+')',{method:'DELETE',headers:{'IF-MATCH':'*'}}); deleted++; }catch(e){}
-      if(i%50===49) showToast('🔄 정리 중... '+deleted+'개 완료','info');
-    }
-    showToast('✅ SP 정리 완료: '+deleted+'개 삭제됨.','info');
-    localStorage.removeItem('sp_id_cache');
-    if(window._spIdCache) window._spIdCache={};
-  }catch(e){ console.error('[SP cleanup]',e); showToast('❌ SP 정리 실패','error'); }
+  }catch(e){
+    console.error('[SP cleanup]',e);
+    showToast('❌ SP 정리 실패','error');
+  }
 }
 
 async function _spLoadSettings() {
@@ -11434,7 +11403,7 @@ function _iRow(rep, idx, iss){
     +'</div></td>';
 
   // 체크박스: data 속성으로 이벤트 위임 (onchange 이스케이프 문제 회피)
-  var _issChkHtml=canEdit?'<input type="checkbox" class="wk-iss-chk" data-rep="'+r+'" data-idx="'+idx+'" '+(iss.weeklyCheck&&iss.weeklyCheck[typeof window._wkThisKey==='function'?window._wkThisKey():'']?'checked ':'')+' style="width:15px;height:15px;cursor:pointer;accent-color:#1A56DB;" title="주간보고에 포함">':'&nbsp;';
+  var _issChkHtml=canEdit?'<input type="checkbox" class="wk-iss-chk" data-rep="'+r+'" data-idx="'+idx+'" '+(iss.weeklyCheck&&iss.weeklyCheck[_wkThisKey()]?'checked ':'')+' style="width:15px;height:15px;cursor:pointer;accent-color:#1A56DB;" title="주간보고에 포함">':'&nbsp;';
   // :'&nbsp;'; // (위 삼항연산자에 통합)
   return '<tr id="ir-'+rep+'-'+idx+'" draggable="false" data-rep="'+rep+'" data-ii="'+idx+'" class="iss-drag-row">'
     +'<td class="iss-drag-handle" title="드래그하여 순서 변경" style="width:18px;text-align:center;cursor:grab;color:#CBD5E1;font-size:14px;vertical-align:middle;padding:0 2px;user-select:none;" onmousedown="this.closest(\'tr\').draggable=true;" onmouseup="this.closest(\'tr\').draggable=false;">⠿</td>'
@@ -11573,7 +11542,11 @@ window.deleteIssueRow = function(rep, idx){
   if(tbody) tbody.innerHTML = store.reps[rep].issuesList.map(function(iss,i){ return _iRow(rep,i,iss); }).join('');
   if(typeof extractIssues==='function'){ extractIssues(); if(typeof renderIssues==='function') renderIssues(); }
   if(typeof autoSave==='function') autoSave();
-  if(window._isSPReady&&typeof _spSaveMyRep==='function') _spSaveMyRep();
+  window._lastAutoSaveTs=Date.now();
+  if(window._isSPReady){
+    if(typeof session!=='undefined'&&session&&session.role==='admin'&&typeof _spSaveRepByName==='function') _spSaveRepByName(rep);
+    else if(typeof _spSaveMyRep==='function') _spSaveMyRep();
+  }
 };
 
 // ── buildRepInputs override: 이슈사항 섹션 추가 ──
@@ -14246,12 +14219,11 @@ var _repSavedHashes = {};
 async function _spSaveChangedReps(currentReps){
   if(!window._isSPReady||!window._spDataLoaded||!currentReps) return;
   var toSave=[];
-  var _validSaveReps={};
+  var _validSR={};
   if(typeof TEAM_REPS!=='undefined')
-    Object.values(TEAM_REPS).forEach(function(a){(a||[]).forEach(function(r){_validSaveReps[r]=true;});});
+    Object.values(TEAM_REPS).forEach(function(a){(a||[]).forEach(function(r){_validSR[r]=true;});});
   Object.keys(currentReps).forEach(function(rep){
-    // TEAM_REPS에 없는 rep는 저장 안 함 (구버전 키 순환 방지)
-    if(Object.keys(_validSaveReps).length && !_validSaveReps[rep]) return;
+    if(Object.keys(_validSR).length && !_validSR[rep]) return;
     try{
       var h=JSON.stringify(currentReps[rep]||{});
       if(_repSavedHashes[rep]!==h){_repSavedHashes[rep]=h;toSave.push(rep);}
@@ -14327,17 +14299,6 @@ async function _spSyncOtherReps(){
       try{
         var p = JSON.parse(item.Payload||'{}');
         if(p.clientDB&&Array.isArray(p.clientDB)){
-          // deletedNames 복원
-          if(p.deletedNames&&Array.isArray(p.deletedNames)&&p.deletedNames.length){
-            if(!store.clientDB_deletedNames) store.clientDB_deletedNames=[];
-            p.deletedNames.forEach(function(n){
-              if(store.clientDB_deletedNames.indexOf(n)<0) store.clientDB_deletedNames.push(n);
-            });
-            // clientDB에서 deletedNames에 있는 항목 제거
-            store.clientDB=(p.clientDB||[]).filter(function(item){
-              return store.clientDB_deletedNames.indexOf(item.name)<0;
-            });
-          }
           var spAt = new Date(p.savedAt||0).getTime();
           var localAt = new Date(store._clientDBSavedAt||0).getTime();
           // 로컬이 더 최신이면 SP 덮어쓰기 방지 (삭제/수정 보호)
@@ -14413,11 +14374,11 @@ async function _spSyncOtherReps(){
         var parsedRep = (typeof _parseRepDataKey==='function') ? _parseRepDataKey(dk).rep : dk;
         var repName = (typeof _findRepByKey==='function') ? _findRepByKey(parsedRep) : parsedRep;
         if(!repName||/^\d+$/.test(repName)) return;
-        // TEAM_REPS에 없는 rep 키는 store에 로드 안 함 (구버전 순환 방지)
+        // TEAM_REPS에 없는 rep 키 무시 (구버전 순환 방지)
         if(typeof TEAM_REPS!=='undefined' && Object.keys(TEAM_REPS).length){
-          var _allValidR=[];
-          Object.values(TEAM_REPS).forEach(function(a){(a||[]).forEach(function(r){_allValidR.push(r);});});
-          if(_allValidR.length && _allValidR.indexOf(repName)<0) return;
+          var _avr=[];
+          Object.values(TEAM_REPS).forEach(function(a){(a||[]).forEach(function(r){_avr.push(r);});});
+          if(_avr.length && _avr.indexOf(repName)<0) return;
         }
         if(!allByRep[repName]) allByRep[repName] = [];
         allByRep[repName].push(item);
@@ -15061,15 +15022,12 @@ function _cdbSaveItem(item){
   if(window._isSPReady&&typeof _spSaveClientDB==='function') _spSaveClientDB();
 }
 function _cdbDeleteItem(id){
-  var item = (store.clientDB||[]).find(function(c){return c.id===id;});
-  if(item && item.name){
-    // 삭제된 이름 목록에 추가 (재등록 방지)
+  var item=(store.clientDB||[]).find(function(x){return x.id===id;});
+  if(item&&item.name){
     if(!store.clientDB_deletedNames) store.clientDB_deletedNames=[];
-    if(store.clientDB_deletedNames.indexOf(item.name)<0)
-      store.clientDB_deletedNames.push(item.name);
+    if(store.clientDB_deletedNames.indexOf(item.name)<0) store.clientDB_deletedNames.push(item.name);
   }
   store.clientDB=(store.clientDB||[]).filter(function(c){return c.id!==id;});
-  window._lastCdbSaveTs = Date.now();
   if(typeof autoSave==='function') autoSave();
   // 즉각 SP 저장 (삭제 후 재접속 시 복원 방지)
   if(window._isSPReady&&typeof _spSaveClientDB==='function') _spSaveClientDB();
@@ -15079,9 +15037,7 @@ function _cdbDeleteItem(id){
 function _cdbAutoRegister(name){
   if(!name||!name.trim()) return;
   var n=name.trim();
-  // 삭제된 고객사 재등록 방지
-  var _deleted=store.clientDB_deletedNames||(store.clientDB_deletedNames=[]);
-  if(_deleted.indexOf(n)>=0) return;
+  if((store.clientDB_deletedNames||[]).indexOf(n)>=0) return;
   if(!_cdbByName(n)){
     _cdbAll().push({id:_cdbNewId(),name:n,contacts:[],note:'',autoAdded:true,createdAt:new Date().toISOString()});
     if(typeof autoSave==='function') autoSave();
@@ -15118,14 +15074,7 @@ function _cdbRename(id, newName){
 function _cdbGetHistory(name,typeFilter){
   var items=[];
   var _cdbSeenIds={};
-  var items=[];
-  var _cdbSeenIds={};
-  // TEAM_REPS 기반 유효 rep만 (구버전 이름/직책 키 제외)
-  var _validR={};
-  if(typeof TEAM_REPS!=='undefined')
-    Object.values(TEAM_REPS).forEach(function(a){(a||[]).forEach(function(r){_validR[r]=true;});});
   Object.keys(store.reps||{}).forEach(function(rep){
-    if(Object.keys(_validR).length && !_validR[rep]) return; // 구버전 키 무시
     var d=store.reps[rep]; if(!d) return;
     if(!typeFilter||typeFilter==='계약'||typeFilter==='all')
       (d.contracts||[]).forEach(function(c){
@@ -15152,23 +15101,16 @@ function _cdbGetHistory(name,typeFilter){
 }
 
 // 영업담당 수집
-function _cdbGetReps(name, item){
-  if(!item) item=(_cdbAll&&_cdbAll()||[]).find(function(c){return c.name===name;})||null;
-  var excluded=(item&&item.excludedAutoReps)||[];
-  // TEAM_REPS 기반 유효 이름만 사용
-  var validReps={};
-  if(typeof TEAM_REPS!=='undefined')
-    Object.values(TEAM_REPS).forEach(function(arr){ (arr||[]).forEach(function(r){validReps[r]=true;}); });
+function _cdbGetReps(name){
   var repMap={};
   Object.keys(store.reps||{}).forEach(function(rep){
-    if(Object.keys(validReps).length && !validReps[rep]) return;
     var d=store.reps[rep]; if(!d) return;
     var srcs=[];
-    (d.contracts||[]).forEach(function(ct){ if(ct.client===name&&!srcs.includes('계약')) srcs.push('계약'); });
+    (d.contracts||[]).forEach(function(c){ if(c.client===name&&!srcs.includes('계약')) srcs.push('계약'); });
     (d.activities||[]).forEach(function(a){ if(a.client===name&&!srcs.includes('활동')) srcs.push('활동'); });
     (d.issuesList||[]).forEach(function(iss){ if(iss.client===name&&!srcs.includes('이슈')) srcs.push('이슈'); });
-    (d.visitLog||[]).forEach(function(v){ if((v.company||v.client||'')==name&&!srcs.includes('방문')) srcs.push('방문'); });
-    if(srcs.length&&excluded.indexOf(rep)<0) repMap[rep]={rep:rep,srcs:srcs};
+    (d.visitLog||[]).forEach(function(v){ if(((v.company||v.client||'')===name)&&!srcs.includes('방문')) srcs.push('방문'); });
+    if(srcs.length) repMap[rep]={rep:rep,srcs:srcs};
   });
   return Object.values(repMap);
 }
@@ -15176,12 +15118,7 @@ function _cdbGetReps(name, item){
 // KPI
 function _cdbGetKPI(name){
   var kpi={contracts:0,activities:0,amount:0,issues:0};
-  var kpi={contracts:0,activities:0,amount:0,issues:0};
-  var _validR2={};
-  if(typeof TEAM_REPS!=='undefined')
-    Object.values(TEAM_REPS).forEach(function(a){(a||[]).forEach(function(r){_validR2[r]=true;});});
   Object.keys(store.reps||{}).forEach(function(rep){
-    if(Object.keys(_validR2).length && !_validR2[rep]) return;
     var d=store.reps[rep]; if(!d) return;
     (d.contracts||[]).forEach(function(c){ if(c.client===name){ kpi.contracts++; kpi.amount+=(Number(c.amount)||0); }});
     (d.activities||[]).forEach(function(a){ if(a.client===name) kpi.activities++; });
@@ -15250,11 +15187,8 @@ function _cdbRenderDetail(id){
 
   var kpi=_cdbGetKPI(item.name);
   var hist=_cdbGetHistory(item.name,'all');
-  var autoReps=_cdbGetReps(item.name, item);
+  var autoReps=_cdbGetReps(item.name);
   var manualReps=item.manualReps||[];
-  var _excluded=item.excludedAutoReps||[];
-  // excludedAutoReps에 있는 담당자는 autoReps에서 제외
-  autoReps=autoReps.filter(function(r){ return _excluded.indexOf(r.rep)<0; });
   var autoNames=autoReps.map(function(r){return r.rep;});
   var hasInfo=item.contacts&&item.contacts.some(function(ct){return ct.name||ct.phone;});
   var col=_cdbColor(item.name);
@@ -15615,21 +15549,17 @@ function _cdbStrip(s){
 }
 
 
-function _cdbToggleAutoRep(rep, checked, id){
+function _cdbToggleAutoRep(id, repName){
   var item=_cdbById(id); if(!item) return;
-  if(!item.excludedAutoReps) item.excludedAutoReps=[];
-  if(checked){
-    // 활성화: excludedAutoReps에서 제거
-    item.excludedAutoReps=item.excludedAutoReps.filter(function(r){return r!==rep;});
+  if(!item.disabledAutoReps) item.disabledAutoReps=[];
+  var idx=item.disabledAutoReps.indexOf(repName);
+  if(idx>=0){
+    item.disabledAutoReps.splice(idx,1); // 다시 활성화
   } else {
-    // 체크 해제: excludedAutoReps에 추가
-    if(item.excludedAutoReps.indexOf(rep)<0) item.excludedAutoReps.push(rep);
+    item.disabledAutoReps.push(repName); // 비활성화
   }
   _cdbSaveItem(item);
-  // 팝업 갱신
-  _cdbShowRepPopup(id);
-  // 고객사 상세 갱신
-  if(typeof _cdbRenderDetail==='function') _cdbRenderDetail(id);
+  _cdbRenderDetail(id);
 }
 
 function _cdbSaveNote(id,val){
@@ -15642,32 +15572,6 @@ function _cdbRemoveManualRep(id,rep){
   item.manualReps=(item.manualReps||[]).filter(function(r){return r!==rep;});
   _cdbSaveItem(item);
   _cdbRenderDetail(id);
-}
-
-function _cdbHideRep(rep, id){
-  var item=_cdbById(id); if(!item) return;
-  if(!authCfg) return;
-  if(!authCfg.cdbHiddenReps) authCfg.cdbHiddenReps={};
-  authCfg.cdbHiddenReps[rep]=true;
-  _cdbSaveItem(item);
-  spSaveSettings && spSaveSettings();
-  _cdbShowRepPopup(id);
-}
-function _cdbShowRep(rep, id){
-  var item=_cdbById(id); if(!item) return;
-  if(!authCfg||!authCfg.cdbHiddenReps) return;
-  delete authCfg.cdbHiddenReps[rep];
-  _cdbSaveItem(item);
-  spSaveSettings && spSaveSettings();
-  _cdbShowRepPopup(id);
-}
-function _cdbAddManualRep(rep, id){
-  var item=_cdbById(id); if(!item||!rep.trim()) return;
-  if(!item.manualReps) item.manualReps=[];
-  if(item.manualReps.indexOf(rep)<0) item.manualReps.push(rep);
-  _cdbSaveItem(item);
-  _cdbShowRepPopup(id);
-  if(typeof _cdbRenderDetail==='function') _cdbRenderDetail(id);
 }
 function _cdbConfirmDelete(id){
   var item=_cdbById(id); if(!item) return;
@@ -15702,127 +15606,90 @@ function _cdbConfirmDelete(id){
 
 // 영업담당 팝업
 function _cdbShowRepPopup(id){
-  window._cdbCurrentPopId=id;
+  window._cdbCurrentPopId=id; // 팝업 갱신용 id 저장
   var item=_cdbById(id); if(!item) return;
-  var autoReps=_cdbGetReps(item.name,item);
+  var autoReps=_cdbGetReps(item.name);
   var manualReps=item.manualReps||[];
-  var excluded=item.excludedAutoReps||[];
-  var _hiddenSet=(authCfg&&authCfg.cdbHiddenReps)||{};
-  var allAutoNames=[];
-  // 전체 자동 감지 (excluded 포함)
-  Object.keys(store.reps||{}).forEach(function(rep){
-    var d=store.reps[rep]; if(!d) return;
-    var srcs=[];
-    (d.contracts||[]).forEach(function(ct){ if(ct.client===item.name&&!srcs.includes('계약')) srcs.push('계약'); });
-    (d.activities||[]).forEach(function(a){ if(a.client===item.name&&!srcs.includes('활동')) srcs.push('활동'); });
-    (d.issuesList||[]).forEach(function(iss){ if(iss.client===item.name&&!srcs.includes('이슈')) srcs.push('이슈'); });
-    (d.visitLog||[]).forEach(function(v){ if((v.company||v.client||'')==item.name&&!srcs.includes('방문')) srcs.push('방문'); });
-    if(srcs.length) allAutoNames.push({rep:rep,srcs:srcs});
-  });
-
-  // 활성(체크) vs 체크해제
-  var activeAuto=allAutoNames.filter(function(r){ return excluded.indexOf(r.rep)<0 && !_hiddenSet[r.rep]; });
-  var inactiveAuto=allAutoNames.filter(function(r){ return excluded.indexOf(r.rep)>=0; });
-  var hiddenAuto=allAutoNames.filter(function(r){ return _hiddenSet[r.rep]; });
-  var manualActive=manualReps.filter(function(r){ return !_hiddenSet[r.rep]; });
-  var manualHidden=manualReps.filter(function(r){ return _hiddenSet[r.rep]; });
-
-  var pop=document.getElementById('_cdb_rep_pop');
-  if(pop) pop.remove();
+  var autoNames=autoReps.map(function(r){return r.rep;});
+  var _hiddenSet=(authCfg&&authCfg.cdbHiddenReps)||[];
+  var ALL_REPS=(window.REPS&&window.REPS.length?window.REPS:Object.keys(store.reps||{})).filter(function(r){ return _hiddenSet.indexOf(r)<0; });
+  // 이름+직책 형식 표시 함수 (중복 직책 방지) - 전역 노출
+  window._cdbRepLabel=function(r){
+    if(typeof getRepDisplayName==='function') return _cdbEsc(getRepDisplayName(r));
+    return _cdbEsc(r);
+  };
+  var _repLabel=window._cdbRepLabel;
+  var old=document.getElementById('_cdb_rep_pop'); if(old) old.remove();
   var wrap=document.createElement('div');
   wrap.id='_cdb_rep_pop';
-  wrap.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  wrap.style.cssText='position:fixed;inset:0;z-index:10001;background:rgba(15,23,42,.4);display:flex;align-items:center;justify-content:center;padding:20px;';
+  var excludedAuto=(item.excludedAutoReps||[]);
+  var autoHTML=autoReps.map(function(r){
+    var isChecked=excludedAuto.indexOf(r.rep)<0;
+    var rEsc=r.rep.replace(/'/g,"\\'");
+    var chkStyle='cursor:pointer;width:18px;height:18px;border-radius:5px;border:1.5px solid '+(isChecked?'#4f7fff':'#E2E8F0')+';background:'+(isChecked?'#4f7fff':'transparent')+';display:flex;align-items:center;justify-content:center;flex-shrink:0;';
+    var row='<div style="display:flex;align-items:center;gap:10px;padding:9px 20px;border-bottom:1px solid #F8FAFC;">';
+    row+='<div style="width:32px;height:32px;border-radius:50%;background:#DBEAFE;color:#2563EB;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">'+((_cdbEsc(r.rep)||'?').charAt(0))+'</div>';
+    row+='<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:600;color:#0D1B2E;">'+_repLabel(r.rep)+'</div><div style="font-size:10px;color:#94A3B8;">'+(r.srcs&&r.srcs.join('·')||'자동')+'</div></div>';
+    row+='<div onclick="event.stopPropagation();_cdbToggleAutoRep(\''+id+'\',\''+rEsc+'\')" style="'+chkStyle+'">';
+    if(isChecked) row+='<svg width="10" height="10" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>';
+    row+='</div></div>';
+    return row;
+  }).join('');
+  var manHTML=ALL_REPS.filter(function(r){return !autoNames.includes(r);}).map(function(r){
+    var isMn=manualReps.includes(r);
+    var rEsc=r.replace(/'/g,"\\'");
+    var row='<div style="display:flex;align-items:center;gap:10px;padding:9px 20px;border-bottom:1px solid #F8FAFC;">';
+    row+='<div style="width:32px;height:32px;border-radius:50%;background:#EDE9FE;color:#7C3AED;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">'+(_cdbEsc(r)||'?').charAt(0)+'</div>';
+    row+='<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:600;color:#0D1B2E;">'+_repLabel(r)+'</div><div style="font-size:10px;color:#94A3B8;">수동 추가</div></div>';
+    row+='<div style="display:flex;align-items:center;gap:6px;">';
+    var chkStyle='cursor:pointer;width:18px;height:18px;border-radius:5px;border:1.5px solid '+(isMn?'#4f7fff':'#E2E8F0')+';background:'+(isMn?'#4f7fff':'transparent')+';display:flex;align-items:center;justify-content:center;';
+    row+='<div onclick="event.stopPropagation();_cdbToggleManualRep(\''+id+'\',\''+rEsc+'\',null)" style="'+chkStyle+'">';
+    if(isMn) row+='<svg width="10" height="10" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>';
+    row+='</div>';
+    row+='<button onclick="event.stopPropagation();window._cdbConfirmHide(\''+rEsc+'\')" style="width:22px;height:22px;border-radius:5px;border:1.5px solid #FECACA;background:#FEF2F2;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;" title="목록에서 숨기기">';
+    row+='<svg width="10" height="10" viewBox="0 0 10 10"><line x1="2" y1="2" x2="8" y2="8" stroke="#DC2626" stroke-width="1.8" stroke-linecap="round"/><line x1="8" y1="2" x2="2" y2="8" stroke="#DC2626" stroke-width="1.8" stroke-linecap="round"/></svg>';
+    row+='</button>';
+    row+='</div>';
+    row+='</div>';
+    return row;
+  }).join('');
 
-  function repRow(r, isChecked, isAuto, srcTags){
-    var checked=isChecked?'checked':'';
-    var src=srcTags?'<span style="font-size:10px;color:#94A3B8;margin-left:4px;">'+srcTags+'</span>':'';
-    var chkHtml=isAuto?('<input type="checkbox" '+checked+' data-rep="'+r+'" data-id="'+id+'" onchange="(function(el){_cdbToggleAutoRep(el.dataset.rep,el.checked,el.dataset.id);})(this)" style="width:14px;height:14px;">'):'<span style="width:14px;height:14px;"></span>';
-    return '<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:'+(isAuto?'pointer':'default')+';border-bottom:1px solid #F1F5F9;">'+chkHtml+'<span style="font-size:13px;font-weight:500;color:#1E293B;">'+r+'</span>'+src+'</label>';
+  // 숨겨진 담당자 섹션 (관리자만 복구 가능)
+  var _isAdmin=session&&session.role==='admin';
+  var _cdbHidden=_isAdmin?((authCfg&&authCfg.cdbHiddenReps)||[]):[];
+  var _allRepsRaw=window.REPS&&window.REPS.length?window.REPS:Object.keys(store.reps||{});
+  var hiddenHTML='';
+  if(_cdbHidden.length){
+    hiddenHTML='<div style="padding:10px 20px 6px;border-top:1px solid #F1F5F9;">';
+    hiddenHTML+='<div style="font-size:10px;font-weight:600;color:#94A3B8;letter-spacing:.04em;margin-bottom:6px;">숨긴 담당자</div>';
+    _cdbHidden.filter(function(r){ return _allRepsRaw.indexOf(r)>=0; }).forEach(function(r){
+      var rEsc2=r.replace(/'/g,"\'");
+      hiddenHTML+='<div style="display:flex;align-items:center;gap:10px;padding:7px 0;">';
+      hiddenHTML+='<div style="width:28px;height:28px;border-radius:50%;background:#F1F5F9;color:#94A3B8;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">'+(r||'?').charAt(0)+'</div>';
+      hiddenHTML+='<div style="flex:1;font-size:12px;color:#94A3B8;">'+_repLabel(r)+'</div>';
+      hiddenHTML+='<button onclick="event.stopPropagation();window._cdbUnhideRep(\''+rEsc2+'\');var p=document.getElementById(\'_cdb_rep_pop\');if(p)p.remove();setTimeout(function(){_cdbShowRepPopup(\''+id+'\');},100);" style="padding:3px 10px;border:1.5px solid #BFDBFE;border-radius:6px;background:#EFF6FF;color:#2563EB;font-size:11px;font-weight:600;cursor:pointer;">복구</button>';
+      hiddenHTML+='</div>';
+    });
+    hiddenHTML+='</div>';
   }
 
-  var h='<div style="background:#fff;border-radius:16px;width:340px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25);">';
-  h+='<div style="padding:16px 20px 12px;border-bottom:1px solid #F1F5F9;flex-shrink:0;">';
-  h+='<div style="font-weight:700;color:#1E293B;font-size:15px;">영업담당 관리</div>';
-  h+='<div style="font-size:11px;color:#94A3B8;margin-top:2px;">'+item.name+'</div>';
-  h+='</div>';
-  h+='<div style="overflow-y:auto;flex:1;padding:12px 20px;">';
-
-  // 자동 감지 활성
-  h+='<div style="font-size:11px;font-weight:700;color:#64748B;margin-bottom:6px;letter-spacing:.05em;">🔍 자동 감지</div>';
-  if(activeAuto.length||inactiveAuto.length){
-    activeAuto.forEach(function(r){
-      h+=repRow(r.rep, true, true, r.srcs.join('/'));
-    });
-    if(inactiveAuto.length){
-      h+='<div style="font-size:10px;color:#94A3B8;margin:8px 0 4px;">체크 해제됨</div>';
-      inactiveAuto.forEach(function(r){
-        h+=repRow(r.rep, false, true, r.srcs.join('/'));
-      });
-    }
-  } else {
-    h+='<div style="font-size:12px;color:#CBD5E1;padding:8px 0;">자동 감지된 담당자 없음</div>';
-  }
-
-  // 수동 추가
-  h+='<div style="font-size:11px;font-weight:700;color:#64748B;margin:12px 0 6px;letter-spacing:.05em;">✏️ 수동 추가</div>';
-  if(manualActive.length){
-    manualActive.forEach(function(r){
-      h+='<label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #F1F5F9;">'
-        +'<span style="font-size:13px;font-weight:500;color:#1E293B;">'+r.rep+'</span>'
-        +'<button data-rep="'+r.rep+'" data-id="'+id+'" onclick="(function(el){_cdbHideRep(el.dataset.rep,el.dataset.id);})(this)" style="margin-left:auto;font-size:10px;color:#94A3B8;background:none;border:none;cursor:pointer;">숨김</button>'
-        +'<button data-rep="'+r.rep+'" data-id="'+id+'" onclick="(function(el){_cdbRemoveManualRep(el.dataset.rep,el.dataset.id);})(this)" style="font-size:10px;color:#E84545;background:none;border:none;cursor:pointer;">삭제</button>'
-        +'</label>';
-    });
-  } else {
-    h+='<div style="font-size:12px;color:#CBD5E1;padding:8px 0;">수동 추가된 담당자 없음</div>';
-  }
-
-  // 숨긴 담당자
-  if(hiddenAuto.length||manualHidden.length){
-    h+='<div style="font-size:11px;font-weight:700;color:#94A3B8;margin:12px 0 6px;letter-spacing:.05em;">🙈 숨김 처리됨</div>';
-    hiddenAuto.forEach(function(r){
-      h+='<label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #F1F5F9;">'
-        +'<span style="font-size:13px;color:#CBD5E1;">'+r.rep+'</span>'
-        +'<button data-rep="'+r.rep+'" data-id="'+id+'" onclick="(function(el){_cdbShowRep(el.dataset.rep,el.dataset.id);})(this)" style="margin-left:auto;font-size:10px;color:#4f7fff;background:none;border:none;cursor:pointer;">표시</button>';
-        +'</label>';
-    });
-    manualHidden.forEach(function(r){
-      h+='<label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #F1F5F9;">'
-        +'<span style="font-size:13px;color:#CBD5E1;">'+r.rep+'</span>'
-        +'<button data-rep="'+r.rep+'" data-id="'+id+'" onclick="(function(el){_cdbShowRep(el.dataset.rep,el.dataset.id);})(this)" style="margin-left:auto;font-size:10px;color:#4f7fff;background:none;border:none;cursor:pointer;">표시</button>';
-        +'</label>';
-    });
-  }
-
-  // 수동 추가 입력
-  h+='<div style="margin-top:12px;padding-top:12px;border-top:1px solid #F1F5F9;">';
-  h+='<div style="font-size:11px;font-weight:700;color:#64748B;margin-bottom:6px;">+ 담당자 직접 추가</div>';
-  h+='<div style="display:flex;gap:6px;">';
-  h+='<input id="_cdb_rep_input" list="_cdb_rep_dl" placeholder="담당자 이름" style="flex:1;padding:6px 10px;border:1px solid #E2E8F0;border-radius:8px;font-size:13px;">';
-  h+='<datalist id="_cdb_rep_dl">'+REPS.map(function(r){return '<option value="'+r+'">'+r+'</option>';}).join('')+'</datalist>';
-  h+='<button id="_cdb_add_rep_btn" style="padding:6px 12px;background:#4f7fff;color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer;">추가</button>';
-  h+='</div></div>';
-  h+='</div>'; // scroll area end
-  h+='<div style="padding:12px 20px;border-top:1px solid #F1F5F9;flex-shrink:0;">';
-  h+='<button id="_cdb_rep_close_btn" style="width:100%;padding:10px;background:#F1F5F9;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;color:#64748B;">완료</button>';
-  h+='</div>';
-  h+='</div>';
-
-  wrap.innerHTML=h;
-  wrap.addEventListener('click',function(e){ if(e.target===wrap) wrap.remove(); });
+  wrap.innerHTML='<div style="background:#fff;border-radius:16px;width:100%;max-width:340px;max-height:80vh;box-shadow:0 20px 60px rgba(0,0,0,.16);border:1px solid #E2E8F0;overflow:hidden;display:flex;flex-direction:column;">'
+    +'<div style="padding:16px 20px 12px;border-bottom:1px solid #F1F5F9;display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0;">'
+      +'<div><div style="font-size:14px;font-weight:700;color:#0D1B2E;">영업담당 관리</div><div style="font-size:11px;color:#94A3B8;margin-top:2px;">'+_cdbEsc(item.name)+'</div></div>'
+      +'<button onclick="document.getElementById(\'_cdb_rep_pop\').remove()" style="width:26px;height:26px;border-radius:7px;border:1px solid #E2E8F0;background:#F8FAFC;color:#64748B;cursor:pointer;font-size:14px;">✕</button>'
+    +'</div>'
+    +'<div style="overflow-y:auto;flex:1;">'
+    +(autoReps.length?'<div style="padding:8px 20px 4px;font-size:10px;font-weight:700;color:#94A3B8;letter-spacing:.07em;text-transform:uppercase;">자동 감지</div>'+autoHTML:'')
+    +(ALL_REPS.filter(function(r){return !autoNames.includes(r);}).length?'<div style="padding:8px 20px 4px;font-size:10px;font-weight:700;color:#94A3B8;letter-spacing:.07em;text-transform:uppercase;">수동 추가</div>'+manHTML:'')
+    +'</div>'
+    +(hiddenHTML||'')
+    +'<div style="padding:12px 20px;border-top:1px solid #F1F5F9;flex-shrink:0;">'
+      +'<button onclick="document.getElementById(\'_cdb_rep_pop\').remove()" style="width:100%;padding:9px;border-radius:9px;border:none;background:#4f7fff;color:#fff;font-size:12px;font-weight:600;cursor:pointer;">완료</button>'
+    +'</div>'
+  +'</div>';
   document.body.appendChild(wrap);
-  // 추가 버튼 이벤트
-  var addBtn=document.getElementById('_cdb_add_rep_btn');
-  if(addBtn) addBtn.addEventListener('click',function(){
-    var v=(document.getElementById('_cdb_rep_input')||{}).value||'';
-    v=v.trim();
-    if(v) _cdbAddManualRep(v,id);
-  });
-  var closeBtn=document.getElementById('_cdb_rep_close_btn');
-  if(closeBtn) closeBtn.addEventListener('click',function(){
-    var pop=document.getElementById('_cdb_rep_pop');
-    if(pop) pop.remove();
-  });
+  wrap.addEventListener('click',function(e){if(e.target===wrap)wrap.remove();});
 }
 function _cdbToggleAutoRep(id,rep){
   var item=_cdbById(id); if(!item) return;
@@ -16022,17 +15889,12 @@ var _cdbInitDone=false;
 function _initClientsPage(){
   if(!store.clientDB) store.clientDB=[];
   if(!_cdbInitDone){ _cdbInitDone=true; _cdbSyncFromStore(); }
-
-  // 즉시 현재 데이터로 렌더 (로딩 중 표시 없음)
+  // 즉시 렌더
   _cdbRenderList('');
-  var all=_cdbAll();
-  if(all.length>0&&!_cdbSelectedId){
-    _cdbSelectedId=all[0].id; _cdbRenderDetail(all[0].id);
-  } else if(_cdbSelectedId&&_cdbById(_cdbSelectedId)){
-    _cdbRenderDetail(_cdbSelectedId);
-  }
-
-  // 백그라운드 SP sync 후 갱신
+  var _all=_cdbAll();
+  if(_all.length>0&&!_cdbSelectedId){ _cdbSelectedId=_all[0].id; _cdbRenderDetail(_all[0].id); }
+  else if(_cdbSelectedId&&_cdbById(_cdbSelectedId)){ _cdbRenderDetail(_cdbSelectedId); }
+  // 백그라운드 SP sync
   if(window._isSPReady){
     _spSyncOtherReps().then(function(changed){
       if(changed){
@@ -16579,7 +16441,7 @@ async function _spSaveClientDB(){
   if(!window._isSPReady) return;
   try{
     var _now = new Date().toISOString();
-    var payload={clientDB:_cdbAll(),savedAt:_now,deletedNames:store.clientDB_deletedNames||[]};
+    var payload={clientDB:_cdbAll(),savedAt:_now};
     await _spSaveItem('client_db','clientDB',payload);
     // 저장 시각 기록 (sync 덮어쓰기 방지)
     store._clientDBSavedAt = _now;
@@ -17686,70 +17548,6 @@ window._wkCloseLoadWeek=function(){
 };
 window._wkFillLoadWeeks=function(year){
   var wEl=document.getElementById('wk-load-week');
-  var infoEl=document.getElementById('wk-load-week-info');
-  if(!wEl) return;
-  wEl.innerHTML='<option value="">-- 주차 선택 --</option>';
-
-  // SP 캐시에서 저장된 모든 주차 키 추출
-  var existingWeeks={};
-  // weeklyFeed 캐시에서 Title 파싱 (가장 정확)
-  if(window._wkFeedCache&&window._wkFeedCache.items){
-    window._wkFeedCache.items.forEach(function(item){
-      var t=item.Title||item.DataKey||'';
-      // Title 형식: weeklyFeed_YYYY-WNN_담당자명
-      var m=t.match(/weeklyFeed_(\d{4}-W\d{2})/);
-      if(m) existingWeeks[m[1]]=true;
-    });
-  }
-  // 추가: _wk.entries, prevEntries의 week 필드
-  if(_wk&&_wk.entries) _wk.entries.forEach(function(e){ if(e.week) existingWeeks[e.week]=true; });
-  if(_wk&&_wk.prevEntries) _wk.prevEntries.forEach(function(e){ if(e.week) existingWeeks[e.week]=true; });
-
-  var curWk=typeof _wkThisKey==='function'?_wkThisKey():'';
-  var curWn=curWk?parseInt(curWk.split('W')[1]||'53'):53;
-  var curYr=new Date().getFullYear();
-
-  var addedCount=0;
-  for(var w=53;w>=1;w--){
-    var wStr=(w<10?'0':'')+w;
-    var wKey=year+'-W'+wStr;
-    // 유효한 주차인지 (해당 주차 월요일이 해당 년도에 속하는지)
-    var jan4=new Date(year,0,4);
-    var jan4dow=(jan4.getDay()+6)%7;
-    var mon=new Date(jan4); mon.setDate(jan4.getDate()-jan4dow+(w-1)*7);
-    if(mon.getFullYear()<year-1||mon.getFullYear()>year+1) continue;
-    // 현재/미래 주차 제외
-    if(year===curYr&&w>=curWn) continue;
-    if(year>curYr) continue;
-
-    var fri=new Date(mon); fri.setDate(mon.getDate()+4);
-    var monStr=mon.toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'});
-    var friStr=fri.toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'});
-    var hasData=existingWeeks[wKey]||false;
-
-    var label=(hasData?'✅ ':'    ')+w+'주차  '+monStr+' ~ '+friStr+(hasData?' (데이터 있음)':'');
-    var opt=document.createElement('option');
-    opt.value=wKey;
-    opt.textContent=label;
-    if(hasData){ opt.style.fontWeight='700'; opt.style.color='#1E293B'; }
-    else { opt.style.color='#94A3B8'; }
-    wEl.appendChild(opt);
-    addedCount++;
-  }
-
-  // 주차 변경 시 정보 표시
-  wEl.onchange=function(){
-    if(!infoEl) return;
-    var val=this.value;
-    if(!val){ infoEl.textContent=''; return; }
-    var hasD=existingWeeks[val]||false;
-    infoEl.innerHTML=hasD
-      ?'<span style="color:#16A34A;font-weight:600;">✅ 회의 데이터가 있습니다</span>'
-      :'<span style="color:#94A3B8;">해당 주차에 저장된 회의록이 없습니다</span>';
-  };
-};
-window._wkFillLoadWeeks=function(year){
-  var wEl=document.getElementById('wk-load-week');
   if(!wEl) return;
   wEl.innerHTML='';
   var curWk=typeof _wkGetWeekKey==='function'?_wkGetWeekKey(new Date()):'';
@@ -17768,19 +17566,9 @@ window._wkFillLoadWeeks=function(year){
     if(year===curYr&&w>=curWn) continue;
     if(year>curYr) continue;
     var fri=new Date(mon); fri.setDate(mon.getDate()+4);
-    // 해당 주차에 데이터 있는지 확인
-    var hasData=false;
-    if(_wk&&_wk.entries){
-      hasData=_wk.entries.some(function(e){ return e.week===wKey; });
-    }
-    if(!hasData&&window._wk&&window._wk.allEntries){
-      hasData=window._wk.allEntries.some(function(e){ return e.week===wKey; });
-    }
-    var dataTag=hasData?' ✅':'';
-    var label=w+'주차  '+mon.toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'})+' ~ '+fri.toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'})+dataTag;
+    var label=w+'주차  '+mon.toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'})+' ~ '+fri.toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'});
     var opt=document.createElement('option');
     opt.value=wKey; opt.textContent=label;
-    if(hasData) opt.style.fontWeight='700';
     wEl.appendChild(opt);
   }
 };
@@ -18828,41 +18616,17 @@ function _wkUpdateNotifBadge(){
 }
 window._wkOpenPeriod=function(){
   var m=document.getElementById('wk-period-modal');
-  if(!m) return;
-  // 년도 select 채우기
-  var yEl=document.getElementById('wk-period-year');
-  var wEl=document.getElementById('wk-period-week');
-  if(yEl&&!yEl.options.length){
-    var curY=new Date().getFullYear();
-    for(var y=curY-1;y<=curY+1;y++){
-      var opt=document.createElement('option');
-      opt.value=y; opt.text=y+'년';
-      if(y===curY) opt.selected=true;
-      yEl.appendChild(opt);
-    }
-  }
-  if(wEl&&!wEl.options.length){
-    for(var w=1;w<=53;w++){
-      var opt2=document.createElement('option');
-      opt2.value=w; opt2.text=w+'주차';
-      wEl.appendChild(opt2);
-    }
-  }
-  m.style.display='flex';
+  if(m) m.style.display='flex';
 };
 window._wkClosePeriod=function(){
   var m=document.getElementById('wk-period-modal');
   if(m) m.style.display='none';
 };
 window._wkApplyPeriod=function(){
-  var yEl=document.getElementById('wk-period-year');
-  var wEl=document.getElementById('wk-period-week');
-  if(yEl&&wEl&&yEl.value&&wEl.value){
-    var yr=parseInt(yEl.value);
-    var wk=parseInt(wEl.value);
-    // YYYY-WNN 형식 키 생성
-    var selectedKey=yr+'-W'+(wk<10?'0':'')+wk;
-    if(_wk){ _wk.weekMode='select'; _wk.selectedWeekKey=selectedKey; }
+  var from=document.getElementById('wk-period-from');
+  var to=document.getElementById('wk-period-to');
+  if(from&&to&&from.value&&to.value){
+    if(_wk){_wk.weekMode='period';_wk.periodFrom=from.value;_wk.periodTo=to.value;}
     window._wkClosePeriod();
     if(typeof _wkRenderReport==='function') _wkRenderReport();
     if(typeof _wkRenderFeed==='function') _wkRenderFeed();
