@@ -14348,8 +14348,20 @@ async function _spSyncOtherReps(){
               deduped[k] = c;
             }
           });
-          store.clientDB = Object.values(deduped);
+          // SP에서 로드한 clientDB에서 deletedNames 제거
+          var _delNames = store.clientDB_deletedNames||[];
+          var _filtered = Object.values(deduped).filter(function(item){
+            return _delNames.indexOf((item.name||'').trim()) < 0;
+          });
+          store.clientDB = _filtered;
           store._clientDBSavedAt = p.savedAt||'';
+          // SP의 deletedNames도 병합 (다른 기기에서 삭제한 것 반영)
+          if(p.deletedNames&&Array.isArray(p.deletedNames)){
+            if(!store.clientDB_deletedNames) store.clientDB_deletedNames=[];
+            p.deletedNames.forEach(function(n){
+              if(store.clientDB_deletedNames.indexOf(n)<0) store.clientDB_deletedNames.push(n);
+            });
+          }
         }
       }catch(e){}
     });
@@ -15879,6 +15891,8 @@ function _cdbSyncFromStore(){
   });
   var changed=false;
   Object.keys(names).forEach(function(n){
+    // 삭제된 고객사는 자동 재등록 방지
+    if((store.clientDB_deletedNames||[]).indexOf(n)>=0) return;
     if(!_cdbByName(n)){
       _cdbAll().push({id:_cdbNewId(),name:n,contacts:[],note:'',autoAdded:true,createdAt:new Date().toISOString()});
       changed=true;
@@ -16498,7 +16512,7 @@ async function _spSaveClientDB(){
   if(!window._isSPReady) return;
   try{
     var _now = new Date().toISOString();
-    var payload={clientDB:_cdbAll(),savedAt:_now};
+    var payload={clientDB:_cdbAll(),deletedNames:store.clientDB_deletedNames||[],savedAt:_now};
     await _spSaveItem('client_db','clientDB',payload);
     // 저장 시각 기록 (sync 덮어쓰기 방지)
     store._clientDBSavedAt = _now;
