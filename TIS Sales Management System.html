@@ -2035,6 +2035,9 @@ select._bsl-sel {
 .act-drag-handle{cursor:grab!important;color:#CBD5E1;font-size:16px;transition:color .12s;}
 .act-drag-handle:hover{color:#4f7fff;}
 .act-drag-row.dragging{opacity:0.4;}
+
+/* 영업활동 확도/시기 placeholder 중앙 정렬 */
+td.at-cell-prob input::placeholder, td.at-cell-timing input::placeholder { text-align: center; }
 </style>
 
 <script>
@@ -4745,13 +4748,16 @@ function showPage(id,navEl){
     }
   }
   if(id==='weekly'){
-    // 주간회의 진입 시 데이터가 없으면 로드, 있으면 즉시 렌더
-    if(typeof _wkSetView==='function' && typeof _wk!=='undefined'){
+    if(typeof _wk!=='undefined'){
+      // 항상 loading 리셋 후 로드 (stuck 방지)
+      _wk.loading=false;
+      // entries 있으면 즉시 렌더 후 백그라운드 재로드
       if(_wk.entries&&_wk.entries.length>0){
-        _wkRenderFeed(); _wkRenderReport();
-      } else {
-        if(typeof _wkLoad==='function'){ _wk.loading=false; _wkLoad(); }
+        try{ if(typeof _wkRenderFeed==='function') _wkRenderFeed(); }catch(e){}
+        try{ if(typeof _wkRenderReport==='function') _wkRenderReport(); }catch(e){}
       }
+      // SP 재로드 (최신 데이터 보장)
+      if(typeof _wkLoad==='function') _wkLoad();
     }
   }
   if(id==='issues'){
@@ -5779,10 +5785,10 @@ function aRow(rep,ai,a){
         onblur="const n=parseFloat(this.value.replace(/,/g,''));this.value=n?n.toLocaleString('ko-KR'):'';"
         onchange="store.reps['${rep}'].activities[${ai}].amount=Math.max(0,parseFloat(String(this.value).replace(/,/g,''))||0);autoSave()">
     </td>
-    <td style="width:80px;vertical-align:middle;">
+    <td class="at-cell-prob" style="width:80px;vertical-align:middle;text-align:center;">
       <input type="text" value="${a.prob||''}" style="width:100%;text-align:center;" onchange="store.reps['${rep}'].activities[${ai}].prob=Math.min(100,Math.max(0,parseFloat(this.value)||0));autoSave()">
     </td>
-    <td style="width:150px;vertical-align:middle;">
+    <td class="at-cell-timing" style="width:150px;vertical-align:middle;text-align:center;">
       <input type="text" value="${a.timing||''}" style="width:100%;text-align:center;" onchange="store.reps['${rep}'].activities[${ai}].timing=this.value;autoSave()">
     </td>
     <td style="min-width:240px;vertical-align:top;">
@@ -8338,10 +8344,8 @@ function autoSave(){
               if(!window._lastContractHash)window._lastContractHash={};
               if(window._lastContractHash[_ar]!==_ch){
                 window._lastContractHash[_ar]=_ch;
-                // 계약이 있을 때만 저장 (빈 배열로 덮어쓰기 방지)
-                if((store.reps[_ar]&&store.reps[_ar].contracts&&store.reps[_ar].contracts.length>0)){
-                  await _spSaveContractData(_ar);
-                }
+                // 삭제 시에도 저장 (빈 배열로 덮어쓰기 필요)
+                await _spSaveContractData(_ar);
               }
             }
           }
@@ -14124,7 +14128,10 @@ async function _spSaveVisitLog(rep){
   if(!r||!store.reps[r]) return;
   var vl=store.reps[r].visitLog||[];
   try{
-    await _spSaveItem('visit_log', r, {visitLog:vl, savedAt:new Date().toISOString()});
+    var _vlSavedAt=new Date().toISOString();
+    await _spSaveItem('visit_log', r, {visitLog:vl, savedAt:_vlSavedAt, visitLogSavedAt:_vlSavedAt});
+    // 로컬 visitLogSavedAt 갱신
+    if(store.reps[r]) store.reps[r].visitLogSavedAt=_vlSavedAt;
   }catch(e){ console.warn('visitLog SP 저장 실패:',e); }
 }
 
@@ -14142,9 +14149,8 @@ async function _spLoadVisitLog(rep){
       var d=JSON.parse(found.Payload);
       if(d&&Array.isArray(d.visitLog)){
         var existing=store.reps[rep]&&store.reps[rep].visitLog||[];
-        if(d.visitLog.length>=existing.length){
-          if(store.reps[rep]) store.reps[rep].visitLog=d.visitLog;
-        }
+        // savedAt 기준 교체 (length 조건 제거 - 삭제 반영)
+        if(store.reps[rep]) store.reps[rep].visitLog=d.visitLog;
       }
     }
   }catch(e){}
@@ -14163,9 +14169,8 @@ async function _spLoadAllVisitLogs(){
         var d=JSON.parse(item.Payload);
         if(d&&Array.isArray(d.visitLog)&&store.reps[rep]){
           var existing=store.reps[rep].visitLog||[];
-          if(d.visitLog.length>=existing.length){
-            store.reps[rep].visitLog=d.visitLog;
-          }
+          // savedAt 기준으로 교체 (length 조건 제거 - 삭제 반영)
+          store.reps[rep].visitLog=d.visitLog;
         }
       }catch(e){}
     });
@@ -14363,7 +14368,7 @@ async function _spSyncOtherReps(){
         var cr = cpl.rep;
         var cyr = parseInt(cpl.year);
         var cyNow = new Date().getFullYear();
-        if(!cr||!cpl.contracts||!cpl.contracts.length||Math.abs(cyr-cyNow)>2) return;
+        if(!cr||!cpl.contracts||Math.abs(cyr-cyNow)>2) return; // 빈 배열도 삭제 반영을 위해 처리
         // 실제 store.reps 키 찾기
         var crKey = (typeof _findRepByKey==='function') ? _findRepByKey(cr) : cr;
         if(!store.reps[crKey]){
@@ -14447,11 +14452,16 @@ async function _spSyncOtherReps(){
           if(spAt > localAt && (Date.now()-(window._lastAutoSaveTs||0) > 5000) && spHasData){
             if(!store.reps[myRep]) store.reps[myRep] = {plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[],contracts:[]};
             var localVL = store.reps[myRep].visitLog||[];
+            var localVLSavedAt = store.reps[myRep].visitLogSavedAt||'';
             ['plan','actual','forecast','clients','activities','issuesList'].forEach(function(k){
               if(repData[k]!==undefined) store.reps[myRep][k]=repData[k];
             });
-            if(!store.reps[myRep].visitLog||store.reps[myRep].visitLog.length<localVL.length)
+            // visitLog: SP savedAt이 더 최신이면 SP로 교체 (삭제 반영)
+            if((repData.visitLogSavedAt||repData.savedAt||'') >= localVLSavedAt){
+              store.reps[myRep].visitLog = repData.visitLog||[];
+            } else {
               store.reps[myRep].visitLog = localVL;
+            }
             if(repData.savedAt) store.reps[myRep].savedAt = repData.savedAt;
             changed = true;
           }
@@ -14468,8 +14478,8 @@ async function _spSyncOtherReps(){
           ['plan','actual','forecast','clients','activities','issuesList'].forEach(function(k){
             if(repData[k]!==undefined) store.reps[repName][k]=repData[k];
           });
-          if((repData.visitLog||[]).length>=(store.reps[repName].visitLog||[]).length)
-            store.reps[repName].visitLog = repData.visitLog||[];
+          // visitLog: savedAt 기준 (length 비교 제거 - 삭제 반영)
+          store.reps[repName].visitLog = repData.visitLog||[];
           if(repData.savedAt) store.reps[repName].savedAt = repData.savedAt;
         }
         if(JSON.stringify(store.reps[repName])!==before) changed = true;
@@ -14494,7 +14504,10 @@ async function _spSyncOtherReps(){
           var existIds = {};
           (store.reps[arKey].activities||[]).forEach(function(a){ if(a.no||a.client) existIds[(a.no||'')+'_'+(a.client||'')] = true; });
           var newActs = apl.activities.filter(function(a){ return !existIds[(a.no||'')+'_'+(a.client||'')]; });
-          if(newActs.length) store.reps[arKey].activities = (store.reps[arKey].activities||[]).concat(newActs);
+          // 아카이브: 현재 rep_data보다 오래된 아카이브만 병합 (삭제 복원 방지)
+          var _repSavedAt = new Date((store.reps[arKey]&&store.reps[arKey].savedAt)||0).getTime();
+          if(spAt < _repSavedAt && newActs.length)
+            store.reps[arKey].activities = (store.reps[arKey].activities||[]).concat(newActs);
         }
         if(apl.issuesList&&apl.issuesList.length){
           var locAtI = new Date(store.reps[arKey].issSavedAt||0).getTime();
@@ -16515,8 +16528,14 @@ async function _spSaveContractData(rep){
     cs.forEach(function(c){var yr=c.startDate?parseInt(c.startDate.substr(0,4)):new Date().getFullYear();if(!bY[yr])bY[yr]=[];bY[yr].push(c);});
     var cy=new Date().getFullYear();
     // 빈 연도 저장 안 함 (0건으로 덮어쓰기 방지)
+    // 삭제된 경우: bY에 없는 연도는 빈 배열로 SP 저장 (삭제 반영)
+    // 기존 SP에 저장된 연도 목록 파악
+    var _prevYrs = Object.keys((store.reps[rep]&&store.reps[rep].contractSavedAt)||{});
+    _prevYrs.forEach(function(pyr){
+      if(!bY[pyr]) bY[pyr] = []; // 없어진 연도는 빈 배열로 덮어쓰기
+    });
     for(var yr in bY){
-      if(!bY[yr]||!bY[yr].length) continue; // 계약 없으면 스킵
+      // 계약 없어도 저장 (삭제 반영) - 단 previouslyExisted or nowEmpty
       // 직책 제거 - 저장 키는 이름만 (rep/관리자 동일 키 보장)
       var _cRepBase=rep;
       if(typeof authCfg!=='undefined'&&authCfg.repTitles){
@@ -16533,7 +16552,12 @@ async function _spSaveContractData(rep){
         _cRepBase=_cRepBase.trim();
       }
       var k=_sanitizeDKey(_cRepBase+'_'+yr);
-      await _spSaveItem('contract_data',k,{rep:_cRepBase,year:parseInt(yr),contracts:bY[yr],savedAt:new Date().toISOString()});
+      var _csavedAt=new Date().toISOString();
+      await _spSaveItem('contract_data',k,{rep:_cRepBase,year:parseInt(yr),contracts:bY[yr]||[],savedAt:_csavedAt});
+      // contractSavedAt 갱신
+      if(!store.reps[rep]) store.reps[rep]={};
+      if(!store.reps[rep].contractSavedAt) store.reps[rep].contractSavedAt={};
+      store.reps[rep].contractSavedAt[parseInt(yr)]=_csavedAt;
     }
     // 저장 완료 (토스트 없음 - 자동저장이므로 UI 방해 안 함)
     // 저장 후 해시 캐시 갱신 (다음 rebuild가 스킵되지 않도록)
@@ -17602,12 +17626,19 @@ window._wkFillLoadWeeks=function(year){
   var curWk=typeof _wkGetWeekKey==='function'?_wkGetWeekKey(new Date()):'';
   var curWn=curWk?parseInt(curWk.split('W')[1]):53;
   var curYr=new Date().getFullYear();
+  // SP 캐시에서 실제 entries가 있는 주차만 추출
   var existingWeeks={};
   if(window._wkFeedCache&&window._wkFeedCache.items){
     window._wkFeedCache.items.forEach(function(item){
       var t=item.Title||item.DataKey||'';
       var wm=t.match(/(\d{4}-W\d{2})/);
-      if(wm) existingWeeks[wm[1]]=true;
+      if(!wm) return;
+      var wKey=wm[1];
+      // Payload에 실제 entries가 있는지 확인
+      try{
+        var p=JSON.parse(item.Payload||'{}');
+        if(p.entries&&p.entries.length>0) existingWeeks[wKey]=true;
+      }catch(e){}
     });
   }
   for(var w=53;w>=1;w--){
@@ -17625,7 +17656,6 @@ window._wkFillLoadWeeks=function(year){
     var hasData=!!existingWeeks[wKey];
     var opt=document.createElement('option');
     opt.value=wKey;
-    // option은 textContent만 가능 - 유니코드 컬러 원형 아이콘
     opt.textContent=(hasData?'🟢 ':'🔴 ')+w+'주차  '+mStr+' ~ '+fStr;
     if(hasData){ opt.style.fontWeight='700'; opt.style.color='#0D1B2E'; }
     else { opt.style.color='#94A3B8'; }
@@ -17784,34 +17814,34 @@ window._wkSetView=function(view){
 async function _wkLoad(){
   if(_wk.loading) return;
   _wk.loading=true;
-  // 1단계: 캐시가 있을 때만 즉시 렌더 (빈 상태로 덮어쓰기 방지)
-  if(_wk.entries&&_wk.entries.length>0) try{ _wkRenderReport(); _wkRenderFeed(); _wkUpdatePendingCnt(); }catch(e){}
+  // 1단계: 캐시가 있으면 즉시 렌더
+  if(_wk.entries&&_wk.entries.length>0){
+    try{ _wkRenderReport(); _wkRenderFeed(); _wkUpdatePendingCnt(); }catch(e){}
+  }
   // 2단계: SP 연결 완료 시 최신 데이터 로드
   if(window._isSPReady){
     try{
-      // weekMode에 따라 로드할 주차 결정
       var loadKey, prevLoadKey=null;
       if(_wk.weekMode==='last'){
-        loadKey=_wkLastKey();   // 지난주
+        loadKey=_wkLastKey();
       } else if(_wk.weekMode==='period'){
-        // 주차 선택 모드: selectedWeekKey 사용 (저장도 이 키 기준)
         loadKey=_wk.selectedWeekKey||_wkThisKey();
         prevLoadKey=null;
       } else {
-        loadKey=_wkThisKey();   // 이번주
-        prevLoadKey=_wkLastKey(); // 이전주도 로드
+        loadKey=_wkThisKey();
+        prevLoadKey=_wkLastKey();
       }
       var entries=await _wkLoadFeed(loadKey);
-      _wk.entries=entries; // weekMode 변경 시 항상 업데이트
+      _wk.entries=entries;
       if(prevLoadKey){
         _wk.prevEntries=await _wkLoadFeed(prevLoadKey);
       }
       _wkRenderReport();
       _wkRenderFeed();
       _wkUpdatePendingCnt();
-    }catch(e){ console.warn('[wk load]',e); }
-    _wk.loading=false;
+    }catch(e){ console.warn('[wk load]',e); }finally{ _wk.loading=false; }
   } else {
+    // SP 미연결 - loading 해제 후 연결 대기
     _wk.loading=false;
     var _wkPoll=0;
     var _wkPollId=setInterval(function(){
@@ -18159,7 +18189,7 @@ function _wkEntryHtml(entry){
     +repliesHtml
     +'<div style="margin-top:5px;">'
       +'<button class="wk-reply-btn" onclick="_wkToggleReply(\''+entry.id+'\')">↩ 답변하기</button>'
-      +((window._wkIsAuthor&&window._wkIsAuthor(entry))
+      +((window._wkIsAuthor&&window._wkIsAuthor(entry))||(typeof session!=='undefined'&&session&&session.role==='admin')
         ?'<button class="wk-edit-btn" onclick="_wkEditEntry(\''+entry.id+'\')">✏️ 수정</button>'
          +'<button class="wk-del-btn" onclick="_wkDeleteEntry(\''+entry.id+'\')">🗑 삭제</button>'
         :'')
