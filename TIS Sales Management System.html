@@ -2355,7 +2355,7 @@ document.addEventListener('mousedown',function(e){
 .cdb-rep-add{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;border:1px dashed #CBD5E1;background:#fff;color:#94A3B8;font-size:11px;cursor:pointer;transition:all .12s;}
 .cdb-rep-add:hover{border-color:#4f7fff;color:#4f7fff;background:#EFF6FF;}
 /* KPI */
-.cdb-kpi{display:flex;border-bottom:1px solid #F1F5F9;flex-shrink:0;}
+.cdb-kpi{display:flex;border-bottom:1px solid #F1F5F9;flex-shrink:0;flex-wrap:nowrap;}
 .cdb-ki{flex:1;padding:10px 0;text-align:center;border-right:1px solid #F1F5F9;}
 .cdb-ki:last-child{border-right:none;}
 .cdb-kn{font-size:18px;font-weight:800;color:#0D1B2E;}
@@ -7234,6 +7234,14 @@ function goGuestStep(){
   gs.style.display='block';
   var _msE='';
   if(window._msalApp){var _ac=window._msalApp.getAllAccounts();if(_ac.length>0)_msE=(_ac[0].username||'').toLowerCase().trim();}
+  // SP 설정이 아직 로드 안 됐으면 로드 후 재시도
+  if(_msE && (!authCfg.guestAllowList||!authCfg.guestAllowList.length) && window._isSPReady && !window._spSettingsLoaded){
+    spLoadSettings().then(function(){
+      window._spSettingsLoaded=true;
+      goGuestStep();
+    }).catch(function(){ goGuestStep._direct=true; });
+    return;
+  }
   var _gm=(typeof _getGuestAllowMatch==='function')?_getGuestAllowMatch(_msE):null;
   var _kd=document.getElementById('auth-s-guest-known');
   var _ud=document.getElementById('auth-s-guest-unknown');
@@ -13934,7 +13942,7 @@ window.renderVisits=function(){
     +'<input type="date" id="vdf-from" value="'+(_visitDateFrom||'')+'" style="height:28px;border:1.5px solid #E2E8F0;border-radius:8px;padding:0 8px;font-size:13px;font-family:inherit;outline:none;" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" onchange="window._visitDateFrom=this.value;">'
     +'<span style="font-size:13px;color:#94A3B8;">~</span>'
     +'<input type="date" id="vdf-to" value="'+(_visitDateTo||'')+'" style="height:28px;border:1.5px solid #E2E8F0;border-radius:8px;padding:0 8px;font-size:13px;font-family:inherit;outline:none;" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" onchange="window._visitDateTo=this.value;">'
-    +'<button onclick="window._visitFilterDate=String();window._visitPage=1;renderVisits();" style="height:28px;padding:0 14px;border-radius:8px;border:none;background:#4f7fff;color:white;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">조회</button>'
+    +'<button onclick="var _f=document.getElementById(\'vdf-from\'),_t=document.getElementById(\'vdf-to\');if(_f&&_f.value)window._visitDateFrom=_f.value;if(_t&&_t.value)window._visitDateTo=_t.value;window._visitPeriod=\'custom\';window._visitFilterDate=String();window._visitPage=1;renderVisits();" style="height:28px;padding:0 14px;border-radius:8px;border:none;background:#4f7fff;color:white;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">조회</button>'
     +'</div>';
 
   // ── 전체 조립 ──
