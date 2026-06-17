@@ -18094,17 +18094,10 @@ function _wkRenderRepTable(){
   var _repMonthEl=document.getElementById('wk-rep-month');
   if(_repMonthEl) _repMonthEl.textContent=curY+'년 '+monthLabel;
 
-  function fmt(v){
-    v=parseFloat(v)||0;
-    return v>0?v.toLocaleString():'-';
-  }
+  function fmt(v){ v=parseFloat(v)||0; return v>0?v.toLocaleString():'-'; }
 
   var COLS=[{bg:'#E6F1FB',fg:'#185FA5'},{bg:'#E1F5EE',fg:'#0F6E56'},{bg:'#EEEDFE',fg:'#3C3489'},{bg:'#FAECE7',fg:'#993C1D'},{bg:'#FEF3E2',fg:'#854F0B'},{bg:'#F3EEF8',fg:'#6B3A8C'}];
-  var ST={달성:'background:#EAF3DE;color:#3B6D11',진행:'background:#E6F1FB;color:#185FA5',대기:'background:#F1EFE8;color:#5F5E5A',계약:'background:#EAF3DE;color:#3B6D11',종료:'background:#FCEBEB;color:#A32D2D',예상:'background:#FEF3E2;color:#854F0B'};
-
-  // 공통 td 스타일
-  var TD_BASE='padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:middle;text-align:center;font-size:12px;';
-  var TH_BASE='padding:6px 8px;font-size:10px;color:var(--muted);background:var(--bg);border-bottom:1px solid var(--border);text-align:center;font-weight:400;';
+  var ST={달성:'#EAF3DE|#3B6D11',진행:'#E6F1FB|#185FA5',대기:'#F1EFE8|#5F5E5A',계약:'#EAF3DE|#3B6D11',종료:'#FCEBEB|#A32D2D',예상:'#FEF3E2|#854F0B'};
 
   var html='<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:4px 0;">';
 
@@ -18115,16 +18108,12 @@ function _wkRenderRepTable(){
     var rate=plan>0?Math.round(act/plan*100):0;
     var rc=rate>=80?'#1D9E75':rate>=60?'#BA7517':'#E24B4A';
     var col=COLS[ri%COLS.length];
-    var allCls=rd.clients||[];
-    var cls=allCls.filter(function(cl){
-      var v=Array.isArray(cl.actual)?(parseFloat(cl.actual[moIdx])||0):(parseFloat(cl.actual)||0);
-      return v>0;
+    var cls=(rd.clients||[]).filter(function(cl){
+      return (Array.isArray(cl.actual)?(parseFloat(cl.actual[moIdx])||0):(parseFloat(cl.actual)||0))>0;
     });
     var forecast=0;
     cls.forEach(function(cl){
-      if(cl.status==='예상'){
-        forecast+=Array.isArray(cl.actual)?(parseFloat(cl.actual[moIdx])||0):(parseFloat(cl.actual)||0);
-      }
+      if(cl.status==='예상') forecast+=Array.isArray(cl.actual)?(parseFloat(cl.actual[moIdx])||0):(parseFloat(cl.actual)||0);
     });
     var MAX=10;
 
@@ -18137,17 +18126,15 @@ function _wkRenderRepTable(){
     html+='<div style="width:26px;height:26px;border-radius:50%;background:'+col.bg+';color:'+col.fg+';font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;">'+(rep||'').charAt(0)+'</div>';
     html+='<span style="font-size:14px;font-weight:600;color:var(--text);">'+rep+'</span>';
     if(rd.repTitle) html+='<span style="font-size:11px;color:var(--muted);">'+rd.repTitle+'</span>';
-    html+='</div><span style="font-size:18px;font-weight:700;color:'+rc+';">'+rate+'%</span>';
-    html+='</div>';
+    html+='</div><span style="font-size:18px;font-weight:700;color:'+rc+';">'+rate+'%</span></div>';
     html+='<div style="height:3px;background:var(--border);border-radius:2px;margin-bottom:10px;"><div style="height:3px;width:'+Math.min(rate,100)+'%;background:'+rc+';border-radius:2px;"></div></div>';
 
-    // 요약카드: 금액 옆에 "천원" 표기
+    // 요약카드
     html+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">';
     [['경영계획',plan],['달성',act],['예상',forecast],['고객사',-1]].forEach(function(it){
       html+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px;text-align:center;">';
       if(it[1]===-1){
-        html+='<div style="font-size:13px;font-weight:600;color:var(--text);">'+cls.length+'건</div>';
-        html+='<div style="font-size:10px;color:var(--muted);margin-top:2px;">고객사</div>';
+        html+='<div style="font-size:13px;font-weight:600;color:var(--text);">'+cls.length+'건</div><div style="font-size:10px;color:var(--muted);margin-top:2px;">고객사</div>';
       } else {
         html+='<div style="font-size:13px;font-weight:600;color:var(--text);">'+fmt(it[1])+'<span style="font-size:10px;font-weight:400;color:var(--muted);margin-left:2px;">천원</span></div>';
         html+='<div style="font-size:10px;color:var(--muted);margin-top:2px;">'+it[0]+'</div>';
@@ -18156,47 +18143,45 @@ function _wkRenderRepTable(){
     });
     html+='</div></div>';
 
-    // 테이블 - table 태그로 정확한 열 정렬
+    // ── 테이블: display:flex 행 방식으로 열 너비 정확히 고정
+    // 고객사(자동), 품목(60px), 구분(44px), 달성(72px), 예상(60px), 상태(50px)
+    var CW=['','60px','44px','72px','60px','50px'];
+    function row(cells, isHd){
+      var s='<div style="display:flex;align-items:center;border-bottom:1px solid var(--border);'+(isHd?'background:var(--bg);':'')+'font-size:'+(isHd?'10':'12')+'px;">';
+      cells.forEach(function(cell,ci){
+        var w=CW[ci]||''; // ci=0: flex:1, 나머지: 고정
+        var flex=ci===0?'flex:1;min-width:0;':'flex:0 0 '+w+';width:'+w+';';
+        var align=ci===0?'text-align:left;padding-left:12px;':(ci===3||ci===4?'text-align:right;padding-right:10px;':'text-align:center;');
+        s+='<div style="'+flex+align+'padding-top:'+(isHd?5:7)+'px;padding-bottom:'+(isHd?5:7)+'px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:'+(isHd?'var(--muted)':'var(--text)')+';">'+cell+'</div>';
+      });
+      s+='</div>';
+      return s;
+    }
+
     html+='<div style="'+(cls.length>MAX?'max-height:360px;overflow-y:auto;':'')+'">';
-    html+='<table style="width:100%;border-collapse:collapse;table-layout:fixed;">';
-    // colgroup으로 너비 고정
-    html+='<colgroup>';
-    html+='<col style="width:auto;">';        // 고객사
-    html+='<col style="width:62px;">';        // 품목
-    html+='<col style="width:46px;">';        // 구분
-    html+='<col style="width:80px;">';        // 달성
-    html+='<col style="width:68px;">';        // 예상
-    html+='<col style="width:48px;">';        // 상태
-    html+='</colgroup>';
-    // 헤더
-    html+='<thead><tr>';
-    html+='<th style="'+TH_BASE+'text-align:left;padding-left:12px;">고객사</th>';
-    html+='<th style="'+TH_BASE+'">품목</th>';
-    html+='<th style="'+TH_BASE+'">구분</th>';
-    html+='<th style="'+TH_BASE+'text-align:right;padding-right:12px;">달성</th>';
-    html+='<th style="'+TH_BASE+'text-align:right;padding-right:8px;">예상</th>';
-    html+='<th style="'+TH_BASE+'">상태</th>';
-    html+='</tr></thead>';
-    // 데이터
-    html+='<tbody>';
+    // 헤더행
+    html+=row(['고객사','품목','구분','달성','예상','상태'],true);
     if(cls.length===0){
-      html+='<tr><td colspan="6" style="'+TD_BASE+'color:var(--muted);">'+monthLabel+' 실적 없음</td></tr>';
+      html+='<div style="padding:16px;font-size:12px;color:var(--muted);text-align:center;">'+monthLabel+' 실적 없음</div>';
     } else {
       cls.forEach(function(cl){
         var clAct=Array.isArray(cl.actual)?(parseFloat(cl.actual[moIdx])||0):(parseFloat(cl.actual)||0);
         var clFore=cl.status==='예상'?clAct:0;
-        var st=ST[cl.status]||'background:#F1EFE8;color:#5F5E5A';
-        html+='<tr>';
-        html+='<td style="'+TD_BASE+'text-align:left;padding-left:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;color:var(--text);">'+(cl.name||cl.client||'-')+'</td>';
-        html+='<td style="'+TD_BASE+'"><span style="font-size:10px;padding:2px 5px;border-radius:4px;background:#E6F1FB;color:#185FA5;">'+(cl.product||'-')+'</span></td>';
-        html+='<td style="'+TD_BASE+'"><span style="font-size:10px;padding:2px 4px;border-radius:4px;background:#F1EFE8;color:#5F5E5A;">'+(cl.type||'-')+'</span></td>';
-        html+='<td style="'+TD_BASE+'text-align:right;padding-right:12px;font-weight:500;color:var(--text);">'+fmt(clAct)+'</td>';
-        html+='<td style="'+TD_BASE+'text-align:right;padding-right:8px;color:#BA7517;font-size:11px;">'+(clFore>0?fmt(clFore):'-')+'</td>';
-        html+='<td style="'+TD_BASE+'"><span style="font-size:10px;padding:2px 5px;border-radius:10px;'+st+';">'+(cl.status||'-')+'</span></td>';
-        html+='</tr>';
+        var stParts=(ST[cl.status]||'#F1EFE8|#5F5E5A').split('|');
+        var prod='<span style="font-size:10px;padding:2px 5px;border-radius:4px;background:#E6F1FB;color:#185FA5;white-space:nowrap;">'+(cl.product||'-')+'</span>';
+        var typ='<span style="font-size:10px;padding:2px 4px;border-radius:4px;background:#F1EFE8;color:#5F5E5A;white-space:nowrap;">'+(cl.type||'-')+'</span>';
+        var stBadge='<span style="font-size:10px;padding:2px 5px;border-radius:10px;background:'+stParts[0]+';color:'+stParts[1]+';white-space:nowrap;">'+(cl.status||'-')+'</span>';
+        var cells=[
+          '<span style="font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;">'+(cl.name||cl.client||'-')+'</span>',
+          prod, typ,
+          '<span style="font-weight:500;">'+fmt(clAct)+'</span>',
+          '<span style="color:#BA7517;font-size:11px;">'+(clFore>0?fmt(clFore):'-')+'</span>',
+          stBadge
+        ];
+        html+=row(cells,false);
       });
     }
-    html+='</tbody></table></div>';
+    html+='</div>';
     if(cls.length>MAX) html+='<div style="padding:6px 12px;font-size:11px;color:var(--muted);text-align:center;background:var(--bg);border-top:1px solid var(--border);">총 '+cls.length+'건 · 스크롤하여 전체 보기</div>';
     html+='</div>';
   });
