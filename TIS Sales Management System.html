@@ -17982,16 +17982,16 @@ function _wkRenderKPI(){
     var _mon=new Date(_jan4); _mon.setDate(_jan4.getDate()-_dow+(_wn-1)*7);
     mm=_mon.getMonth(); curY=_mon.getFullYear();
   }
-  // 단위: 천원 → 원 변환 (x1000)
-  function toWon(v){ return (parseFloat(v)||0)*1000; }
+  // 단위: 천원 (저장값 그대로, 곱하지 않음)
   function fmtWon(v){
-    if(v>=100000000) return (v/100000000).toFixed(1)+'억';
-    if(v>=10000000) return Math.round(v/10000000)+'천만';
-    if(v>=1000000) return Math.round(v/100000)/10+'백만';
-    if(v>=10000) return Math.round(v/10000)+'만';
-    if(v>=1000) return Math.round(v/1000)+'천';
-    return v>0?v.toLocaleString():'0';
+    v=parseFloat(v)||0; if(!v) return '0';
+    if(v>=100000) return (v/100000).toFixed(1).replace(/\.0$/,'')+'억';
+    if(v>=10000)  return Math.round(v/1000)+'천만';
+    if(v>=1000){  var n=v/1000; return (n%1===0?String(n):n.toFixed(1))+'백만'; }
+    if(v>=100)    return Math.round(v/100)+'십만';
+    return v+'천원';
   }
+  function toWon(v){ return parseFloat(v)||0; } // 천원 단위 그대로
   var yearTotal=0, monthPlan=0, monthAct=0;
   var openIssues=0, expiringSoon=0, newContracts=0, totalContracts=0;
   reps.forEach(function(rep){
@@ -18080,95 +18080,78 @@ function _wkRenderRepTable(){
   var el=document.getElementById('wk-rep-table');
   if(!el) return;
   var reps=_wkGetActiveReps();
-  var today=new Date();
-  var mm=today.getMonth();
-  var curY=today.getFullYear();
+  var today=new Date(); var mm=today.getMonth(); var curY=today.getFullYear();
   if(_wk.weekMode==='period'&&_wk.selectedWeekKey){
     var _yr=parseInt(_wk.selectedWeekKey.split('-W')[0]);
     var _wn=parseInt(_wk.selectedWeekKey.split('-W')[1]);
-    var _jan4=new Date(_yr,0,4);
-    var _dow=(_jan4.getDay()+6)%7;
-    var _mon=new Date(_jan4); _mon.setDate(_jan4.getDate()-_dow+(_wn-1)*7);
-    mm=_mon.getMonth(); curY=_mon.getFullYear();
+    var _j=new Date(_yr,0,4); var _d=(_j.getDay()+6)%7;
+    var _m=new Date(_j); _m.setDate(_j.getDate()-_d+(_wn-1)*7);
+    mm=_m.getMonth(); curY=_m.getFullYear();
   }
-  // 단위: 천원
-  function toWon(v){ return (parseFloat(v)||0)*1000; }
-  function fmtWon(v){
-    if(v>=100000000) return (v/100000000).toFixed(1)+'억';
-    if(v>=10000000) return Math.round(v/10000000)+'천만';
-    if(v>=1000000) return Math.round(v/100000)/10+'백만';
-    if(v>=10000) return Math.round(v/10000)+'만';
-    if(v>=1000) return Math.round(v/1000)+'천';
-    return v>0?v.toLocaleString():'0';
+  // 천원 단위 그대로 포맷
+  function fmt(v){
+    v=parseFloat(v)||0; if(!v) return '-';
+    if(v>=100000) return (v/100000).toFixed(1).replace(/\.0$/,'')+'억';
+    if(v>=10000) return Math.round(v/1000)+'천만';
+    if(v>=1000){ var n=v/1000; return (n%1===0?n:n.toFixed(1))+'백만'; }
+    if(v>=100) return Math.round(v/100)+'십만';
+    return v+'천원';
   }
+  function getAct(cl){ return Array.isArray(cl.actual)?(parseFloat(cl.actual[mm])||0):(parseFloat(cl.actual)||0); }
   var COLS=[{bg:'#E6F1FB',fg:'#185FA5'},{bg:'#E1F5EE',fg:'#0F6E56'},{bg:'#EEEDFE',fg:'#3C3489'},{bg:'#FAECE7',fg:'#993C1D'},{bg:'#FEF3E2',fg:'#854F0B'},{bg:'#F3EEF8',fg:'#6B3A8C'}];
+  var ST={달성:'background:#EAF3DE;color:#3B6D11',진행:'background:#E6F1FB;color:#185FA5',대기:'background:#F1EFE8;color:#5F5E5A',계약:'background:#EAF3DE;color:#3B6D11',종료:'background:#FCEBEB;color:#A32D2D',예상:'background:#FEF3E2;color:#854F0B'};
+  var COL_W='minmax(0,1fr) 64px 46px 72px 54px';
+  var GAP='gap:4px';
   var html='<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:4px 0;">';
-
   reps.forEach(function(rep,ri){
     var rd=store&&store.reps&&store.reps[rep]; if(!rd) return;
-    var plan=toWon((rd.plan&&rd.plan[mm])||0);
-    var act=toWon((rd.actual&&rd.actual[mm])||0);
+    var plan=parseFloat((rd.plan&&rd.plan[mm])||0);
+    var act=parseFloat((rd.actual&&rd.actual[mm])||0);
     var rate=plan>0?Math.round(act/plan*100):0;
-    var rateColor=rate>=80?'#1D9E75':rate>=60?'#BA7517':'#E24B4A';
-    var clients=rd.clients||[];
-    var col=COLS[ri%COLS.length];
-    var firstName=(rep||'').charAt(0);
-    var title=rd.repTitle||'';
-    var MAX_VISIBLE=10;
-
+    var rc=rate>=80?'#1D9E75':rate>=60?'#BA7517':'#E24B4A';
+    var cl=rd.clients||[]; var col=COLS[ri%COLS.length];
+    var MAX=10;
     html+='<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;">';
     // 헤더
     html+='<div style="padding:12px 16px;background:var(--card);border-bottom:1px solid var(--border);">';
     html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">';
     html+='<div style="display:flex;align-items:center;gap:8px;">';
-    html+='<div style="width:26px;height:26px;border-radius:50%;background:'+col.bg+';color:'+col.fg+';font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;">'+firstName+'</div>';
+    html+='<div style="width:26px;height:26px;border-radius:50%;background:'+col.bg+';color:'+col.fg+';font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;">'+(rep||'').charAt(0)+'</div>';
     html+='<span style="font-size:14px;font-weight:600;color:var(--text);">'+rep+'</span>';
-    if(title) html+='<span style="font-size:11px;color:var(--muted);">'+title+'</span>';
-    html+='</div>';
-    html+='<span style="font-size:18px;font-weight:700;color:'+rateColor+';">'+rate+'%</span>';
-    html+='</div>';
-    html+='<div style="height:3px;background:var(--border);border-radius:2px;margin-bottom:10px;"><div style="height:3px;width:'+Math.min(rate,100)+'%;background:'+rateColor+';border-radius:2px;"></div></div>';
+    if(rd.repTitle) html+='<span style="font-size:11px;color:var(--muted);">'+rd.repTitle+'</span>';
+    html+='</div><span style="font-size:18px;font-weight:700;color:'+rc+';">'+rate+'%</span></div>';
+    html+='<div style="height:3px;background:var(--border);border-radius:2px;margin-bottom:10px;"><div style="height:3px;width:'+Math.min(rate,100)+'%;background:'+rc+';border-radius:2px;"></div></div>';
     html+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">';
-    [['계획',fmtWon(plan)],['달성',fmtWon(act)],['고객사',clients.length+'건']].forEach(function(item){
-      html+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 8px;text-align:center;">';
-      html+='<div style="font-size:13px;font-weight:600;color:var(--text);">'+item[1]+'</div>';
-      html+='<div style="font-size:10px;color:var(--muted);margin-top:2px;">'+item[0]+'</div>';
-      html+='</div>';
+    [['계획',fmt(plan)],['달성',fmt(act)],['고객사',cl.length+'건']].forEach(function(it){
+      html+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px;text-align:center;"><div style="font-size:13px;font-weight:600;color:var(--text);">'+it[1]+'</div><div style="font-size:10px;color:var(--muted);margin-top:2px;">'+it[0]+'</div></div>';
     });
     html+='</div></div>';
-
-    // 테이블 헤더 - 고정 너비로 열 정렬
-    html+='<div style="display:grid;grid-template-columns:minmax(0,1fr) 60px 44px 60px 52px;padding:6px 16px;font-size:10px;color:var(--muted);background:var(--bg);border-bottom:1px solid var(--border);gap:4px;">';
-    ['고객사','품목','구분','달성(천원)','상태'].forEach(function(h,hi){
-      var align=hi===3?'text-align:right;':hi===4?'text-align:center;':'';
-      html+='<span style="'+align+'">'+(h)+'</span>';
-    });
+    // 테이블 헤더 행
+    html+='<div style="display:grid;grid-template-columns:'+COL_W+';'+GAP+';padding:6px 16px;font-size:10px;color:var(--muted);background:var(--bg);border-bottom:1px solid var(--border);">';
+    html+='<span>고객사</span>';
+    html+='<span style="text-align:center;display:block;">품목</span>';
+    html+='<span style="text-align:center;display:block;">구분</span>';
+    html+='<span style="text-align:right;display:block;">달성(천원)</span>';
+    html+='<span style="text-align:center;display:block;">상태</span>';
     html+='</div>';
-
-    // 고객사 목록 - 10개 초과 시 스크롤
-    var maxH=clients.length>MAX_VISIBLE?String(MAX_VISIBLE*36)+'px':'auto';
-    html+='<div style="max-height:'+maxH+';overflow-y:'+(clients.length>MAX_VISIBLE?'auto':'visible')+';">';
-
-    if(clients.length===0){
+    // 고객사 목록
+    html+='<div style="'+(cl.length>MAX?'max-height:360px;overflow-y:auto;':'')+'">';
+    if(cl.length===0){
       html+='<div style="padding:16px;font-size:12px;color:var(--muted);text-align:center;">등록된 고객사 없음</div>';
     } else {
-      clients.forEach(function(cl){
-        var cAct=toWon((cl.actual&&Array.isArray(cl.actual)?cl.actual[mm]:0)||(cl.actual||0));
-        var stMap={'달성':'#EAF3DE|#3B6D11','진행':'#E6F1FB|#185FA5','대기':'#F1EFE8|#5F5E5A','계약':'#EAF3DE|#3B6D11','종료':'#FCEBEB|#A32D2D','예상':'#FEF3E2|#854F0B'};
-        var stParts=(stMap[cl.status]||'#F1EFE8|#5F5E5A').split('|');
-        html+='<div style="display:grid;grid-template-columns:minmax(0,1fr) 60px 44px 60px 52px;align-items:center;padding:8px 16px;border-bottom:1px solid var(--border);gap:4px;font-size:12px;">';
-        html+='<span style="font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(cl.name||cl.client||'-')+'</span>';
-        html+='<span style="text-align:center;"><span style="font-size:10px;padding:2px 5px;border-radius:4px;background:#E6F1FB;color:#185FA5;">'+(cl.product||'-')+'</span></span>';
-        html+='<span style="text-align:center;"><span style="font-size:10px;padding:2px 5px;border-radius:4px;background:#F1EFE8;color:#5F5E5A;">'+(cl.type||'-')+'</span></span>';
-        html+='<span style="text-align:right;font-weight:500;color:var(--text);">'+(cAct>0?fmtWon(cAct):'-')+'</span>';
-        html+='<span style="text-align:center;"><span style="font-size:10px;padding:2px 6px;border-radius:10px;background:'+stParts[0]+';color:'+stParts[1]+';">'+(cl.status||'-')+'</span></span>';
+      cl.forEach(function(c){
+        var a=getAct(c); var st=ST[c.status]||'background:#F1EFE8;color:#5F5E5A';
+        html+='<div style="display:grid;grid-template-columns:'+COL_W+';'+GAP+';align-items:center;padding:8px 16px;border-bottom:1px solid var(--border);font-size:12px;">';
+        html+='<span style="font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(c.name||c.client||'-')+'</span>';
+        html+='<span style="display:flex;justify-content:center;"><span style="font-size:10px;padding:2px 5px;border-radius:4px;background:#E6F1FB;color:#185FA5;">'+(c.product||'-')+'</span></span>';
+        html+='<span style="display:flex;justify-content:center;"><span style="font-size:10px;padding:2px 5px;border-radius:4px;background:#F1EFE8;color:#5F5E5A;">'+(c.type||'-')+'</span></span>';
+        html+='<span style="display:block;text-align:right;font-weight:500;color:var(--text);">'+fmt(a)+'</span>';
+        html+='<span style="display:flex;justify-content:center;"><span style="font-size:10px;padding:2px 6px;border-radius:10px;'+st+';">'+(c.status||'-')+'</span></span>';
         html+='</div>';
       });
     }
     html+='</div>';
-    if(clients.length>MAX_VISIBLE){
-      html+='<div style="padding:6px 16px;font-size:11px;color:var(--muted);text-align:center;background:var(--bg);border-top:1px solid var(--border);">총 '+clients.length+'건 · 스크롤하여 전체 보기</div>';
-    }
+    if(cl.length>MAX) html+='<div style="padding:6px 16px;font-size:11px;color:var(--muted);text-align:center;background:var(--bg);border-top:1px solid var(--border);">총 '+cl.length+'건 · 스크롤하여 전체 보기</div>';
     html+='</div>';
   });
   html+='</div>';
