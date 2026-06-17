@@ -18099,8 +18099,6 @@ function _wkRenderRepTable(){
   var COLS=[{bg:'#E6F1FB',fg:'#185FA5'},{bg:'#E1F5EE',fg:'#0F6E56'},{bg:'#EEEDFE',fg:'#3C3489'},{bg:'#FAECE7',fg:'#993C1D'},{bg:'#FEF3E2',fg:'#854F0B'},{bg:'#F3EEF8',fg:'#6B3A8C'}];
   var ST={달성:'#EAF3DE|#3B6D11',진행:'#E6F1FB|#185FA5',대기:'#F1EFE8|#5F5E5A',계약:'#EAF3DE|#3B6D11',종료:'#FCEBEB|#A32D2D',예상:'#FEF3E2|#854F0B'};
 
-  // 고정 너비 컬럼: 품목60 구분44 달성72 예상60 상태50 = 286px + padding
-  // 고객사: 나머지. table 방식 사용 (가장 정확)
   var html='<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:4px 0;">';
 
   reps.forEach(function(rep,ri){
@@ -18143,27 +18141,40 @@ function _wkRenderRepTable(){
     });
     html+='</div></div>';
 
-    // table 태그: 헤더 sticky, 데이터 스크롤
-    html+='<div style="overflow:hidden;">';
-    html+='<table style="width:100%;border-collapse:collapse;font-size:12px;">';
-    html+='<colgroup><col><col style="width:60px"><col style="width:44px"><col style="width:72px"><col style="width:60px"><col style="width:50px"></colgroup>';
-    // sticky 헤더
-    html+='<thead><tr style="background:var(--bg);">';
-    [['고객사','left','12px'],['품목','center','0'],['구분','center','0'],['달성','right','10px'],['예상','right','8px'],['상태','center','0']].forEach(function(h){
-      html+='<th style="padding:6px '+h[2]+';font-size:10px;font-weight:400;color:var(--muted);border-bottom:1px solid var(--border);text-align:'+h[0]+';white-space:nowrap;position:sticky;top:0;background:var(--bg);z-index:1;">'+h[0]+'</th>';
-    });
-    html+='</tr></thead>';
-    // 스크롤 tbody
-    html+='<tbody style="'+(cls.length>MAX?'display:block;max-height:360px;overflow-y:auto;':'')+'">';
+    // 테이블: div로 감싸서 overflow 처리 (tbody display:block 사용 안함)
+    var tableWrap='overflow-x:hidden;'+(cls.length>MAX?'max-height:380px;overflow-y:auto;':'');
+    html+='<div style="'+tableWrap+'">';
+    html+='<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;">';
+    // colgroup: 고객사는 남은 공간, 나머지 고정
+    html+='<colgroup>';
+    html+='<col>';
+    html+='<col style="width:62px">';
+    html+='<col style="width:44px">';
+    html+='<col style="width:74px">';
+    html+='<col style="width:62px">';
+    html+='<col style="width:50px">';
+    html+='</colgroup>';
+    html+='<thead>';
+    html+='<tr style="background:var(--bg);">';
+    html+='<th style="padding:6px 8px 6px 12px;font-size:10px;font-weight:400;color:var(--muted);border-bottom:1px solid var(--border);text-align:left;">고객사</th>';
+    html+='<th style="padding:6px 4px;font-size:10px;font-weight:400;color:var(--muted);border-bottom:1px solid var(--border);text-align:center;">품목</th>';
+    html+='<th style="padding:6px 4px;font-size:10px;font-weight:400;color:var(--muted);border-bottom:1px solid var(--border);text-align:center;">구분</th>';
+    html+='<th style="padding:6px 10px 6px 4px;font-size:10px;font-weight:400;color:var(--muted);border-bottom:1px solid var(--border);text-align:right;">달성</th>';
+    html+='<th style="padding:6px 8px 6px 4px;font-size:10px;font-weight:400;color:var(--muted);border-bottom:1px solid var(--border);text-align:right;">예상</th>';
+    html+='<th style="padding:6px 4px;font-size:10px;font-weight:400;color:var(--muted);border-bottom:1px solid var(--border);text-align:center;">상태</th>';
+    html+='</tr>';
+    html+='</thead>';
+    html+='<tbody>';
     if(cls.length===0){
-      html+='<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--muted);">'+monthLabel+' 실적 없음</td></tr>';
+      html+='<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--muted);font-size:12px;">'+monthLabel+' 실적 없음</td></tr>';
     } else {
       cls.forEach(function(cl,ci2){
         var clAct=Array.isArray(cl.actual)?(parseFloat(cl.actual[moIdx])||0):(parseFloat(cl.actual)||0);
         var clFore=cl.status==='예상'?clAct:0;
         var stParts=(ST[cl.status]||'#F1EFE8|#5F5E5A').split('|');
-        html+='<tr style="'+(ci2%2?'background:var(--bg);':'')+'">';
-        html+='<td style="padding:7px 12px;border-bottom:1px solid var(--border);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:0;font-weight:500;color:var(--text);">'+(cl.name||cl.client||'-')+'</td>';
+        var bg=ci2%2?'background:var(--bg);':'';
+        html+='<tr style="'+bg+'">';
+        html+='<td style="padding:7px 8px 7px 12px;border-bottom:1px solid var(--border);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;color:var(--text);">'+(cl.name||cl.client||'-')+'</td>';
         html+='<td style="padding:7px 4px;border-bottom:1px solid var(--border);text-align:center;"><span style="font-size:10px;padding:2px 5px;border-radius:4px;background:#E6F1FB;color:#185FA5;white-space:nowrap;">'+(cl.product||'-')+'</span></td>';
         html+='<td style="padding:7px 4px;border-bottom:1px solid var(--border);text-align:center;"><span style="font-size:10px;padding:2px 4px;border-radius:4px;background:#F1EFE8;color:#5F5E5A;white-space:nowrap;">'+(cl.type||'-')+'</span></td>';
         html+='<td style="padding:7px 10px 7px 4px;border-bottom:1px solid var(--border);text-align:right;font-weight:500;color:var(--text);">'+fmt(clAct)+'</td>';
