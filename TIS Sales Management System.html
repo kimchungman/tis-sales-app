@@ -2356,9 +2356,9 @@ document.addEventListener('mousedown',function(e){
 .cdb-rep-add:hover{border-color:#4f7fff;color:#4f7fff;background:#EFF6FF;}
 /* KPI */
 .cdb-kpi{display:flex;border-bottom:1px solid #F1F5F9;flex-shrink:0;flex-wrap:nowrap;}
-.cdb-ki{flex:1;padding:10px 0;text-align:center;border-right:1px solid #F1F5F9;}
+.cdb-ki{flex:1;min-width:0;padding:8px 2px;text-align:center;border-right:1px solid #F1F5F9;}
 .cdb-ki:last-child{border-right:none;}
-.cdb-kn{font-size:18px;font-weight:800;color:#0D1B2E;}
+.cdb-kn{font-size:15px;font-weight:800;color:#0D1B2E;}
 .cdb-kl{font-size:10px;color:#94A3B8;margin-top:1px;}
 /* 바디 */
 .cdb-body{display:flex;flex:1;overflow:hidden;}
@@ -13745,7 +13745,7 @@ window.renderVisits=function(){
   // 기간 필터 계산
   var now=new Date(), today=now.toISOString().split('T')[0];
   var cutoff='';
-  if(_visitPeriod!=='month'&&_visitPeriod!=='3month') _visitDateTo='';
+  if(_visitPeriod!=='month'&&_visitPeriod!=='3month'&&_visitPeriod!=='custom') _visitDateTo='';
   if(_visitPeriod==='week'){ var d=new Date(now);var _day=d.getDay();var _diff=_day===0?-6:1-_day;d.setDate(d.getDate()+_diff);cutoff=d.toISOString().split('T')[0]; }
   else if(_visitPeriod==='month'){
     // 이번달: 현재 월 1일부터 말일
