@@ -18080,48 +18080,68 @@ function _wkRenderRepTable(){
   var el=document.getElementById('wk-rep-table');
   if(!el) return;
   var reps=_wkGetActiveReps();
-  var today=new Date(); var mm=today.getMonth(); var curY=today.getFullYear();
+  var today=new Date(); var curY=today.getFullYear();
+  var generalMM=today.getMonth(); // 0-based (0=1월)
+
+  // period 모드: 해당 주차의 월 기준
   if(_wk.weekMode==='period'&&_wk.selectedWeekKey){
     var _yr=parseInt(_wk.selectedWeekKey.split('-W')[0]);
     var _wn=parseInt(_wk.selectedWeekKey.split('-W')[1]);
     var _j=new Date(_yr,0,4); var _d=(_j.getDay()+6)%7;
     var _m=new Date(_j); _m.setDate(_j.getDate()-_d+(_wn-1)*7);
-    mm=_m.getMonth(); curY=_m.getFullYear();
+    generalMM=_m.getMonth(); curY=_m.getFullYear();
   }
+
+  // MONTHS=['4월'~'3월'] → 인덱스 변환: 4월시작 회계연도
+  // generalMM(0=1월) → moIdx: (generalMM-3+12)%12
+  var moIdx=(generalMM-3+12)%12;
+  var monthLabel=(generalMM+1)+'월';
+
   // 해당월 표시
   var _repMonthEl=document.getElementById('wk-rep-month');
-  if(_repMonthEl) _repMonthEl.textContent=curY+'년 '+(mm+1)+'월';
-  // 천원 단위 저장값 그대로 포맷
-  function fmt(v){
-    v=parseFloat(v)||0; if(!v) return '-';
+  if(_repMonthEl) _repMonthEl.textContent=curY+'년 '+monthLabel;
+
+  // 요약카드용 단위 포맷 (천원 단위)
+  function fmtCard(v){
+    v=parseFloat(v)||0; if(!v) return '0';
     if(v>=100000) return (v/100000).toFixed(1).replace(/\.0$/,'')+'억';
     if(v>=10000) return Math.round(v/1000)+'천만';
     if(v>=1000){ var n=v/1000; return (n%1===0?n:n.toFixed(1))+'백만'; }
-    if(v>=100) return Math.round(v/100)+'십만';
-    return v+'천원';
+    return v.toLocaleString()+'천원';
   }
+  // 달성/예상 열: 숫자 그대로 (쉼표만)
+  function fmtRaw(v){
+    v=parseFloat(v)||0;
+    return v>0?v.toLocaleString():'-';
+  }
+
   var COLS=[{bg:'#E6F1FB',fg:'#185FA5'},{bg:'#E1F5EE',fg:'#0F6E56'},{bg:'#EEEDFE',fg:'#3C3489'},{bg:'#FAECE7',fg:'#993C1D'},{bg:'#FEF3E2',fg:'#854F0B'},{bg:'#F3EEF8',fg:'#6B3A8C'}];
   var ST={달성:'background:#EAF3DE;color:#3B6D11',진행:'background:#E6F1FB;color:#185FA5',대기:'background:#F1EFE8;color:#5F5E5A',계약:'background:#EAF3DE;color:#3B6D11',종료:'background:#FCEBEB;color:#A32D2D',예상:'background:#FEF3E2;color:#854F0B'};
-  // 컬럼: 고객사(auto) 품목(54px) 구분(44px) 경영계획(64px) 달성(64px) 예상(64px) 상태(48px)
-  var COL='auto 54px 44px 64px 64px 64px 48px';
+  var COL='auto 54px 44px 70px 64px 48px';
   var html='<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:4px 0;">';
 
   reps.forEach(function(rep,ri){
     var rd=store&&store.reps&&store.reps[rep]; if(!rd) return;
-    // 해당월 경영계획/달성 (담당자 전체 plan/actual)
-    var plan=parseFloat((rd.plan&&rd.plan[mm])||0);
-    var act=parseFloat((rd.actual&&rd.actual[mm])||0);
-    // 예상 매출: status='예상'인 고객사의 해당월 actual 합계
-    var forecast=0;
-    var cls=rd.clients||[];
-    cls.forEach(function(cl){
-      if(cl.status==='예상'){
-        forecast+= Array.isArray(cl.actual)?(parseFloat(cl.actual[mm])||0):(parseFloat(cl.actual)||0);
-      }
-    });
+    // 경영계획: 매출현황 plan[moIdx]
+    var plan=parseFloat((rd.plan&&rd.plan[moIdx])||0);
+    // 달성: actual[moIdx]
+    var act=parseFloat((rd.actual&&rd.actual[moIdx])||0);
     var rate=plan>0?Math.round(act/plan*100):0;
     var rc=rate>=80?'#1D9E75':rate>=60?'#BA7517':'#E24B4A';
     var col=COLS[ri%COLS.length];
+    // 고객사: 해당월 actual[moIdx] > 0 인 것만 필터링
+    var allCls=rd.clients||[];
+    var cls=allCls.filter(function(cl){
+      var v=Array.isArray(cl.actual)?(parseFloat(cl.actual[moIdx])||0):(parseFloat(cl.actual)||0);
+      return v>0;
+    });
+    // 예상 합계
+    var forecast=0;
+    cls.forEach(function(cl){
+      if(cl.status==='예상'){
+        forecast+=Array.isArray(cl.actual)?(parseFloat(cl.actual[moIdx])||0):(parseFloat(cl.actual)||0);
+      }
+    });
     var MAX=10;
 
     html+='<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;">';
@@ -18134,9 +18154,9 @@ function _wkRenderRepTable(){
     if(rd.repTitle) html+='<span style="font-size:11px;color:var(--muted);">'+rd.repTitle+'</span>';
     html+='</div><span style="font-size:18px;font-weight:700;color:'+rc+';">'+rate+'%</span></div>';
     html+='<div style="height:3px;background:var(--border);border-radius:2px;margin-bottom:10px;"><div style="height:3px;width:'+Math.min(rate,100)+'%;background:'+rc+';border-radius:2px;"></div></div>';
-    // 요약: 경영계획 / 달성 / 예상 / 고객사
+    // 요약카드: 경영계획/달성/예상/고객사 (천원 단위 표기)
     html+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">';
-    [['경영계획',fmt(plan)],['달성',fmt(act)],['예상',fmt(forecast)],['고객사',cls.length+'건']].forEach(function(it){
+    [['경영계획',fmtCard(plan)],['달성',fmtCard(act)],['예상',fmtCard(forecast)],['고객사',cls.length+'건']].forEach(function(it){
       html+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px;text-align:center;"><div style="font-size:13px;font-weight:600;color:var(--text);">'+it[1]+'</div><div style="font-size:10px;color:var(--muted);margin-top:2px;">'+it[0]+'</div></div>';
     });
     html+='</div></div>';
@@ -18146,29 +18166,26 @@ function _wkRenderRepTable(){
     html+='<span>고객사</span>';
     html+='<span style="text-align:center;display:block;">품목</span>';
     html+='<span style="text-align:center;display:block;">구분</span>';
-    html+='<span style="text-align:right;display:block;">경영계획</span>';
     html+='<span style="text-align:right;display:block;">달성</span>';
     html+='<span style="text-align:right;display:block;">예상</span>';
     html+='<span style="text-align:center;display:block;">상태</span>';
     html+='</div>';
 
-    // 고객사 목록
+    // 고객사 목록 (해당월 금액 있는 것만)
     html+='<div style="'+(cls.length>MAX?'max-height:360px;overflow-y:auto;':'')+'">';
     if(cls.length===0){
-      html+='<div style="padding:16px;font-size:12px;color:var(--muted);text-align:center;">등록된 고객사 없음</div>';
+      html+='<div style="padding:16px;font-size:12px;color:var(--muted);text-align:center;">'+monthLabel+' 실적 없음</div>';
     } else {
       cls.forEach(function(cl){
-        var clPlan=Array.isArray(cl.plan)?(parseFloat(cl.plan[mm])||0):(parseFloat(cl.plan)||0);
-        var clAct=Array.isArray(cl.actual)?(parseFloat(cl.actual[mm])||0):(parseFloat(cl.actual)||0);
+        var clAct=Array.isArray(cl.actual)?(parseFloat(cl.actual[moIdx])||0):(parseFloat(cl.actual)||0);
         var clFore=cl.status==='예상'?clAct:0;
         var st=ST[cl.status]||'background:#F1EFE8;color:#5F5E5A';
         html+='<div style="display:grid;grid-template-columns:'+COL+';gap:3px;align-items:center;padding:7px 12px;border-bottom:1px solid var(--border);font-size:12px;">';
         html+='<span style="font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(cl.name||cl.client||'-')+'</span>';
         html+='<span style="display:flex;justify-content:center;"><span style="font-size:10px;padding:2px 4px;border-radius:4px;background:#E6F1FB;color:#185FA5;">'+(cl.product||'-')+'</span></span>';
         html+='<span style="display:flex;justify-content:center;"><span style="font-size:10px;padding:2px 4px;border-radius:4px;background:#F1EFE8;color:#5F5E5A;">'+(cl.type||'-')+'</span></span>';
-        html+='<span style="text-align:right;color:var(--muted);font-size:11px;">'+fmt(clPlan)+'</span>';
-        html+='<span style="text-align:right;font-weight:500;color:var(--text);">'+fmt(clAct)+'</span>';
-        html+='<span style="text-align:right;color:#BA7517;font-size:11px;">'+(clFore>0?fmt(clFore):'-')+'</span>';
+        html+='<span style="text-align:right;font-weight:500;color:var(--text);">'+fmtRaw(clAct)+'</span>';
+        html+='<span style="text-align:right;color:#BA7517;font-size:11px;">'+(clFore>0?fmtRaw(clFore):'-')+'</span>';
         html+='<span style="display:flex;justify-content:center;"><span style="font-size:10px;padding:2px 5px;border-radius:10px;'+st+';">'+(cl.status||'-')+'</span></span>';
         html+='</div>';
       });
