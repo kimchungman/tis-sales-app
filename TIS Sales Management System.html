@@ -3731,10 +3731,43 @@ document.addEventListener('selectionchange',function(){
       <div class="wk-card" style="padding:0;overflow:hidden;">
         <div id="wk-kpi-grid" style="padding:0;"></div>
       </div>
-      <!-- 오른쪽: 이전 회의록 -->
-      <div class="wk-card" style="padding:0;overflow:hidden;display:flex;flex-direction:column;">
-        <div class="wk-ch" style="flex-shrink:0;padding:12px 16px;border-bottom:1px solid var(--border);"><span class="wk-ch-t" id="wk-prev-title-label">이전 회의록</span><span class="wk-ch-s" id="wk-prev-period"></span></div>
-        <div id="wk-prev-section" style="flex:1;overflow-y:auto;min-height:0;"></div>
+      <!-- 오른쪽: 회의록 통합 카드 -->
+      <div class="wk-card" style="padding:0;overflow:hidden;display:flex;flex-direction:column;min-height:0;">
+        <!-- 헤더 -->
+        <div style="flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);">
+          <span class="wk-ch-t">회의록</span>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <button id="wk-log-this-btn" onclick="_wkLogSwitchThis()" style="display:none;font-size:11px;padding:3px 9px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--muted);cursor:pointer;">← 금주로</button>
+            <button onclick="_wkLogOpenWeek()" style="font-size:11px;padding:3px 9px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:4px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>주차 선택</button>
+          </div>
+        </div>
+        <!-- 탭: 금주/이전 -->
+        <div style="flex-shrink:0;display:flex;border-bottom:1px solid var(--border);">
+          <div id="wk-log-tab-this" onclick="_wkLogTab('this')" style="padding:8px 16px;font-size:12px;font-weight:500;cursor:pointer;border-bottom:2px solid #378ADD;margin-bottom:-1px;color:#185FA5;">금주 회의록<span id="wk-log-cnt-this" style="display:none;margin-left:4px;font-size:10px;padding:1px 5px;border-radius:10px;background:#E6F1FB;color:#0C447C;font-weight:700;"></span></div>
+          <div id="wk-log-tab-prev" onclick="_wkLogTab('prev')" style="padding:8px 16px;font-size:12px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;color:var(--muted);">이전 회의록<span id="wk-log-cnt-prev" style="display:none;margin-left:4px;font-size:10px;padding:1px 5px;border-radius:10px;background:#FCEBEB;color:#791F1F;font-weight:700;"></span></div>
+        </div>
+        <!-- 피드 목록 -->
+        <div id="wk-log-feed" style="flex:1;overflow-y:auto;min-height:0;"></div>
+        <!-- 입력창 (금주 탭만 표시) -->
+        <div id="wk-log-input" style="flex-shrink:0;border-top:1px solid var(--border);">
+          <div style="display:flex;align-items:center;gap:6px;padding:8px 14px 4px;">
+            <span id="wk-log-author" style="font-size:12px;font-weight:500;color:var(--text);"></span>
+            <span id="wk-log-role" style="font-size:10px;color:var(--muted);"></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:2px;padding:2px 14px 4px;flex-wrap:wrap;">
+            <button class="wk-tb" title="굵게" onclick="_wkFmt('bold')"><b>B</b></button>
+            <button class="wk-tb" title="기울임" onclick="_wkFmt('italic')"><i style="font-size:12px;">I</i></button>
+            <button class="wk-tb" title="밑줄" onclick="_wkFmt('underline')"><u>U</u></button>
+            <button class="wk-tb" title="취소선" onclick="_wkFmt('strikeThrough')"><s>S</s></button>
+            <div style="width:1px;height:14px;background:var(--border);margin:0 3px;flex-shrink:0;"></div>
+            <button class="wk-tb" style="width:auto;padding:0 6px;font-size:10px;gap:3px;color:#185FA5;display:flex;align-items:center;" onclick="_wkCheckMention('@')" title="@멘션">@ 멘션</button>
+          </div>
+          <div id="wk-log-mention-popup" class="wk-mention-popup" style="display:none;margin:0 14px 4px;"></div>
+          <div style="display:flex;gap:8px;padding:0 14px 10px;align-items:flex-end;">
+            <div id="wk-log-editor" class="wk-editor rich-ed" contenteditable="true" data-placeholder="회의 내용 입력... @ 로 담당자 멘션" style="flex:1;min-height:54px;max-height:100px;overflow-y:auto;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;background:var(--bg);line-height:1.6;"></div>
+            <button onclick="_wkLogSubmit()" style="padding:7px 13px;background:#185FA5;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;flex-shrink:0;align-self:flex-end;">등록</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -18088,7 +18121,8 @@ async function _wkLoad(){
 // \u2500\u2500 \ubcf4\uace0\uc11c \ub80c\ub354 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 function _wkRenderReport(){
   _wkRenderPrevSection();
-  _wkRenderKPI(); // _wkRenderKPI 내부에서 _wkRenderRepRates 호출
+  _wkRenderKPI();
+  _wkLogRender&&_wkLogRender();
   _wkRenderRepTable();
   _wkRenderProjects();
   _wkRenderIssues();
@@ -18150,6 +18184,215 @@ function _wkRenderPrevSection(){
   el.innerHTML=h;
 }
 
+// ── 회의록 통합 카드 ──────────────────────────────────────────
+var _wkLogTab_current = 'this'; // 'this' | 'prev'
+
+function _wkLogTab(tab){
+  _wkLogTab_current = tab;
+  var tabThis = document.getElementById('wk-log-tab-this');
+  var tabPrev = document.getElementById('wk-log-tab-prev');
+  var input   = document.getElementById('wk-log-input');
+  if(tabThis) tabThis.style.cssText='padding:8px 16px;font-size:12px;font-weight:500;cursor:pointer;margin-bottom:-1px;border-bottom:2px solid '+(tab==='this'?'#378ADD;color:#185FA5':'transparent;color:var(--muted)')+';';
+  if(tabPrev) tabPrev.style.cssText='padding:8px 16px;font-size:12px;font-weight:500;cursor:pointer;margin-bottom:-1px;border-bottom:2px solid '+(tab==='prev'?'#378ADD;color:#185FA5':'transparent;color:var(--muted)')+';';
+  if(input)   input.style.display = tab==='this' ? '' : 'none';
+  _wkLogRender();
+}
+
+function _wkLogOpenWeek(){
+  // 기존 주차선택 팝업 재사용
+  if(typeof _wkOpenPeriod==='function') _wkOpenPeriod();
+}
+
+function _wkLogSwitchThis(){
+  _wk.weekMode='this';
+  _wk.selectedWeekKey=null;
+  var btn = document.getElementById('wk-log-this-btn');
+  if(btn) btn.style.display='none';
+  window._wkFeedCache=null;
+  _wk.loading=false;
+  _wkLoad();
+}
+
+function _wkLogRender(){
+  var el = document.getElementById('wk-log-feed');
+  if(!el) return;
+  var entries = _wkLogTab_current==='this' ? (_wk.entries||[]) : (_wk.prevEntries||[]);
+  var weekKey = _wkLogTab_current==='this' ? _wkThisKey() : _wkPrevKey();
+
+  // 작성자 표시
+  var authorEl = document.getElementById('wk-log-author');
+  var roleEl   = document.getElementById('wk-log-role');
+  if(authorEl && session){
+    authorEl.textContent = session.role==='admin'?'관리자':(_wkDisplayName(session.rep)||session.rep||'게스트');
+    if(roleEl) roleEl.textContent = _wkGetRoleLabel?_wkGetRoleLabel():'';
+  }
+
+  // 배지 업데이트
+  var cntThis = document.getElementById('wk-log-cnt-this');
+  var cntPrev = document.getElementById('wk-log-cnt-prev');
+  var unreadPrev = (_wk.prevEntries||[]).filter(function(e){ return !e.replies||!e.replies.length; }).length;
+  if(cntThis){ cntThis.textContent=(_wk.entries||[]).length||''; cntThis.style.display=(_wk.entries||[]).length?'':'none'; }
+  if(cntPrev){ cntPrev.textContent=unreadPrev||''; cntPrev.style.display=unreadPrev?'':'none'; }
+
+  if(!entries.length){
+    el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;min-height:160px;gap:8px;">'
+      +'<div style="font-size:28px;opacity:.18;">📋</div>'
+      +'<div style="font-size:13px;color:var(--muted);font-weight:500;">'+(_wkLogTab_current==='this'?'금주 회의록이 없습니다':'이전 회의록이 없습니다')+'</div>'
+      +'<div style="font-size:11px;color:var(--muted2);">'+(_wkLogTab_current==='this'?'아래 입력창에서 등록하세요':'주차 선택으로 조회하세요')+'</div>'
+      +'</div>';
+    return;
+  }
+
+  var AVCOLS=[{bg:'#E6F1FB',c:'#0C447C'},{bg:'#E1F5EE',c:'#085041'},{bg:'#EEEDFE',c:'#3C3489'},{bg:'#FAECE7',c:'#712B13'},{bg:'#FEF3E2',c:'#633806'}];
+  function getAv(name){ var reps=typeof REPS!=='undefined'?REPS:[]; var i=reps.indexOf(name); return AVCOLS[(i<0?0:i)%AVCOLS.length]; }
+  var myName = typeof session!=='undefined'&&session ? (session.role==='admin'?'관리자':session.rep) : '';
+  var isAdmin = typeof session!=='undefined'&&session&&session.role==='admin';
+  var isPeriod = _wk.weekMode==='period';
+
+  var H='<div style="display:flex;flex-direction:column;">';
+  entries.forEach(function(entry, ei2){
+    var rowBg = ei2%2===1 ? 'background:#F8FAFC;' : '';
+    var canEdit = isAdmin || entry.rep===myName;
+    var pending = !entry.replies||!entry.replies.length;
+    var av = getAv(entry.rep||'');
+
+    H+='<div style="'+rowBg+'padding:11px 14px;border-bottom:0.5px solid #E2E8F0;" id="wk-log-entry-'+entry.id+'">';
+    H+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">';
+    H+='<div style="display:flex;align-items:center;gap:6px;">';
+    H+='<div style="width:22px;height:22px;border-radius:50%;background:'+av.bg+';color:'+av.c+';font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+(entry.displayName||entry.rep||'?').charAt(0)+'</div>';
+    H+='<span style="font-size:12px;font-weight:600;color:#0F172A;">'+_wkEsc(entry.displayName||entry.rep||'')+'</span>';
+    H+='<span style="font-size:10px;color:#94A3B8;">'+_wkEsc(entry.time||'')+'</span>';
+    H+='</div>';
+    H+='<div style="display:flex;align-items:center;gap:4px;">';
+    if(pending) H+='<span style="font-size:10px;padding:2px 6px;border-radius:20px;background:#FEF3E2;color:#854F0B;font-weight:500;">미답변</span>';
+    if(canEdit){
+      H+='<button onclick="_wkLogEditEntry(\''+entry.id+'\')" style="font-size:10px;padding:2px 7px;border:0.5px solid #E2E8F0;border-radius:4px;background:#fff;color:#64748B;cursor:pointer;">수정</button>';
+      H+='<button onclick="_wkLogDeleteEntry(\''+entry.id+'\')" style="font-size:10px;padding:2px 7px;border:0.5px solid #E2E8F0;border-radius:4px;background:#fff;color:#A32D2D;cursor:pointer;">삭제</button>';
+    }
+    H+='</div></div>';
+    H+='<div style="font-size:12px;color:#334155;line-height:1.65;margin-bottom:'+(pending&&!isPeriod?'6':'0')+'px;">'+_wkSanitize(entry.text||'')+'</div>';
+
+    // 답변
+    if(entry.replies&&entry.replies.length){
+      H+='<div style="margin-top:7px;display:flex;flex-direction:column;gap:4px;">';
+      entry.replies.forEach(function(r){
+        var rav=getAv(r.rep||'');
+        var canEditR=isAdmin||r.rep===myName;
+        H+='<div style="display:flex;gap:7px;padding:6px 9px;background:#F1F5F9;border-radius:6px;">';
+        H+='<div style="width:2px;background:#B5D4F4;border-radius:1px;flex-shrink:0;"></div>';
+        H+='<div style="flex:1;min-width:0;">';
+        H+='<div style="display:flex;align-items:center;gap:5px;margin-bottom:2px;">';
+        H+='<div style="width:18px;height:18px;border-radius:50%;background:'+rav.bg+';color:'+rav.c+';font-size:9px;font-weight:600;display:flex;align-items:center;justify-content:center;">'+(r.displayName||r.rep||'?').charAt(0)+'</div>';
+        H+='<span style="font-size:11px;font-weight:600;color:#185FA5;">'+_wkEsc(r.displayName||r.rep||'')+'</span>';
+        H+='<span style="font-size:10px;color:#94A3B8;">'+_wkEsc(r.time||'')+'</span>';
+        if(canEditR){
+          H+='<span style="margin-left:auto;display:flex;gap:3px;">';
+          H+='<button onclick="_wkLogEditReply(\''+entry.id+'\',\''+r.id+'\')" style="font-size:10px;padding:1px 5px;border:0.5px solid #E2E8F0;border-radius:3px;background:#fff;color:#64748B;cursor:pointer;">수정</button>';
+          H+='<button onclick="_wkLogDeleteReply(\''+entry.id+'\',\''+r.id+'\')" style="font-size:10px;padding:1px 5px;border:0.5px solid #E2E8F0;border-radius:3px;background:#fff;color:#A32D2D;cursor:pointer;">삭제</button>';
+          H+='</span>';
+        }
+        H+='</div>';
+        H+='<div style="font-size:11px;color:#334155;line-height:1.55;">'+_wkSanitize(r.text||'')+'</div>';
+        H+='</div></div>';
+      });
+      H+='</div>';
+    } else if(!isPeriod) {
+      H+='<button onclick="_wkLogOpenReply(\''+entry.id+'\')" style="font-size:11px;padding:3px 8px;border:0.5px solid #E2E8F0;border-radius:6px;background:#fff;color:#64748B;cursor:pointer;margin-top:2px;display:inline-flex;align-items:center;gap:3px;">↩ 답변하기</button>';
+    }
+    H+='</div>';
+  });
+
+  // 이전회차 + 주차선택 모드: 상단에 금주로 덮어쓰기 버튼
+  if(isPeriod && _wkLogTab_current==='prev'){
+    H+='<div style="padding:10px 14px;border-top:0.5px solid #E2E8F0;background:#F8FAFC;text-align:center;">';
+    H+='<button onclick="_wkLogOverwriteThis()" style="font-size:11px;padding:4px 12px;border:1px solid #BA7517;border-radius:6px;background:#FAEEDA;color:#854F0B;cursor:pointer;font-weight:500;">이 내용을 금주로 덮어쓰기</button>';
+    H+='</div>';
+  }
+  H+='</div>';
+  el.innerHTML=H;
+}
+
+function _wkLogSubmit(){
+  // wk-log-editor → wk-editor 동기화 후 기존 _wkSubmitEntry 호출
+  var logEd=document.getElementById('wk-log-editor');
+  var mainEd=document.getElementById('wk-editor');
+  if(logEd&&mainEd){ mainEd.innerHTML=logEd.innerHTML; }
+  if(typeof _wkSubmitEntry==='function'){
+    _wkSubmitEntry();
+    // 등록 후 에디터 초기화
+    setTimeout(function(){
+      if(logEd) logEd.innerHTML='';
+      _wkLogRender();
+    }, 500);
+  }
+}
+
+function _wkLogEditEntry(id){
+  var entry=(_wk.entries||[]).find(function(e){return e.id===id;})||
+            (_wk.prevEntries||[]).find(function(e){return e.id===id;});
+  if(!entry) return;
+  var newText=prompt('내용 수정:', entry.text?entry.text.replace(/<[^>]+>/g,''):'');
+  if(newText===null) return;
+  entry.text=newText;
+  if(typeof _wkSaveFeed==='function') _wkSaveFeed(_wkThisKey(), entry.rep, _wk.entries);
+  _wkLogRender();
+}
+
+function _wkLogDeleteEntry(id){
+  if(!confirm('삭제하시겠습니까?')) return;
+  _wk.entries=(_wk.entries||[]).filter(function(e){return e.id!==id;});
+  if(typeof _wkSaveFeed==='function') _wkSaveFeed(_wkThisKey(), session&&session.rep, _wk.entries);
+  _wkLogRender();
+}
+
+function _wkLogEditReply(entryId, replyId){
+  var entry=(_wk.entries||[]).find(function(e){return e.id===entryId;});
+  if(!entry) return;
+  var reply=(entry.replies||[]).find(function(r){return r.id===replyId;});
+  if(!reply) return;
+  var newText=prompt('답변 수정:', reply.text?reply.text.replace(/<[^>]+>/g,''):'');
+  if(newText===null) return;
+  reply.text=newText;
+  if(typeof _wkSaveFeed==='function') _wkSaveFeed(_wkThisKey(), entry.rep, _wk.entries);
+  _wkLogRender();
+}
+
+function _wkLogDeleteReply(entryId, replyId){
+  if(!confirm('답변을 삭제하시겠습니까?')) return;
+  var entry=(_wk.entries||[]).find(function(e){return e.id===entryId;});
+  if(!entry) return;
+  entry.replies=(entry.replies||[]).filter(function(r){return r.id!==replyId;});
+  if(typeof _wkSaveFeed==='function') _wkSaveFeed(_wkThisKey(), entry.rep, _wk.entries);
+  _wkLogRender();
+}
+
+function _wkLogOpenReply(entryId){
+  if(typeof _wkGoReply==='function') _wkGoReply(entryId);
+}
+
+function _wkLogOverwriteThis(){
+  if(!confirm('이전 회의록 내용을 금주로 덮어쓰시겠습니까?\n현재 금주 내용은 삭제됩니다.')) return;
+  _wk.entries = JSON.parse(JSON.stringify(_wk.prevEntries||[]));
+  if(typeof _wkSaveFeed==='function'){
+    var byRep={};
+    _wk.entries.forEach(function(e){ if(!byRep[e.rep]) byRep[e.rep]=[]; byRep[e.rep].push(e); });
+    Object.keys(byRep).forEach(function(rep){ _wkSaveFeed(_wkThisKey(),rep,byRep[rep]); });
+  }
+  _wkLogTab('this');
+  showToast&&showToast('금주 회의록으로 복사됐습니다.','ok');
+}
+
+// _wkRenderReport에서 _wkLogRender 호출
+var _origRenderReport=typeof _wkRenderReport==='function'?_wkRenderReport:null;
+function _wkRenderReport(){
+  if(_origRenderReport) _origRenderReport();
+  if(typeof _wkLogRender==='function') _wkLogRender();
+}
+
+// period 모드 전환 시 "금주로" 버튼 표시
+var _origWkLoad=typeof _wkLoad==='function'?_wkLoad:null;
+
+
 function _wkRenderKPI(){
   var reps=_wkGetActiveReps();
   var today=new Date();
@@ -18190,61 +18433,58 @@ function _wkRenderKPI(){
   var p=document.getElementById('wk-kpi-period');
   if(p) p.textContent=curY+'년 '+monthLabel;
   if(!g) return;
+
+  // 레이블: #334155 (text2) - 배경 대비 잘 보이도록
+  var LBL='font-size:13px;font-weight:500;color:#334155;margin-bottom:8px;';
+  var VAL='font-size:20px;font-weight:600;color:#0F172A;';
+  var UNIT='font-size:11px;font-weight:400;color:#94A3B8;margin-left:2px;';
+
   var H='';
   H+='<div style="display:flex;flex-direction:column;gap:10px;padding:0;">';
 
-  /* ── 연간 누적 카드 ── */
+  // 연간 누적
   H+='<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:16px 18px;">';
-  H+='<div style="font-size:13px;font-weight:500;color:#64748B;margin-bottom:6px;">'+curY+' 연간 누적 매출</div>';
-  H+='<div style="font-size:28px;font-weight:700;color:#0F172A;line-height:1;margin-bottom:4px;">'+fmt(yearTotal)+'<span style="font-size:13px;font-weight:400;color:#94A3B8;margin-left:3px;">천원</span></div>';
-  if(yearPlanTotal>0) H+='<div style="font-size:12px;color:#64748B;margin-top:2px;">연간 경영계획 <span style="color:#0F172A;font-weight:600;">'+fmt(yearPlanTotal)+'천원</span></div>';
-  H+='<span style="display:inline-flex;font-size:11px;font-weight:500;padding:3px 9px;border-radius:20px;margin-top:7px;background:'+(yearRate>=100?'#EAF3DE':'#FAEEDA')+';color:'+(yearRate>=100?'#3B6D11':'#854F0B')+';">연간 목표 '+yearRate+'%</span>';
+  H+='<div style="'+LBL+'">'+curY+' 연간 누적 매출</div>';
+  H+='<div style="font-size:28px;font-weight:700;color:#0F172A;line-height:1;margin-bottom:5px;">'+fmt(yearTotal)+'<span style="'+UNIT+'">천원</span></div>';
+  if(yearPlanTotal>0) H+='<div style="font-size:12px;color:#334155;margin-top:1px;">연간 경영계획 <span style="color:#0F172A;font-weight:600;">'+fmt(yearPlanTotal)+'천원</span></div>';
+  H+='<span style="display:inline-flex;font-size:11px;font-weight:500;padding:3px 9px;border-radius:20px;margin-top:8px;background:'+(yearRate>=100?'#EAF3DE':'#FAEEDA')+';color:'+(yearRate>=100?'#3B6D11':'#854F0B')+';">연간 목표 '+yearRate+'%</span>';
   H+='<div style="height:4px;background:#E2E8F0;border-radius:2px;margin-top:9px;"><div style="height:4px;width:'+Math.min(yearRate,100)+'%;background:#378ADD;border-radius:2px;"></div></div>';
   H+='</div>';
 
-  /* ── 이번달 3분할 ── */
+  // 이번달 3분할
   H+='<div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:8px;padding:14px 0;">';
   H+='<div style="display:grid;grid-template-columns:1fr 0.5px 1fr 0.5px 1fr;">';
-  H+='<div style="padding:0 16px;">';
-  H+='<div style="font-size:13px;font-weight:500;color:#64748B;margin-bottom:8px;">'+monthLabel+' 경영계획</div>';
-  H+='<div style="font-size:20px;font-weight:600;color:#0F172A;">'+fmt(monthPlan)+'<span style="font-size:11px;font-weight:400;color:#94A3B8;margin-left:2px;">천원</span></div>';
-  H+='</div>';
+  H+='<div style="padding:0 16px;"><div style="'+LBL+'">'+monthLabel+' 경영계획</div><div style="'+VAL+'">'+fmt(monthPlan)+'<span style="'+UNIT+'">천원</span></div></div>';
   H+='<div style="background:#E2E8F0;"></div>';
-  H+='<div style="padding:0 16px;">';
-  H+='<div style="font-size:13px;font-weight:500;color:#64748B;margin-bottom:8px;">'+monthLabel+' 달성 매출</div>';
-  H+='<div style="font-size:20px;font-weight:600;color:#0F172A;">'+fmt(monthAct)+'<span style="font-size:11px;font-weight:400;color:#94A3B8;margin-left:2px;">천원</span></div>';
-  H+='</div>';
+  H+='<div style="padding:0 16px;"><div style="'+LBL+'">'+monthLabel+' 달성 매출</div><div style="'+VAL+'">'+fmt(monthAct)+'<span style="'+UNIT+'">천원</span></div></div>';
   H+='<div style="background:#E2E8F0;"></div>';
-  H+='<div style="padding:0 16px;">';
-  H+='<div style="font-size:13px;font-weight:500;color:#64748B;margin-bottom:8px;">달성률</div>';
-  H+='<div style="font-size:24px;font-weight:700;color:'+rateColor+';">'+rate+'<span style="font-size:11px;font-weight:400;color:#94A3B8;margin-left:1px;">%</span></div>';
-  H+='<div style="height:4px;background:#E2E8F0;border-radius:2px;margin-top:8px;"><div style="height:4px;width:'+Math.min(rate,100)+'%;background:'+rateColor+';border-radius:2px;"></div></div>';
-  H+='</div></div></div>';
+  H+='<div style="padding:0 16px;"><div style="'+LBL+'">달성률</div><div style="font-size:24px;font-weight:700;color:'+rateColor+';">'+rate+'<span style="'+UNIT+'">%</span></div><div style="height:4px;background:#E2E8F0;border-radius:2px;margin-top:8px;"><div style="height:4px;width:'+Math.min(rate,100)+'%;background:'+rateColor+';border-radius:2px;"></div></div></div>';
+  H+='</div></div>';
 
-  /* ── 하단 3카드 ── */
+  // 하단 3카드 - 배지 제거, 높이 균일, 레이블 진하게
+  var card3='border-radius:8px;padding:14px 16px;';
   H+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">';
-  H+='<div style="background:#FAEEDA;border:1px solid #EAD5A8;border-radius:8px;padding:12px 14px;">';
-  H+='<div style="font-size:12px;font-weight:500;color:#64748B;margin-bottom:6px;">만료 임박</div>';
-  H+='<div style="font-size:22px;font-weight:700;color:#BA7517;">'+expiringSoon+'<span style="font-size:12px;font-weight:400;color:#94A3B8;margin-left:2px;">건</span></div>';
-  H+='<div style="font-size:11px;color:#94A3B8;margin-top:3px;">D-30 이내</div>';
-  if(expiringSoon>0) H+='<span style="display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;margin-top:6px;background:#FAEEDA;color:#854F0B;font-weight:500;">갱신 필요</span>';
-  H+='</div>';
-  H+='<div style="background:#EEEDFE;border:1px solid #CECBF6;border-radius:8px;padding:12px 14px;">';
-  H+='<div style="font-size:12px;font-weight:500;color:#64748B;margin-bottom:6px;">신규 계약</div>';
-  H+='<div style="font-size:22px;font-weight:700;color:#0F172A;">'+newContracts+'<span style="font-size:12px;font-weight:400;color:#94A3B8;margin-left:2px;">건</span></div>';
-  H+='<div style="font-size:11px;color:#94A3B8;margin-top:3px;">누적 '+totalContracts+'건</div>';
-  H+='</div>';
-  H+='<div style="background:#FCEBEB;border:1px solid #F7C1C1;border-radius:8px;padding:12px 14px;">';
-  H+='<div style="font-size:12px;font-weight:500;color:#64748B;margin-bottom:6px;">오픈 이슈</div>';
-  H+='<div style="font-size:22px;font-weight:700;color:'+(openIssues>0?'#E24B4A':'#0F172A')+';">'+openIssues+'<span style="font-size:12px;font-weight:400;color:#94A3B8;margin-left:2px;">건</span></div>';
-  H+='<div style="font-size:11px;color:#94A3B8;margin-top:3px;">미완료 이슈</div>';
-  if(openIssues>0) H+='<span style="display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;margin-top:6px;background:#FCEBEB;color:#A32D2D;font-weight:500;">처리 필요</span>';
-  H+='</div>';
+
+  H+='<div style="background:#FAEEDA;border:1px solid #EAD5A8;'+card3+'">';
+  H+='<div style="'+LBL+'color:#854F0B;">만료 임박</div>';
+  H+='<div style="font-size:24px;font-weight:700;color:#BA7517;">'+expiringSoon+'<span style="font-size:12px;font-weight:400;color:#BA7517;opacity:.7;margin-left:2px;">건</span></div>';
+  H+='<div style="font-size:11px;color:#854F0B;margin-top:4px;font-weight:500;">D-30 이내</div>';
   H+='</div>';
 
+  H+='<div style="background:#EEEDFE;border:1px solid #CECBF6;'+card3+'">';
+  H+='<div style="'+LBL+'color:#3C3489;">신규 계약</div>';
+  H+='<div style="font-size:24px;font-weight:700;color:#534AB7;">'+newContracts+'<span style="font-size:12px;font-weight:400;color:#534AB7;opacity:.7;margin-left:2px;">건</span></div>';
+  H+='<div style="font-size:11px;color:#3C3489;margin-top:4px;font-weight:500;">누적 '+totalContracts+'건</div>';
   H+='</div>';
+
+  H+='<div style="background:#FCEBEB;border:1px solid #F7C1C1;'+card3+'">';
+  H+='<div style="'+LBL+'color:#A32D2D;">오픈 이슈</div>';
+  H+='<div style="font-size:24px;font-weight:700;color:'+(openIssues>0?'#E24B4A':'#A32D2D')+';">'+openIssues+'<span style="font-size:12px;font-weight:400;opacity:.7;margin-left:2px;">건</span></div>';
+  H+='<div style="font-size:11px;color:#A32D2D;margin-top:4px;font-weight:500;">미완료 이슈</div>';
+  H+='</div>';
+
+  H+='</div></div>';
   g.innerHTML=H;
-
 }
 
 function _wkRenderRepRates(){
