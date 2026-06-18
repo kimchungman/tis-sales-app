@@ -2695,8 +2695,7 @@ function _showBar(sel){
   bar.style.display='flex';
   var bw=bar.offsetWidth||220, bh=bar.offsetHeight||36;
   var left=Math.max(8,Math.min(rect.left+rect.width/2-bw/2,window.innerWidth-bw-8));
-  var top=rect.top-bh-10;
-  if(top<8) top=rect.bottom+10;
+  var top=rect.bottom+10;if(top+bh>window.innerHeight-4)top=window.innerHeight-bh-4;
   bar.style.left=left+'px'; bar.style.top=top+'px';
 }
 function _hideBar(){
