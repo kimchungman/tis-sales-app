@@ -3718,10 +3718,12 @@ document.addEventListener('selectionchange',function(){
   </div>
 </div>
 
-  <!-- 보고서 / 회의록 탭 -->
-  <div class="wk-view-tabs">
-    <div class="wk-vtab on" id="wk-vt-report" onclick="_wkSetView('report')">보고서</div>
-    <div class="wk-vtab" id="wk-vt-feed" onclick="_wkSetView('feed')">회의록<span class="wk-cnt" id="wk-pending-cnt" style="display:none;"></span></div>
+  <!-- 주간회의 탭 -->
+  <div class="wk-view-tabs" style="display:flex;align-items:center;justify-content:space-between;padding:0 16px;">
+    <div style="display:flex;align-items:center;gap:6px;">
+      <div class="wk-vtab on" id="wk-vt-report" onclick="_wkSetView('report')" style="flex:none;padding:10px 0;">주간회의 요약</div>
+    </div>
+    <span id="wk-week-label" style="font-size:11px;color:var(--muted);font-weight:400;"></span>
   </div>
   <!-- 보고서 뷰 -->
   <div id="wk-report-view" class="wk-report">
@@ -18050,7 +18052,7 @@ window._wkGoReply=function(entryId){
     var _btn2=document.getElementById('wk-w-last');
     if(_btn2) _btn2.classList.remove('on');
   }
-  _wkSetView('feed');
+  // 회의록은 보고서 탭 내에 통합되어 있음
   // 렌더 후 해당 entry 스크롤 + 답변창 열기
   setTimeout(function(){
     var _el=document.querySelector('[data-entry-id="'+entryId+'"]');
@@ -18121,7 +18123,13 @@ async function _wkLoad(){
       _wkRenderReport();
       _wkRenderFeed();
       _wkUpdatePendingCnt();
-    }catch(e){ console.warn('[wk load]',e); }finally{ _wk.loading=false; }
+    }catch(e){ console.warn('[wk load]',e); }finally{
+      _wk.loading=false;
+      var _wkLEl=document.getElementById('wk-week-label');
+      if(_wkLEl){var _lk=_wk.weekMode==='period'?_wk.selectedWeekKey:(_wk.weekMode==='last'?_wkLastKey():_wkThisKey());if(_lk){var _lp=_lk.split('-W');_wkLEl.textContent=_lp[0]+'년 '+parseInt(_lp[1])+'주차 주간회의';}}
+      var _lThisBtn=document.getElementById('wk-log-this-btn');
+      if(_lThisBtn) _lThisBtn.style.display=(_wk.weekMode==='period')?'':'none';
+    }
   } else {
     // SP 미연결 - loading 해제 후 연결 대기
     _wk.loading=false;
@@ -18201,6 +18209,7 @@ function _wkRenderPrevSection(){
 
 // ── 회의록 통합 카드 ──────────────────────────────────────────
 var _wkLogTab_current = 'this'; // 'this' | 'prev' | 'search'
+// window에 명시 등록 (HTML onclick에서 참조 가능하도록)
 
 function _wkLogTab(tab){
   _wkLogTab_current = tab;
@@ -18565,6 +18574,21 @@ function _wkLogOverwriteThis(){
   _wkLogTab('this');
   typeof showToast==='function'&&showToast('금주 회의록으로 복사됐습니다.','ok');
 }
+
+// ── window에 명시 등록 (HTML onclick에서 호출 가능하도록) ──
+window._wkLogTab         = _wkLogTab;
+window._wkLogSubmit      = _wkLogSubmit;
+window._wkLogRender      = _wkLogRender;
+window._wkLogOpenWeek    = _wkLogOpenWeek;
+window._wkLogSwitchThis  = _wkLogSwitchThis;
+window._wkLogSearchSelect= _wkLogSearchSelect;
+window._wkLogEditEntry   = _wkLogEditEntry;
+window._wkLogDeleteEntry = _wkLogDeleteEntry;
+window._wkLogEditReply   = _wkLogEditReply;
+window._wkLogDeleteReply = _wkLogDeleteReply;
+window._wkLogOpenReply   = _wkLogOpenReply;
+window._wkLogOverwriteThis = _wkLogOverwriteThis;
+window._wkCheckMention   = _wkCheckMention;
 
 
 
@@ -19228,7 +19252,7 @@ function _wkBuildMentionPopup(){
   }).join('');
 }
 
-function _wkCheckMention(){
+function _wkCheckMention(trigger){
   var editor=document.getElementById('wk-editor');
   if(!editor) return;
   var text=editor.innerText||'';
