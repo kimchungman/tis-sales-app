@@ -3729,16 +3729,15 @@ document.addEventListener('selectionchange',function(){
     <div id="wk-prev-section"></div>
     <!-- KPI -->
     <!-- 핵심지표 + 담당자달성률 2열 -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch;">
       <!-- 왼쪽: 핵심지표 -->
-      <div class="wk-card">
-        <div class="wk-ch"><span class="wk-ch-t" id="wk-kpi-title">이번달 핵심 지표</span><span class="wk-ch-s" id="wk-kpi-period"></span></div>
-        <div class="wk-cb"><div class="wk-kpi-grid" id="wk-kpi-grid"></div></div>
+      <div class="wk-card" style="padding:0;overflow:hidden;">
+        <div id="wk-kpi-grid" style="padding:0;"></div>
       </div>
       <!-- 오른쪽: 담당자별 달성률 -->
-      <div class="wk-card">
-        <div class="wk-ch"><span class="wk-ch-t">담당자별 달성률</span><span class="wk-ch-s" id="wk-rep-month"></span></div>
-        <div class="wk-cb"><div id="wk-rep-rate"></div></div>
+      <div class="wk-card" style="padding:0;overflow:hidden;display:flex;flex-direction:column;">
+        <div class="wk-ch" style="flex-shrink:0;"><span class="wk-ch-t">담당자별 달성률</span><span class="wk-ch-s" id="wk-rep-month"></span></div>
+        <div id="wk-rep-rate" style="flex:1;overflow-y:auto;"></div>
       </div>
     </div>
 
@@ -18174,9 +18173,10 @@ function _wkRenderKPI(){
   var yearRate=yearPlanTotal>0?Math.round(yearTotal/yearPlanTotal*100):0;
   var g=document.getElementById('wk-kpi-grid');
   var p=document.getElementById('wk-kpi-period');
-  if(p) p.textContent=curY+'년 '+monthLabel;
   if(!g) return;
   var H='';
+  H+='<div class="wk-ch"><span class="wk-ch-t">이번달 핵심 지표</span><span class="wk-ch-s">'+curY+'년 '+monthLabel+'</span></div>';
+  H+='<div style="padding:12px 14px;">';
   H+='<div style="display:flex;flex-direction:column;gap:10px;">';
   H+='<div style="background:var(--card);border:1px solid var(--border);border-left:3px solid #378ADD;border-radius:8px;padding:14px 16px;">';
   H+='<div style="font-size:13px;font-weight:500;color:var(--muted);margin-bottom:6px;">'+curY+' 연간 누적 매출</div>';
@@ -18198,6 +18198,7 @@ function _wkRenderKPI(){
   H+='<div style="background:var(--bg);border:1px solid var(--border);border-left:3px solid #7F77DD;border-radius:8px;padding:10px 12px;"><div style="font-size:12px;font-weight:500;color:var(--muted);margin-bottom:5px;">신규 계약</div><div style="font-size:20px;font-weight:700;color:var(--text);">'+newContracts+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:2px;">건</span></div><div style="font-size:11px;color:var(--muted);margin-top:3px;">누적 '+totalContracts+'건</div></div>';
   H+='<div style="background:var(--bg);border:1px solid var(--border);border-left:3px solid #E24B4A;border-radius:8px;padding:10px 12px;"><div style="font-size:12px;font-weight:500;color:var(--muted);margin-bottom:5px;">오픈 이슈</div><div style="font-size:20px;font-weight:700;color:'+(openIssues>0?'#E24B4A':'var(--text)')+';">'+openIssues+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:2px;">건</span></div><div style="font-size:11px;color:var(--muted);margin-top:3px;">미완료 이슈</div>'+(openIssues>0?'<span style="display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;margin-top:5px;background:#FCEBEB;color:#A32D2D;font-weight:500;">처리 필요</span>':'')+'</div>';
   H+='</div></div>';
+  H+='</div>';
   g.innerHTML=H;
   if(typeof _wkRenderRepRates==='function') _wkRenderRepRates();
 }
