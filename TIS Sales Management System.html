@@ -3721,9 +3721,8 @@ document.addEventListener('selectionchange',function(){
   <!-- 주간회의 탭 -->
   <div class="wk-view-tabs" style="display:flex;align-items:center;justify-content:space-between;padding:0 16px;">
     <div style="display:flex;align-items:center;gap:6px;">
-      <div class="wk-vtab on" id="wk-vt-report" onclick="_wkSetView('report')" style="flex:none;padding:10px 0;">주간회의 요약</div>
+      <div class="wk-vtab on" id="wk-vt-report" onclick="_wkSetView('report')" style="flex:none;padding:10px 0;">주간회의 <span id="wk-week-label" style="font-weight:400;color:var(--muted);font-size:12px;"></span></div>
     </div>
-    <span id="wk-week-label" style="font-size:11px;color:var(--muted);font-weight:400;"></span>
   </div>
   <!-- 보고서 뷰 -->
   <div id="wk-report-view" class="wk-report">
@@ -3759,9 +3758,9 @@ document.addEventListener('selectionchange',function(){
             <button class="wk-tb" title="밑줄" onclick="_wkFmt('underline')"><u>U</u></button>
             <button class="wk-tb" title="취소선" onclick="_wkFmt('strikeThrough')"><s>S</s></button>
             <div style="width:1px;height:14px;background:var(--border);margin:0 3px;flex-shrink:0;"></div>
-            <button class="wk-tb" style="width:auto;padding:0 6px;font-size:10px;gap:3px;color:#185FA5;display:flex;align-items:center;" onclick="_wkCheckMention('@')" title="@멘션">@ 멘션</button>
+            <button class="wk-tb" style="width:auto;padding:0 6px;font-size:10px;gap:3px;color:#185FA5;display:flex;align-items:center;" onclick="_wkInsertMentionAt()" title="@멘션">@ 멘션</button>
           </div>
-          <div id="wk-log-mention-popup" class="wk-mention-popup" style="display:none;margin:0 14px 4px;"></div>
+          <div id="wk-log-mention-popup" class="wk-mention-popup" style="display:none;margin:0 14px 4px;"><div class="wk-mp-head">@ 담당자 선택</div><div class="wk-mp-list" id="wk-log-mp-list"></div></div>
           <div style="display:flex;gap:8px;padding:0 14px 10px;align-items:flex-end;">
             <div id="wk-log-editor" class="wk-editor rich-ed" contenteditable="true" data-placeholder="회의 내용 입력... @ 로 담당자 멘션" style="flex:1;min-height:54px;max-height:100px;overflow-y:auto;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;background:var(--bg);line-height:1.6;"></div>
             <button onclick="_wkLogSubmit()" style="padding:7px 13px;background:#185FA5;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;flex-shrink:0;align-self:flex-end;">등록</button>
@@ -18126,7 +18125,7 @@ async function _wkLoad(){
     }catch(e){ console.warn('[wk load]',e); }finally{
       _wk.loading=false;
       var _wkLEl=document.getElementById('wk-week-label');
-      if(_wkLEl){var _lk=_wk.weekMode==='period'?_wk.selectedWeekKey:(_wk.weekMode==='last'?_wkLastKey():_wkThisKey());if(_lk){var _lp=_lk.split('-W');_wkLEl.textContent=_lp[0]+'년 '+parseInt(_lp[1])+'주차 주간회의';}}
+      if(_wkLEl){var _lk=_wk.weekMode==='period'?_wk.selectedWeekKey:(_wk.weekMode==='last'?_wkLastKey():_wkThisKey());if(_lk){var _lp=_lk.split('-W');_wkLEl.textContent=_lp[0]+'년 '+parseInt(_lp[1])+'주차';}}
       var _lThisBtn=document.getElementById('wk-log-this-btn');
       if(_lThisBtn) _lThisBtn.style.display=(_wk.weekMode==='period')?'':'none';
     }
@@ -18315,7 +18314,7 @@ function _wkLogRender(){
     var pending = !entry.replies||!entry.replies.length;
     var av = getAv(entry.rep||'');
 
-    H+='<div style="'+rowBg+'padding:11px 14px;border-bottom:0.5px solid #E2E8F0;">';
+    H+='<div style="'+rowBg+'padding:11px 14px;border-bottom:0.5px solid #E2E8F0;" data-entry-id="'+entry.id+'" id="wk-log-ei-'+entry.id+'">';
     H+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">';
     H+='<div style="display:flex;align-items:center;gap:6px;">';
     H+='<div style="width:22px;height:22px;border-radius:50%;background:'+av.bg+';color:'+av.c+';font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+(entry.displayName||entry.rep||'?').charAt(0)+'</div>';
@@ -18364,7 +18363,6 @@ function _wkLogRender(){
 }
 
 function _wkLogRenderSearch(el){
-  // 주차 선택 UI + 선택된 경우 해당 주차 회의록 표시
   var today=new Date(); today.setHours(0,0,0,0);
   function isoWk(d){
     var dt=new Date(d); dt.setHours(0,0,0,0);
@@ -18377,11 +18375,8 @@ function _wkLogRenderSearch(el){
     var j4=new Date(yr,0,4); var d=(j4.getDay()+6)%7;
     var m=new Date(j4); m.setDate(j4.getDate()-d+(wn-1)*7); return m;
   }
-  var curWk=isoWk(today);
-  var curY=today.getFullYear();
+  var curWk=isoWk(today); var curY=today.getFullYear();
   var maxW=parseInt(isoWk(new Date(curY,11,28)).split('-W')[1])||52;
-
-  // 캐시에서 데이터 있는 주차
   var has={};
   if(window._wkFeedCache&&window._wkFeedCache.items){
     window._wkFeedCache.items.forEach(function(item){
@@ -18391,8 +18386,6 @@ function _wkLogRenderSearch(el){
       try{ var p=JSON.parse(item.Payload||'{}'); if(p.entries&&p.entries.length>0) has[wm[1]]=true; }catch(e){}
     });
   }
-
-  // 주차 목록 생성
   var weeks=[];
   for(var y=curY;y>=curY-1;y--){
     var mw=y===curY?maxW:53;
@@ -18403,76 +18396,61 @@ function _wkLogRenderSearch(el){
       if(mon.getFullYear()<y-1) continue;
       var fri=new Date(mon); fri.setDate(mon.getDate()+4);
       weeks.push({key:wk,mon:mon,fri:fri,has:!!has[wk]});
-      if(weeks.length>=20) break;
+      if(weeks.length>=24) break;
     }
-    if(weeks.length>=20) break;
+    if(weeks.length>=24) break;
   }
+  var selectedKey=(_wk.weekMode==='period'&&_wk.selectedWeekKey)?_wk.selectedWeekKey:null;
+  var fmt2=function(d){return (d.getMonth()+1)+'.'+d.getDate()+'.'};
+  var fmt3=function(d){return d.getFullYear()+'.'+(d.getMonth()+1<10?'0':'')+(d.getMonth()+1)+'.'+(d.getDate()<10?'0':'')+d.getDate();};
+  var H='';
 
-  var selectedKey = (_wk.weekMode==='period'&&_wk.selectedWeekKey) ? _wk.selectedWeekKey : null;
-  var H='<div style="padding:10px 14px;">';
-  H+='<div style="font-size:12px;font-weight:500;color:var(--muted);margin-bottom:8px;">주차를 선택하세요</div>';
-  H+='<div style="display:flex;flex-direction:column;gap:4px;">';
-  weeks.forEach(function(w){
-    var sel=w.key===selectedKey;
-    var fmt2=function(d){return (d.getMonth()+1)+'.'+d.getDate()+'.'};
-    var label=(w.key.replace(/(\d+)-W(\d+)/,'$1년 $2주차'))+' ('+fmt2(w.mon)+' ~ '+fmt2(w.fri)+')';
-    H+='<div onclick="_wkLogSearchSelect(\''+w.key+'\')" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;cursor:pointer;border:1px solid '+(sel?'#378ADD':'#E2E8F0')+';background:'+(sel?'#E6F1FB':w.has?'#FFFFFF':'#F8FAFC')+';">';
-    H+='<span style="font-size:11px;width:8px;height:8px;border-radius:50%;background:'+(w.has?'#1D9E75':'#CBD5E1')+';flex-shrink:0;display:inline-block;"></span>';
-    H+='<span style="font-size:12px;color:'+(sel?'#185FA5':w.has?'#0F172A':'#94A3B8')+';font-weight:'+(sel||w.has?'500':'400')+';">'+label+'</span>';
-    if(w.has) H+='<span style="margin-left:auto;font-size:10px;color:#1D9E75;font-weight:500;">데이터 있음</span>';
+  // 주차 선택됐으면 → 선택 목록 숨기고 헤더+내용만 표시
+  if(selectedKey){
+    var wkInfo=weeks.find(function(w){return w.key===selectedKey;});
+    H+='<div style="padding:10px 14px 6px;">';
+    H+='<button onclick="_wkLogClearSearch()" style="font-size:11px;padding:3px 9px;border:0.5px solid #E2E8F0;border-radius:6px;background:#fff;color:#64748B;cursor:pointer;display:inline-flex;align-items:center;gap:4px;">';
+    H+='← 주차 목록으로</button></div>';
+    H+='<div style="margin:0 14px 8px;padding:10px 14px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;">';
+    H+='<div style="font-size:10px;color:#94A3B8;font-weight:500;margin-bottom:3px;">조회 중인 회의록</div>';
+    H+='<div style="font-size:13px;font-weight:600;color:#0F172A;">'+selectedKey.replace(/(\d+)-W(\d+)/,'$1년 $2주차')+'</div>';
+    if(wkInfo) H+='<div style="font-size:11px;color:#64748B;margin-top:2px;">'+fmt3(wkInfo.mon)+' ~ '+fmt3(wkInfo.fri)+'</div>';
     H+='</div>';
-  });
-  H+='</div></div>';
-
-  // 선택된 주차의 회의록 표시
-  if(selectedKey && _wk.weekMode==='period'){
+    // 해당 주차 회의록 내용
     var entries=_wk.entries||[];
-    if(entries.length){
-      var wkInfo=weeks.find(function(w){return w.key===selectedKey;});
-      var fmt3=function(d){return d.getFullYear()+'.'+(d.getMonth()+1<10?'0':'')+(d.getMonth()+1)+'.'+(d.getDate()<10?'0':'')+d.getDate();};
-      H+='<div style="margin:0 14px 6px;padding:10px 14px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;">';
-      H+='<div style="font-size:10px;color:#94A3B8;font-weight:500;margin-bottom:3px;">조회 중인 회의록</div>';
-      H+='<div style="font-size:13px;font-weight:600;color:#0F172A;">'+selectedKey.replace(/(\d+)-W(\d+)/,'$1년 $2주차')+'</div>';
-      if(wkInfo) H+='<div style="font-size:11px;color:#64748B;margin-top:2px;">'+fmt3(wkInfo.mon)+' ~ '+fmt3(wkInfo.fri)+'</div>';
-      H+='</div>';
+    if(!entries.length){
+      H+='<div style="padding:20px 14px;text-align:center;font-size:12px;color:#94A3B8;">이 주차에 등록된 회의록이 없습니다.</div>';
+    } else {
       var AVCOLS=[{bg:'#E6F1FB',c:'#0C447C'},{bg:'#E1F5EE',c:'#085041'},{bg:'#EEEDFE',c:'#3C3489'},{bg:'#FAECE7',c:'#712B13'},{bg:'#FEF3E2',c:'#633806'}];
-      function getAv2(name){ var reps=typeof REPS!=='undefined'?REPS:[]; var i=reps.indexOf(name); return AVCOLS[(i<0?0:i)%AVCOLS.length]; }
-      var myName2=typeof session!=='undefined'&&session?(session.role==='admin'?'관리자':session.rep):'';
-      var isAdmin2=typeof session!=='undefined'&&session&&session.role==='admin';
+      function getAv(name){ var reps=typeof REPS!=='undefined'?REPS:[]; var i=reps.indexOf(name); return AVCOLS[(i<0?0:i)%AVCOLS.length]; }
+      var myName=typeof session!=='undefined'&&session?(session.role==='admin'?'관리자':session.rep):'';
+      var isAdmin=typeof session!=='undefined'&&session&&session.role==='admin';
       H+='<div style="display:flex;flex-direction:column;">';
       entries.forEach(function(entry,ei2){
         var rowBg=ei2%2===1?'background:#F8FAFC;':'';
-        var canEdit=isAdmin2||entry.rep===myName2;
-        var av=getAv2(entry.rep||'');
-        H+='<div style="'+rowBg+'padding:11px 14px;border-bottom:0.5px solid #E2E8F0;">';
+        var canEdit=isAdmin||entry.rep===myName;
+        var av=getAv(entry.rep||'');
+        H+='<div style="'+rowBg+'padding:11px 14px;border-bottom:0.5px solid #E2E8F0;" data-entry-id="'+entry.id+'" id="wk-log-ei-'+entry.id+'">';
         H+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">';
         H+='<div style="display:flex;align-items:center;gap:6px;">';
         H+='<div style="width:22px;height:22px;border-radius:50%;background:'+av.bg+';color:'+av.c+';font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;">'+(entry.displayName||entry.rep||'?').charAt(0)+'</div>';
         H+='<span style="font-size:12px;font-weight:600;color:#0F172A;">'+_wkEsc(entry.displayName||entry.rep||'')+'</span>';
         H+='<span style="font-size:10px;color:#94A3B8;">'+_wkEsc(entry.time||'')+'</span>';
         H+='</div>';
-        if(canEdit){
-          H+='<div style="display:flex;gap:4px;">';
-          H+='<button onclick="_wkLogEditEntry(\''+entry.id+'\')" style="font-size:10px;padding:2px 7px;border:0.5px solid #E2E8F0;border-radius:4px;background:#fff;color:#64748B;cursor:pointer;">수정</button>';
-          H+='<button onclick="_wkLogDeleteEntry(\''+entry.id+'\')" style="font-size:10px;padding:2px 7px;border:0.5px solid #E2E8F0;border-radius:4px;background:#fff;color:#A32D2D;cursor:pointer;">삭제</button>';
-          H+='</div>';
-        }
+        if(canEdit) H+='<div style="display:flex;gap:4px;"><button onclick="_wkLogEditEntry(\''+entry.id+'\')" style="font-size:10px;padding:2px 7px;border:0.5px solid #E2E8F0;border-radius:4px;background:#fff;color:#64748B;cursor:pointer;">수정</button><button onclick="_wkLogDeleteEntry(\''+entry.id+'\')" style="font-size:10px;padding:2px 7px;border:0.5px solid #E2E8F0;border-radius:4px;background:#fff;color:#A32D2D;cursor:pointer;">삭제</button></div>';
         H+='</div>';
         H+='<div style="font-size:12px;color:#334155;line-height:1.65;">'+_wkSanitize(entry.text||'')+'</div>';
         if(entry.replies&&entry.replies.length){
           H+='<div style="margin-top:7px;display:flex;flex-direction:column;gap:4px;">';
           entry.replies.forEach(function(r){
-            var rav=getAv2(r.rep||'');
+            var rav=getAv(r.rep||'');
             H+='<div style="display:flex;gap:7px;padding:6px 9px;background:#F1F5F9;border-radius:6px;">';
             H+='<div style="width:2px;background:#B5D4F4;border-radius:1px;flex-shrink:0;"></div>';
-            H+='<div style="flex:1;">';
-            H+='<div style="display:flex;align-items:center;gap:5px;margin-bottom:2px;">';
+            H+='<div style="flex:1;"><div style="display:flex;align-items:center;gap:5px;margin-bottom:2px;">';
             H+='<div style="width:18px;height:18px;border-radius:50%;background:'+rav.bg+';color:'+rav.c+';font-size:9px;font-weight:600;display:flex;align-items:center;justify-content:center;">'+(r.displayName||r.rep||'?').charAt(0)+'</div>';
             H+='<span style="font-size:11px;font-weight:600;color:#185FA5;">'+_wkEsc(r.displayName||r.rep||'')+'</span>';
             H+='<span style="font-size:10px;color:#94A3B8;">'+_wkEsc(r.time||'')+'</span>';
-            H+='</div>';
-            H+='<div style="font-size:11px;color:#334155;line-height:1.55;">'+_wkSanitize(r.text||'')+'</div>';
-            H+='</div></div>';
+            H+='</div><div style="font-size:11px;color:#334155;line-height:1.55;">'+_wkSanitize(r.text||'')+'</div></div></div>';
           });
           H+='</div>';
         }
@@ -18480,6 +18458,19 @@ function _wkLogRenderSearch(el){
       });
       H+='</div>';
     }
+  } else {
+    // 주차 선택 안됨 → 목록 표시
+    H+='<div style="padding:10px 14px;">';
+    H+='<div style="font-size:12px;font-weight:500;color:var(--muted);margin-bottom:8px;">주차를 선택하세요</div>';
+    H+='<div style="display:flex;flex-direction:column;gap:4px;max-height:280px;overflow-y:auto;">';
+    weeks.forEach(function(w){
+      H+='<div onclick="_wkLogSearchSelect(\''+w.key+'\')" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;cursor:pointer;border:1px solid #E2E8F0;background:'+(w.has?'#FFFFFF':'#F8FAFC')+';">';
+      H+='<span style="width:8px;height:8px;border-radius:50%;background:'+(w.has?'#1D9E75':'#CBD5E1')+';flex-shrink:0;display:inline-block;"></span>';
+      H+='<span style="font-size:12px;color:'+(w.has?'#0F172A':'#94A3B8')+';font-weight:'+(w.has?'500':'400')+';">'+w.key.replace(/(\d+)-W(\d+)/,'$1년 $2주차')+' ('+fmt2(w.mon)+' ~ '+fmt2(w.fri)+')</span>';
+      if(w.has) H+='<span style="margin-left:auto;font-size:10px;color:#1D9E75;font-weight:500;">데이터 있음</span>';
+      H+='</div>';
+    });
+    H+='</div></div>';
   }
   el.innerHTML=H;
 }
@@ -18506,13 +18497,48 @@ function _wkLogSubmit(){
 }
 
 function _wkLogEditEntry(id){
-  var entries = _wk.weekMode==='this' ? _wk.entries : (_wk.weekMode==='last' ? _wk.prevEntries : _wk.entries);
+  var entryEl=document.getElementById('wk-log-ei-'+id);
+  if(!entryEl) return;
+  var entries=_wkLogTab_current==='prev'?_wk.prevEntries:_wk.entries;
   var entry=entries.find(function(e){return e.id===id;});
   if(!entry) return;
-  var newText=prompt('내용 수정:', entry.text?entry.text.replace(/<[^>]+>/g,''):'');
-  if(newText===null) return;
-  entry.text=newText;
-  if(typeof _wkSaveFeed==='function') _wkSaveFeed(_wkCurrentKey(), entry.rep, entries);
+  var existEdit=document.getElementById('wk-edit-form-'+id);
+  if(existEdit){existEdit.remove();return;}
+  var textDiv=entryEl.querySelector('[style*="line-height:1.65"]');
+  if(!textDiv) return;
+  var editDiv=document.createElement('div');
+  editDiv.id='wk-edit-form-'+id;
+  editDiv.style.cssText='margin-top:6px;';
+  var ed2=document.createElement('div');
+  ed2.className='wk-editor rich-ed'; ed2.contentEditable='true';
+  ed2.id='wk-edit-editor-'+id;
+  ed2.style.cssText='min-height:44px;max-height:120px;overflow-y:auto;padding:6px 8px;border:1px solid #378ADD;border-radius:6px;font-size:12px;background:#fff;line-height:1.6;';
+  ed2.innerHTML=entry.text||'';
+  var btnRow=document.createElement('div');
+  btnRow.style.cssText='display:flex;justify-content:flex-end;gap:6px;margin-top:6px;';
+  var cancelBtn=document.createElement('button');
+  cancelBtn.textContent='취소';
+  cancelBtn.style.cssText='font-size:11px;padding:3px 9px;border:0.5px solid #E2E8F0;border-radius:6px;background:#fff;color:#64748B;cursor:pointer;';
+  cancelBtn.onclick=function(){editDiv.remove();};
+  var saveBtn=document.createElement('button');
+  saveBtn.textContent='저장';
+  saveBtn.style.cssText='font-size:11px;padding:3px 9px;border:none;border-radius:6px;background:#185FA5;color:#fff;cursor:pointer;font-weight:500;';
+  saveBtn.onclick=function(){_wkLogSaveEditEntry(id);};
+  btnRow.appendChild(cancelBtn); btnRow.appendChild(saveBtn);
+  editDiv.appendChild(ed2); editDiv.appendChild(btnRow);
+  textDiv.after(editDiv);
+  ed2.focus();
+}
+
+function _wkLogSaveEditEntry(id){
+  var ed=document.getElementById('wk-edit-editor-'+id);
+  if(!ed) return;
+  var entries=_wkLogTab_current==='prev'?_wk.prevEntries:_wk.entries;
+  var entry=entries.find(function(e){return e.id===id;});
+  if(!entry) return;
+  entry.text=ed.innerHTML;
+  var saveKey=_wkLogTab_current==='prev'?_wkLastKey():_wkCurrentKey();
+  if(typeof _wkSaveFeed==='function') _wkSaveFeed(saveKey, entry.rep, entries);
   _wkLogRender();
 }
 
@@ -18540,9 +18566,43 @@ function _wkLogEditReply(entryId, replyId){
   if(!entry) return;
   var reply=(entry.replies||[]).find(function(r){return r.id===replyId;});
   if(!reply) return;
-  var newText=prompt('답변 수정:', reply.text?reply.text.replace(/<[^>]+>/g,''):'');
-  if(newText===null) return;
-  reply.text=newText;
+  var replyEl=document.getElementById('wk-log-ri-'+replyId);
+  if(!replyEl) return;
+  var existEdit=document.getElementById('wk-edit-reply-'+replyId);
+  if(existEdit){existEdit.remove();return;}
+  var textDiv=replyEl.querySelector('[style*="line-height:1.55"]');
+  if(!textDiv) return;
+  var editDiv=document.createElement('div');
+  editDiv.id='wk-edit-reply-'+replyId;
+  editDiv.style.cssText='margin-top:4px;';
+  var ed2=document.createElement('div');
+  ed2.className='wk-editor rich-ed'; ed2.contentEditable='true';
+  ed2.id='wk-edit-ri-'+replyId;
+  ed2.style.cssText='min-height:36px;max-height:80px;overflow-y:auto;padding:5px 8px;border:1px solid #378ADD;border-radius:6px;font-size:11px;background:#fff;line-height:1.55;';
+  ed2.innerHTML=reply.text||'';
+  var btnRow=document.createElement('div');
+  btnRow.style.cssText='display:flex;justify-content:flex-end;gap:5px;margin-top:4px;';
+  var cancelBtn=document.createElement('button');
+  cancelBtn.textContent='취소'; cancelBtn.style.cssText='font-size:10px;padding:2px 7px;border:0.5px solid #E2E8F0;border-radius:5px;background:#fff;color:#64748B;cursor:pointer;';
+  cancelBtn.onclick=function(){editDiv.remove();};
+  var saveBtn=document.createElement('button');
+  saveBtn.textContent='저장'; saveBtn.style.cssText='font-size:10px;padding:2px 7px;border:none;border-radius:5px;background:#185FA5;color:#fff;cursor:pointer;font-weight:500;';
+  saveBtn.onclick=function(){_wkLogSaveEditReply(entryId,replyId);};
+  btnRow.appendChild(cancelBtn); btnRow.appendChild(saveBtn);
+  editDiv.appendChild(ed2); editDiv.appendChild(btnRow);
+  textDiv.after(editDiv);
+  ed2.focus();
+}
+
+function _wkLogSaveEditReply(entryId,replyId){
+  var ed=document.getElementById('wk-edit-ri-'+replyId);
+  if(!ed) return;
+  var entries=(_wk.weekMode==='period'?_wk.entries:(_wkLogTab_current==='prev'?_wk.prevEntries:_wk.entries));
+  var entry=entries.find(function(e){return e.id===entryId;});
+  if(!entry) return;
+  var reply=(entry.replies||[]).find(function(r){return r.id===replyId;});
+  if(!reply) return;
+  reply.text=ed.innerHTML;
   var saveKey=_wkLogTab_current==='prev'?_wkLastKey():_wkCurrentKey();
   if(typeof _wkSaveFeed==='function') _wkSaveFeed(saveKey, entry.rep, entries);
   _wkLogRender();
@@ -18560,7 +18620,35 @@ function _wkLogDeleteReply(entryId, replyId){
 }
 
 function _wkLogOpenReply(entryId){
-  if(typeof _wkGoReply==='function') _wkGoReply(entryId);
+  var existing=document.getElementById('wk-reply-form-'+entryId);
+  if(existing){existing.remove();return;}
+  document.querySelectorAll('[id^="wk-reply-form-"]').forEach(function(el){el.remove();});
+  var entryEl=document.getElementById('wk-log-ei-'+entryId);
+  if(!entryEl) return;
+  var myName=typeof session!=='undefined'&&session?(session.role==='admin'?'관리자':(_wkDisplayName(session.rep)||session.rep||'')):'';
+  var form=document.createElement('div');
+  form.id='wk-reply-form-'+entryId;
+  form.style.cssText='margin-top:8px;padding:8px 10px;background:#F1F5F9;border-radius:8px;';
+  var label=document.createElement('div');
+  label.style.cssText='font-size:11px;font-weight:500;color:#185FA5;margin-bottom:6px;';
+  label.textContent='↩ '+myName+'로 답변';
+  var ed2=document.createElement('div');
+  ed2.className='wk-editor rich-ed'; ed2.contentEditable='true';
+  ed2.id='wk-ri-editor-'+entryId;
+  ed2.setAttribute('data-placeholder','답변을 입력하세요...');
+  ed2.style.cssText='min-height:44px;max-height:80px;overflow-y:auto;padding:6px 8px;border:1px solid #E2E8F0;border-radius:6px;font-size:12px;background:#fff;line-height:1.6;';
+  var btnRow=document.createElement('div');
+  btnRow.style.cssText='display:flex;justify-content:flex-end;gap:6px;margin-top:6px;';
+  var cancelBtn=document.createElement('button');
+  cancelBtn.textContent='취소'; cancelBtn.style.cssText='font-size:11px;padding:3px 9px;border:0.5px solid #E2E8F0;border-radius:6px;background:#fff;color:#64748B;cursor:pointer;';
+  cancelBtn.onclick=function(){form.remove();};
+  var submitBtn=document.createElement('button');
+  submitBtn.textContent='등록'; submitBtn.style.cssText='font-size:11px;padding:3px 9px;border:none;border-radius:6px;background:#185FA5;color:#fff;cursor:pointer;font-weight:500;';
+  submitBtn.onclick=function(){_wkLogSubmitReply(entryId);};
+  btnRow.appendChild(cancelBtn); btnRow.appendChild(submitBtn);
+  form.appendChild(label); form.appendChild(ed2); form.appendChild(btnRow);
+  entryEl.appendChild(form);
+  ed2.focus();
 }
 
 function _wkLogOverwriteThis(){
@@ -18589,6 +18677,49 @@ window._wkLogDeleteReply = _wkLogDeleteReply;
 window._wkLogOpenReply   = _wkLogOpenReply;
 window._wkLogOverwriteThis = _wkLogOverwriteThis;
 window._wkCheckMention   = _wkCheckMention;
+window._wkLogSubmitReply   = _wkLogSubmitReply;
+window._wkLogSaveEditEntry = _wkLogSaveEditEntry;
+window._wkLogSaveEditReply = _wkLogSaveEditReply;
+window._wkInsertMentionAt  = function(){
+  var ed=document.getElementById('wk-log-editor');
+  if(!ed) return;
+  ed.focus();
+  var sel=window.getSelection();
+  if(sel&&sel.rangeCount>0){
+    var range=sel.getRangeAt(0);
+    var textNode=document.createTextNode('@');
+    range.insertNode(textNode);
+    range.setStartAfter(textNode); range.setEndAfter(textNode);
+    sel.removeAllRanges(); sel.addRange(range);
+  }
+  if(typeof _wkCheckMention==='function') _wkCheckMention('@');
+};
+
+function _wkLogSubmitReply(entryId){
+  var ed=document.getElementById('wk-ri-editor-'+entryId);
+  if(!ed||!ed.innerHTML.replace(/<[^>]+>/g,'').trim()) return;
+  var entries=_wkLogTab_current==='prev'?_wk.prevEntries:_wk.entries;
+  var entry=entries.find(function(e){return e.id===entryId;});
+  if(!entry) return;
+  var myRep=typeof session!=='undefined'&&session?session.rep:'';
+  var myName=typeof session!=='undefined'&&session?(session.role==='admin'?'관리자':(_wkDisplayName(myRep)||myRep||'')):'';
+  var now=new Date();
+  var timeStr=(now.getMonth()+1)+'/'+now.getDate()+' '+(now.getHours()<10?'0':'')+now.getHours()+':'+(now.getMinutes()<10?'0':'')+now.getMinutes();
+  if(!entry.replies) entry.replies=[];
+  entry.replies.push({id:'r'+Date.now(),rep:myRep,displayName:myName,text:ed.innerHTML,time:timeStr});
+  var saveKey=_wkLogTab_current==='prev'?_wkLastKey():_wkCurrentKey();
+  if(typeof _wkSaveFeed==='function') _wkSaveFeed(saveKey,entry.rep,entries);
+  if(typeof _wkCreateReplyNotif==='function') _wkCreateReplyNotif(entry,myRep);
+  var form=document.getElementById('wk-reply-form-'+entryId);
+  if(form) form.remove();
+  _wkLogRender();
+  typeof showToast==='function'&&showToast('답변이 등록됐습니다.','ok');
+}
+window._wkLogClearSearch = function(){
+  _wk.weekMode='this'; _wk.selectedWeekKey=null;
+  window._wkFeedCache=null;
+  _wkLogRender();
+};
 
 
 
@@ -18896,7 +19027,7 @@ function _wkRenderRepTable(){
         var sp=(ST[cl.status]||'#F1EFE8|#5F5E5A').split('|');
         var rowBg=ci%2===1?'background:#F8FAFC;':'background:#fff;';
         html+='<tr style="'+rowBg+'">';
-        html+=td('<span style="font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;">'+( cl.name||cl.client||'-')+'</span>','center','overflow:hidden;');
+        html+=td('<span style="font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;">'+( cl.name||cl.client||'-')+'</span>','center','overflow:hidden;');
         html+=td('<span style="font-size:10px;padding:2px 5px;border-radius:4px;background:#E6F1FB;color:#185FA5;white-space:nowrap;">'+(cl.product||'-')+'</span>','center','');
         html+=td('<span style="font-size:10px;padding:2px 4px;border-radius:4px;background:#F1EFE8;color:#5F5E5A;white-space:nowrap;">'+(cl.type||'-')+'</span>','center','');
         html+=td('<span style="font-weight:500;color:var(--text);">'+fmt(clAct)+'</span>','center','');
@@ -19253,10 +19384,11 @@ function _wkBuildMentionPopup(){
 }
 
 function _wkCheckMention(trigger){
-  var editor=document.getElementById('wk-editor');
+  // 새 카드의 wk-log-editor 우선, 없으면 기존 wk-editor
+  var editor=document.getElementById('wk-log-editor')||document.getElementById('wk-editor');
   if(!editor) return;
   var text=editor.innerText||'';
-  var popup=document.getElementById('wk-mention-popup');
+  var popup=document.getElementById('wk-log-mention-popup')||document.getElementById('wk-mention-popup');
   // \ucee4\uc11c \uc9c1\uc804 '@' \uac10\uc9c0
   var sel=window.getSelection();
   if(!sel||!sel.focusNode) return;
