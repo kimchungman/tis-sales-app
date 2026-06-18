@@ -3742,6 +3742,11 @@ document.addEventListener('selectionchange',function(){
       </div>
     </div>
 
+    <!-- 담당자별 실적 -->
+    <div class="wk-card">
+      <div class="wk-ch"><span class="wk-ch-t">이번달 담당자별 실적</span><span class="wk-ch-s" id="wk-rep-month"></span></div>
+      <div class="wk-cb" style="overflow-x:auto;"><div id="wk-rep-table"></div></div>
+    </div>
     <!-- 진행현황 2x2 그리드 -->
     <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
       <!-- 프로젝트 진행현황 -->
@@ -18145,13 +18150,11 @@ function _wkRenderKPI(){
   var moIdx=(generalMM-3+12)%12;
   var monthLabel=(generalMM+1)+'월';
   function fmt(v){ v=parseFloat(v)||0; return v>0?v.toLocaleString():'0'; }
-  var yearTotal=0, monthPlan=0, monthAct=0;
-  var yearPlanTotal=0; // 연간 경영계획 전체 합산 (plan[0]~plan[11])
+  var yearTotal=0, monthPlan=0, monthAct=0, yearPlanTotal=0;
   var openIssues=0, expiringSoon=0, newContracts=0, totalContracts=0;
   reps.forEach(function(rep){
     var rd=store&&store.reps&&store.reps[rep]; if(!rd) return;
     for(var i=0;i<=moIdx;i++) yearTotal+=parseFloat((rd.actual&&rd.actual[i])||0);
-    // 연간 경영계획: plan 12개월 전체 합산
     for(var i=0;i<12;i++) yearPlanTotal+=parseFloat((rd.plan&&rd.plan[i])||0);
     monthPlan+=parseFloat((rd.plan&&rd.plan[moIdx])||0);
     monthAct+=parseFloat((rd.actual&&rd.actual[moIdx])||0);
@@ -18168,65 +18171,34 @@ function _wkRenderKPI(){
   });
   var rate=monthPlan>0?Math.round(monthAct/monthPlan*100):0;
   var rateColor=rate>=80?'#1D9E75':rate>=60?'#BA7517':'#E24B4A';
-  // 연간 목표 달성률: 연간누적 / 연간경영계획전체
   var yearRate=yearPlanTotal>0?Math.round(yearTotal/yearPlanTotal*100):0;
-  var yearBarW=Math.min(yearRate,100);
   var g=document.getElementById('wk-kpi-grid');
   var p=document.getElementById('wk-kpi-period');
   if(p) p.textContent=curY+'년 '+monthLabel;
   if(!g) return;
-  g.innerHTML=
-    '<div style="display:flex;flex-direction:column;gap:10px;">'
-    // 연간 누적
-    +'<div style="background:var(--card);border:1px solid var(--border);border-left:3px solid #378ADD;border-radius:8px;padding:14px 16px;">'
-      +'<div style="font-size:13px;font-weight:500;color:var(--muted);margin-bottom:6px;">'+curY+' 연간 누적 매출</div>'
-      +'<div style="font-size:28px;font-weight:700;color:var(--text);line-height:1;margin-bottom:4px;">'+fmt(yearTotal)+'<span style="font-size:13px;font-weight:400;color:var(--muted);margin-left:3px;">천원</span></div>'
-      +(yearPlanTotal>0?'<div style="font-size:12px;color:var(--muted);margin-top:3px;">연간 경영계획 <span style="color:var(--text);font-weight:600;">'+fmt(yearPlanTotal)+'천원</span></div>':'')
-      +(yearRate?'<span style="display:inline-flex;align-items:center;font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px;margin-top:6px;background:'+(yearRate>=100?'#EAF3DE':'#FAEEDA')+';color:'+(yearRate>=100?'#3B6D11':'#854F0B')+';">연간 목표 '+yearRate+'%</span>':'')
-      +'<div style="height:4px;background:var(--border);border-radius:2px;margin-top:8px;"><div style="height:4px;width:'+yearBarW+'%;background:#378ADD;border-radius:2px;"></div></div>'
-    +'</div>'
-    // 이번달 3분할
-    +'<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 0;">'
-      +'<div style="display:grid;grid-template-columns:1fr 1px 1fr 1px 1fr;">'
-        +'<div style="padding:0 14px;">'
-          +'<div style="font-size:13px;font-weight:500;color:var(--muted);margin-bottom:8px;line-height:1.3;">'+monthLabel+' 경영계획</div>'
-          +'<div style="font-size:18px;font-weight:700;color:var(--text);">'+fmt(monthPlan)+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:2px;">천원</span></div>'
-        +'</div>'
-        +'<div style="background:var(--border);"></div>'
-        +'<div style="padding:0 14px;">'
-          +'<div style="font-size:13px;font-weight:500;color:var(--muted);margin-bottom:8px;line-height:1.3;">'+monthLabel+' 달성 매출</div>'
-          +'<div style="font-size:18px;font-weight:700;color:var(--text);">'+fmt(monthAct)+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:2px;">천원</span></div>'
-        +'</div>'
-        +'<div style="background:var(--border);"></div>'
-        +'<div style="padding:0 14px;">'
-          +'<div style="font-size:13px;font-weight:500;color:var(--muted);margin-bottom:8px;">달성률</div>'
-          +'<div style="font-size:22px;font-weight:700;color:'+rateColor+';">'+rate+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:1px;">%</span></div>'
-          +'<div style="height:3px;background:var(--border);border-radius:2px;margin-top:6px;"><div style="height:3px;width:'+Math.min(rate,100)+'%;background:'+rateColor+';border-radius:2px;"></div></div>'
-        +'</div>'
-      +'</div>'
-    +'</div>'
-    // 하단 3카드
-    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">'
-      +'<div style="background:var(--bg);border:1px solid var(--border);border-left:3px solid #BA7517;border-radius:8px;padding:10px 12px;">'
-        +'<div style="font-size:12px;font-weight:500;color:var(--muted);margin-bottom:5px;">만료 임박</div>'
-        +'<div style="font-size:20px;font-weight:700;color:#BA7517;">'+expiringSoon+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:2px;">건</span></div>'
-        +'<div style="font-size:11px;color:var(--muted);margin-top:3px;">D-30 이내</div>'
-        +(expiringSoon>0?'<span style="display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;margin-top:5px;background:#FAEEDA;color:#854F0B;font-weight:500;">갱신 필요</span>':'')
-      +'</div>'
-      +'<div style="background:var(--bg);border:1px solid var(--border);border-left:3px solid #7F77DD;border-radius:8px;padding:10px 12px;">'
-        +'<div style="font-size:12px;font-weight:500;color:var(--muted);margin-bottom:5px;">신규 계약</div>'
-        +'<div style="font-size:20px;font-weight:700;color:var(--text);">'+newContracts+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:2px;">건</span></div>'
-        +'<div style="font-size:11px;color:var(--muted);margin-top:3px;">누적 '+totalContracts+'건</div>'
-      +'</div>'
-      +'<div style="background:var(--bg);border:1px solid var(--border);border-left:3px solid #E24B4A;border-radius:8px;padding:10px 12px;">'
-        +'<div style="font-size:12px;font-weight:500;color:var(--muted);margin-bottom:5px;">오픈 이슈</div>'
-        +'<div style="font-size:20px;font-weight:700;color:'+(openIssues>0?'#E24B4A':'var(--text)')+';">'+openIssues+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:2px;">건</span></div>'
-        +'<div style="font-size:11px;color:var(--muted);margin-top:3px;">미완료 이슈</div>'
-        +(openIssues>0?'<span style="display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;margin-top:5px;background:#FCEBEB;color:#A32D2D;font-weight:500;">처리 필요</span>':'')
-      +'</div>'
-    +'</div>'
-  +'</div>';
-  // 오른쪽 담당자 달성률 렌더
+  var H='';
+  H+='<div style="display:flex;flex-direction:column;gap:10px;">';
+  H+='<div style="background:var(--card);border:1px solid var(--border);border-left:3px solid #378ADD;border-radius:8px;padding:14px 16px;">';
+  H+='<div style="font-size:13px;font-weight:500;color:var(--muted);margin-bottom:6px;">'+curY+' 연간 누적 매출</div>';
+  H+='<div style="font-size:28px;font-weight:700;color:var(--text);line-height:1;margin-bottom:4px;">'+fmt(yearTotal)+'<span style="font-size:13px;font-weight:400;color:var(--muted);margin-left:3px;">천원</span></div>';
+  if(yearPlanTotal>0) H+='<div style="font-size:12px;color:var(--muted);margin-top:3px;">연간 경영계획 <span style="color:var(--text);font-weight:600;">'+fmt(yearPlanTotal)+'천원</span></div>';
+  if(yearRate) H+='<span style="display:inline-flex;font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px;margin-top:6px;background:'+(yearRate>=100?'#EAF3DE':'#FAEEDA')+';color:'+(yearRate>=100?'#3B6D11':'#854F0B')+';">연간 목표 '+yearRate+'%</span>';
+  H+='<div style="height:4px;background:var(--border);border-radius:2px;margin-top:8px;"><div style="height:4px;width:'+Math.min(yearRate,100)+'%;background:#378ADD;border-radius:2px;"></div></div>';
+  H+='</div>';
+  H+='<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 0;">';
+  H+='<div style="display:grid;grid-template-columns:1fr 1px 1fr 1px 1fr;">';
+  H+='<div style="padding:0 14px;"><div style="font-size:13px;font-weight:500;color:var(--muted);margin-bottom:8px;line-height:1.3;">'+monthLabel+' 경영계획</div><div style="font-size:18px;font-weight:700;color:var(--text);">'+fmt(monthPlan)+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:2px;">천원</span></div></div>';
+  H+='<div style="background:var(--border);"></div>';
+  H+='<div style="padding:0 14px;"><div style="font-size:13px;font-weight:500;color:var(--muted);margin-bottom:8px;line-height:1.3;">'+monthLabel+' 달성 매출</div><div style="font-size:18px;font-weight:700;color:var(--text);">'+fmt(monthAct)+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:2px;">천원</span></div></div>';
+  H+='<div style="background:var(--border);"></div>';
+  H+='<div style="padding:0 14px;"><div style="font-size:13px;font-weight:500;color:var(--muted);margin-bottom:8px;">달성률</div><div style="font-size:22px;font-weight:700;color:'+rateColor+';">'+rate+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:1px;">%</span></div><div style="height:3px;background:var(--border);border-radius:2px;margin-top:6px;"><div style="height:3px;width:'+Math.min(rate,100)+'%;background:'+rateColor+';border-radius:2px;"></div></div></div>';
+  H+='</div></div>';
+  H+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">';
+  H+='<div style="background:var(--bg);border:1px solid var(--border);border-left:3px solid #BA7517;border-radius:8px;padding:10px 12px;"><div style="font-size:12px;font-weight:500;color:var(--muted);margin-bottom:5px;">만료 임박</div><div style="font-size:20px;font-weight:700;color:#BA7517;">'+expiringSoon+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:2px;">건</span></div><div style="font-size:11px;color:var(--muted);margin-top:3px;">D-30 이내</div>'+(expiringSoon>0?'<span style="display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;margin-top:5px;background:#FAEEDA;color:#854F0B;font-weight:500;">갱신 필요</span>':'')+'</div>';
+  H+='<div style="background:var(--bg);border:1px solid var(--border);border-left:3px solid #7F77DD;border-radius:8px;padding:10px 12px;"><div style="font-size:12px;font-weight:500;color:var(--muted);margin-bottom:5px;">신규 계약</div><div style="font-size:20px;font-weight:700;color:var(--text);">'+newContracts+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:2px;">건</span></div><div style="font-size:11px;color:var(--muted);margin-top:3px;">누적 '+totalContracts+'건</div></div>';
+  H+='<div style="background:var(--bg);border:1px solid var(--border);border-left:3px solid #E24B4A;border-radius:8px;padding:10px 12px;"><div style="font-size:12px;font-weight:500;color:var(--muted);margin-bottom:5px;">오픈 이슈</div><div style="font-size:20px;font-weight:700;color:'+(openIssues>0?'#E24B4A':'var(--text)')+';">'+openIssues+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:2px;">건</span></div><div style="font-size:11px;color:var(--muted);margin-top:3px;">미완료 이슈</div>'+(openIssues>0?'<span style="display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;margin-top:5px;background:#FCEBEB;color:#A32D2D;font-weight:500;">처리 필요</span>':'')+'</div>';
+  H+='</div></div>';
+  g.innerHTML=H;
   if(typeof _wkRenderRepRates==='function') _wkRenderRepRates();
 }
 
