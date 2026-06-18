@@ -3728,15 +3728,20 @@ document.addEventListener('selectionchange',function(){
     <!-- 지난주 회의록 -->
     <div id="wk-prev-section"></div>
     <!-- KPI -->
-    <div class="wk-card">
-      <div class="wk-ch"><span class="wk-ch-t" id="wk-kpi-title">이번달 핵심 지표</span><span class="wk-ch-s" id="wk-kpi-period"></span></div>
-      <div class="wk-cb"><div class="wk-kpi-grid" id="wk-kpi-grid"></div></div>
+    <!-- 핵심지표 + 담당자달성률 2열 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start;">
+      <!-- 왼쪽: 핵심지표 -->
+      <div class="wk-card">
+        <div class="wk-ch"><span class="wk-ch-t" id="wk-kpi-title">이번달 핵심 지표</span><span class="wk-ch-s" id="wk-kpi-period"></span></div>
+        <div class="wk-cb"><div class="wk-kpi-grid" id="wk-kpi-grid"></div></div>
+      </div>
+      <!-- 오른쪽: 담당자별 달성률 -->
+      <div class="wk-card">
+        <div class="wk-ch"><span class="wk-ch-t">담당자별 달성률</span><span class="wk-ch-s" id="wk-rep-month"></span></div>
+        <div class="wk-cb"><div id="wk-rep-rate"></div></div>
+      </div>
     </div>
-    <!-- 담당자별 실적 -->
-    <div class="wk-card">
-      <div class="wk-ch"><span class="wk-ch-t">이번달 담당자별 실적</span><span class="wk-ch-s" id="wk-rep-month"></span></div>
-      <div class="wk-cb" style="overflow-x:auto;"><div id="wk-rep-table"></div></div>
-    </div>
+
     <!-- 진행현황 2x2 그리드 -->
     <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
       <!-- 프로젝트 진행현황 -->
@@ -9900,8 +9905,10 @@ async function _spLoadSettings() {
   if (!cfg) return;
 
   // 테마
-  if(cfg.menuOrder&&Array.isArray(cfg.menuOrder)){
-    authCfg.menuOrder=cfg.menuOrder;
+  // menuOrder: cfg.menuOrder 또는 cfg.authCfg.menuOrder 둘 다 확인
+  var _loadedOrder=cfg.menuOrder||(cfg.authCfg&&cfg.authCfg.menuOrder);
+  if(_loadedOrder&&Array.isArray(_loadedOrder)){
+    authCfg.menuOrder=_loadedOrder;
     if(typeof _renderSidebar==='function') _renderSidebar();
   }
   if (cfg.theme && typeof applyAllTheme === 'function') {
@@ -9932,7 +9939,10 @@ async function _spLoadSettings() {
     const _oldAuth=JSON.parse(JSON.stringify(authCfg));
     // banner는 in-memory 값이 최신이면 보존 (SP 구버전으로 덮어쓰기 방지)
     var _memBanner=authCfg.banner;
+    var _prevMenuOrder=authCfg.menuOrder; // 기존 menuOrder 보존
     Object.assign(authCfg, cfg.authCfg);
+    // cfg.authCfg에 menuOrder가 있으면 사용, 없으면 기존 것 복원
+    if(!authCfg.menuOrder&&_prevMenuOrder) authCfg.menuOrder=_prevMenuOrder;
     // SP banner가 없거나 더 오래된 경우 in-memory banner 복원
     if(_memBanner&&_memBanner.active&&_memBanner.deployedAt){
       var _spDt=(cfg.authCfg.banner&&cfg.authCfg.banner.deployedAt)||'';
@@ -10075,7 +10085,10 @@ async function spSaveSettings() {
 
   // authCfg (담당자 비밀번호 등)
   const savedAuth = localStorage.getItem('weekly_auth');
-  const authData  = savedAuth ? JSON.parse(savedAuth) : (typeof authCfg !== 'undefined' ? authCfg : {});
+  // authCfg 최신 상태 사용 (localStorage보다 in-memory가 최신)
+  const authData  = typeof authCfg !== 'undefined' ? JSON.parse(JSON.stringify(authCfg)) : (savedAuth ? JSON.parse(savedAuth) : {});
+  // menuOrder 명시적 포함
+  if(typeof _getMenuOrder==='function') authData.menuOrder=_getMenuOrder();
 
   await _spSaveItem('settings', 'global', {
     savedAt:   new Date().toISOString(),
@@ -18074,7 +18087,7 @@ async function _wkLoad(){
 // \u2500\u2500 \ubcf4\uace0\uc11c \ub80c\ub354 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 function _wkRenderReport(){
   _wkRenderPrevSection();
-  _wkRenderKPI();
+  _wkRenderKPI(); // _wkRenderKPI 내부에서 _wkRenderRepRates 호출
   _wkRenderRepTable();
   _wkRenderProjects();
   _wkRenderIssues();
@@ -18131,13 +18144,15 @@ function _wkRenderKPI(){
   }
   var moIdx=(generalMM-3+12)%12;
   var monthLabel=(generalMM+1)+'월';
-  // 저장값 그대로 쉼표 (천원단위)
   function fmt(v){ v=parseFloat(v)||0; return v>0?v.toLocaleString():'0'; }
   var yearTotal=0, monthPlan=0, monthAct=0;
+  var yearPlanTotal=0; // 연간 경영계획 전체 합산 (plan[0]~plan[11])
   var openIssues=0, expiringSoon=0, newContracts=0, totalContracts=0;
   reps.forEach(function(rep){
     var rd=store&&store.reps&&store.reps[rep]; if(!rd) return;
     for(var i=0;i<=moIdx;i++) yearTotal+=parseFloat((rd.actual&&rd.actual[i])||0);
+    // 연간 경영계획: plan 12개월 전체 합산
+    for(var i=0;i<12;i++) yearPlanTotal+=parseFloat((rd.plan&&rd.plan[i])||0);
     monthPlan+=parseFloat((rd.plan&&rd.plan[moIdx])||0);
     monthAct+=parseFloat((rd.actual&&rd.actual[moIdx])||0);
     (rd.issuesList||[]).forEach(function(iss){ if(iss.status!=='완료') openIssues++; });
@@ -18153,60 +18168,186 @@ function _wkRenderKPI(){
   });
   var rate=monthPlan>0?Math.round(monthAct/monthPlan*100):0;
   var rateColor=rate>=80?'#1D9E75':rate>=60?'#BA7517':'#E24B4A';
-  // 연간: moIdx까지의 합 / 목표도 동일 기간
-  var yearTarget=monthPlan>0?monthPlan*(moIdx+1):0;
-  var yearRate=yearTarget>0?Math.round(yearTotal/yearTarget*100):0;
+  // 연간 목표 달성률: 연간누적 / 연간경영계획전체
+  var yearRate=yearPlanTotal>0?Math.round(yearTotal/yearPlanTotal*100):0;
+  var yearBarW=Math.min(yearRate,100);
   var g=document.getElementById('wk-kpi-grid');
   var p=document.getElementById('wk-kpi-period');
   if(p) p.textContent=curY+'년 '+monthLabel;
   if(!g) return;
   g.innerHTML=
     '<div style="display:flex;flex-direction:column;gap:10px;">'
-    // 메인카드
-    +'<div style="background:var(--card);border:1px solid var(--border);border-left:3px solid #378ADD;border-radius:8px;padding:16px 20px;">'
-      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">'
-        +'<span style="font-size:12px;color:var(--muted);">'+curY+' 연간 누적</span>'
-        +'<span style="font-size:26px;font-weight:700;color:var(--text);">'+fmt(yearTotal)+'<span style="font-size:12px;font-weight:400;color:var(--muted);margin-left:3px;">천원</span></span>'
-        +(yearRate?'<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:#E6F1FB;color:#185FA5;font-weight:500;">연간 목표 '+yearRate+'%</span>':'')
-      +'</div>'
-      +'<div style="height:5px;background:var(--border);border-radius:3px;margin-bottom:16px;"><div style="height:5px;width:'+Math.min(yearRate,100)+'%;background:#378ADD;border-radius:3px;"></div></div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;border-top:1px solid var(--border);padding-top:14px;gap:0;">'
-        +'<div style="text-align:center;padding:0 12px;">'
-          +'<div style="font-size:13px;color:var(--muted);margin-bottom:6px;font-weight:500;">'+monthLabel+' 계획 매출</div>'
-          +'<div style="font-size:22px;font-weight:700;color:var(--text);">'+fmt(monthPlan)+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:3px;">천원</span></div>'
+    // 연간 누적
+    +'<div style="background:var(--card);border:1px solid var(--border);border-left:3px solid #378ADD;border-radius:8px;padding:14px 16px;">'
+      +'<div style="font-size:13px;font-weight:500;color:var(--muted);margin-bottom:6px;">'+curY+' 연간 누적 매출</div>'
+      +'<div style="font-size:28px;font-weight:700;color:var(--text);line-height:1;margin-bottom:4px;">'+fmt(yearTotal)+'<span style="font-size:13px;font-weight:400;color:var(--muted);margin-left:3px;">천원</span></div>'
+      +(yearPlanTotal>0?'<div style="font-size:12px;color:var(--muted);margin-top:3px;">연간 경영계획 <span style="color:var(--text);font-weight:600;">'+fmt(yearPlanTotal)+'천원</span></div>':'')
+      +(yearRate?'<span style="display:inline-flex;align-items:center;font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px;margin-top:6px;background:'+(yearRate>=100?'#EAF3DE':'#FAEEDA')+';color:'+(yearRate>=100?'#3B6D11':'#854F0B')+';">연간 목표 '+yearRate+'%</span>':'')
+      +'<div style="height:4px;background:var(--border);border-radius:2px;margin-top:8px;"><div style="height:4px;width:'+yearBarW+'%;background:#378ADD;border-radius:2px;"></div></div>'
+    +'</div>'
+    // 이번달 3분할
+    +'<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 0;">'
+      +'<div style="display:grid;grid-template-columns:1fr 1px 1fr 1px 1fr;">'
+        +'<div style="padding:0 14px;">'
+          +'<div style="font-size:13px;font-weight:500;color:var(--muted);margin-bottom:8px;line-height:1.3;">'+monthLabel+' 경영계획</div>'
+          +'<div style="font-size:18px;font-weight:700;color:var(--text);">'+fmt(monthPlan)+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:2px;">천원</span></div>'
         +'</div>'
-        +'<div style="text-align:center;padding:0 12px;border-left:1px solid var(--border);border-right:1px solid var(--border);">'
-          +'<div style="font-size:13px;color:var(--muted);margin-bottom:6px;font-weight:500;">'+monthLabel+' 달성 매출</div>'
-          +'<div style="font-size:22px;font-weight:700;color:var(--text);">'+fmt(monthAct)+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:3px;">천원</span></div>'
+        +'<div style="background:var(--border);"></div>'
+        +'<div style="padding:0 14px;">'
+          +'<div style="font-size:13px;font-weight:500;color:var(--muted);margin-bottom:8px;line-height:1.3;">'+monthLabel+' 달성 매출</div>'
+          +'<div style="font-size:18px;font-weight:700;color:var(--text);">'+fmt(monthAct)+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:2px;">천원</span></div>'
         +'</div>'
-        +'<div style="text-align:center;padding:0 12px;">'
-          +'<div style="font-size:13px;color:var(--muted);margin-bottom:6px;font-weight:500;">달성률</div>'
-          +'<div style="font-size:26px;font-weight:700;color:'+rateColor+';">'+rate+'%</div>'
-          +'<div style="height:4px;background:var(--border);border-radius:2px;margin-top:8px;"><div style="height:4px;width:'+Math.min(rate,100)+'%;background:'+rateColor+';border-radius:2px;"></div></div>'
+        +'<div style="background:var(--border);"></div>'
+        +'<div style="padding:0 14px;">'
+          +'<div style="font-size:13px;font-weight:500;color:var(--muted);margin-bottom:8px;">달성률</div>'
+          +'<div style="font-size:22px;font-weight:700;color:'+rateColor+';">'+rate+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:1px;">%</span></div>'
+          +'<div style="height:3px;background:var(--border);border-radius:2px;margin-top:6px;"><div style="height:3px;width:'+Math.min(rate,100)+'%;background:'+rateColor+';border-radius:2px;"></div></div>'
         +'</div>'
       +'</div>'
     +'</div>'
-    // 하단 3카드 - 메인카드 아래 1행
+    // 하단 3카드
     +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">'
-      +'<div style="background:var(--card);border:1px solid var(--border);border-left:3px solid #BA7517;border-radius:8px;padding:14px 16px;">'
-        +'<div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:500;">계약 만료 임박</div>'
-        +'<div style="font-size:24px;font-weight:700;color:#BA7517;">'+expiringSoon+'<span style="font-size:13px;font-weight:400;color:var(--muted);margin-left:3px;">건</span></div>'
-        +'<div style="font-size:11px;color:var(--muted);margin-top:4px;">D-30 이내</div>'
-        +(expiringSoon>0?'<span style="display:inline-block;font-size:11px;padding:3px 8px;border-radius:20px;margin-top:7px;background:#FAEEDA;color:#854F0B;font-weight:500;">갱신 검토 필요</span>':'')
+      +'<div style="background:var(--bg);border:1px solid var(--border);border-left:3px solid #BA7517;border-radius:8px;padding:10px 12px;">'
+        +'<div style="font-size:12px;font-weight:500;color:var(--muted);margin-bottom:5px;">만료 임박</div>'
+        +'<div style="font-size:20px;font-weight:700;color:#BA7517;">'+expiringSoon+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:2px;">건</span></div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-top:3px;">D-30 이내</div>'
+        +(expiringSoon>0?'<span style="display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;margin-top:5px;background:#FAEEDA;color:#854F0B;font-weight:500;">갱신 필요</span>':'')
       +'</div>'
-      +'<div style="background:var(--card);border:1px solid var(--border);border-left:3px solid #7F77DD;border-radius:8px;padding:14px 16px;">'
-        +'<div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:500;">신규 계약 ('+monthLabel+')</div>'
-        +'<div style="font-size:24px;font-weight:700;color:var(--text);">'+newContracts+'<span style="font-size:13px;font-weight:400;color:var(--muted);margin-left:3px;">건</span></div>'
-        +'<div style="font-size:11px;color:var(--muted);margin-top:4px;">누적 '+totalContracts+'건</div>'
+      +'<div style="background:var(--bg);border:1px solid var(--border);border-left:3px solid #7F77DD;border-radius:8px;padding:10px 12px;">'
+        +'<div style="font-size:12px;font-weight:500;color:var(--muted);margin-bottom:5px;">신규 계약</div>'
+        +'<div style="font-size:20px;font-weight:700;color:var(--text);">'+newContracts+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:2px;">건</span></div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-top:3px;">누적 '+totalContracts+'건</div>'
       +'</div>'
-      +'<div style="background:var(--card);border:1px solid var(--border);border-left:3px solid #E24B4A;border-radius:8px;padding:14px 16px;">'
-        +'<div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:500;">오픈 이슈</div>'
-        +'<div style="font-size:24px;font-weight:700;color:'+(openIssues>0?'#E24B4A':'var(--text)')+';">'+openIssues+'<span style="font-size:13px;font-weight:400;color:var(--muted);margin-left:3px;">건</span></div>'
-        +'<div style="font-size:11px;color:var(--muted);margin-top:4px;">미완료 이슈</div>'
-        +(openIssues>0?'<span style="display:inline-block;font-size:11px;padding:3px 8px;border-radius:20px;margin-top:7px;background:#FCEBEB;color:#A32D2D;font-weight:500;">처리 필요</span>':'')
+      +'<div style="background:var(--bg);border:1px solid var(--border);border-left:3px solid #E24B4A;border-radius:8px;padding:10px 12px;">'
+        +'<div style="font-size:12px;font-weight:500;color:var(--muted);margin-bottom:5px;">오픈 이슈</div>'
+        +'<div style="font-size:20px;font-weight:700;color:'+(openIssues>0?'#E24B4A':'var(--text)')+';">'+openIssues+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:2px;">건</span></div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-top:3px;">미완료 이슈</div>'
+        +(openIssues>0?'<span style="display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;margin-top:5px;background:#FCEBEB;color:#A32D2D;font-weight:500;">처리 필요</span>':'')
       +'</div>'
     +'</div>'
   +'</div>';
+  // 오른쪽 담당자 달성률 렌더
+  if(typeof _wkRenderRepRates==='function') _wkRenderRepRates();
+}
+
+function _wkRenderRepRates(){
+  var el=document.getElementById('wk-rep-rate');
+  if(!el) return;
+  var today=new Date(); var generalMM=today.getMonth(); var curY=today.getFullYear();
+  if(_wk.weekMode==='period'&&_wk.selectedWeekKey){
+    var _yr=parseInt(_wk.selectedWeekKey.split('-W')[0]);
+    var _wn=parseInt(_wk.selectedWeekKey.split('-W')[1]);
+    var _j=new Date(_yr,0,4); var _d=(_j.getDay()+6)%7;
+    var _m=new Date(_j); _m.setDate(_j.getDate()-_d+(_wn-1)*7);
+    generalMM=_m.getMonth(); curY=_m.getFullYear();
+  }
+  var moIdx=(generalMM-3+12)%12;
+  var monthLabel=(generalMM+1)+'월';
+  function fmt(v){ v=parseFloat(v)||0; return v>0?v.toLocaleString():'-'; }
+
+  var AVCOLS=['#185FA5','#0F6E56','#3C3489','#993C1D','#854F0B','#6B3A8C'];
+  var AVBGS=['#E6F1FB','#E1F5EE','#EEEDFE','#FAECE7','#FEF3E2','#F3EEF8'];
+
+  // 팀별로 그룹화
+  var teams=(typeof TEAMS!=='undefined'&&TEAMS&&TEAMS.length)?TEAMS:['전체'];
+  var reps=_wkGetActiveReps();
+  var html='<div style="display:flex;flex-direction:column;gap:0;">';
+  var repIdx=0;
+
+  // 팀별 또는 전체
+  var teamGroups=[];
+  if(typeof TEAM_REPS!=='undefined'&&Object.keys(TEAM_REPS).length){
+    teams.forEach(function(t){
+      var tReps=(TEAM_REPS[t]||[]).filter(function(r){return reps.indexOf(r)>=0;});
+      if(tReps.length) teamGroups.push({name:t,reps:tReps});
+    });
+    // 팀 미지정 담당자
+    var allInTeams=[];
+    teams.forEach(function(t){ (TEAM_REPS[t]||[]).forEach(function(r){ allInTeams.push(r); }); });
+    var noTeam=reps.filter(function(r){ return allInTeams.indexOf(r)<0; });
+    if(noTeam.length) teamGroups.push({name:'미지정',reps:noTeam});
+  } else {
+    teamGroups.push({name:'전체',reps:reps});
+  }
+
+  var MAX_H_PER_REP=56; // 담당자 1행 높이
+  var MAX_VISIBLE=7;    // 스크롤 없이 보이는 최대 담당자 수
+  var totalReps=reps.length;
+  var needScroll=totalReps>MAX_VISIBLE;
+
+  html+='<div style="'+(needScroll?'max-height:'+(MAX_VISIBLE*MAX_H_PER_REP+teamGroups.length*36)+'px;overflow-y:auto;':'')+'padding-bottom:0;">';
+
+  teamGroups.forEach(function(tg){
+    // 팀 합계
+    var tPlan=0, tAct=0;
+    tg.reps.forEach(function(rep){
+      var rd=store&&store.reps&&store.reps[rep]; if(!rd) return;
+      tPlan+=parseFloat((rd.plan&&rd.plan[moIdx])||0);
+      tAct+=parseFloat((rd.actual&&rd.actual[moIdx])||0);
+    });
+    var tRate=tPlan>0?Math.round(tAct/tPlan*100):0;
+    var tRateColor=tRate>=80?'#1D9E75':tRate>=60?'#BA7517':'#E24B4A';
+
+    // 팀 헤더
+    html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px 6px;background:var(--bg);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:1;">';
+    html+='<span style="font-size:11px;font-weight:600;color:var(--muted);">'+tg.name+'</span>';
+    html+='<div style="display:flex;align-items:center;gap:8px;">';
+    html+='<span style="font-size:11px;color:var(--muted);">'+fmt(tAct)+' / '+fmt(tPlan)+'천원</span>';
+    html+='<span style="font-size:12px;font-weight:700;color:'+tRateColor+';">'+tRate+'%</span>';
+    html+='</div></div>';
+
+    // 담당자 행
+    tg.reps.forEach(function(rep){
+      var rd=store&&store.reps&&store.reps[rep]; if(!rd) return;
+      var plan=parseFloat((rd.plan&&rd.plan[moIdx])||0);
+      var act=parseFloat((rd.actual&&rd.actual[moIdx])||0);
+      var rate=plan>0?Math.round(act/plan*100):0;
+      var rc=rate>=80?'#1D9E75':rate>=60?'#BA7517':'#E24B4A';
+      var barW=Math.min(rate,100);
+      var col=AVCOLS[repIdx%AVCOLS.length];
+      var bg=AVBGS[repIdx%AVBGS.length];
+      var title=rd.repTitle||'';
+      repIdx++;
+
+      html+='<div style="padding:8px 12px;border-bottom:0.5px solid var(--border);">';
+      html+='<div style="display:grid;grid-template-columns:72px 1fr 44px;align-items:center;gap:8px;">';
+      // 이름
+      html+='<div style="display:flex;align-items:center;gap:6px;">';
+      html+='<div style="width:22px;height:22px;border-radius:50%;background:'+bg+';color:'+col+';font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+(rep||'').charAt(0)+'</div>';
+      html+='<div><div style="font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;">'+rep+'</div>';
+      if(title) html+='<div style="font-size:10px;color:var(--muted);">'+title+'</div>';
+      html+='</div></div>';
+      // 바
+      html+='<div>';
+      html+='<div style="height:6px;background:var(--border);border-radius:3px;"><div style="height:6px;width:'+barW+'%;background:'+rc+';border-radius:3px;"></div></div>';
+      html+='<div style="display:flex;justify-content:space-between;margin-top:3px;"><span style="font-size:10px;color:var(--muted);">달성 '+fmt(act)+'</span><span style="font-size:10px;color:var(--muted);">목표 '+fmt(plan)+'</span></div>';
+      html+='</div>';
+      // 달성률
+      html+='<div style="font-size:13px;font-weight:700;color:'+rc+';text-align:right;">'+rate+'%</div>';
+      html+='</div></div>';
+    });
+  });
+
+  html+='</div>';
+
+  // 전체 합계
+  var totalPlan=0, totalAct=0;
+  reps.forEach(function(rep){
+    var rd=store&&store.reps&&store.reps[rep]; if(!rd) return;
+    totalPlan+=parseFloat((rd.plan&&rd.plan[moIdx])||0);
+    totalAct+=parseFloat((rd.actual&&rd.actual[moIdx])||0);
+  });
+  var totalRate=totalPlan>0?Math.round(totalAct/totalPlan*100):0;
+  var totalRc=totalRate>=80?'#1D9E75':totalRate>=60?'#BA7517':'#E24B4A';
+  html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-top:1px solid var(--border);background:var(--bg);">';
+  html+='<span style="font-size:12px;font-weight:600;color:var(--muted);">사업부 전체</span>';
+  html+='<div style="display:flex;align-items:center;gap:10px;">';
+  html+='<span style="font-size:11px;color:var(--muted);">달성 <b style="color:var(--text);">'+fmt(totalAct)+'</b> / 계획 <b style="color:var(--text);">'+fmt(totalPlan)+'</b>천원</span>';
+  html+='<span style="font-size:14px;font-weight:700;color:'+totalRc+';">'+totalRate+'%</span>';
+  html+='</div></div>';
+
+  html+='</div>';
+  el.innerHTML=html;
 }
 
 function _wkRenderRepTable(){
