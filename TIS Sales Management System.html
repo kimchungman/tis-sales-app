@@ -4865,6 +4865,16 @@ function showPage(id,navEl){
     if(typeof _wk!=='undefined'){
       // 항상 loading 리셋 후 로드 (stuck 방지)
       _wk.loading=false;
+      // 담당자 접속 시 본인 팀으로 자동 이동
+      if(typeof session!=='undefined'&&session&&session.role==='rep'&&session.rep){
+        var _repTeam=typeof _getRepActualTeam==='function'?_getRepActualTeam(session.rep):'';
+        if(_repTeam&&_wk.activeTeam!==_repTeam){
+          _wk.activeTeam=_repTeam;
+          _wk.activeRep=session.rep; // 본인 탭도 자동 선택
+          if(typeof _wkBuildTeamTabs==='function') _wkBuildTeamTabs();
+          if(typeof _wkBuildRepTabs==='function') _wkBuildRepTabs();
+        }
+      }
       // entries 있으면 즉시 렌더 후 백그라운드 재로드
       if(_wk.entries&&_wk.entries.length>0){
         try{ if(typeof _wkRenderFeed==='function') _wkRenderFeed(); }catch(e){}
