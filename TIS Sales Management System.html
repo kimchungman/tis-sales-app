@@ -18716,6 +18716,54 @@ function _wkLogSubmitReply(entryId){
   _wkLogRender();
   typeof showToast==='function'&&showToast('답변이 등록됐습니다.','ok');
 }
+
+function _wkInsertMention(rep, displayName){
+  ['wk-log-mention-popup','wk-mention-popup'].forEach(function(id){
+    var p=document.getElementById(id); if(p) p.style.display='none';
+  });
+  var savedRange=window._wkMentionRange;
+  var editor=document.getElementById('wk-log-editor')||document.getElementById('wk-editor');
+  if(!editor) return;
+  editor.focus();
+  var sel=window.getSelection();
+  if(savedRange){ sel.removeAllRanges(); sel.addRange(savedRange.cloneRange()); }
+  if(!sel||!sel.rangeCount) return;
+  var range=sel.getRangeAt(0);
+  var node=range.startContainer;
+  if(node.nodeType===3){
+    var text=node.textContent;
+    var atIdx=text.lastIndexOf('@');
+    if(atIdx>=0){
+      node.textContent=text.slice(0,atIdx);
+      range.setStart(node,atIdx); range.setEnd(node,atIdx);
+    }
+  }
+  var span=document.createElement('span');
+  span.className='wk-mention';
+  span.style.cssText='color:#185FA5;font-weight:600;background:#E6F1FB;border-radius:3px;padding:0 2px;';
+  span.setAttribute('data-rep',rep);
+  span.setAttribute('contenteditable','false');
+  span.textContent='@'+displayName;
+  range.insertNode(span);
+  var afterRange=document.createRange();
+  afterRange.setStartAfter(span); afterRange.collapse(true);
+  sel.removeAllRanges(); sel.addRange(afterRange);
+  document.execCommand('insertText',false,'\u00a0');
+  window._wkMentionRange=null;
+}
+window._wkInsertMention=_wkInsertMention;
+window._wkInsertMentionAt=function(){
+  var ed=document.getElementById('wk-log-editor');
+  if(!ed) return;
+  ed.focus();
+  var sel=window.getSelection();
+  if(sel&&sel.rangeCount){
+    try{ window._wkMentionRange=sel.getRangeAt(0).cloneRange(); }catch(e){}
+  }
+  document.execCommand('insertText',false,'@');
+  if(typeof _wkCheckMention==='function') _wkCheckMention();
+};
+
 window._wkLogClearSearch = function(){
   _wk.weekMode='this'; _wk.selectedWeekKey=null;
   window._wkFeedCache=null;
@@ -18960,7 +19008,7 @@ function _wkRenderRepTable(){
   var ST={달성:'#EAF3DE|#3B6D11',진행:'#E6F1FB|#185FA5',대기:'#F1EFE8|#5F5E5A',계약:'#EAF3DE|#3B6D11',종료:'#FCEBEB|#A32D2D',예상:'#FEF3E2|#854F0B'};
   // 열 너비: 고객사 고정 90px, 나머지 고정
   // grid-template-columns으로 헤더+데이터 동일 컨텍스트
-  var GTC='90px 62px 44px 80px 68px 50px';
+  var GTC='1fr 62px 44px 76px 64px 48px';
   var H='<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:4px 0;">';
   reps.forEach(function(rep,ri){
     var rd=store&&store.reps&&store.reps[rep]; if(!rd) return;
@@ -19340,6 +19388,24 @@ function _wkSetupInput(){
       document.getElementById('wk-mention-popup').style.display='none';
     });
   }
+
+  // wk-log-editor 이벤트 연결
+  var logEditor=document.getElementById('wk-log-editor');
+  if(logEditor){
+    logEditor.addEventListener('keyup', _wkCheckMention);
+    logEditor.addEventListener('input', _wkCheckMention);
+    logEditor.addEventListener('click', function(){
+      var popup=document.getElementById('wk-log-mention-popup');
+      if(popup) popup.style.display='none';
+    });
+  }
+  // 작성자명 업데이트 (wk-log-author)
+  var logAuthor=document.getElementById('wk-log-author');
+  var logRole=document.getElementById('wk-log-role');
+  if(logAuthor&&session){
+    logAuthor.textContent=session.role==='admin'?'관리자':(_wkDisplayName(session.rep)||session.rep||'게스트');
+    if(logRole) logRole.textContent=typeof _wkGetRoleLabel==='function'?_wkGetRoleLabel():'';
+  }
 }
 
 function _wkGetRoleLabel(){
@@ -19354,24 +19420,39 @@ function _wkGetRoleLabel(){
 }
 
 function _wkBuildMentionPopup(){
-  var allReps=(typeof REPS!=='undefined'?REPS:[]);
-  var guests=(typeof authCfg!=='undefined'&&authCfg.guestAllowList)?authCfg.guestAllowList.map(function(g){return g.name||g;}):[];
-  var all=allReps.concat(guests.filter(function(g){return allReps.indexOf(g)<0;}));
-  var myName=session&&(session.rep||'');
-  var myRole=session&&session.role;
+  // TEAM_REPS 전체 담당자 수집 (SP로 동적 추가된 담당자 포함)
+  var all=[];
+  if(typeof TEAM_REPS!=='undefined'){
+    Object.keys(TEAM_REPS).forEach(function(t){
+      (TEAM_REPS[t]||[]).forEach(function(r){
+        if(all.indexOf(r)<0) all.push(r);
+      });
+    });
+  }
+  // REPS에만 있는 담당자도 포함
+  if(typeof REPS!=='undefined'){
+    REPS.forEach(function(r){ if(all.indexOf(r)<0) all.push(r); });
+  }
   function buildList(listId){
     var list=document.getElementById(listId);
     if(!list) return;
     list.innerHTML='';
     all.forEach(function(rep){
-      if(myRole!=='admin'&&rep===myName) return; // 자신 제외 (옵션)
       var displayName=typeof _wkDisplayName==='function'?_wkDisplayName(rep):rep;
-      var team=typeof _getRepActualTeam==='function'?_getRepActualTeam(rep):'';
+      // 팀명: TEAM_REPS에서 찾기
+      var teamName='';
+      if(typeof TEAM_REPS!=='undefined'){
+        Object.keys(TEAM_REPS).forEach(function(t){
+          if((TEAM_REPS[t]||[]).indexOf(rep)>=0) teamName=t;
+        });
+      }
       var div=document.createElement('div');
       div.className='wk-mp-item';
       div.innerHTML='<span class="wk-mp-name">'+displayName+'</span>'
-        +(team?'<span class="wk-mp-role">'+team+'</span>':'');
-      div.onclick=function(){
+        +(teamName?'<span class="wk-mp-role">'+teamName+'</span>':'');
+      div.onmousedown=function(e){
+        // mousedown으로 처리: click보다 먼저 → editor blur 전에 실행
+        e.preventDefault();
         if(typeof _wkInsertMention==='function') _wkInsertMention(rep,displayName);
       };
       list.appendChild(div);
