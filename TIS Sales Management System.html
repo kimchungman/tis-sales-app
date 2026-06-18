@@ -3725,19 +3725,16 @@ document.addEventListener('selectionchange',function(){
   </div>
   <!-- 보고서 뷰 -->
   <div id="wk-report-view" class="wk-report">
-    <!-- 지난주 회의록 -->
-    <div id="wk-prev-section"></div>
-    <!-- KPI -->
-    <!-- 핵심지표 + 담당자달성률 2열 -->
+    <!-- 핵심지표 + 이전회의록 2열 -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch;">
       <!-- 왼쪽: 핵심지표 -->
       <div class="wk-card" style="padding:0;overflow:hidden;">
         <div id="wk-kpi-grid" style="padding:0;"></div>
       </div>
-      <!-- 오른쪽: 담당자별 달성률 -->
+      <!-- 오른쪽: 이전 회의록 -->
       <div class="wk-card" style="padding:0;overflow:hidden;display:flex;flex-direction:column;">
-        <div class="wk-ch" style="flex-shrink:0;"><span class="wk-ch-t">담당자별 달성률</span><span class="wk-ch-s" id="wk-rep-month"></span></div>
-        <div id="wk-rep-rate" style="flex:1;overflow-y:auto;"></div>
+        <div class="wk-ch" style="flex-shrink:0;padding:12px 16px;border-bottom:1px solid var(--border);"><span class="wk-ch-t" id="wk-prev-title-label">이전 회의록</span><span class="wk-ch-s" id="wk-prev-period"></span></div>
+        <div id="wk-prev-section" style="flex:1;overflow-y:auto;min-height:0;"></div>
       </div>
     </div>
 
@@ -18104,34 +18101,52 @@ function _wkRenderPrevSection(){
   if(!el) return;
   var entries=_wk.prevEntries;
   var prevKey=_wkPrevKey();
-  if(!entries||!entries.length||!prevKey){ el.innerHTML=''; return; }
-  var prevLabel=prevKey.replace('W','\uc8fc ').replace('-','\ub144 ')+'\ucc28';
-  var h='<div class="wk-prev-card">'
-    +'<div class="wk-prev-head"><span>\ud83d\udccc</span><span class="wk-prev-title">\uc9c0\ub09c\uc8fc \ud68c\uc758 \ub0b4\uc6a9 ('+prevLabel+')</span></div>'
-    +'<div class="wk-prev-body">';
-  entries.forEach(function(entry){
+
+  // 헤더 기간 표시
+  var titleEl=document.getElementById('wk-prev-period');
+  if(titleEl) titleEl.textContent=prevKey?prevKey.replace(/(\d+)-W(\d+)/,'$1년 $2주차'):'';
+
+  // 데이터 없을 때
+  if(!entries||!entries.length||!prevKey){
+    el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;min-height:200px;gap:8px;">'
+      +'<div style="font-size:32px;opacity:.25;">📋</div>'
+      +'<div style="font-size:13px;color:var(--muted);font-weight:500;">이전 회의록이 없습니다</div>'
+      +'<div style="font-size:11px;color:var(--muted2);">주간회의 입력 후 다음주에 표시됩니다</div>'
+      +'</div>';
+    return;
+  }
+
+  var h='<div style="display:flex;flex-direction:column;">';
+  entries.forEach(function(entry,idx){
     var hasUnreplied=!entry.replies||!entry.replies.length;
-    h+='<div class="wk-pi'+(hasUnreplied?' carry':'')+'">'
-      +'<div class="wk-pi-who">'
-        +'<span class="wk-pi-name">'+_wkEsc(entry.displayName||entry.rep)+'</span>'
-        +('')
-        +'<span class="wk-pi-time">'+_wkEsc(entry.time||'')+'</span>'
-      +'</div>'
-      +'<div class="wk-pi-cont">'+_wkSanitize(entry.text||'')+'</div>';
+    var rowBg=idx%2===1?'background:#F8FAFC;':'background:#FFFFFF;';
+    h+='<div style="'+rowBg+'padding:12px 16px;border-bottom:1px solid #E2E8F0;">';
+    // 담당자 + 시간
+    h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">';
+    h+='<div style="display:flex;align-items:center;gap:6px;">';
+    h+='<div style="width:20px;height:20px;border-radius:50%;background:#E6F1FB;color:#185FA5;font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+(entry.displayName||entry.rep||'?').charAt(0)+'</div>';
+    h+='<span style="font-size:12px;font-weight:600;color:#0F172A;">'+_wkEsc(entry.displayName||entry.rep||'')+'</span>';
+    if(entry.time) h+='<span style="font-size:10px;color:#94A3B8;">'+_wkEsc(entry.time)+'</span>';
+    h+='</div>';
+    if(hasUnreplied) h+='<span style="font-size:10px;padding:2px 7px;border-radius:20px;background:#FEF3E2;color:#854F0B;font-weight:500;">미답변</span>';
+    h+='</div>';
+    // 내용
+    h+='<div style="font-size:12px;color:#334155;line-height:1.6;margin-bottom:'+( entry.replies&&entry.replies.length?'8':'0')+'px;">'+_wkSanitize(entry.text||'')+'</div>';
+    // 답변
     if(entry.replies&&entry.replies.length){
-      h+='<div class="wk-pi-reply-wrap">';
       entry.replies.forEach(function(r){
-        h+='<div><span class="wk-pi-rw">\u21a9 '+_wkEsc(r.displayName||r.rep)+' '+_wkEsc(r.time||'')+'</span>'
-          +'<div class="wk-pi-rc">'+_wkSanitize(r.text||'')+'</div></div>';
+        h+='<div style="display:flex;gap:8px;padding:6px 10px;background:#F1F5F9;border-radius:6px;margin-bottom:4px;">';
+        h+='<span style="font-size:10px;color:#378ADD;flex-shrink:0;">↩</span>';
+        h+='<div><span style="font-size:11px;font-weight:600;color:#185FA5;">'+_wkEsc(r.displayName||r.rep||'')+'</span>';
+        if(r.time) h+=' <span style="font-size:10px;color:#94A3B8;">'+_wkEsc(r.time)+'</span>';
+        h+='<div style="font-size:11px;color:#475569;margin-top:2px;">'+_wkSanitize(r.text||'')+'</div></div></div>';
       });
-      h+='</div>';
     } else {
-      h+='<span class="wk-carry-badge">↗ 미답변 이월</span>';
-      h+='<button class="wk-ans-btn" onclick="_wkGoReply(\''+entry.id+'\')">↩ 답변</button>';
+      h+='<button class="wk-ans-btn" onclick="_wkGoReply(\''+entry.id+'\')" style="margin-top:4px;">↩ 답변하기</button>';
     }
     h+='</div>';
   });
-  h+='</div></div>';
+  h+='</div>';
   el.innerHTML=h;
 }
 
@@ -18163,7 +18178,7 @@ function _wkRenderKPI(){
       totalContracts++;
       if(ct.status==='종료') return;
       var ed=ct.endDate?new Date(ct.endDate):null;
-      if(ed){ var diff=Math.round((ed-today)/86400000); if(diff>=0&&diff<=30) expiringSoon++; }
+      if(ed){var diff=Math.round((ed-today)/86400000);if(diff>=0&&diff<=30)expiringSoon++;}
       var sd=ct.startDate?new Date(ct.startDate):null;
       if(sd&&sd.getFullYear()===curY&&sd.getMonth()===generalMM) newContracts++;
     });
@@ -18173,34 +18188,63 @@ function _wkRenderKPI(){
   var yearRate=yearPlanTotal>0?Math.round(yearTotal/yearPlanTotal*100):0;
   var g=document.getElementById('wk-kpi-grid');
   var p=document.getElementById('wk-kpi-period');
+  if(p) p.textContent=curY+'년 '+monthLabel;
   if(!g) return;
   var H='';
-  H+='<div class="wk-ch"><span class="wk-ch-t">이번달 핵심 지표</span><span class="wk-ch-s">'+curY+'년 '+monthLabel+'</span></div>';
-  H+='<div style="padding:12px 14px;">';
-  H+='<div style="display:flex;flex-direction:column;gap:10px;">';
-  H+='<div style="background:var(--card);border:1px solid var(--border);border-left:3px solid #378ADD;border-radius:8px;padding:14px 16px;">';
-  H+='<div style="font-size:13px;font-weight:500;color:var(--muted);margin-bottom:6px;">'+curY+' 연간 누적 매출</div>';
-  H+='<div style="font-size:28px;font-weight:700;color:var(--text);line-height:1;margin-bottom:4px;">'+fmt(yearTotal)+'<span style="font-size:13px;font-weight:400;color:var(--muted);margin-left:3px;">천원</span></div>';
-  if(yearPlanTotal>0) H+='<div style="font-size:12px;color:var(--muted);margin-top:3px;">연간 경영계획 <span style="color:var(--text);font-weight:600;">'+fmt(yearPlanTotal)+'천원</span></div>';
-  if(yearRate) H+='<span style="display:inline-flex;font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px;margin-top:6px;background:'+(yearRate>=100?'#EAF3DE':'#FAEEDA')+';color:'+(yearRate>=100?'#3B6D11':'#854F0B')+';">연간 목표 '+yearRate+'%</span>';
-  H+='<div style="height:4px;background:var(--border);border-radius:2px;margin-top:8px;"><div style="height:4px;width:'+Math.min(yearRate,100)+'%;background:#378ADD;border-radius:2px;"></div></div>';
+  H+='<div style="display:flex;flex-direction:column;gap:10px;padding:0;">';
+
+  /* ── 연간 누적 카드 ── */
+  H+='<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:16px 18px;">';
+  H+='<div style="font-size:13px;font-weight:500;color:#64748B;margin-bottom:6px;">'+curY+' 연간 누적 매출</div>';
+  H+='<div style="font-size:28px;font-weight:700;color:#0F172A;line-height:1;margin-bottom:4px;">'+fmt(yearTotal)+'<span style="font-size:13px;font-weight:400;color:#94A3B8;margin-left:3px;">천원</span></div>';
+  if(yearPlanTotal>0) H+='<div style="font-size:12px;color:#64748B;margin-top:2px;">연간 경영계획 <span style="color:#0F172A;font-weight:600;">'+fmt(yearPlanTotal)+'천원</span></div>';
+  H+='<span style="display:inline-flex;font-size:11px;font-weight:500;padding:3px 9px;border-radius:20px;margin-top:7px;background:'+(yearRate>=100?'#EAF3DE':'#FAEEDA')+';color:'+(yearRate>=100?'#3B6D11':'#854F0B')+';">연간 목표 '+yearRate+'%</span>';
+  H+='<div style="height:4px;background:#E2E8F0;border-radius:2px;margin-top:9px;"><div style="height:4px;width:'+Math.min(yearRate,100)+'%;background:#378ADD;border-radius:2px;"></div></div>';
   H+='</div>';
-  H+='<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 0;">';
-  H+='<div style="display:grid;grid-template-columns:1fr 1px 1fr 1px 1fr;">';
-  H+='<div style="padding:0 14px;"><div style="font-size:13px;font-weight:500;color:var(--muted);margin-bottom:8px;line-height:1.3;">'+monthLabel+' 경영계획</div><div style="font-size:18px;font-weight:700;color:var(--text);">'+fmt(monthPlan)+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:2px;">천원</span></div></div>';
-  H+='<div style="background:var(--border);"></div>';
-  H+='<div style="padding:0 14px;"><div style="font-size:13px;font-weight:500;color:var(--muted);margin-bottom:8px;line-height:1.3;">'+monthLabel+' 달성 매출</div><div style="font-size:18px;font-weight:700;color:var(--text);">'+fmt(monthAct)+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:2px;">천원</span></div></div>';
-  H+='<div style="background:var(--border);"></div>';
-  H+='<div style="padding:0 14px;"><div style="font-size:13px;font-weight:500;color:var(--muted);margin-bottom:8px;">달성률</div><div style="font-size:22px;font-weight:700;color:'+rateColor+';">'+rate+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:1px;">%</span></div><div style="height:3px;background:var(--border);border-radius:2px;margin-top:6px;"><div style="height:3px;width:'+Math.min(rate,100)+'%;background:'+rateColor+';border-radius:2px;"></div></div></div>';
-  H+='</div></div>';
+
+  /* ── 이번달 3분할 ── */
+  H+='<div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:8px;padding:14px 0;">';
+  H+='<div style="display:grid;grid-template-columns:1fr 0.5px 1fr 0.5px 1fr;">';
+  H+='<div style="padding:0 16px;">';
+  H+='<div style="font-size:13px;font-weight:500;color:#64748B;margin-bottom:8px;">'+monthLabel+' 경영계획</div>';
+  H+='<div style="font-size:20px;font-weight:600;color:#0F172A;">'+fmt(monthPlan)+'<span style="font-size:11px;font-weight:400;color:#94A3B8;margin-left:2px;">천원</span></div>';
+  H+='</div>';
+  H+='<div style="background:#E2E8F0;"></div>';
+  H+='<div style="padding:0 16px;">';
+  H+='<div style="font-size:13px;font-weight:500;color:#64748B;margin-bottom:8px;">'+monthLabel+' 달성 매출</div>';
+  H+='<div style="font-size:20px;font-weight:600;color:#0F172A;">'+fmt(monthAct)+'<span style="font-size:11px;font-weight:400;color:#94A3B8;margin-left:2px;">천원</span></div>';
+  H+='</div>';
+  H+='<div style="background:#E2E8F0;"></div>';
+  H+='<div style="padding:0 16px;">';
+  H+='<div style="font-size:13px;font-weight:500;color:#64748B;margin-bottom:8px;">달성률</div>';
+  H+='<div style="font-size:24px;font-weight:700;color:'+rateColor+';">'+rate+'<span style="font-size:11px;font-weight:400;color:#94A3B8;margin-left:1px;">%</span></div>';
+  H+='<div style="height:4px;background:#E2E8F0;border-radius:2px;margin-top:8px;"><div style="height:4px;width:'+Math.min(rate,100)+'%;background:'+rateColor+';border-radius:2px;"></div></div>';
+  H+='</div></div></div>';
+
+  /* ── 하단 3카드 ── */
   H+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">';
-  H+='<div style="background:var(--bg);border:1px solid var(--border);border-left:3px solid #BA7517;border-radius:8px;padding:10px 12px;"><div style="font-size:12px;font-weight:500;color:var(--muted);margin-bottom:5px;">만료 임박</div><div style="font-size:20px;font-weight:700;color:#BA7517;">'+expiringSoon+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:2px;">건</span></div><div style="font-size:11px;color:var(--muted);margin-top:3px;">D-30 이내</div>'+(expiringSoon>0?'<span style="display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;margin-top:5px;background:#FAEEDA;color:#854F0B;font-weight:500;">갱신 필요</span>':'')+'</div>';
-  H+='<div style="background:var(--bg);border:1px solid var(--border);border-left:3px solid #7F77DD;border-radius:8px;padding:10px 12px;"><div style="font-size:12px;font-weight:500;color:var(--muted);margin-bottom:5px;">신규 계약</div><div style="font-size:20px;font-weight:700;color:var(--text);">'+newContracts+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:2px;">건</span></div><div style="font-size:11px;color:var(--muted);margin-top:3px;">누적 '+totalContracts+'건</div></div>';
-  H+='<div style="background:var(--bg);border:1px solid var(--border);border-left:3px solid #E24B4A;border-radius:8px;padding:10px 12px;"><div style="font-size:12px;font-weight:500;color:var(--muted);margin-bottom:5px;">오픈 이슈</div><div style="font-size:20px;font-weight:700;color:'+(openIssues>0?'#E24B4A':'var(--text)')+';">'+openIssues+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:2px;">건</span></div><div style="font-size:11px;color:var(--muted);margin-top:3px;">미완료 이슈</div>'+(openIssues>0?'<span style="display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;margin-top:5px;background:#FCEBEB;color:#A32D2D;font-weight:500;">처리 필요</span>':'')+'</div>';
-  H+='</div></div>';
+  H+='<div style="background:#FAEEDA;border:1px solid #EAD5A8;border-radius:8px;padding:12px 14px;">';
+  H+='<div style="font-size:12px;font-weight:500;color:#64748B;margin-bottom:6px;">만료 임박</div>';
+  H+='<div style="font-size:22px;font-weight:700;color:#BA7517;">'+expiringSoon+'<span style="font-size:12px;font-weight:400;color:#94A3B8;margin-left:2px;">건</span></div>';
+  H+='<div style="font-size:11px;color:#94A3B8;margin-top:3px;">D-30 이내</div>';
+  if(expiringSoon>0) H+='<span style="display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;margin-top:6px;background:#FAEEDA;color:#854F0B;font-weight:500;">갱신 필요</span>';
+  H+='</div>';
+  H+='<div style="background:#EEEDFE;border:1px solid #CECBF6;border-radius:8px;padding:12px 14px;">';
+  H+='<div style="font-size:12px;font-weight:500;color:#64748B;margin-bottom:6px;">신규 계약</div>';
+  H+='<div style="font-size:22px;font-weight:700;color:#0F172A;">'+newContracts+'<span style="font-size:12px;font-weight:400;color:#94A3B8;margin-left:2px;">건</span></div>';
+  H+='<div style="font-size:11px;color:#94A3B8;margin-top:3px;">누적 '+totalContracts+'건</div>';
+  H+='</div>';
+  H+='<div style="background:#FCEBEB;border:1px solid #F7C1C1;border-radius:8px;padding:12px 14px;">';
+  H+='<div style="font-size:12px;font-weight:500;color:#64748B;margin-bottom:6px;">오픈 이슈</div>';
+  H+='<div style="font-size:22px;font-weight:700;color:'+(openIssues>0?'#E24B4A':'#0F172A')+';">'+openIssues+'<span style="font-size:12px;font-weight:400;color:#94A3B8;margin-left:2px;">건</span></div>';
+  H+='<div style="font-size:11px;color:#94A3B8;margin-top:3px;">미완료 이슈</div>';
+  if(openIssues>0) H+='<span style="display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;margin-top:6px;background:#FCEBEB;color:#A32D2D;font-weight:500;">처리 필요</span>';
+  H+='</div>';
+  H+='</div>';
+
   H+='</div>';
   g.innerHTML=H;
-  if(typeof _wkRenderRepRates==='function') _wkRenderRepRates();
+
 }
 
 function _wkRenderRepRates(){
