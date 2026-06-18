@@ -2542,7 +2542,7 @@ window.addEventListener('error',function(e){
     var bw=b.offsetWidth||220,bh=b.offsetHeight||38;
     var l=r.left+r.width/2-bw/2;
     l=Math.max(8,Math.min(l,window.innerWidth-bw-8));
-    var t=r.top-bh-8;if(t<8)t=r.bottom+8;
+    var t=r.bottom+8;if(t+bh>window.innerHeight-8)t=r.top-bh-8;if(t<8)t=8;
     b.style.left=l+'px';b.style.top=t+'px';b.style.visibility='visible';
   }
   document.addEventListener('mouseup',function(e){if(e.target.closest&&e.target.closest('#_rtb'))return;setTimeout(show,80);});
@@ -18090,8 +18090,8 @@ window._wkSetView=function(view){
 async function _wkLoad(){
   if(_wk.loading) return;
   _wk.loading=true;
-  // 1단계: 캐시가 있으면 즉시 렌더
-  if(_wk.entries&&_wk.entries.length>0){
+  // 1단계: 캐시가 있으면 즉시 렌더 (period 모드는 새 데이터 로드 필요하므로 생략)
+  if(_wk.entries&&_wk.entries.length>0&&_wk.weekMode!=='period'){
     try{ _wkRenderReport(); _wkRenderFeed(); _wkUpdatePendingCnt(); }catch(e){}
   }
   // 2단계: SP 연결 완료 시 최신 데이터 로드
@@ -18479,8 +18479,11 @@ function _wkLogRenderSearch(el){
 function _wkLogSearchSelect(weekKey){
   _wk.weekMode='period';
   _wk.selectedWeekKey=weekKey;
+  _wk.entries=[];  // 기존 금주 캐시 초기화 (period 로드 전 금주 데이터 표시 방지)
   window._wkFeedCache=null;
   _wk.loading=false;
+  // 즉시 조회 화면 렌더 (로딩 상태)
+  if(typeof _wkLogRender==='function') _wkLogRender();
   _wkLoad().then ? _wkLoad().then(function(){ _wkLogRender(); }) : (_wkLoad(), setTimeout(_wkLogRender, 800));
 }
 
@@ -19008,7 +19011,7 @@ function _wkRenderRepTable(){
   var ST={달성:'#EAF3DE|#3B6D11',진행:'#E6F1FB|#185FA5',대기:'#F1EFE8|#5F5E5A',계약:'#EAF3DE|#3B6D11',종료:'#FCEBEB|#A32D2D',예상:'#FEF3E2|#854F0B'};
   // 열 너비: 고객사 고정 90px, 나머지 고정
   // grid-template-columns으로 헤더+데이터 동일 컨텍스트
-  var GTC='1fr 62px 44px 76px 64px 48px';
+  var GTC='120px 62px 44px 76px 64px 48px';
   var H='<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:4px 0;">';
   reps.forEach(function(rep,ri){
     var rd=store&&store.reps&&store.reps[rep]; if(!rd) return;
