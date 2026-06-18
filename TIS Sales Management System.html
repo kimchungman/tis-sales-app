@@ -2176,19 +2176,19 @@ document.addEventListener('mousedown',function(e){
 ══════════════════════════════════ */
 #page-weekly{display:none;flex-direction:column;height:100%;}
 #page-weekly.active{display:flex;}
-.wk-tab-wrap{background:var(--card);border-bottom:1px solid var(--border);flex-shrink:0;}
-.wk-team-row,.wk-rep-row{display:flex;overflow-x:auto;padding:0 16px;gap:0;scrollbar-width:none;}
+.wk-tab-wrap{background:var(--card);border-bottom:2px solid #E8EDF5;flex-shrink:0;}
+.wk-team-row,.wk-rep-row{display:flex;overflow-x:auto;padding:6px 16px;gap:6px;scrollbar-width:none;}
 .wk-team-row::-webkit-scrollbar,.wk-rep-row::-webkit-scrollbar{display:none;}
-.wk-team-tab{padding:9px 14px;font-size:12px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;cursor:pointer;flex-shrink:0;transition:all .15s;}
-.wk-team-tab.on{color:var(--blue);border-bottom-color:var(--blue);}
+.wk-team-tab{position:relative;padding:8px 18px;font-size:13px;font-weight:600;color:#94A3B8;cursor:pointer;border:none;background:none;font-family:inherit;transition:color .18s;white-space:nowrap;letter-spacing:-0.01em;flex-shrink:0;}
+.wk-team-tab.on{color:#4f7fff;}.wk-team-tab.on::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:#4f7fff;border-radius:2px 2px 0 0;}
 .wk-rep-row{padding:6px 12px;gap:5px;border-top:1px solid var(--border);}
-.wk-rep-tab{padding:3px 12px;border-radius:20px;font-size:11px;font-weight:600;border:1.5px solid var(--border);background:var(--card);color:var(--muted);white-space:nowrap;flex-shrink:0;cursor:pointer;transition:all .15s;}
-.wk-rep-tab.on{background:var(--blue);color:#fff;border-color:var(--blue);}
-.wk-week-row{display:flex;gap:5px;padding:6px 14px;background:var(--bg);border-bottom:1px solid var(--border);overflow-x:auto;flex-shrink:0;scrollbar-width:none;}
+.wk-rep-tab{padding:5px 14px;border-radius:20px;font-size:12px;font-weight:500;border:1.5px solid #E8EDF5;background:var(--card);color:#94A3B8;white-space:nowrap;flex-shrink:0;cursor:pointer;transition:all .15s;}
+.wk-rep-tab.on{background:#4f7fff;color:#fff;border-color:#4f7fff;}
+.wk-week-row{display:flex;gap:0;padding:0 14px;background:var(--card);border-bottom:2px solid #E8EDF5;overflow-x:auto;flex-shrink:0;scrollbar-width:none;}
 .wk-week-row::-webkit-scrollbar{display:none;}
-.wk-wbtn{padding:4px 12px;border-radius:6px;font-size:11px;cursor:pointer;border:1px solid var(--border);background:var(--card);color:var(--muted);white-space:nowrap;flex-shrink:0;font-weight:500;transition:all .15s;}
-.wk-wbtn.on{background:var(--navy);color:#fff;border-color:var(--navy);}
-.wk-wbtn-period{padding:4px 12px;border-radius:6px;font-size:11px;cursor:pointer;border:1.5px solid var(--blue);background:var(--card);color:var(--blue);font-weight:600;flex-shrink:0;}
+.wk-wbtn{position:relative;padding:8px 16px;font-size:12px;font-weight:500;color:#94A3B8;cursor:pointer;border:none;background:none;font-family:inherit;transition:color .18s;white-space:nowrap;flex-shrink:0;}
+.wk-wbtn.on{color:#4f7fff;}.wk-wbtn.on::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:#4f7fff;border-radius:2px 2px 0 0;}.wk-wbtn-period.on{color:#4f7fff;}.wk-wbtn-period.on::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:#4f7fff;border-radius:2px 2px 0 0;}
+.wk-wbtn-period{position:relative;padding:8px 16px;font-size:12px;font-weight:500;color:#94A3B8;cursor:pointer;border:none;background:none;font-family:inherit;transition:color .18s;white-space:nowrap;flex-shrink:0;}
 .wk-view-tabs{display:flex;background:var(--card);border-bottom:1px solid var(--border);flex-shrink:0;}
 .wk-vtab{flex:1;padding:10px;font-size:12px;font-weight:700;text-align:center;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;letter-spacing:-.2px;transition:all .15s;}
 .wk-vtab.on{color:var(--navy);border-bottom-color:var(--navy);}
@@ -3683,7 +3683,7 @@ document.addEventListener('selectionchange',function(){
   <div class="wk-week-row">
     <div class="wk-wbtn on" id="wk-w-this" onclick="_wkSetWeek('this')">이번주</div>
     <div class="wk-wbtn" id="wk-w-last" onclick="_wkSetWeek('last')">지난주</div>
-    <div class="wk-wbtn-period" onclick="_wkOpenPeriod()">📅 주차 선택</div>
+    <div class="wk-wbtn-period" onclick="_wkOpenPeriod()" id="wk-w-period">주차 선택</div>
 
   </div>
 
@@ -18559,29 +18559,49 @@ function _wkLogEditEntry(id){
 function _wkLogSaveEditEntry(id){
   var ed=document.getElementById('wk-edit-editor-'+id);
   if(!ed) return;
-  var entries=_wkLogTab_current==='prev'?_wk.prevEntries:_wk.entries;
+  var entries, saveKey;
+  if(_wkLogTab_current==='search'&&_wk.weekMode==='period'){
+    entries=_wk.searchEntries||[];
+    saveKey=_wk.selectedWeekKey||_wkCurrentKey();
+  } else if(_wkLogTab_current==='prev'){
+    entries=_wk.prevEntries||[];
+    saveKey=_wkLastKey();
+  } else {
+    entries=_wk.entries||[];
+    saveKey=_wkThisKey();
+  }
   var entry=entries.find(function(e){return e.id===id;});
   if(!entry) return;
   entry.text=ed.innerHTML;
-  var saveKey=_wkLogTab_current==='prev'?_wkLastKey():_wkCurrentKey();
   if(typeof _wkSaveFeed==='function') _wkSaveFeed(saveKey, entry.rep, entries);
   _wkLogRender();
 }
 
 function _wkLogDeleteEntry(id){
   if(!confirm('삭제하시겠습니까?')) return;
-  var saveKey = _wkCurrentKey();
-  var repName;
-  if(_wk.weekMode==='prev'||_wkLogTab_current==='prev'){
-    var found=(_wk.prevEntries||[]).find(function(e){return e.id===id;});
-    repName=found&&found.rep;
+  var repName, saveKey;
+  if(_wkLogTab_current==='search'&&_wk.weekMode==='period'){
+    // 조회 탭: searchEntries에서 삭제
+    var found=(_wk.searchEntries||[]).find(function(e){return e.id===id;});
+    if(!found) return;
+    repName=found.rep;
+    saveKey=_wk.selectedWeekKey||_wkCurrentKey();
+    _wk.searchEntries=(_wk.searchEntries||[]).filter(function(e){return e.id!==id;});
+    if(typeof _wkSaveFeed==='function') _wkSaveFeed(saveKey, repName, _wk.searchEntries);
+  } else if(_wkLogTab_current==='prev'){
+    // 지난주 탭
+    var found2=(_wk.prevEntries||[]).find(function(e){return e.id===id;});
+    if(!found2) return;
+    repName=found2.rep;
     _wk.prevEntries=(_wk.prevEntries||[]).filter(function(e){return e.id!==id;});
     if(typeof _wkSaveFeed==='function') _wkSaveFeed(_wkLastKey(), repName, _wk.prevEntries);
   } else {
-    var found2=(_wk.entries||[]).find(function(e){return e.id===id;});
-    repName=found2&&found2.rep;
+    // 금주 탭
+    var found3=(_wk.entries||[]).find(function(e){return e.id===id;});
+    if(!found3) return;
+    repName=found3.rep;
     _wk.entries=(_wk.entries||[]).filter(function(e){return e.id!==id;});
-    if(typeof _wkSaveFeed==='function') _wkSaveFeed(saveKey, repName, _wk.entries);
+    if(typeof _wkSaveFeed==='function') _wkSaveFeed(_wkThisKey(), repName, _wk.entries);
   }
   _wkLogRender();
 }
@@ -18630,24 +18650,42 @@ function _wkLogEditReply(entryId, replyId){
 function _wkLogSaveEditReply(entryId,replyId){
   var ed=document.getElementById('wk-edit-ri-'+replyId);
   if(!ed) return;
-  var entries=(_wk.weekMode==='period'?_wk.entries:(_wkLogTab_current==='prev'?_wk.prevEntries:_wk.entries));
+  var entries, saveKey;
+  if(_wkLogTab_current==='search'&&_wk.weekMode==='period'){
+    entries=_wk.searchEntries||[];
+    saveKey=_wk.selectedWeekKey||_wkCurrentKey();
+  } else if(_wkLogTab_current==='prev'){
+    entries=_wk.prevEntries||[];
+    saveKey=_wkLastKey();
+  } else {
+    entries=_wk.entries||[];
+    saveKey=_wkThisKey();
+  }
   var entry=entries.find(function(e){return e.id===entryId;});
   if(!entry) return;
   var reply=(entry.replies||[]).find(function(r){return r.id===replyId;});
   if(!reply) return;
   reply.text=ed.innerHTML;
-  var saveKey=_wkLogTab_current==='prev'?_wkLastKey():_wkCurrentKey();
   if(typeof _wkSaveFeed==='function') _wkSaveFeed(saveKey, entry.rep, entries);
   _wkLogRender();
 }
 
 function _wkLogDeleteReply(entryId, replyId){
   if(!confirm('답변을 삭제하시겠습니까?')) return;
-  var entries=(_wkLogTab_current==='prev'?_wk.prevEntries:_wk.entries);
+  var entries, saveKey;
+  if(_wkLogTab_current==='search'&&_wk.weekMode==='period'){
+    entries=_wk.searchEntries||[];
+    saveKey=_wk.selectedWeekKey||_wkCurrentKey();
+  } else if(_wkLogTab_current==='prev'){
+    entries=_wk.prevEntries||[];
+    saveKey=_wkLastKey();
+  } else {
+    entries=_wk.entries||[];
+    saveKey=_wkThisKey();
+  }
   var entry=entries.find(function(e){return e.id===entryId;});
   if(!entry) return;
   entry.replies=(entry.replies||[]).filter(function(r){return r.id!==replyId;});
-  var saveKey=_wkLogTab_current==='prev'?_wkLastKey():_wkCurrentKey();
   if(typeof _wkSaveFeed==='function') _wkSaveFeed(saveKey, entry.rep, entries);
   _wkLogRender();
 }
@@ -18731,16 +18769,25 @@ window._wkInsertMentionAt  = function(){
 function _wkLogSubmitReply(entryId){
   var ed=document.getElementById('wk-ri-editor-'+entryId);
   if(!ed||!ed.innerHTML.replace(/<[^>]+>/g,'').trim()) return;
-  var entries=_wkLogTab_current==='prev'?_wk.prevEntries:_wk.entries;
+  var entries, saveKey;
+  if(_wkLogTab_current==='search'&&_wk.weekMode==='period'){
+    entries=_wk.searchEntries||[];
+    saveKey=_wk.selectedWeekKey||_wkCurrentKey();
+  } else if(_wkLogTab_current==='prev'){
+    entries=_wk.prevEntries||[];
+    saveKey=_wkLastKey();
+  } else {
+    entries=_wk.entries||[];
+    saveKey=_wkThisKey();
+  }
   var entry=entries.find(function(e){return e.id===entryId;});
   if(!entry) return;
   var myRep=typeof session!=='undefined'&&session?session.rep:'';
-  var myName=typeof session!=='undefined'&&session?(session.role==='admin'?'관리자':(_wkDisplayName(myRep)||myRep||'')):'';
+  var myName=typeof session!=='undefined'&&session?(session.role==='admin'?'관리자':(_wkDisplayName(myRep)||myRep||'')):'' ;
   var now=new Date();
   var timeStr=(now.getMonth()+1)+'/'+now.getDate()+' '+(now.getHours()<10?'0':'')+now.getHours()+':'+(now.getMinutes()<10?'0':'')+now.getMinutes();
   if(!entry.replies) entry.replies=[];
   entry.replies.push({id:'r'+Date.now(),rep:myRep,displayName:myName,text:ed.innerHTML,time:timeStr});
-  var saveKey=_wkLogTab_current==='prev'?_wkLastKey():_wkCurrentKey();
   if(typeof _wkSaveFeed==='function') _wkSaveFeed(saveKey,entry.rep,entries);
   if(typeof _wkCreateReplyNotif==='function') _wkCreateReplyNotif(entry,myRep);
   var form=document.getElementById('wk-reply-form-'+entryId);
