@@ -2255,7 +2255,7 @@ document.addEventListener('mousedown',function(e){
 .wk-submit-btn:hover{opacity:.9;}
 /* @ 멘션 팝업 */
 .wk-mention-popup{position:absolute;left:0;right:0;max-height:180px;overflow-y:auto;background:var(--card);border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.16);z-index:200;border:1px solid var(--border);overflow:hidden;display:none;}
-#wk-log-mention-popup{position:absolute;left:0;right:0;bottom:100%;margin-bottom:2px;max-height:160px;overflow-y:auto;background:var(--card);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.14);border:1px solid var(--border);z-index:100;}
+#wk-log-mention-popup{position:fixed;max-height:180px;overflow-y:auto;background:var(--card);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.14);border:1px solid var(--border);z-index:9999;min-width:200px;}
 .wk-mp-head{padding:6px 12px;background:var(--bg);border-bottom:1px solid var(--border);font-size:10px;color:var(--muted);font-weight:600;}
 .wk-mp-list{max-height:180px;overflow-y:auto;}
 .wk-mp-item{padding:8px 12px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:background .1s;}
@@ -2531,7 +2531,17 @@ window.addEventListener('error',function(e){
 (function(){
   var bar=null;
   function getBar(){return bar||(bar=document.getElementById('_rtb'));}
-  function inR(n){while(n){if(n.id==='wk-log-editor')return false;if(n.className&&/\brich-ed\b/.test(n.className))return true;n=n.parentNode;}return false;}
+  function inR(n){
+    while(n){
+      // wk-log-input 영역 안의 모든 editor는 전역 팝업 제외 (별도 처리)
+      if(n.id==='wk-log-input'||n.id==='wk-log-editor') return false;
+      // wk-reply-form, wk-edit-form 안의 editor도 제외
+      if(n.id&&(n.id.indexOf('wk-reply-form')===0||n.id.indexOf('wk-edit-form')===0)) return false;
+      if(n.className&&/rich-ed/.test(n.className)) return true;
+      n=n.parentNode;
+    }
+    return false;
+  }
   function show(){
     var b=getBar();if(!b)return;
     var s=window.getSelection();
@@ -3728,13 +3738,13 @@ document.addEventListener('selectionchange',function(){
   <!-- 보고서 뷰 -->
   <div id="wk-report-view" class="wk-report">
     <!-- 핵심지표 + 이전회의록 2열 -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch;height:560px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch;">
       <!-- 왼쪽: 핵심지표 -->
-      <div class="wk-card" style="padding:0;overflow-y:auto;">
+      <div class="wk-card" style="padding:0;overflow-y:auto;align-self:start;">
         <div id="wk-kpi-grid" style="padding:0;"></div>
       </div>
       <!-- 오른쪽: 회의록 통합 카드 -->
-      <div class="wk-card" style="padding:0;overflow:hidden;display:flex;flex-direction:column;min-height:0;height:100%;">
+      <div class="wk-card" style="padding:0;overflow:hidden;display:flex;flex-direction:column;min-height:480px;">
         <!-- 헤더 -->
         <div style="flex-shrink:0;padding:10px 14px;border-bottom:1px solid var(--border);">
           <span class="wk-ch-t">회의록</span>
@@ -18512,7 +18522,15 @@ function _wkLogEditEntry(id){
   if(!entry) return;
   var existEdit=document.getElementById('wk-edit-form-'+id);
   if(existEdit){existEdit.remove();return;}
+  // 텍스트 div: 첫 번째 직계 자식 div 중 style에 line-height가 있는 것, 없으면 두 번째 div
   var textDiv=entryEl.querySelector('[style*="line-height:1.65"]');
+  if(!textDiv){
+    var allDivs=entryEl.querySelectorAll('div');
+    for(var _i=0;_i<allDivs.length;_i++){
+      var _s=allDivs[_i].getAttribute('style')||'';
+      if(_s.indexOf('color:#334155')>=0||_s.indexOf('line-height')>=0){textDiv=allDivs[_i];break;}
+    }
+  }
   if(!textDiv) return;
   var editDiv=document.createElement('div');
   editDiv.id='wk-edit-form-'+id;
@@ -18536,6 +18554,7 @@ function _wkLogEditEntry(id){
   editDiv.appendChild(ed2); editDiv.appendChild(btnRow);
   textDiv.after(editDiv);
   ed2.focus();
+  setTimeout(function(){editDiv.scrollIntoView({behavior:'smooth',block:'nearest'});},50);
 }
 
 function _wkLogSaveEditEntry(id){
@@ -18579,6 +18598,13 @@ function _wkLogEditReply(entryId, replyId){
   var existEdit=document.getElementById('wk-edit-reply-'+replyId);
   if(existEdit){existEdit.remove();return;}
   var textDiv=replyEl.querySelector('[style*="line-height:1.55"]');
+  if(!textDiv){
+    var _allD=replyEl.querySelectorAll('div');
+    for(var _j=0;_j<_allD.length;_j++){
+      var _rs=_allD[_j].getAttribute('style')||'';
+      if(_rs.indexOf('color:#334155')>=0||_rs.indexOf('line-height')>=0){textDiv=_allD[_j];break;}
+    }
+  }
   if(!textDiv) return;
   var editDiv=document.createElement('div');
   editDiv.id='wk-edit-reply-'+replyId;
@@ -18768,7 +18794,19 @@ window._wkInsertMentionAt=function(){
     try{ window._wkMentionRange=sel.getRangeAt(0).cloneRange(); }catch(e){}
   }
   document.execCommand('insertText',false,'@');
-  if(typeof _wkCheckMention==='function') _wkCheckMention();
+  // 팝업 빌드 후 위치 계산
+  if(typeof _wkBuildMentionPopup==='function') _wkBuildMentionPopup();
+  var popup=document.getElementById('wk-log-mention-popup')||document.getElementById('wk-mention-popup');
+  if(popup&&ed){
+    var er=ed.getBoundingClientRect();
+    popup.style.display='block';
+    popup.style.left=er.left+'px';
+    popup.style.width=Math.max(er.width,200)+'px';
+    var ph=popup.offsetHeight||180;
+    var top=er.top-ph-6;
+    if(top<8) top=er.bottom+6;
+    popup.style.top=top+'px';
+  }
 };
 
 window._wkLogClearSearch = function(){
@@ -19487,7 +19525,22 @@ function _wkCheckMention(trigger){
     // 커서 위치 저장 (팝업 클릭 시 blur 대비)
     try{ window._wkMentionRange=sel.getRangeAt(0).cloneRange(); }catch(e){}
     _wkFilterMentionPopup(query);
-    if(popup) popup.style.display='block';
+    if(popup){
+    popup.style.display='block';
+    // position:fixed 위치: editor 바로 위
+    var _ed=document.getElementById('wk-log-editor')||document.getElementById('wk-editor');
+    if(_ed){
+      var _er=_ed.getBoundingClientRect();
+      popup.style.left=_er.left+'px';
+      popup.style.width=Math.max(_er.width,200)+'px';
+      popup.style.removeProperty('top');
+      popup.style.removeProperty('bottom');
+      var _ph=popup.offsetHeight||180;
+      var _top=_er.top-_ph-6;
+      if(_top<8) _top=_er.bottom+6;
+      popup.style.top=_top+'px';
+    }
+  }
   } else {
     if(popup) popup.style.display='none';
     window._wkMentionRange=null;
