@@ -3737,9 +3737,9 @@ document.addEventListener('selectionchange',function(){
   <!-- 보고서 뷰 -->
   <div id="wk-report-view" class="wk-report">
     <!-- 핵심지표 + 이전회의록 2열 -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch;height:480px;">
       <!-- 왼쪽: 핵심지표 -->
-      <div class="wk-card" style="padding:0;overflow-y:auto;">
+      <div class="wk-card" style="padding:0;overflow:hidden;">
         <div id="wk-kpi-grid" style="padding:0;"></div>
       </div>
       <!-- 오른쪽: 회의록 통합 카드 -->
@@ -3755,7 +3755,7 @@ document.addEventListener('selectionchange',function(){
           <div id="wk-log-tab-search" onclick="_wkLogTab('search')" style="padding:8px 13px;font-size:12px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;color:var(--muted);white-space:nowrap;">회의록 조회</div>
         </div>
         <!-- 피드 목록 -->
-        <div id="wk-log-feed" style="flex:1;overflow-y:auto;min-height:0;max-height:100%;"></div>
+        <div id="wk-log-feed" style="flex:1;overflow-y:auto;min-height:0;"></div>
         <!-- 입력창 (금주 탭만 표시) -->
         <div id="wk-log-input" style="flex-shrink:0;border-top:1px solid var(--border);">
           <div style="display:flex;align-items:center;gap:6px;padding:8px 14px 4px;">
@@ -3770,7 +3770,7 @@ document.addEventListener('selectionchange',function(){
             <div style="width:1px;height:14px;background:var(--border);margin:0 3px;flex-shrink:0;"></div>
             <button class="wk-tb" style="width:auto;padding:0 6px;font-size:10px;gap:3px;color:#185FA5;display:flex;align-items:center;" onclick="_wkInsertMentionAt(this)" title="@멘션">@ 멘션</button>
           </div>
-          <div id="wk-log-mention-popup" class="wk-mention-popup" style="display:none;margin:0 14px 4px;"><div class="wk-mp-head">@ 담당자 선택</div><div class="wk-mp-list" id="wk-log-mp-list"></div></div>
+          
           <div style="display:flex;gap:8px;padding:0 14px 10px;align-items:flex-end;position:relative;">
             <div id="wk-log-editor" class="wk-editor rich-ed" contenteditable="true" data-placeholder="회의 내용 입력... @ 로 담당자 멘션" style="flex:1;min-height:54px;max-height:100px;overflow-y:auto;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;background:var(--bg);line-height:1.6;"></div>
             <button onclick="_wkLogSubmit()" style="padding:7px 13px;background:#185FA5;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;flex-shrink:0;align-self:flex-end;">등록</button>
@@ -18787,31 +18787,32 @@ window._wkInsertMention=_wkInsertMention;
 window._wkInsertMentionAt=function(btnEl){
   var ed=document.getElementById('wk-log-editor');
   if(!ed) return;
+  if(typeof _wkBuildMentionPopup==='function') _wkBuildMentionPopup();
+  var popup=document.getElementById('wk-log-mention-popup')||document.getElementById('wk-mention-popup');
+  if(popup&&btnEl){
+    popup.style.display='block';
+    var _er=ed.getBoundingClientRect();
+    var _br=btnEl.getBoundingClientRect();
+    var _ph=popup.offsetHeight||160;
+    // 버튼 오른쪽에 배치
+    var _left=_br.right+6;
+    // 화면 밖으로 나가면 왼쪽으로
+    var _pw=Math.max(_er.width,200);
+    if(_left+_pw>window.innerWidth-8) _left=_br.left-_pw-6;
+    popup.style.left=_left+'px';
+    popup.style.width=_pw+'px';
+    // 위/아래: 버튼 위로 정렬
+    var _top=_br.top-_ph-4;
+    if(_top<8) _top=_br.bottom+4;
+    popup.style.top=_top+'px';
+  }
+  // editor에 @ 삽입 후 focus
   ed.focus();
   var sel=window.getSelection();
   if(sel&&sel.rangeCount){
     try{ window._wkMentionRange=sel.getRangeAt(0).cloneRange(); }catch(e){}
   }
   document.execCommand('insertText',false,'@');
-  if(typeof _wkBuildMentionPopup==='function') _wkBuildMentionPopup();
-  var popup=document.getElementById('wk-log-mention-popup')||document.getElementById('wk-mention-popup');
-  if(popup&&ed){
-    popup.style.display='block';
-    popup.style.visibility='hidden';
-    popup.style.top='0px';
-    var _ph=popup.offsetHeight||160;
-    popup.style.visibility='';
-    // 버튼 위치가 있으면 버튼 기준, 없으면 editor 기준
-    var ref=(btnEl&&btnEl.getBoundingClientRect)?btnEl:ed;
-    var _r=ref.getBoundingClientRect();
-    // editor 너비로 팝업 너비 설정
-    var _er=ed.getBoundingClientRect();
-    popup.style.width=Math.max(_er.width,220)+'px';
-    popup.style.left=_er.left+'px';
-    var _top=_er.top-_ph-4;
-    if(_top<8) _top=_er.bottom+4;
-    popup.style.top=_top+'px';
-  }
 };
 
 window._wkLogClearSearch = function(){
@@ -19514,38 +19515,40 @@ function _wkBuildMentionPopup(){
 }
 
 function _wkCheckMention(trigger){
-  // 새 카드의 wk-log-editor 우선, 없으면 기존 wk-editor
   var editor=document.getElementById('wk-log-editor')||document.getElementById('wk-editor');
   if(!editor) return;
-  var text=editor.innerText||'';
   var popup=document.getElementById('wk-log-mention-popup')||document.getElementById('wk-mention-popup');
-  // \ucee4\uc11c \uc9c1\uc804 '@' \uac10\uc9c0
   var sel=window.getSelection();
   if(!sel||!sel.focusNode) return;
-  var beforeCursor=sel.focusNode.textContent.slice(0, sel.focusOffset);
+  var beforeCursor=sel.focusNode.textContent.slice(0,sel.focusOffset);
   var atIdx=beforeCursor.lastIndexOf('@');
   if(atIdx>=0&&!beforeCursor.slice(atIdx+1).includes(' ')){
     var query=beforeCursor.slice(atIdx+1).toLowerCase();
-    // \ud31d\uc5c5 \ud544\ud130
-    // 커서 위치 저장 (팝업 클릭 시 blur 대비)
     try{ window._wkMentionRange=sel.getRangeAt(0).cloneRange(); }catch(e){}
     _wkFilterMentionPopup(query);
     if(popup){
-    popup.style.display='block';
-    // position:fixed 위치: editor 바로 위
-    var _ed=document.getElementById('wk-log-editor')||document.getElementById('wk-editor');
-    if(_ed){
-      var _er=_ed.getBoundingClientRect();
-      popup.style.left=_er.left+'px';
-      popup.style.width=Math.max(_er.width,200)+'px';
-      popup.style.removeProperty('top');
-      popup.style.removeProperty('bottom');
-      var _ph=popup.offsetHeight||180;
-      var _top=_er.top-_ph-6;
-      if(_top<8) _top=_er.bottom+6;
-      popup.style.top=_top+'px';
+      popup.style.display='block';
+      // 커서 위치 기준으로 팝업 배치
+      var _positionPopup=function(){
+        var _sel=window.getSelection();
+        var _r=null;
+        if(_sel&&_sel.rangeCount>0){
+          try{ _r=_sel.getRangeAt(0).getBoundingClientRect(); }catch(e){}
+        }
+        var _er=editor.getBoundingClientRect();
+        // 너비: editor 너비
+        popup.style.width=Math.max(_er.width,200)+'px';
+        popup.style.left=_er.left+'px';
+        // 위치: 커서가 있으면 커서 위, 없으면 editor 위
+        var _ph=popup.offsetHeight||160;
+        var _refBottom=(_r&&_r.bottom>0)?_r.bottom:_er.top;
+        var _refTop=(_r&&_r.top>0)?_r.top:_er.top;
+        var _top=_refTop-_ph-4;
+        if(_top<8) _top=_refBottom+4;
+        popup.style.top=_top+'px';
+      };
+      _positionPopup();
     }
-  }
   } else {
     if(popup) popup.style.display='none';
     window._wkMentionRange=null;
@@ -20054,5 +20057,6 @@ function _wkBuildNotifBtn(){
 })();
 
 </script>
+<div id="wk-log-mention-popup" style="display:none;position:fixed;z-index:9999;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.14);overflow-y:auto;max-height:180px;min-width:200px;"><div class="wk-mp-head">@ 담당자 선택</div><div class="wk-mp-list" id="wk-log-mp-list"></div></div>
 </body>
 </html>
