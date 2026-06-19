@@ -8610,7 +8610,7 @@ function syncInputToStore(){
 // ── 고객사 팝업 열기/저장/삭제 ──
 var _ipCurRep='', _ipCurCi=-1;
 
-function _ipOpenClient(rep,ci){
+function _ipOpenClient(rep,ci,readOnly){
   _ipCurRep=rep; _ipCurCi=ci;
   var isEdit=ci>=0;
   var d=isEdit?(store.reps[rep].clients[ci]||{}):{};
@@ -8666,6 +8666,16 @@ function _ipOpenClient(rep,ci){
     +(isEdit?'<button class="btn-ip-del" onclick="window._ipDelClient()">삭제</button>':'')
     +'<button class="btn-ip-save" onclick="window._ipSaveClient()">저장</button>'
     +'</div></div>';
+  // readOnly 모드: 입력 비활성화
+  if(readOnly){
+    div.querySelectorAll&&setTimeout(function(){
+      document.getElementById('ip-client-pop')&&document.getElementById('ip-client-pop').querySelectorAll('input,select,textarea,[contenteditable]').forEach(function(el){el.disabled=true;el.setAttribute('contenteditable','false');el.style.opacity='0.7';el.style.cursor='not-allowed';});
+      var f=document.getElementById('ip-client-pop');
+      if(f){ var btns=f.querySelectorAll('.btn-ip-save,.btn-ip-del'); btns.forEach(function(b){b.style.display='none';}); }
+      var hd=document.getElementById('ip-client-pop')&&document.getElementById('ip-client-pop').querySelector('.ip-title');
+      if(hd) hd.textContent+=' (조회)';
+    },0);
+  }
   document.body.appendChild(div);
   var ed=document.getElementById('ip-ct-issue');
   if(ed){ ed.innerHTML=(d.issue||''); ed.addEventListener('input',function(){_ipRichResize(this);}); }
@@ -8976,20 +8986,17 @@ document.addEventListener('click', function(e){
   // 행 클릭 (팝업 열기)
   if(act==='openClient'){
     var _rep=el.dataset.rep;
-    if(_canEditRep(_rep)){ _ipOpenClient(_rep, parseInt(el.dataset.ci)); }
-    else { (window._ipViewClient||function(){})(_rep, parseInt(el.dataset.ci)); }
+    _ipOpenClient(_rep, parseInt(el.dataset.ci), !_canEditRep(_rep));
     return;
   }
   if(act==='openActivity'){
     var _rep=el.dataset.rep;
-    if(typeof _canEditRep==='function'&&_canEditRep(_rep)){ _ipOpenActivity(_rep, parseInt(el.dataset.ai)); }
-    else { if(typeof _ipViewActivity==='function') _ipViewActivity(_rep, parseInt(el.dataset.ai)); }
+    _ipOpenActivity(_rep, parseInt(el.dataset.ai), !_canEditRep(_rep));
     return;
   }
   if(act==='openIssue'){
     var _rep=el.dataset.rep;
-    if(_canEditRep(_rep)){ _ipOpenIssue(_rep, parseInt(el.dataset.ii)); }
-    else { (window._ipViewIssue||function(){})(_rep, parseInt(el.dataset.ii)); }
+    _ipOpenIssue(_rep, parseInt(el.dataset.ii), !_canEditRep(_rep));
     return;
   }
 
@@ -9082,7 +9089,7 @@ function _ipRenderIssueList(rep){
 // ── 영업활동 팝업 열기/저장/삭제 ──
 var _ipCurActRep='', _ipCurActAi=-1;
 
-function _ipOpenActivity(rep,ai){
+function _ipOpenActivity(rep,ai,readOnly){
   _ipCurActRep=rep; _ipCurActAi=ai;
   var isEdit=ai>=0;
   var d=isEdit?(store.reps[rep].activities[ai]||{}):{};
@@ -9126,6 +9133,16 @@ function _ipOpenActivity(rep,ai){
     +(isEdit?'<button class="btn-ip-del" onclick="window._ipDelActivity()">삭제</button>':'')
     +'<button class="btn-ip-save" onclick="window._ipSaveActivity()">저장</button>'
     +'</div></div>';
+  // readOnly 모드: 입력 비활성화
+  if(readOnly){
+    div.querySelectorAll&&setTimeout(function(){
+      document.getElementById('ip-act-pop')&&document.getElementById('ip-act-pop').querySelectorAll('input,select,textarea,[contenteditable]').forEach(function(el){el.disabled=true;el.setAttribute('contenteditable','false');el.style.opacity='0.7';el.style.cursor='not-allowed';});
+      var f=document.getElementById('ip-act-pop');
+      if(f){ var btns=f.querySelectorAll('.btn-ip-save,.btn-ip-del'); btns.forEach(function(b){b.style.display='none';}); }
+      var hd=document.getElementById('ip-act-pop')&&document.getElementById('ip-act-pop').querySelector('.ip-title');
+      if(hd) hd.textContent+=' (조회)';
+    },0);
+  }
   document.body.appendChild(div);
   var ed=document.getElementById('ip-at-content');
   if(ed){ ed.innerHTML=(d.content||''); ed.addEventListener('input',function(){_ipRichResize(this);}); }
@@ -9203,7 +9220,7 @@ function _ipDelActivity(){
 // ── 이슈 팝업 열기/저장/삭제 ──
 var _ipCurIssRep='', _ipCurIssIi=-1;
 
-function _ipOpenIssue(rep,ii){
+function _ipOpenIssue(rep,ii,readOnly){
   _ipCurIssRep=rep; _ipCurIssIi=ii;
   var isEdit=ii>=0;
   var d=isEdit?(store.reps[rep].issuesList[ii]||{}):{};
@@ -9248,6 +9265,16 @@ function _ipOpenIssue(rep,ii){
     +(isEdit?'<button class="btn-ip-del" onclick="window._ipDelIssue()">삭제</button>':'')
     +'<button class="btn-ip-save" onclick="window._ipSaveIssue()">저장</button>'
     +'</div></div>';
+  // readOnly 모드: 입력 비활성화
+  if(readOnly){
+    div.querySelectorAll&&setTimeout(function(){
+      document.getElementById('ip-iss-pop')&&document.getElementById('ip-iss-pop').querySelectorAll('input,select,textarea,[contenteditable]').forEach(function(el){el.disabled=true;el.setAttribute('contenteditable','false');el.style.opacity='0.7';el.style.cursor='not-allowed';});
+      var f=document.getElementById('ip-iss-pop');
+      if(f){ var btns=f.querySelectorAll('.btn-ip-save,.btn-ip-del'); btns.forEach(function(b){b.style.display='none';}); }
+      var hd=document.getElementById('ip-iss-pop')&&document.getElementById('ip-iss-pop').querySelector('.ip-title');
+      if(hd) hd.textContent+=' (조회)';
+    },0);
+  }
   document.body.appendChild(div);
   var ed=document.getElementById('ip-is-content');
   if(ed){ ed.innerHTML=(d.content||''); ed.addEventListener('input',function(){_ipRichResize(this);}); }
@@ -9301,6 +9328,7 @@ function _ipSaveIssue(){
   }
   _ipClose('ip-iss-pop');
   _ipRenderIssueList(rep);
+  if(typeof _wkRenderIssues==='function') _wkRenderIssues();
 }
 
 function _ipDelIssue(){
@@ -20054,7 +20082,7 @@ function _wkRenderKPI(){
   reps.forEach(function(rep){
     var rd=store&&store.reps&&store.reps[rep]; if(!rd) return;
     // clients.wk=true인 고객사만 집계 (주간회의 포함 체크)
-    var _wkCls=(rd.clients||[]).filter(function(cl){return cl.wk!==false;});
+    var _wkCls=(rd.clients||[]).filter(function(cl){return cl.wk===true;});
     var _wkAct=MONTHS.map(function(_,mi){
       return _wkCls.filter(function(cl){return (cl.status||'달성')==='달성';})
         .reduce(function(s,cl){return s+(cl.actual&&cl.actual[mi]||0);},0);
@@ -20189,7 +20217,7 @@ function _wkRenderRepRates(){
       var rd=store&&store.reps&&store.reps[rep]; if(!rd) return;
       tPlan+=parseFloat((rd.plan&&rd.plan[moIdx])||0);
       // wk 체크된 clients만 actual 합산
-      var _wkC=(rd.clients||[]).filter(function(cl){return cl.wk!==false;});
+      var _wkC=(rd.clients||[]).filter(function(cl){return cl.wk===true;});
       tAct+=_wkC.filter(function(cl){return (cl.status||'달성')==='달성';}).reduce(function(s,cl){return s+((cl.actual&&cl.actual[moIdx])||0);},0);
     });
     var tRate=tPlan>0?Math.round(tAct/tPlan*100):0;
@@ -20208,7 +20236,7 @@ function _wkRenderRepRates(){
       var rd=store&&store.reps&&store.reps[rep]; if(!rd) return;
       var plan=parseFloat((rd.plan&&rd.plan[moIdx])||0);
       // wk 체크된 clients만
-      var _wkCR=(rd.clients||[]).filter(function(cl){return cl.wk!==false;});
+      var _wkCR=(rd.clients||[]).filter(function(cl){return cl.wk===true;});
       var act=_wkCR.filter(function(cl){return (cl.status||'달성')==='달성';}).reduce(function(s,cl){return s+((cl.actual&&cl.actual[moIdx])||0);},0);
       var rate=plan>0?Math.round(act/plan*100):0;
       var rc=rate>=80?'#1D9E75':rate>=60?'#BA7517':'#E24B4A';
@@ -20244,7 +20272,7 @@ function _wkRenderRepRates(){
   reps.forEach(function(rep){
     var rd=store&&store.reps&&store.reps[rep]; if(!rd) return;
     totalPlan+=parseFloat((rd.plan&&rd.plan[moIdx])||0);
-    var _wkCT=(rd.clients||[]).filter(function(cl){return cl.wk!==false;});
+    var _wkCT=(rd.clients||[]).filter(function(cl){return cl.wk===true;});
     totalAct+=_wkCT.filter(function(cl){return (cl.status||'달성')==='달성';}).reduce(function(s,cl){return s+((cl.actual&&cl.actual[moIdx])||0);},0);
   });
   var totalRate=totalPlan>0?Math.round(totalAct/totalPlan*100):0;
