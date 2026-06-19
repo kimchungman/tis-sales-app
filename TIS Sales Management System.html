@@ -5507,8 +5507,8 @@ function renderMainChart(){
     if(c.dataset.yAxisID==='y1') return c.dataset.label+': '+c.parsed.y+'%';
     return c.dataset.label+': '+c.parsed.y.toLocaleString('ko-KR')+'천원';
   }}};
-  var LEGEND={position:'top',labels:{font:{size:11},usePointStyle:true,padding:16}};
-  var YSCALE={ticks:{callback:function(v){return v.toLocaleString('ko-KR');}},grid:{color:'rgba(0,0,0,0.04)'},beginAtZero:true};
+  var LEGEND={position:'top',align:'center',labels:{font:{size:12,weight:'600'},usePointStyle:true,pointStyleWidth:12,padding:20,color:'#334155'}};
+  var YSCALE={ticks:{callback:function(v){return v>=1000?Math.round(v/1000)+'K':v.toLocaleString('ko-KR');},font:{size:11},color:'#64748B'},grid:{color:'rgba(0,0,0,0.05)',drawBorder:false},beginAtZero:true,border:{display:false}};
 
   var cfg;
 
@@ -5829,7 +5829,7 @@ function buildRepInputs(){
     <div class="sec-card">
       <div class="sec-head">
         <h3>${_safeRepDisplayName(rep)} — 고객사별 실적</h3>
-        <button class="add-btn" onclick="addClient('${rep}')">＋ 추가</button>
+        ${(session&&session.role==='admin')||(session&&session.rep&&store.reps[rep]&&(session.rep===rep||session.rep.replace(/[（(\[【].*$/,'').trim()===rep))?'<button class="add-btn" onclick="addClient(\''+rep+'\')" >＋ 추가</button>':''}
       </div>
       <div class="sec-body" style="padding:0;">
         <div class="list-scroll-wrap" id="ct-sw-${rep}">
@@ -5850,7 +5850,7 @@ function buildRepInputs(){
     <div class="sec-card">
       <div class="sec-head">
         <h3>${_safeRepDisplayName(rep)} — 영업활동</h3>
-        <button class="add-btn" onclick="addActivity('${rep}')">＋ 추가</button>
+        ${(session&&session.role==='admin')||(session&&session.rep&&store.reps[rep]&&(session.rep===rep||session.rep.replace(/[（(\[【].*$/,'').trim()===rep))?'<button class="add-btn" onclick="addActivity(\''+rep+'\')" >＋ 추가</button>':''}
       </div>
       <div class="sec-body" style="padding:0;">
         <div class="list-scroll-wrap" id="at-sw-${rep}">
@@ -5870,7 +5870,7 @@ function buildRepInputs(){
     <div class="sec-card">
       <div class="sec-head">
         <h3>${_safeRepDisplayName(rep)} — 이슈사항</h3>
-        <button class="add-btn" onclick="addIssueRow('${rep}')">＋ 추가</button>
+        ${(session&&session.role==='admin')||(session&&session.rep&&store.reps[rep]&&(session.rep===rep||session.rep.replace(/[（(\[【].*$/,'').trim()===rep))?'<button class="add-btn" onclick="addIssueRow(\''+rep+'\')" >＋ 추가</button>':''}
       </div>
       <div class="sec-body" style="padding:0;">
         <div class="list-scroll-wrap" id="is-sw-${rep}">
@@ -8622,10 +8622,10 @@ function _ipOpenClient(rep,ci){
       +'<input class="ip-mon-inp" id="ip-ct-m'+i+'" type="text" placeholder="0" value="'+(v||'')+'" oninput="window._ipCalcMonTotal()">'
       +'</div>';
   }).join('');
-  var typeOpts=['MA','개발','상품','기타'].map(function(t){
+  var typeOpts=(typeof getSelectOpts==='function'?getSelectOpts('clientType'):['MA','개발','상품','기타']).map(function(t){
     return '<option'+((d.type||'MA')===t?' selected':'')+'>'+t+'</option>';
   }).join('');
-  var prodOpts=['그룹웨어','웹메일','ERP','MES','PIMS','스포츠','기타'].map(function(p){
+  var prodOpts=(typeof getSelectOpts==='function'?getSelectOpts('product'):['그룹웨어','웹메일','ERP','MES','PIMS','스포츠','기타']).map(function(p){
     return '<option'+(d.product===p?' selected':'')+'>'+p+'</option>';
   }).join('');
   var stList=['달성','예상','진행','대기'];
@@ -8683,7 +8683,12 @@ function _ipCalcMonTotal(){
 }
 
 function _ipSaveClient(){
-  var rep=_ipCurRep; var ci=_ipCurCi; var isEdit=ci>=0;
+  var rep=_ipCurRep;
+  // 권한 체크: 관리자 또는 본인만 저장 가능
+  if(session&&session.role==='rep'){
+    var _myBase=session.rep?session.rep.replace(/[（(\[【].*$/,'').trim():'';
+    if(_myBase!==rep){ alert('본인의 데이터만 수정할 수 있습니다.'); return; }
+  } var ci=_ipCurCi; var isEdit=ci>=0;
   var name=(document.getElementById('ip-ct-name')||{}).value||'';
   if(!name.trim()){alert('고객사명을 입력하세요.');return;}
   var proj=(document.getElementById('ip-ct-proj')||{}).value||'';
@@ -8997,7 +9002,12 @@ function _ipOpenActivity(rep,ai){
 }
 
 function _ipSaveActivity(){
-  var rep=_ipCurActRep; var ai=_ipCurActAi; var isEdit=ai>=0;
+  var rep=_ipCurActRep;
+  // 권한 체크: 관리자 또는 본인만 저장 가능
+  if(session&&session.role==='rep'){
+    var _myBase=session.rep?session.rep.replace(/[（(\[【].*$/,'').trim():'';
+    if(_myBase!==rep){ alert('본인의 데이터만 수정할 수 있습니다.'); return; }
+  } var ai=_ipCurActAi; var isEdit=ai>=0;
   var client=(document.getElementById('ip-at-client')||{}).value||'';
   if(!client.trim()){alert('고객사명을 입력하세요.');return;}
   var _wk2=typeof _wkThisKey==='function'?_wkThisKey():'';
@@ -9110,7 +9120,12 @@ function _ipOpenIssue(rep,ii){
 }
 
 function _ipSaveIssue(){
-  var rep=_ipCurIssRep; var ii=_ipCurIssIi; var isEdit=ii>=0;
+  var rep=_ipCurIssRep;
+  // 권한 체크: 관리자 또는 본인만 저장 가능
+  if(session&&session.role==='rep'){
+    var _myBase=session.rep?session.rep.replace(/[（(\[【].*$/,'').trim():'';
+    if(_myBase!==rep){ alert('본인의 데이터만 수정할 수 있습니다.'); return; }
+  } var ii=_ipCurIssIi; var isEdit=ii>=0;
   var client=(document.getElementById('ip-is-client')||{}).value||'';
   if(!client.trim()){alert('고객사명을 입력하세요.');return;}
   var contentEl=document.getElementById('ip-is-content');
@@ -19898,10 +19913,16 @@ function _wkRenderKPI(){
   var openIssues=0, expiringSoon=0, newContracts=0, totalContracts=0;
   reps.forEach(function(rep){
     var rd=store&&store.reps&&store.reps[rep]; if(!rd) return;
-    for(var i=0;i<=moIdx;i++) yearTotal+=parseFloat((rd.actual&&rd.actual[i])||0);
+    // clients.wk=true인 고객사만 집계 (주간회의 포함 체크)
+    var _wkCls=(rd.clients||[]).filter(function(cl){return cl.wk!==false;});
+    var _wkAct=MONTHS.map(function(_,mi){
+      return _wkCls.filter(function(cl){return (cl.status||'달성')==='달성';})
+        .reduce(function(s,cl){return s+(cl.actual&&cl.actual[mi]||0);},0);
+    });
+    for(var i=0;i<=moIdx;i++) yearTotal+=_wkAct[i]||0;
     for(var i=0;i<12;i++) yearPlanTotal+=parseFloat((rd.plan&&rd.plan[i])||0);
     monthPlan+=parseFloat((rd.plan&&rd.plan[moIdx])||0);
-    monthAct+=parseFloat((rd.actual&&rd.actual[moIdx])||0);
+    monthAct+=_wkAct[moIdx]||0;
     (rd.issuesList||[]).forEach(function(iss){ if(iss.status!=='완료') openIssues++; });
     var cts=typeof _getContracts==='function'?_getContracts(rep):[];
     cts.forEach(function(ct){
