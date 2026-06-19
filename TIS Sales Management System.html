@@ -5158,8 +5158,6 @@ function getDashReps(){
 }
 
 function renderDashboard(){try{
-  // actual/forecast 최신 계산 보장
-  try{ if(typeof REPS!=='undefined'&&typeof refreshActualForecast==='function') REPS.forEach(function(r){ if(store&&store.reps&&store.reps[r]) refreshActualForecast(r); }); }catch(e){}
   // 탭은 showPage/initAllTabs에서 처리
   try{ extractIssues(); }catch(e){}
   const _dr = getDashReps().filter(r=>store.reps[r]);
@@ -6322,10 +6320,6 @@ function refreshActualForecast(rep){
   });
   // 품목별도 업데이트
   updateProductSummary(rep);
-  renderDashboard();
-  autoSave();
-  // 즉각 SP 저장 (sync 덮어쓰기 방지)
-  if(window._isSPReady&&typeof _spSaveMyRep==='function') _spSaveMyRep();
 }
 
 // 품목별 매출 집계
@@ -16134,6 +16128,10 @@ window._applyLinkContract=function(rep,cid){
 
 
 window._confirmDeleteContract=function(rep,cid){
+  if(session&&session.role==='rep'){
+    var _mb=session.rep?session.rep.replace(/[（(\[【].*$/,'').trim():'';
+    if(_mb!==rep){ alert('본인의 계약만 삭제할 수 있습니다.'); return; }
+  }
   var old=document.getElementById('_cdel');if(old)old.remove();
   var wrap=document.createElement('div');
   wrap.id='_cdel';
@@ -17200,9 +17198,9 @@ window.showContractDetail=function(rep,cid){ try {
 
     // FOOTER
     +'<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 22px;border-top:1px solid #F1F5F9;flex-shrink:0;background:#FAFAFA;">'
-    +'<button onclick="window._confirmDeleteContract(\''+rep+'\',\''+cid+'\')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:8px;border:1px solid #FEE2E2;background:#FFF5F5;color:#DC2626;font-size:12px;cursor:pointer;">'
-    +'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>삭제'
-    +'</button>'
+    +(canEdit?'<button onclick="window._confirmDeleteContract(\''+rep+'\',\''+cid+'\')" style="display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border-radius:8px;border:1px solid #FCA5A5;background:#FFF5F5;color:#EF4444;font-size:12px;font-weight:500;cursor:pointer;">'
+    +'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>삭제'
+    +'</button>':'')
     +'<div style="display:flex;gap:8px;">'
     +(canEdit?
       '<button onclick="document.getElementById(\'_cdm\').remove();showContractModal(\''+rep+'\',\''+cid+'\')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 16px;border-radius:8px;border:1px solid #E2E8F0;background:#fff;color:#374151;font-size:12px;font-weight:500;cursor:pointer;">'
@@ -17288,7 +17286,7 @@ function showContractModal(rep,cid){
     +'<div><div style="font-size:11px;font-weight:600;color:#64748B;margin-bottom:4px;">비고</div><textarea id="_cm-notes" rows="3" placeholder="비고 내용..." style="width:100%;padding:8px 10px;border:1px solid #E2E8F0;border-radius:8px;font-size:13px;box-sizing:border-box;resize:none;">'+(c&&c.notes||'')+'</textarea></div>'
     +'</div>'
     +'<div style="padding:12px 20px;border-top:1px solid #F1F5F9;display:flex;gap:8px;">'
-    +(isEdit?'<button onclick="window._confirmDeleteContract(\''+rep+'\',\''+cid+'\')" style="padding:10px 16px;border-radius:20px;border:1px solid #FEE2E2;background:#FEF2F2;color:#DC2626;font-size:13px;font-weight:600;cursor:pointer;">삭제</button>':'')
+    +(isEdit&&canEdit?'<button onclick="window._confirmDeleteContract(\''+rep+'\',\''+cid+'\')" style="padding:10px 16px;border-radius:20px;border:1px solid #FEE2E2;background:#FEF2F2;color:#DC2626;font-size:13px;font-weight:600;cursor:pointer;">삭제</button>':'')
     +'<button onclick="closeContractModal()" style="flex:1;padding:10px;border-radius:20px;border:1px solid #E2E8F0;background:#F8FAFC;color:#64748B;font-size:13px;font-weight:600;cursor:pointer;">취소</button>'
     +'<button onclick="saveContractFromModal(\''+rep+'\','+(isEdit?'\''+cid+'\'':'null')+')" style="flex:2;padding:10px;border-radius:20px;border:none;background:#4f7fff;color:white;font-size:13px;font-weight:700;cursor:pointer;">'+(isEdit?'수정 저장':'등록')+'</button>'
     +'</div>'
