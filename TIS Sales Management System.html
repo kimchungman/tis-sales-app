@@ -2079,11 +2079,11 @@ td.at-cell-timing input[type="text"]::placeholder {
 
 /* ── grid 정의 ── */
 /* 고객사: dot|#|고객사명|프로젝트명|제품|유형|달성|예상|상태 */
-.g-ct{grid-template-columns:14px 40px 1fr 130px 68px 52px 80px 80px 64px;}
+.g-ct{grid-template-columns:14px 36px 160px 1fr 68px 52px 80px 80px 60px 1.2fr;}
 /* 영업: dot|#|고객사|구분|프로젝트명|제품|진행|금액|활동내용 */
-.g-at{grid-template-columns:14px 40px 110px 70px 120px 68px 68px 72px 1fr;}
+.g-at{grid-template-columns:14px 36px 140px 70px 180px 68px 68px 80px 1fr;}
 /* 이슈: dot|#|고객사|프로젝트명|이슈내용|중요도|상태|기한 */
-.g-is{grid-template-columns:14px 40px 90px 100px 1fr 62px 62px 62px;}
+.g-is{grid-template-columns:14px 36px 130px 160px 1fr 62px 62px 70px;}
 
 /* ── chip / status / badge ── */
 .chip{display:inline-flex;height:24px;padding:0 8px;border-radius:4px;font-size:11px;font-weight:500;white-space:nowrap;align-items:center;justify-content:center;align-self:center;}
@@ -2131,7 +2131,7 @@ td.at-cell-timing input[type="text"]::placeholder {
 .ip-seg-btn.on{background:#fff;color:#0F172A;font-weight:700;box-shadow:0 1px 3px rgba(15,23,42,.1);}
 .ip-mon-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;}
 .ip-mon-item{display:flex;flex-direction:column;gap:3px;align-items:center;}
-.ip-mon-lbl{font-size:10px;color:#94A3B8;}
+.ip-mon-lbl{font-size:12px;color:#334155;font-weight:600;}
 .ip-mon-inp{width:100%;text-align:right;padding:6px 7px;border:1.5px solid #E2E8F0;border-radius:7px;font-size:12px;outline:none;transition:border-color .15s;font-family:inherit;}
 .ip-mon-inp:focus{border-color:#4f7fff;}
 .ip-mon-tot{border-color:#BFDBFE !important;background:#EFF6FF;color:#1D4ED8;font-weight:700;display:flex;align-items:center;justify-content:flex-end;border-radius:7px;padding:6px 7px;font-size:12px;}
@@ -2155,13 +2155,18 @@ td.at-cell-timing input[type="text"]::placeholder {
 .ip-color-drop.open{display:flex;}
 .ip-color-dot{width:18px;height:18px;border-radius:50%;cursor:pointer;border:2px solid transparent;flex-shrink:0;}
 .ip-color-dot:hover{border-color:#0F172A;}
-.ip-rich-ed{height:44px;max-height:110px;overflow-y:hidden;padding:9px 11px;border:1.5px solid #E2E8F0;border-radius:0 0 8px 8px;font-size:12px;line-height:1.8;outline:none;color:#0F172A;background:#fff;transition:border-color .15s;word-break:break-all;}
+.ip-rich-ed{height:60px;max-height:200px;overflow-y:hidden;padding:9px 11px;border:1.5px solid #E2E8F0;border-radius:0 0 8px 8px;font-size:12px;line-height:1.8;outline:none;color:#0F172A;background:#fff;transition:border-color .15s;word-break:break-all;}
 .ip-rich-ed:focus{border-color:#4f7fff;}
 .ip-rich-ed:empty::before{content:attr(data-ph);color:#94A3B8;}
 
 /* ── 행별 스트라이프 (기존 .dt 테이블) ── */
 .dt tbody tr:nth-child(even) td{background:#F8FBFF;}
 .dt tbody tr:hover td{background:#EEF4FF !important;cursor:pointer;}
+
+
+/* 목록 스크롤 + sticky 헤더 */
+.list-scroll-wrap{overflow-y:auto;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.list-scroll-wrap .lh{position:sticky;top:0;z-index:4;background:#F8FAFC;}
 
 </style>
 
@@ -5704,14 +5709,14 @@ function buildRepInputs(){
         <button class="add-btn" onclick="addClient('${rep}')">＋ 추가</button>
       </div>
       <div class="sec-body" style="padding:0;">
-        <div class="lh g-ct">
-          <span></span><span>#</span>
-          <span>고객사명</span><span>프로젝트명</span>
-          <span>제품</span><span>유형</span>
-          <span>달성(천원)</span><span>예상(천원)</span><span>상태</span>
-        </div>
-        <div class="list-scroll-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
-          <div id="ct-ip-${rep}" style="min-width:760px;">
+        <div class="list-scroll-wrap" id="ct-sw-${rep}" style="max-height:420px;">
+          <div class="lh g-ct" style="min-width:900px;">
+            <span></span><span>#</span>
+            <span>고객사명</span><span>프로젝트명</span>
+            <span>제품</span><span>유형</span>
+            <span>달성(천원)</span><span>예상(천원)</span><span>상태</span><span>이슈사항</span>
+          </div>
+          <div id="ct-ip-${rep}" style="min-width:900px;">
             ${(store.reps[rep].clients||[]).map((cl,ci)=>cRow(rep,ci,cl)).join('')}
           </div>
         </div>
@@ -5725,13 +5730,13 @@ function buildRepInputs(){
         <button class="add-btn" onclick="addActivity('${rep}')">＋ 추가</button>
       </div>
       <div class="sec-body" style="padding:0;">
-        <div class="lh g-at">
-          <span></span><span>#</span>
-          <span>고객사</span><span>구분</span><span>프로젝트명</span>
-          <span>제품</span><span>진행</span><span>금액</span><span>활동 내용</span>
-        </div>
-        <div class="list-scroll-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
-          <div id="at-ip-${rep}" style="min-width:820px;">
+        <div class="list-scroll-wrap" id="at-sw-${rep}" style="max-height:420px;">
+          <div class="lh g-at" style="min-width:900px;">
+            <span></span><span>#</span>
+            <span>고객사</span><span>구분</span><span>프로젝트명</span>
+            <span>제품</span><span>진행</span><span>금액</span><span>활동 내용</span>
+          </div>
+          <div id="at-ip-${rep}" style="min-width:900px;">
             ${(store.reps[rep].activities||[]).map((a,ai)=>aRow(rep,ai,a)).join('')}
           </div>
         </div>
@@ -5745,12 +5750,12 @@ function buildRepInputs(){
         <button class="add-btn" onclick="addIssueRow('${rep}')">＋ 추가</button>
       </div>
       <div class="sec-body" style="padding:0;">
-        <div class="lh g-is">
-          <span></span><span>#</span>
-          <span>고객사</span><span>프로젝트명</span>
-          <span>이슈 내용</span><span>중요도</span><span>상태</span><span>기한</span>
-        </div>
-        <div class="list-scroll-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+        <div class="list-scroll-wrap" id="is-sw-${rep}" style="max-height:420px;">
+          <div class="lh g-is" style="min-width:700px;">
+            <span></span><span>#</span>
+            <span>고객사</span><span>프로젝트명</span>
+            <span>이슈 내용</span><span>중요도</span><span>상태</span><span>기한</span>
+          </div>
           <div id="is-ip-${rep}" style="min-width:700px;"></div>
         </div>
       </div>
@@ -5868,6 +5873,7 @@ function cRow(rep,ci,cl){
   var isFore=(cl.status||'달성')==='예상';
   var actualDisp=isDal&&actualSum>0?actualSum.toLocaleString('ko-KR'):'<span style="color:#CBD5E1;">—</span>';
   var foreDisp=isFore&&actualSum>0?actualSum.toLocaleString('ko-KR'):'<span style="color:#CBD5E1;">—</span>';
+  var issueDisp=cl.issue?('<div style="overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:11px;line-height:1.5;color:#475569;text-align:left;">'+cl.issue+'</div>'):'<span style="color:#CBD5E1;font-size:11px;">—</span>';
   var bgEven=ci%2===1?'background:#F8FBFF;':'';
   return '<div class="lr g-ct ip-row" style="'+bgEven+'" data-action="openClient" data-rep="'+rep+'" data-ci="'+ci+'" title="클릭하여 수정">'
     +'<div class="td-c"><span class="'+dotCls+'"></span></div>'
@@ -5879,6 +5885,7 @@ function cRow(rep,ci,cl){
     +'<div class="td-c" style="font-weight:600;">'+actualDisp+'</div>'
     +'<div class="td-c" style="font-weight:600;color:#F59E0B;">'+foreDisp+'</div>'
     +'<div class="td-c"><span class="status '+statusCls+'">'+(cl.status||'달성')+'</span></div>'
+    +'<div class="td-l">'+issueDisp+'</div>'
     +'</div>';
 }
 
@@ -8506,7 +8513,7 @@ function _ipOpenClient(rep,ci){
   var div=document.createElement('div');
   div.id='ip-client-pop';
   div.className='ip-pop open';
-  div.onclick=function(e){ if(e.target===div) window._ipClose('ip-client-pop'); };
+  // 배경 클릭으로 닫기 비활성화
   div.innerHTML='<div class="ip-box wide">'
     +'<div class="ip-head"><div><div class="ip-title">'+(isEdit?'고객사 수정':'고객사 추가')+'</div><div class="ip-sub">고객사 정보와 월별 실적을 입력하세요</div></div>'
     +'<button class="ip-close" onclick="window._ipClose(\'ip-client-pop\')">✕</button></div>'
@@ -8660,9 +8667,21 @@ function _ipToggleColor(btn){
 function _ipRichResize(ed){
   ed.style.height='0px';
   var sh=ed.scrollHeight;
-  if(sh<=110){ed.style.height=Math.max(44,sh)+'px';ed.style.overflowY='hidden';}
-  else{ed.style.height='110px';ed.style.overflowY='auto';}
+  var maxH=200;
+  if(sh<=maxH){ed.style.height=Math.max(60,sh)+'px';ed.style.overflowY='hidden';}
+  else{ed.style.height=maxH+'px';ed.style.overflowY='auto';}
 }
+
+
+// ── ESC 키로 팝업 닫기 ──
+document.addEventListener('keydown', function(e){
+  if(e.key !== 'Escape') return;
+  var pops = ['ip-client-pop','ip-act-pop','ip-iss-pop','ip-confirm-pop'];
+  for(var i=0; i<pops.length; i++){
+    var el = document.getElementById(pops[i]);
+    if(el){ el.remove(); return; }
+  }
+});
 
 // ── window 등록 ──
 window._ipOpenClient   = _ipOpenClient;
@@ -8822,7 +8841,7 @@ function _ipOpenActivity(rep,ai){
   var div=document.createElement('div');
   div.id='ip-act-pop';
   div.className='ip-pop open';
-  div.onclick=function(e){ if(e.target===div) window._ipClose('ip-act-pop'); };
+  // 배경 클릭으로 닫기 비활성화
   div.innerHTML='<div class="ip-box">'
     +'<div class="ip-head"><div><div class="ip-title">'+(isEdit?'영업활동 수정':'영업활동 추가')+'</div><div class="ip-sub">영업활동 내용을 입력하세요</div></div>'
     +'<button class="ip-close" onclick="window._ipClose(\'ip-act-pop\')">✕</button></div>'
@@ -8936,7 +8955,7 @@ function _ipOpenIssue(rep,ii){
   var div=document.createElement('div');
   div.id='ip-iss-pop';
   div.className='ip-pop open';
-  div.onclick=function(e){ if(e.target===div) window._ipClose('ip-iss-pop'); };
+  // 배경 클릭으로 닫기 비활성화
   div.innerHTML='<div class="ip-box">'
     +'<div class="ip-head"><div><div class="ip-title">'+(isEdit?'이슈 수정':'이슈 추가')+'</div><div class="ip-sub">이슈 내용을 등록하세요</div></div>'
     +'<button class="ip-close" onclick="window._ipClose(\'ip-iss-pop\')">✕</button></div>'
@@ -9031,21 +9050,26 @@ function _ipDelIssue(){
 
 // ── 목록 행 수에 따른 자동높이/스크롤 제어 ──
 function _adjustListHeight(tbodyId){
-  var tbody = document.getElementById(tbodyId);
-  if(!tbody) return;
-  var wrap = tbody.closest('.list-scroll-wrap');
-  if(!wrap) wrap = tbody.closest('[class*="scroll-wrap"]');
+  // ct-ip-rep → ct-sw-rep 방식으로 스크롤 래퍼 찾기
+  var swId = tbodyId.replace(/^(ct|at|is)-ip-/, '$1-sw-');
+  var wrap = document.getElementById(swId);
+  if(!wrap){
+    var tbody = document.getElementById(tbodyId);
+    if(!tbody) return;
+    wrap = tbody.closest('.list-scroll-wrap');
+  }
   if(!wrap) return;
   var ROW_H = 42;
+  var HEADER_H = 38;
   var MAX_ROWS = 10;
-  var rowCount = tbody.querySelectorAll('tr').length;
+  var inner = wrap.querySelector('[id^="ct-ip-"],[id^="at-ip-"],[id^="is-ip-"]');
+  var rowCount = inner ? inner.children.length : 0;
   if(rowCount >= MAX_ROWS){
-    wrap.style.maxHeight = (ROW_H * MAX_ROWS) + 'px';
+    wrap.style.maxHeight = (ROW_H * MAX_ROWS + HEADER_H) + 'px';
     wrap.style.overflowY = 'auto';
-    wrap.style.overflowX = 'auto';
   } else {
-    wrap.style.maxHeight = '';
-    wrap.style.overflowY = 'visible';
+    wrap.style.maxHeight = (ROW_H * Math.max(rowCount,1) + HEADER_H + 8) + 'px';
+    wrap.style.overflowY = 'hidden';
   }
 }
 
