@@ -2079,11 +2079,11 @@ td.at-cell-timing input[type="text"]::placeholder {
 
 /* ── grid 정의 ── */
 /* 고객사: dot|#|고객사명|프로젝트명|제품|유형|달성|예상|상태 */
-.g-ct{grid-template-columns:14px 36px 160px 1fr 68px 52px 80px 80px 60px 1.2fr;}
+.g-ct{grid-template-columns:14px 36px 160px 280px 68px 52px 80px 80px 60px 1fr;}
 /* 영업: dot|#|고객사|구분|프로젝트명|제품|진행|금액|활동내용 */
-.g-at{grid-template-columns:14px 36px 140px 70px 180px 68px 68px 80px 1fr;}
+.g-at{grid-template-columns:14px 36px 140px 70px 310px 68px 68px 80px 1fr;}
 /* 이슈: dot|#|고객사|프로젝트명|이슈내용|중요도|상태|기한 */
-.g-is{grid-template-columns:14px 36px 130px 160px 1fr 62px 62px 70px;}
+.g-is{grid-template-columns:14px 36px 130px 310px 1fr 62px 62px 70px;}
 
 /* ── chip / status / badge ── */
 .chip{display:inline-flex;height:24px;padding:0 8px;border-radius:4px;font-size:11px;font-weight:500;white-space:nowrap;align-items:center;justify-content:center;align-self:center;}
@@ -2165,7 +2165,7 @@ td.at-cell-timing input[type="text"]::placeholder {
 
 
 /* 목록 스크롤 + sticky 헤더 */
-.list-scroll-wrap{overflow-y:auto;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.list-scroll-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
 .list-scroll-wrap .lh{position:sticky;top:0;z-index:4;background:#F8FAFC;}
 
 </style>
@@ -5709,14 +5709,14 @@ function buildRepInputs(){
         <button class="add-btn" onclick="addClient('${rep}')">＋ 추가</button>
       </div>
       <div class="sec-body" style="padding:0;">
-        <div class="list-scroll-wrap" id="ct-sw-${rep}" style="max-height:420px;">
-          <div class="lh g-ct" style="min-width:900px;">
+        <div class="list-scroll-wrap" id="ct-sw-${rep}">
+          <div class="lh g-ct" style="min-width:1000px;">
             <span></span><span>#</span>
             <span>고객사명</span><span>프로젝트명</span>
             <span>제품</span><span>유형</span>
             <span>달성(천원)</span><span>예상(천원)</span><span>상태</span><span>이슈사항</span>
           </div>
-          <div id="ct-ip-${rep}" style="min-width:900px;">
+          <div id="ct-ip-${rep}" style="min-width:1000px;">
             ${(store.reps[rep].clients||[]).map((cl,ci)=>cRow(rep,ci,cl)).join('')}
           </div>
         </div>
@@ -5730,13 +5730,13 @@ function buildRepInputs(){
         <button class="add-btn" onclick="addActivity('${rep}')">＋ 추가</button>
       </div>
       <div class="sec-body" style="padding:0;">
-        <div class="list-scroll-wrap" id="at-sw-${rep}" style="max-height:420px;">
-          <div class="lh g-at" style="min-width:900px;">
+        <div class="list-scroll-wrap" id="at-sw-${rep}">
+          <div class="lh g-at" style="min-width:1050px;">
             <span></span><span>#</span>
             <span>고객사</span><span>구분</span><span>프로젝트명</span>
             <span>제품</span><span>진행</span><span>금액</span><span>활동 내용</span>
           </div>
-          <div id="at-ip-${rep}" style="min-width:900px;">
+          <div id="at-ip-${rep}" style="min-width:1050px;">
             ${(store.reps[rep].activities||[]).map((a,ai)=>aRow(rep,ai,a)).join('')}
           </div>
         </div>
@@ -5750,13 +5750,13 @@ function buildRepInputs(){
         <button class="add-btn" onclick="addIssueRow('${rep}')">＋ 추가</button>
       </div>
       <div class="sec-body" style="padding:0;">
-        <div class="list-scroll-wrap" id="is-sw-${rep}" style="max-height:420px;">
-          <div class="lh g-is" style="min-width:700px;">
+        <div class="list-scroll-wrap" id="is-sw-${rep}">
+          <div class="lh g-is" style="min-width:900px;">
             <span></span><span>#</span>
             <span>고객사</span><span>프로젝트명</span>
             <span>이슈 내용</span><span>중요도</span><span>상태</span><span>기한</span>
           </div>
-          <div id="is-ip-${rep}" style="min-width:700px;"></div>
+          <div id="is-ip-${rep}" style="min-width:900px;"></div>
         </div>
       </div>
     </div>
@@ -9059,17 +9059,20 @@ function _adjustListHeight(tbodyId){
     wrap = tbody.closest('.list-scroll-wrap');
   }
   if(!wrap) return;
-  var ROW_H = 42;
-  var HEADER_H = 38;
+  var isAt = tbodyId.indexOf('at-ip-') === 0;
+  var ROW_H = isAt ? 65 : 44;  // 영업활동은 2줄 가능
+  var HEADER_H = 40;
   var MAX_ROWS = 10;
-  var inner = wrap.querySelector('[id^="ct-ip-"],[id^="at-ip-"],[id^="is-ip-"]');
+  var inner = document.getElementById(tbodyId);
   var rowCount = inner ? inner.children.length : 0;
   if(rowCount >= MAX_ROWS){
     wrap.style.maxHeight = (ROW_H * MAX_ROWS + HEADER_H) + 'px';
     wrap.style.overflowY = 'auto';
+    wrap.style.overflowX = 'auto';
   } else {
-    wrap.style.maxHeight = (ROW_H * Math.max(rowCount,1) + HEADER_H + 8) + 'px';
-    wrap.style.overflowY = 'hidden';
+    wrap.style.maxHeight = '';
+    wrap.style.overflowY = 'visible';
+    wrap.style.overflowX = 'auto';
   }
 }
 
