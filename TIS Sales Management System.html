@@ -19201,8 +19201,11 @@ function _wkRenderIssues(){
     if(!rd) return;
     (rd.issuesList||[]).forEach(function(i){
       if(i.status==='완료'||i.status==='Closed'||i.status==='closed') return;
-      var _wkk=typeof _wkThisKey==='function'?((_wk&&_wk.weekMode==='last')?_wkLastKey():_wkThisKey()):'';
-      if(!i.weeklyCheck||!i.weeklyCheck[_wkk]) return;
+      var _wkkThis=typeof _wkThisKey==='function'?_wkThisKey():'';
+      var _wkkLast=typeof _wkLastKey==='function'?_wkLastKey():'';
+      var _wkk=((_wk&&_wk.weekMode==='last')?_wkkLast:_wkkThis);
+      // 저장 키와 조회 키 일치 보장: this 주 OR last 주 체크 모두 허용
+      if(!i.weeklyCheck||(! i.weeklyCheck[_wkkThis]&&!i.weeklyCheck[_wkkLast])) return;
       var due=i.dueDate?new Date(i.dueDate):null;
       var diff=due?Math.round((due-today)/86400000):999;
       issues.push({rep:rep, client:i.client, content:i.content, diff:diff, sev:i.sev||'mid'});
@@ -20318,17 +20321,19 @@ function _wkRenderRepTable(){
   reps.forEach(function(rep,ri){
     var rd=store&&store.reps&&store.reps[rep]; if(!rd) return;
     var plan=parseFloat((rd.plan&&rd.plan[moIdx])||0);
-    var act=parseFloat((rd.actual&&rd.actual[moIdx])||0);
+    // wk===true 체크된 clients만 집계
+    var _wkCls=(rd.clients||[]).filter(function(cl){return cl.wk===true;});
+    var act=_wkCls.filter(function(cl){return (cl.status||'달성')==='달성';}).reduce(function(s,cl){return s+((cl.actual&&cl.actual[moIdx])||0);},0);
     var rate=plan>0?Math.round(act/plan*100):0;
     var rc=rate>=80?'#1D9E75':rate>=60?'#BA7517':'#E24B4A';
     var avc=AVCOLS[ri%AVCOLS.length];
     var title=rd.repTitle||'';
-    var cls=(rd.clients||[]).filter(function(cl){
+    var cls=_wkCls.filter(function(cl){
       var v=Array.isArray(cl.actual)?(parseFloat(cl.actual[moIdx])||0):(parseFloat(cl.actual)||0);
       return v>0;
     });
     var forecast=0;
-    cls.forEach(function(cl){
+    _wkCls.forEach(function(cl){
       if(cl.status==='예상') forecast+=Array.isArray(cl.actual)?(parseFloat(cl.actual[moIdx])||0):(parseFloat(cl.actual)||0);
     });
     H+='<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;display:flex;flex-direction:column;">';
