@@ -5158,6 +5158,8 @@ function getDashReps(){
 }
 
 function renderDashboard(){try{
+  // actual/forecast 최신 계산 보장
+  try{ if(typeof REPS!=='undefined'&&typeof refreshActualForecast==='function') REPS.forEach(function(r){ if(store&&store.reps&&store.reps[r]) refreshActualForecast(r); }); }catch(e){}
   // 탭은 showPage/initAllTabs에서 처리
   try{ extractIssues(); }catch(e){}
   const _dr = getDashReps().filter(r=>store.reps[r]);
@@ -5507,8 +5509,8 @@ function renderMainChart(){
     if(c.dataset.yAxisID==='y1') return c.dataset.label+': '+c.parsed.y+'%';
     return c.dataset.label+': '+c.parsed.y.toLocaleString('ko-KR')+'천원';
   }}};
-  var LEGEND={position:'top',align:'center',labels:{font:{size:12,weight:'600'},usePointStyle:true,pointStyleWidth:12,padding:20,color:'#334155'}};
-  var YSCALE={ticks:{callback:function(v){return v>=1000?Math.round(v/1000)+'K':v.toLocaleString('ko-KR');},font:{size:11},color:'#64748B'},grid:{color:'rgba(0,0,0,0.05)',drawBorder:false},beginAtZero:true,border:{display:false}};
+  var LEGEND={position:'top',labels:{font:{size:12,weight:'500'},usePointStyle:true,padding:20,boxWidth:12}};
+  var YSCALE={ticks:{callback:function(v){if(v>=100000) return Math.round(v/100000)+'억'; if(v>=10000) return Math.round(v/10000)+'천만'; if(v>=1000) return Math.round(v/1000)+'M'; return v.toLocaleString('ko-KR');},font:{size:11},color:'#64748B',maxTicksLimit:8},grid:{color:'rgba(0,0,0,0.04)'},beginAtZero:true};
 
   var cfg;
 
@@ -8659,7 +8661,7 @@ function _ipOpenClient(rep,ci,readOnly){
     +'<button class="ip-tb" onclick="window._ipFmt(\'strikeThrough\')"><s>S</s></button>'
     +'</div>'
     +'<div class="ip-rich-ed" id="ip-ct-issue" contenteditable="true" data-ph="특이사항을 입력하세요"></div></div>'
-    +'<label class="ip-wk-chk"><input type="checkbox" id="ip-ct-wk"'+(d.wk!==false?' checked':'')+'><span>주간회의 포함</span></label>'
+    +'<label class="ip-wk-chk"><input type="checkbox" id="ip-ct-wk"'+(d.wk===true?' checked':'')+'><span>주간회의 포함</span></label>'
     +'</div>'
     +'<div class="ip-foot">'
     +'<button class="btn-ip-cancel" onclick="window._ipClose(\'ip-client-pop\')">취소</button>'
@@ -8713,7 +8715,7 @@ function _ipSaveClient(){
   }
   var issueEl=document.getElementById('ip-ct-issue');
   var issue=issueEl?issueEl.innerHTML:'';
-  var wk=(document.getElementById('ip-ct-wk')||{}).checked!==false;
+  var wk=(document.getElementById('ip-ct-wk')||{}).checked===true;
   var obj={name:name,project:proj,product:prod,type:type,status:status,actual:actual,issue:issue,wk:wk,sev:'none'};
   if(isEdit){
     store.reps[rep].clients[ci]=obj;
