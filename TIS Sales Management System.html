@@ -2070,7 +2070,7 @@ td.at-cell-timing input[type="text"]::placeholder {
 .lh{display:grid;padding:7px 14px;background:#F8FAFC;border-bottom:1.5px solid #E8EDF5;font-size:11px;font-weight:600;color:#64748B;align-items:center;}
 .lh>span{text-align:center;display:flex;align-items:center;justify-content:center;padding:0 4px;}
 .lh>.th-l{justify-content:flex-start;text-align:left;}
-.lr{display:grid;padding:8px 14px;border-bottom:0.5px solid #F1F5F9;align-items:start;font-size:12px;cursor:pointer;transition:background .1s;}
+.lr{display:grid;padding:8px 14px;border-bottom:0.5px solid #F1F5F9;align-items:center;font-size:12px;cursor:pointer;transition:background .1s;}
 .lr:hover{background:#EEF4FF !important;}
 .lr:nth-child(even){background:#F8FBFF;}
 .lr:last-child{border-bottom:none;}
@@ -5885,7 +5885,7 @@ function cRow(rep,ci,cl){
     +'<div class="td-c" style="font-weight:600;">'+actualDisp+'</div>'
     +'<div class="td-c" style="font-weight:600;color:#F59E0B;">'+foreDisp+'</div>'
     +'<div class="td-c"><span class="status '+statusCls+'">'+(cl.status||'달성')+'</span></div>'
-    +'<div class="td-l">'+issueDisp+'</div>'
+    +'<div class="td-l" style="align-self:start;padding-top:4px;">'+issueDisp+'</div>'
     +'</div>';
 }
 
@@ -5919,7 +5919,7 @@ function _iRow2(rep,ii,iss){
     +'<div class="td-c"><span class="nbadge">'+(ii+1)+'</span></div>'
     +'<div class="td-l" style="font-weight:600;color:#0F172A;">'+(iss.client||'')+'</div>'
     +'<div class="td-l" style="color:#0F172A;">'+(iss.project||'')+'</div>'
-    +'<div class="td-l">'+contentHtml+'</div>'
+    +'<div class="td-l" style="align-self:start;padding-top:6px;">'+contentHtml+'</div>'
     +'<div class="td-c"><span class="chip '+sevCls+'">'+(iss.sev||'중간')+'</span></div>'
     +'<div class="td-c"><span class="chip" style="'+stStyle+';min-width:48px;">'+(iss.status||'Open')+'</span></div>'
     +'<div class="td-c">'+dday+'</div>';
@@ -5946,7 +5946,7 @@ function aRow(rep,ai,a){
     +'<div class="td-c">'+chipProd+'</div>'
     +'<div class="td-c">'+chipProg+'</div>'
     +'<div class="td-c" style="font-weight:600;">'+amt+'</div>'
-    +'<div class="td-l">'+contentHtml+'</div>'
+    +'<div class="td-l" style="align-self:start;padding-top:6px;">'+contentHtml+'</div>'
     +'</div>';
 }
 // ── 영업활동 드래그 앤 드롭 ──────────────────────────────────
