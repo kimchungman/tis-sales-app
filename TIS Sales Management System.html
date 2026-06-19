@@ -19204,7 +19204,7 @@ function _wkRenderIssues(){
       var _wkkThis=typeof _wkThisKey==='function'?_wkThisKey():'';
       var _wkkLast=typeof _wkLastKey==='function'?_wkLastKey():'';
       var _wkk=((_wk&&_wk.weekMode==='last')?_wkkLast:_wkkThis);
-      // 저장 키와 조회 키 일치 보장: this 주 OR last 주 체크 모두 허용
+      console.log('[이슈]',rep,i.client,'weeklyCheck:',JSON.stringify(i.weeklyCheck),'_wkkThis:',_wkkThis,'match:',!!(i.weeklyCheck&&(i.weeklyCheck[_wkkThis]||i.weeklyCheck[_wkkLast])));
       if(!i.weeklyCheck||(! i.weeklyCheck[_wkkThis]&&!i.weeklyCheck[_wkkLast])) return;
       var due=i.dueDate?new Date(i.dueDate):null;
       var diff=due?Math.round((due-today)/86400000):999;
