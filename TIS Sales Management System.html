@@ -2070,7 +2070,7 @@ td.at-cell-timing input[type="text"]::placeholder {
 .lh{display:grid;padding:7px 14px;background:#F8FAFC;border-bottom:1.5px solid #E8EDF5;font-size:11px;font-weight:600;color:#64748B;align-items:center;}
 .lh>span{text-align:center;display:flex;align-items:center;justify-content:center;padding:0 4px;}
 .lh>.th-l{justify-content:flex-start;text-align:left;}
-.lr{display:grid;padding:8px 14px;border-bottom:0.5px solid #F1F5F9;align-items:center;font-size:12px;cursor:pointer;transition:background .1s;}
+.lr{display:grid;padding:8px 14px;border-bottom:0.5px solid #F1F5F9;align-items:start;font-size:12px;cursor:pointer;transition:background .1s;}
 .lr:hover{background:#EEF4FF !important;}
 .lr:nth-child(even){background:#F8FBFF;}
 .lr:last-child{border-bottom:none;}
@@ -2155,7 +2155,7 @@ td.at-cell-timing input[type="text"]::placeholder {
 .ip-color-drop.open{display:flex;}
 .ip-color-dot{width:18px;height:18px;border-radius:50%;cursor:pointer;border:2px solid transparent;flex-shrink:0;}
 .ip-color-dot:hover{border-color:#0F172A;}
-.ip-rich-ed{height:60px;max-height:200px;overflow-y:hidden;padding:9px 11px;border:1.5px solid #E2E8F0;border-radius:0 0 8px 8px;font-size:12px;line-height:1.8;outline:none;color:#0F172A;background:#fff;transition:border-color .15s;word-break:break-all;}
+.ip-rich-ed{height:120px;max-height:120px;overflow-y:auto;padding:9px 11px;border:1.5px solid #E2E8F0;border-radius:0 0 8px 8px;font-size:12px;line-height:1.8;outline:none;color:#0F172A;background:#fff;transition:border-color .15s;word-break:break-all;}
 .ip-rich-ed:focus{border-color:#4f7fff;}
 .ip-rich-ed:empty::before{content:attr(data-ph);color:#94A3B8;}
 
@@ -5873,13 +5873,13 @@ function cRow(rep,ci,cl){
   var isFore=(cl.status||'달성')==='예상';
   var actualDisp=isDal&&actualSum>0?actualSum.toLocaleString('ko-KR'):'<span style="color:#CBD5E1;">—</span>';
   var foreDisp=isFore&&actualSum>0?actualSum.toLocaleString('ko-KR'):'<span style="color:#CBD5E1;">—</span>';
-  var issueDisp=cl.issue?('<div style="overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:11px;line-height:1.5;color:#475569;text-align:left;">'+cl.issue+'</div>'):'<span style="color:#CBD5E1;font-size:11px;">—</span>';
+  var issueDisp=cl.issue?('<div style="font-size:12px;line-height:1.6;color:#0F172A;text-align:left;white-space:pre-wrap;word-break:break-word;">'+cl.issue+'</div>'):'<span style="color:#CBD5E1;font-size:11px;">—</span>';
   var bgEven=ci%2===1?'background:#F8FBFF;':'';
   return '<div class="lr g-ct ip-row" style="'+bgEven+'" data-action="openClient" data-rep="'+rep+'" data-ci="'+ci+'" title="클릭하여 수정">'
     +'<div class="td-c"><span class="'+dotCls+'"></span></div>'
     +'<div class="td-c"><span class="nbadge">'+(ci+1)+'</span></div>'
     +'<div class="td-l" style="font-weight:600;color:#0F172A;">'+(cl.name||'')+'</div>'
-    +'<div class="td-l" style="color:#475569;">'+(cl.project||'')+'</div>'
+    +'<div class="td-l" style="color:#0F172A;">'+(cl.project||'')+'</div>'
     +'<div class="td-c">'+chipProduct+'</div>'
     +'<div class="td-c">'+chipType+'</div>'
     +'<div class="td-c" style="font-weight:600;">'+actualDisp+'</div>'
@@ -5905,7 +5905,7 @@ function _iRow2(rep,ii,iss){
     var ddColor=diff<0?'#DC2626':diff<=7?'#D97706':'#64748B';
     dday='<span style="font-size:11px;font-weight:600;color:'+ddColor+';">'+(diff<0?'D+'+Math.abs(diff):'D-'+diff)+'</span>';
   }
-  var contentHtml=iss.content?('<div style="text-align:left;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:12px;line-height:1.5;color:#334155;">'+iss.content+'</div>'):'';
+  var contentHtml=iss.content?('<div style="text-align:left;font-size:12px;line-height:1.6;color:#334155;white-space:pre-wrap;word-break:break-word;">'+iss.content+'</div>'):'';
   var bgEven=ii%2===1?'background:#F8FBFF;':'';
   var div=document.createElement('div');
   div.className='lr g-is ip-row ip-row-iss';
@@ -5918,7 +5918,7 @@ function _iRow2(rep,ii,iss){
     +'<div class="td-c"><span class="'+dotCls+'"></span></div>'
     +'<div class="td-c"><span class="nbadge">'+(ii+1)+'</span></div>'
     +'<div class="td-l" style="font-weight:600;color:#0F172A;">'+(iss.client||'')+'</div>'
-    +'<div class="td-l" style="color:#475569;">'+(iss.project||'')+'</div>'
+    +'<div class="td-l" style="color:#0F172A;">'+(iss.project||'')+'</div>'
     +'<div class="td-l">'+contentHtml+'</div>'
     +'<div class="td-c"><span class="chip '+sevCls+'">'+(iss.sev||'중간')+'</span></div>'
     +'<div class="td-c"><span class="chip" style="'+stStyle+';min-width:48px;">'+(iss.status||'Open')+'</span></div>'
@@ -5935,14 +5935,14 @@ function aRow(rep,ai,a){
   var chipProd=a.product?_ipChipProduct(a.product):'<span style="color:#94A3B8;font-size:11px;">—</span>';
   var chipProg=a.progress?_ipChipProgress(a.progress):'<span style="color:#94A3B8;font-size:11px;">—</span>';
   var amt=a.amount&&parseFloat(a.amount)>0?parseFloat(a.amount).toLocaleString('ko-KR'):'<span style="color:#CBD5E1;">—</span>';
-  var contentHtml=a.content?('<div style="text-align:left;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:12px;line-height:1.5;color:#334155;">'+a.content+'</div>'):'';
+  var contentHtml=a.content?('<div style="text-align:left;font-size:12px;line-height:1.6;color:#334155;white-space:pre-wrap;word-break:break-word;">'+a.content+'</div>'):'';
   var bgEven=ai%2===1?'background:#F8FBFF;':'';
   return '<div class="lr g-at ip-row" style="'+bgEven+'" data-action="openActivity" data-rep="'+rep+'" data-ai="'+ai+'" title="클릭하여 수정">'
     +'<div class="td-c"><span class="'+dotCls+'"></span></div>'
     +'<div class="td-c"><span class="nbadge">'+(ai+1)+'</span></div>'
     +'<div class="td-l" style="font-weight:600;color:#0F172A;">'+(a.client||'')+'</div>'
     +'<div class="td-c">'+chipType+'</div>'
-    +'<div class="td-l" style="color:#475569;">'+(a.project||'')+'</div>'
+    +'<div class="td-l" style="color:#0F172A;">'+(a.project||'')+'</div>'
     +'<div class="td-c">'+chipProd+'</div>'
     +'<div class="td-c">'+chipProg+'</div>'
     +'<div class="td-c" style="font-weight:600;">'+amt+'</div>'
@@ -8665,11 +8665,10 @@ function _ipToggleColor(btn){
   if(!isOpen) drop.classList.add('open');
 }
 function _ipRichResize(ed){
-  ed.style.height='0px';
-  var sh=ed.scrollHeight;
-  var maxH=200;
-  if(sh<=maxH){ed.style.height=Math.max(60,sh)+'px';ed.style.overflowY='hidden';}
-  else{ed.style.height=maxH+'px';ed.style.overflowY='auto';}
+  // 5줄 고정 + 스크롤 (높이 고정, overflow-y:auto)
+  ed.style.height='120px';
+  ed.style.maxHeight='120px';
+  ed.style.overflowY='auto';
 }
 
 
@@ -9050,7 +9049,6 @@ function _ipDelIssue(){
 
 // ── 목록 행 수에 따른 자동높이/스크롤 제어 ──
 function _adjustListHeight(tbodyId){
-  // ct-ip-rep → ct-sw-rep 방식으로 스크롤 래퍼 찾기
   var swId = tbodyId.replace(/^(ct|at|is)-ip-/, '$1-sw-');
   var wrap = document.getElementById(swId);
   if(!wrap){
@@ -9059,17 +9057,16 @@ function _adjustListHeight(tbodyId){
     wrap = tbody.closest('.list-scroll-wrap');
   }
   if(!wrap) return;
-  var isAt = tbodyId.indexOf('at-ip-') === 0;
-  var ROW_H = isAt ? 65 : 44;  // 영업활동은 2줄 가능
-  var HEADER_H = 40;
-  var MAX_ROWS = 10;
   var inner = document.getElementById(tbodyId);
   var rowCount = inner ? inner.children.length : 0;
+  var MAX_ROWS = 10;
   if(rowCount >= MAX_ROWS){
-    wrap.style.maxHeight = (ROW_H * MAX_ROWS + HEADER_H) + 'px';
+    // 10개 이상: 600px 고정 + 스크롤 (행 높이 가변이므로 고정값 사용)
+    wrap.style.maxHeight = '600px';
     wrap.style.overflowY = 'auto';
     wrap.style.overflowX = 'auto';
   } else {
+    // 10개 미만: 높이 제한 없음 (전체 표시)
     wrap.style.maxHeight = '';
     wrap.style.overflowY = 'visible';
     wrap.style.overflowX = 'auto';
