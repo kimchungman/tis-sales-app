@@ -9259,8 +9259,14 @@ function _ipOpenIssue(rep,ii,readOnly){
   document.body.appendChild(div);
   var ed=document.getElementById('ip-is-content');
   if(ed){ ed.innerHTML=(d.content||''); ed.addEventListener('input',function(){_ipRichResize(this);}); }
-  // 체크박스 초기값 전역 변수에 저장 (onchange 없이 저장 시 직접 읽음)
+  // 체크박스 초기값 + change 이벤트 등록
   window._ipIssWkChecked = !!wkChk;
+  var _wkCb=document.getElementById('ip-is-wk');
+  if(_wkCb){
+    _wkCb.addEventListener('change',function(){
+      window._ipIssWkChecked=this.checked;
+    });
+  }
 }
 
 function _ipSaveIssue(){
