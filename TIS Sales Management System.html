@@ -9154,8 +9154,11 @@ function _ipSaveActivity(){
   } var ai=_ipCurActAi; var isEdit=ai>=0;
   var client=(document.getElementById('ip-at-client')||{}).value||'';
   if(!client.trim()){alert('고객사명을 입력하세요.');return;}
-  var _wk2=typeof _wkThisKey==='function'?_wkThisKey():'';
-  var wkChk=(document.getElementById('ip-at-wk')||{}).checked||false;
+  var _wk2=(typeof _wkThisKey==='function')?_wkThisKey():'';
+  if(!_wk2 && typeof _wkGetWeekKey==='function') _wk2=_wkGetWeekKey(new Date());
+  var _atWkEl=document.getElementById('ip-at-wk');
+  if(_atWkEl){ window._ipAtWkChecked=_atWkEl.checked; }
+  var wkChk=_atWkEl?_atWkEl.checked:(window._ipAtWkChecked||false);
   var contentEl=document.getElementById('ip-at-content');
   var content=contentEl?contentEl.innerHTML:'';
   var existing=isEdit?(store.reps[rep].activities[ai]||{}):{};
@@ -9291,9 +9294,13 @@ function _ipSaveIssue(){
   var contentEl=document.getElementById('ip-is-content');
   var content=contentEl?contentEl.innerHTML:'';
   if(!content.trim()){alert('이슈 내용을 입력하세요.');return;}
-  var _wk2=typeof _wkThisKey==='function'?_wkThisKey():'';
+  // 주차 키: _wkThisKey 또는 직접 계산
+  var _wk2=(typeof _wkThisKey==='function')?_wkThisKey():'';
+  if(!_wk2 && typeof _wkGetWeekKey==='function') _wk2=_wkGetWeekKey(new Date());
   // 체크박스 값: DOM 직접 읽기 + 전역 변수 fallback
   var _wkEl2=document.getElementById('ip-is-wk');
+  // DOM이 살아있으면 checked 읽고 전역변수도 갱신, 없으면 전역변수 사용
+  if(_wkEl2){ window._ipIssWkChecked=_wkEl2.checked; }
   var wkChk=_wkEl2?_wkEl2.checked:(window._ipIssWkChecked||false);
 
   var existing=isEdit?(store.reps[rep].issuesList[ii]||{}):{};
@@ -15580,8 +15587,17 @@ async function _spSyncOtherReps(){
         var _spAt2 = new Date(repData.savedAt||0).getTime();
         var _localAt2 = new Date((store.reps[repName]&&store.reps[repName].savedAt)||0).getTime();
         if(_spAt2 >= _localAt2){
+          // wk 값 보존: 덮어쓰기 전 로컬 cl.wk=true 목록 저장
+          var _localWkMap={};
+          (store.reps[repName].clients||[]).forEach(function(cl,ci){
+            if(cl.wk===true) _localWkMap[cl.name+'|'+cl.project]=true;
+          });
           ['plan','actual','forecast','clients','activities','issuesList'].forEach(function(k){
             if(repData[k]!==undefined) store.reps[repName][k]=repData[k];
+          });
+          // wk 보정: 로컬에서 true였던 항목은 SP 덮어쓰기 후에도 true 유지
+          (store.reps[repName].clients||[]).forEach(function(cl){
+            if(_localWkMap[cl.name+'|'+cl.project]) cl.wk=true;
           });
           // visitLog: rep_data에 실제 데이터 있을 때만 교체 (빈 배열로 덮어쓰기 방지)
           if(repData.visitLog&&repData.visitLog.length>0) store.reps[repName].visitLog = repData.visitLog;
@@ -19220,7 +19236,7 @@ function _wkRenderIssues(){
       var _wkkLast=typeof _wkLastKey==='function'?_wkLastKey():'';
       var _wkk=((_wk&&_wk.weekMode==='last')?_wkkLast:_wkkThis);
 
-      if(!i.weeklyCheck||(! i.weeklyCheck[_wkkThis]&&!i.weeklyCheck[_wkkLast])) return;
+      if(!i.weeklyCheck||(!i.weeklyCheck[_wkkThis]&&!i.weeklyCheck[_wkkLast])) return;
       var due=i.dueDate?new Date(i.dueDate):null;
       var diff=due?Math.round((due-today)/86400000):999;
       issues.push({rep:rep, client:i.client, project:i.project||'', content:i.content, diff:diff, sev:i.sev||'mid'});
@@ -20338,7 +20354,7 @@ function _wkRenderRepTable(){
     {bg:'#FEF3E2',fg:'#854F0B'},{bg:'#F3EEF8',fg:'#6B3A8C'}
   ];
   var ST={달성:'#DCFCE7|#166534',진행:'#DBEAFE|#1D4ED8',대기:'#F1F5F9|#64748B',계약:'#DCFCE7|#166534',종료:'#FEE2E2|#991B1B',예상:'#FEF9C3|#854D0E'};
-  var GTC='minmax(90px,1fr) minmax(110px,1.3fr) 52px 40px 68px 44px';
+  var GTC='minmax(100px,1fr) minmax(110px,1.3fr) 64px 40px 72px 44px';
   var H='<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:4px 0;">';
   reps.forEach(function(rep,ri){
     var rd=store&&store.reps&&store.reps[rep]; if(!rd) return;
@@ -20386,7 +20402,7 @@ function _wkRenderRepTable(){
     var thS='padding:5px 10px;font-size:9px;font-weight:600;color:#94A3B8;letter-spacing:.04em;background:#FAFBFF;border-bottom:1px solid #F1F5F9;';
     H+='<div style="display:grid;grid-template-columns:'+GTC+';">';
     ['고객사','프로젝트','품목','구분','금액','상태'].forEach(function(lbl,li){
-      H+='<div style="'+thS+'text-align:'+(li<=1?'left':'center')+';">'+lbl+'</div>';
+      H+='<div style="'+thS+'text-align:center;">'+lbl+'</div>';
     });
     H+='</div>';
     // 테이블 행
@@ -20420,7 +20436,6 @@ function _wkRenderRepTable(){
   H+='</div>';
   el.innerHTML=H;
 }
-
 
 
 
