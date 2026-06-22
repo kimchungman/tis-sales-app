@@ -3874,7 +3874,7 @@ document.addEventListener('selectionchange',function(){
     <!-- 담당자별 실적 -->
     <div class="wk-card">
       <div class="wk-ch"><span class="wk-ch-t">이번달 담당자별 실적</span><span class="wk-ch-s" id="wk-rep-month"></span></div>
-      <div class="wk-cb" style="overflow-x:auto;"><div id="wk-rep-table"></div></div>
+      <div class="wk-cb"><div id="wk-rep-table"></div></div>
     </div>
     <!-- 진행현황 2x2 그리드 -->
     <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
@@ -20335,8 +20335,8 @@ function _wkRenderRepTable(){
     {bg:'#FEF3E2',fg:'#854F0B'},{bg:'#F3EEF8',fg:'#6B3A8C'}
   ];
   var ST={달성:'#DCFCE7|#166534',진행:'#DBEAFE|#1D4ED8',대기:'#F1F5F9|#64748B',계약:'#DCFCE7|#166534',종료:'#FEE2E2|#991B1B',예상:'#FEF9C3|#854D0E'};
-  var GTC='minmax(100px,1fr) minmax(110px,1.3fr) 64px 40px 72px 44px';
-  var H='<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:4px 0;">';
+  var GTC='108px minmax(90px,1.2fr) 60px 38px 68px 42px';
+  var H='<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:4px 0;min-width:0;">';
   reps.forEach(function(rep,ri){
     var rd=store&&store.reps&&store.reps[rep]; if(!rd) return;
     var plan=parseFloat((rd.plan&&rd.plan[moIdx])||0);
@@ -20352,7 +20352,7 @@ function _wkRenderRepTable(){
       return v>0;
     });
     var barGrad=rate>=80?'#1D9E75,#34D399':rate>=60?'#BA7517,#F59E0B':'#E24B4A,#F87171';
-    H+='<div style="background:#fff;border-radius:14px;border:1px solid #E2E8F0;overflow:hidden;box-shadow:0 1px 6px rgba(15,23,42,.05);display:flex;flex-direction:column;">';
+    H+='<div style="min-width:0;background:#fff;border-radius:14px;border:1px solid #E2E8F0;overflow:hidden;box-shadow:0 1px 6px rgba(15,23,42,.05);display:flex;flex-direction:column;">';
     // 담당자 헤더
     H+='<div style="padding:14px 16px 10px;border-bottom:1px solid #F1F5F9;">';
     H+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">';
@@ -20374,13 +20374,13 @@ function _wkRenderRepTable(){
      {l:'고객사',v:cls.length+'건',c:'#1E293B',s:'주간포함'}
     ].forEach(function(k,ki){
       H+='<div style="padding:9px 8px;border-right:'+(ki<3?'1px solid #F1F5F9':'none')+';text-align:center;">';
-      H+='<div style="font-size:9px;color:#94A3B8;font-weight:600;letter-spacing:.03em;margin-bottom:3px;">'+k.l+'</div>';
-      H+='<div style="font-size:12px;font-weight:700;color:'+k.c+';">'+k.v+'</div>';
-      H+='<div style="font-size:9px;color:#CBD5E1;margin-top:1px;">'+k.s+'</div></div>';
+      H+='<div style="font-size:10px;color:#94A3B8;font-weight:600;margin-bottom:3px;">'+k.l+'</div>';
+      H+='<div style="font-size:13px;font-weight:700;color:'+k.c+';">'+k.v+'</div>';
+      H+='<div style="font-size:10px;color:#CBD5E1;margin-top:1px;">'+k.s+'</div></div>';
     });
     H+='</div>';
     // 테이블 헤더
-    var thS='padding:5px 10px;font-size:9px;font-weight:600;color:#94A3B8;letter-spacing:.04em;background:#FAFBFF;border-bottom:1px solid #F1F5F9;';
+    var thS='padding:5px 8px;font-size:11px;font-weight:600;color:#94A3B8;background:#FAFBFF;border-bottom:1px solid #F1F5F9;';
     H+='<div style="display:grid;grid-template-columns:'+GTC+';">';
     ['고객사','프로젝트','품목','구분','금액','상태'].forEach(function(lbl,li){
       H+='<div style="'+thS+'text-align:center;">'+lbl+'</div>';
@@ -20401,7 +20401,7 @@ function _wkRenderRepTable(){
         var prod=cl.product||'—';
         var type=cl.type||'—';
         var rowBg=ci%2===1?'background:#FAFBFF;':'background:#fff;';
-        var cs='padding:8px 10px;font-size:11px;color:#475569;text-align:center;'+rowBg+'border-bottom:1px solid #F8FAFC;';
+        var cs='padding:7px 8px;font-size:11px;color:#475569;text-align:center;'+rowBg+'border-bottom:1px solid #F8FAFC;';
         H+='<div style="display:grid;grid-template-columns:'+GTC+';">';
         H+='<div style="'+cs+'font-weight:600;color:#0F172A;text-align:left;">'+(cl.name||cl.client||'—')+'</div>';
         H+='<div style="'+cs+'text-align:left;color:#64748B;">'+(cl.project||'—')+'</div>';
