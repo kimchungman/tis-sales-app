@@ -2498,7 +2498,7 @@ document.addEventListener('mousedown',function(e){
 .wk-4grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
 
 /* 섹션 행 */
-.wk-row{display:grid;grid-template-columns:60px 120px 1fr 1.5fr 48px;align-items:center;gap:0 8px;padding:8px 14px;border-bottom:0.5px solid #F1F5F9;font-size:12px;}
+.wk-row{display:grid;grid-template-columns:60px 120px 1fr 1.5fr 48px;align-items:start;gap:0 8px;padding:8px 14px;border-bottom:0.5px solid #F1F5F9;font-size:12px;}
 .wk-row:last-child{border-bottom:none;}
 .wk-row:nth-child(even){background:#FAFBFC;}.wk-row:last-child{border-bottom:none;}
 
@@ -2586,6 +2586,23 @@ document.addEventListener('mousedown',function(e){
 /* submit */
 .wk-submit-btn{height:36px;padding:0 18px;border-radius:8px;font-size:12px;font-weight:600;background:#4f7fff;color:#fff;border:none;cursor:pointer;flex-shrink:0;transition:background .15s;}
 .wk-submit-btn:hover{background:#3B6FE8;}
+
+/* ── 알림 드롭다운 ── */
+.wk-nd-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #F1F5F9;flex-shrink:0;}
+.wk-nd-title{font-size:13px;font-weight:700;color:#0F172A;}
+.wk-nd-clear{background:none;border:none;font-size:11px;color:#64748B;cursor:pointer;padding:3px 6px;border-radius:5px;font-family:inherit;}
+.wk-nd-clear:hover{background:#F1F5F9;}
+.wk-nd-list{overflow-y:auto;flex:1;}
+.wk-nd-item{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-bottom:1px solid #F8FAFC;cursor:pointer;transition:background .1s;}
+.wk-nd-item:hover{background:#F8FAFC;}
+.wk-nd-item.unread{background:#EFF6FF;}
+.wk-nd-item.urgent{border-left:3px solid #DC2626;}
+.wk-nd-icon{font-size:16px;flex-shrink:0;margin-top:1px;}
+.wk-nd-content{flex:1;min-width:0;}
+.wk-nd-msg{font-size:12px;color:#1E293B;line-height:1.5;word-break:break-word;}
+.wk-nd-time{font-size:10px;color:#94A3B8;margin-top:3px;}
+.wk-nd-del{background:none;border:none;color:#CBD5E1;cursor:pointer;font-size:14px;padding:0 2px;flex-shrink:0;line-height:1;}
+.wk-nd-del:hover{color:#DC2626;}
 </style>
 </head>
 <body>
@@ -3963,7 +3980,7 @@ document.addEventListener('selectionchange',function(){
 </div>
 
 <!-- 알림 드롭다운 (전역 - 헤더에 있음) -->
-<div id="wk-notif-drop" style="display:none;position:fixed;top:50px;right:12px;z-index:9999;width:320px;max-height:420px;background:#fff;border:1px solid #E2E8F0;border-radius:12px;box-shadow:0 8px 32px rgba(15,23,42,.18);overflow:hidden;flex-direction:column;">
+<div id="wk-notif-drop" style="display:none;position:fixed;top:50px;right:12px;z-index:9999;width:320px;max-height:420px;background:#fff;border:1px solid #E2E8F0;border-radius:12px;box-shadow:0 8px 32px rgba(15,23,42,.18);flex-direction:column;">
   <div class="wk-nd-head">
     <span class="wk-nd-title">🔔 알림</span>
     <div style="display:flex;gap:4px;">
@@ -19295,9 +19312,8 @@ function _wkRenderVisitList(){
   var _vhdr='<div class="wk-row" style="position:sticky;top:0;z-index:2;">'
     +'<div style="'+thS+'">담당자</div>'
     +'<div style="'+thS+'">고객사</div>'
-    +'<div style="'+thS+'">접점 내용</div>'
-    +'<div style="'+thS+'">접점 내용</div>'
-    +'<div style="'+thS+'">날짜</div>'
+    +'<div style="'+thS+'grid-column:3/5;">접점 내용</div>'
+    +'<div style="'+thS+'">접점날짜</div>'
     +'</div>';
   var _vrows=visits.map(function(v,_i){
     var _bg=_i%2===1?'background:#FAFBFC;':'';
@@ -19305,8 +19321,8 @@ function _wkRenderVisitList(){
     return '<div class="wk-row" style="'+_bg+'">'
       +_wkRepBadge(v.rep)
       +'<span class="wk-cli">'+_wkEsc(v.company)+'</span>'
-      +'<span class="wk-cont" style="grid-column:3/5;">'+_renderRich(v.content)+'</span>'
-      +'<span class="wk-dt" style="color:#1E293B;font-size:11px;text-align:right;white-space:nowrap;">'+dtStr+'</span>'
+      +'<span class="wk-cont" style="grid-column:3/5;color:#1E293B;">'+_renderRich(v.content)+'</span>'
+      +'<span class="wk-dt" style="color:#1E293B;font-size:11px;text-align:center;white-space:nowrap;">'+dtStr+'</span>'
       +'</div>';
   }).join('');
   el.innerHTML=_vhdr+'<div style="max-height:340px;overflow-y:auto;">'+_vrows+'</div>';
@@ -20424,14 +20440,14 @@ function _wkRenderRepTable(){
         var prod=cl.product||'—';
         var type=cl.type||'—';
         var rowBg=ci%2===1?'background:#FAFBFF;':'background:#fff;';
-        var cs='padding:6px 8px;font-size:11px;color:#1E293B;text-align:center;'+rowBg+'border-bottom:1px solid #F8FAFC;';
+        var cs='padding:6px 8px;font-size:11px;color:#1E293B;text-align:center;vertical-align:middle;'+rowBg+'border-bottom:1px solid #F8FAFC;';
         H+='<div style="display:grid;grid-template-columns:'+GTC+';">';
         H+='<div style="'+cs+'font-weight:600;color:#0F172A;text-align:left;">'+(cl.name||cl.client||'—')+'</div>';
         H+='<div style="'+cs+'text-align:left;">'+(cl.project||'—')+'</div>';
-        H+='<div style="'+cs+'"><span style="display:inline-flex;width:66px;justify-content:center;padding:2px 4px;border-radius:5px;font-size:9px;font-weight:600;background:#DBEAFE;color:#1D4ED8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+prod+'</span></div>';
-        H+='<div style="'+cs+'"><span style="display:inline-flex;width:36px;justify-content:center;padding:2px 4px;border-radius:5px;font-size:9px;font-weight:600;background:#EDE9FE;color:#5B21B6;white-space:nowrap;">'+type+'</span></div>';
-        H+='<div style="'+cs+'font-weight:600;text-align:right;padding-right:6px;">'+fmt(clFore>0?clFore:clActD)+'K</div>';
-        H+='<div style="'+cs+'"><span style="display:inline-flex;width:36px;justify-content:center;padding:2px 4px;border-radius:5px;font-size:9px;font-weight:600;background:'+sp[0]+';color:'+sp[1]+';white-space:nowrap;">'+(cl.status||'달성')+'</span></div>';
+        H+='<div style="'+cs+'text-align:center;"><span style="font-size:11px;font-weight:500;color:#1D4ED8;">'+prod+'</span></div>';
+        H+='<div style="'+cs+'text-align:center;"><span style="font-size:11px;font-weight:500;color:#5B21B6;">'+type+'</span></div>';
+        H+='<div style="'+cs+'font-weight:600;text-align:right;">'+fmt(clFore>0?clFore:clActD)+'K</div>';
+        H+='<div style="'+cs+'text-align:center;"><span style="font-size:11px;font-weight:500;color:'+sp[1]+';">'+( cl.status||'달성')+'</span></div>';
         H+='</div>';
       });
       H+='</div>';
