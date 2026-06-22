@@ -2673,11 +2673,7 @@ window._wkGetMyName = _wkGetMyName;
 window._wkToggleActCheck = function(rep, idx, checked) {
   var rd = store && store.reps && store.reps[rep];
   if (!rd || !rd.activities || !rd.activities[idx]) return;
-  var a = rd.activities[idx];
-  if (!a.weeklyCheck) a.weeklyCheck = {};
-  var wk = typeof _wkThisKey === 'function' ? _wkThisKey() : '';
-  if (checked) { a.weeklyCheck[wk] = true; }
-  else { delete a.weeklyCheck[wk]; }
+  rd.activities[idx].wk = !!checked;
   autoSave();
 };
 // 이슈 체크박스 전역 이벤트 위임
@@ -2688,11 +2684,7 @@ document.addEventListener('change', function(e) {
   var idx = parseInt(el.getAttribute('data-idx'));
   var rd = store && store.reps && store.reps[rep];
   if (!rd || !rd.issuesList || !rd.issuesList[idx]) return;
-  var iss = rd.issuesList[idx];
-  if (!iss.weeklyCheck) iss.weeklyCheck = {};
-  var wk = typeof _wkThisKey === 'function' ? _wkThisKey() : '';
-  if (el.checked) { iss.weeklyCheck[wk] = true; }
-  else { delete iss.weeklyCheck[wk]; }
+  rd.issuesList[idx].wk = !!el.checked;
   autoSave();
 });
 
@@ -6017,8 +6009,7 @@ function cRow(rep,ci,cl){
 // ── 이슈 팝업 방식 행 렌더 ──
 function _iRow2(rep,ii,iss){
   iss=iss||{};
-  var _wk2=typeof _wkThisKey==='function'?_wkThisKey():'';
-  var wkChk=iss.weeklyCheck&&iss.weeklyCheck[_wk2];
+  var wkChk=iss.wk===true;
   var dotCls=wkChk?'wk-dot-filled':'wk-dot-empty-ring';
   var sevMap={'높음':'sev-높음','중간':'sev-중간','낮음':'sev-낮음'};
   var sevCls=sevMap[iss.sev]||'sev-중간';
@@ -6052,8 +6043,7 @@ function _iRow2(rep,ii,iss){
 
 function aRow(rep,ai,a){
   a=a||{};
-  var _wk2=typeof _wkThisKey==='function'?_wkThisKey():'';
-  var wkChk=a.weeklyCheck&&a.weeklyCheck[_wk2];
+  var wkChk=a.wk===true;
   var dotCls=wkChk?'wk-dot-filled':'wk-dot-empty-ring';
   var chipType=a.type?('<span class="chip '+(a.type==='신규영업'?'c-dev':a.type==='기존고객'||a.type==='전략과제'?'c-grp':'c-etc')+'" style="min-width:52px;">'+a.type+'</span>'):'';
   var chipProd=a.product?_ipChipProduct(a.product):'<span style="color:#94A3B8;font-size:11px;">—</span>';
@@ -9090,8 +9080,7 @@ function _ipOpenActivity(rep,ai,readOnly){
   _ipCurActRep=rep; _ipCurActAi=ai;
   var isEdit=ai>=0;
   var d=isEdit?(store.reps[rep].activities[ai]||{}):{};
-  var _wk2=typeof _wkThisKey==='function'?_wkThisKey():'';
-  var wkChk=d.weeklyCheck&&d.weeklyCheck[_wk2];
+  var wkChk=d.wk===true;
   var typeOpts=['전략과제','신규영업','기존고객','신규고객'].map(function(t){
     return '<option'+((d.type||'신규영업')===t?' selected':'')+'>'+t+'</option>';
   }).join('');
@@ -9154,17 +9143,10 @@ function _ipSaveActivity(){
   } var ai=_ipCurActAi; var isEdit=ai>=0;
   var client=(document.getElementById('ip-at-client')||{}).value||'';
   if(!client.trim()){alert('고객사명을 입력하세요.');return;}
-  var _wk2=(typeof _wkThisKey==='function')?_wkThisKey():'';
-  if(!_wk2 && typeof _wkGetWeekKey==='function') _wk2=_wkGetWeekKey(new Date());
-  var _atWkEl=document.getElementById('ip-at-wk');
-  if(_atWkEl){ window._ipAtWkChecked=_atWkEl.checked; }
-  var wkChk=_atWkEl?_atWkEl.checked:(window._ipAtWkChecked||false);
+  var wkChk=(document.getElementById('ip-at-wk')||{}).checked||false;
   var contentEl=document.getElementById('ip-at-content');
   var content=contentEl?contentEl.innerHTML:'';
   var existing=isEdit?(store.reps[rep].activities[ai]||{}):{};
-  var weeklyCheck=existing.weeklyCheck||{};
-  if(wkChk) weeklyCheck[_wk2]=true;
-  else delete weeklyCheck[_wk2];
   var obj={
     no:isEdit?existing.no:(store.reps[rep].activities.length+1),
     type:(document.getElementById('ip-at-type')||{}).value||'신규영업',
@@ -9176,7 +9158,7 @@ function _ipSaveActivity(){
     timing:(document.getElementById('ip-at-timing')||{}).value||'',
     progress:(document.getElementById('ip-at-prog')||{}).value||'',
     content:content,
-    weeklyCheck:weeklyCheck,
+    wk:wkChk,
     sev:existing.sev||'mid',
     createdAt:existing.createdAt||new Date().toISOString(),
     updatedAt:new Date().toISOString()
@@ -9224,8 +9206,7 @@ function _ipOpenIssue(rep,ii,readOnly){
   _ipCurIssRep=rep; _ipCurIssIi=ii;
   var isEdit=ii>=0;
   var d=isEdit?(store.reps[rep].issuesList[ii]||{}):{};
-  var _wk2=typeof _wkThisKey==='function'?_wkThisKey():'';
-  var wkChk=d.weeklyCheck&&d.weeklyCheck[_wk2];
+  var wkChk=d.wk===true;
   var sevList=['높음','중간','낮음'];
   var sevBtns=sevList.map(function(s){
     return '<button class="ip-seg-btn'+((d.sev||'중간')===s?' on':'')+'" onclick="window._ipSegSel(this,\'ip-is-sev\')" data-v="'+s+'">'+s+'</button>';
@@ -9304,8 +9285,6 @@ function _ipSaveIssue(){
   var wkChk=_wkEl2?_wkEl2.checked:(window._ipIssWkChecked||false);
 
   var existing=isEdit?(store.reps[rep].issuesList[ii]||{}):{};
-  var weeklyCheck=existing.weeklyCheck||{};
-  if(wkChk) weeklyCheck[_wk2]=true; else delete weeklyCheck[_wk2];
 
   var sevEl=document.querySelector('#ip-is-sev .ip-seg-btn.on');
   var stEl=document.querySelector('#ip-is-st .ip-seg-btn.on');
@@ -9316,7 +9295,7 @@ function _ipSaveIssue(){
     sev:sevEl?sevEl.dataset.v:'중간',
     status:stEl?stEl.dataset.v:'Open',
     dueDate:(document.getElementById('ip-is-due')||{}).value||'',
-    weeklyCheck:weeklyCheck,
+    wk:wkChk,
     regDate:existing.regDate||new Date().toISOString().split('T')[0],
     savedAt:new Date().toISOString()
   };
@@ -12574,7 +12553,7 @@ function _iRow(rep, idx, iss){
     +'</div></td>';
 
   // 체크박스: data 속성으로 이벤트 위임 (onchange 이스케이프 문제 회피)
-  var _issChkHtml=canEdit?'<input type="checkbox" class="wk-iss-chk" data-rep="'+r+'" data-idx="'+idx+'" '+(iss.weeklyCheck&&iss.weeklyCheck[_wkThisKey()]?'checked ':'')+' style="width:15px;height:15px;cursor:pointer;accent-color:#1A56DB;" title="주간보고에 포함">':'&nbsp;';
+  var _issChkHtml=canEdit?'<input type="checkbox" class="wk-iss-chk" data-rep="'+r+'" data-idx="'+idx+'" '+(iss.wk===true?'checked ':'')+' style="width:15px;height:15px;cursor:pointer;accent-color:#1A56DB;" title="주간보고에 포함">':'&nbsp;';
   // :'&nbsp;'; // (위 삼항연산자에 통합)
   return '<tr id="ir-'+rep+'-'+idx+'" draggable="false" data-rep="'+rep+'" data-ii="'+idx+'" class="iss-drag-row">'
     +'<td class="iss-drag-handle" title="드래그하여 순서 변경" style="width:18px;text-align:center;cursor:grab;color:#CBD5E1;font-size:14px;vertical-align:middle;padding:0 2px;user-select:none;" onmousedown="this.closest(\'tr\').draggable=true;" onmouseup="this.closest(\'tr\').draggable=false;">⠿</td>'
@@ -19186,7 +19165,7 @@ function _wkRenderProjects(){
     (rd.activities||[]).forEach(function(a){
       if(!a.content||!a.client) return;
       var _wk2=typeof _wkThisKey==='function'?((_wk&&_wk.weekMode==='last')?_wkLastKey():_wkThisKey()):'';
-      if(!a.weeklyCheck||!a.weeklyCheck[_wk2]) return;
+      if(a.wk!==true) return;
       var isNew=a.updatedAt&&new Date(a.updatedAt)>=weekStart;
       items.push({rep:rep, client:a.client, project:a.project||'', content:a.content, date:a.updatedAt, isNew:isNew});
     });
@@ -19232,11 +19211,7 @@ function _wkRenderIssues(){
     if(!rd) return;
     (rd.issuesList||[]).forEach(function(i){
       if(i.status==='완료'||i.status==='Closed'||i.status==='closed') return;
-      var _wkkThis=typeof _wkThisKey==='function'?_wkThisKey():'';
-      var _wkkLast=typeof _wkLastKey==='function'?_wkLastKey():'';
-      var _wkk=((_wk&&_wk.weekMode==='last')?_wkkLast:_wkkThis);
-
-      if(!i.weeklyCheck||(!i.weeklyCheck[_wkkThis]&&!i.weeklyCheck[_wkkLast])) return;
+      if(i.wk!==true) return;
       var due=i.dueDate?new Date(i.dueDate):null;
       var diff=due?Math.round((due-today)/86400000):999;
       issues.push({rep:rep, client:i.client, project:i.project||'', content:i.content, diff:diff, sev:i.sev||'mid'});
