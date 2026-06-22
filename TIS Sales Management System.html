@@ -3963,7 +3963,7 @@ document.addEventListener('selectionchange',function(){
 </div>
 
 <!-- 알림 드롭다운 (전역 - 헤더에 있음) -->
-<div class="wk-notif-drop" id="wk-notif-drop">
+<div id="wk-notif-drop" style="display:none;position:fixed;top:50px;right:12px;z-index:9999;width:320px;max-height:420px;background:#fff;border:1px solid #E2E8F0;border-radius:12px;box-shadow:0 8px 32px rgba(15,23,42,.18);overflow:hidden;flex-direction:column;">
   <div class="wk-nd-head">
     <span class="wk-nd-title">🔔 알림</span>
     <div style="display:flex;gap:4px;">
@@ -19289,22 +19289,27 @@ function _wkRenderVisitList(){
   if(cnt) cnt.textContent=visits.length+'건';
   if(!visits.length){
     el.innerHTML='<div style="padding:16px 18px;font-size:12px;color:#94A3B8;">이번 주 고객 접점이 없습니다.</div>';
-    el.style.maxHeight=''; el.style.overflowY=''; return;
+    return;
   }
-  el.innerHTML=visits.map(function(v,_i){
+  var thS='padding:5px 8px;font-size:11px;font-weight:600;color:#94A3B8;background:#FAFBFF;border-bottom:1px solid #F1F5F9;text-align:center;';
+  var _vhdr='<div class="wk-row" style="position:sticky;top:0;z-index:2;">'
+    +'<div style="'+thS+'">담당자</div>'
+    +'<div style="'+thS+'">고객사</div>'
+    +'<div style="'+thS+'">접점 내용</div>'
+    +'<div style="'+thS+'">접점 내용</div>'
+    +'<div style="'+thS+'">날짜</div>'
+    +'</div>';
+  var _vrows=visits.map(function(v,_i){
     var _bg=_i%2===1?'background:#FAFBFC;':'';
     var dtStr=v.date?v.date.slice(5,10).replace('-','.'):' ';
     return '<div class="wk-row" style="'+_bg+'">'
       +_wkRepBadge(v.rep)
       +'<span class="wk-cli">'+_wkEsc(v.company)+'</span>'
-      +'<span class="wk-cont">'+_renderRich(v.content)+'</span>'
-      +'<span class="wk-dt" style="text-align:right;margin-left:auto;">'+dtStr+'</span>'
+      +'<span class="wk-cont" style="grid-column:3/5;">'+_renderRich(v.content)+'</span>'
+      +'<span class="wk-dt" style="color:#1E293B;font-size:11px;text-align:right;white-space:nowrap;">'+dtStr+'</span>'
       +'</div>';
   }).join('');
   el.innerHTML=_vhdr+'<div style="max-height:340px;overflow-y:auto;">'+_vrows+'</div>';
-  var c3=el.querySelectorAll('.wk-row').length;
-  if(c3>10){ el.style.maxHeight='360px'; el.style.overflowY='auto'; }
-  else { el.style.maxHeight=''; el.style.overflowY=''; }
 }
 
 function _wkRenderContractList(){
@@ -20360,19 +20365,17 @@ function _wkRenderRepTable(){
   reps.forEach(function(rep,ri){
     var rd=store&&store.reps&&store.reps[rep]; if(!rd) return;
     var plan=parseFloat((rd.plan&&rd.plan[moIdx])||0);
+    // wk 체크된 항목 전체 (금액 0 포함)
     var _wkCls=(rd.clients||[]).filter(function(cl){return cl.wk===true;});
-    var act=_wkCls.filter(function(cl){return (cl.status||'달성')==='달성';}).reduce(function(s,cl){return s+((cl.actual&&cl.actual[moIdx])||0);},0);
-    var forecast=_wkCls.filter(function(cl){return cl.status==='예상';}).reduce(function(s,cl){return s+((cl.actual&&cl.actual[moIdx])||0);},0);
+    var act=_wkCls.filter(function(cl){return (cl.status||'달성')==='달성';}).reduce(function(s,cl){return s+(Array.isArray(cl.actual)?parseFloat(cl.actual[moIdx])||0:parseFloat(cl.actual)||0);},0);
+    var forecast=_wkCls.filter(function(cl){return cl.status==='예상';}).reduce(function(s,cl){return s+(Array.isArray(cl.actual)?parseFloat(cl.actual[moIdx])||0:parseFloat(cl.actual)||0);},0);
     var rate=plan>0?Math.round(act/plan*100):0;
     var rc=rate>=80?'#1D9E75':rate>=60?'#BA7517':'#E24B4A';
     var avc=AVCOLS[ri%AVCOLS.length];
     var title=rd.repTitle||'';
-    var cls=_wkCls.filter(function(cl){
-      var v=Array.isArray(cl.actual)?(parseFloat(cl.actual[moIdx])||0):(parseFloat(cl.actual)||0);
-      return v>0;
-    });
     var barGrad=rate>=80?'#1D9E75,#34D399':rate>=60?'#BA7517,#F59E0B':'#E24B4A,#F87171';
-    H+='<div style="min-width:0;background:#fff;border-radius:14px;border:1px solid #E2E8F0;overflow:hidden;box-shadow:0 1px 6px rgba(15,23,42,.05);display:flex;flex-direction:column;">';
+    // 카드 시작
+    H+='<div style="min-width:0;background:#fff;border-radius:14px;border:1px solid #E2E8F0;overflow:hidden;box-shadow:0 1px 6px rgba(15,23,42,.05);">';
     // 담당자 헤더
     H+='<div style="padding:14px 16px 10px;border-bottom:1px solid #F1F5F9;">';
     H+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">';
@@ -20391,7 +20394,7 @@ function _wkRenderRepTable(){
     [{l:'경영계획',v:fmt(plan)+'K',c:'#4F7FFF',s:'목표'},
      {l:'달성매출',v:fmt(act)+'K',c:rc,s:'주간포함'},
      {l:'예상매출',v:forecast>0?fmt(forecast)+'K':'-',c:'#B45309',s:'예정'},
-     {l:'고객사',v:cls.length+'건',c:'#1E293B',s:'주간포함'}
+     {l:'고객사',v:_wkCls.length+'건',c:'#1E293B',s:'주간포함'}
     ].forEach(function(k,ki){
       H+='<div style="padding:9px 8px;border-right:'+(ki<3?'1px solid #F1F5F9':'none')+';text-align:center;">';
       H+='<div style="font-size:10px;color:#94A3B8;font-weight:600;margin-bottom:3px;">'+k.l+'</div>';
@@ -20399,20 +20402,20 @@ function _wkRenderRepTable(){
       H+='<div style="font-size:10px;color:#CBD5E1;margin-top:1px;">'+k.s+'</div></div>';
     });
     H+='</div>';
-    // 테이블 헤더
+    // 테이블 헤더 (sticky)
     var thS='padding:5px 8px;font-size:11px;font-weight:600;color:#94A3B8;background:#FAFBFF;border-bottom:1px solid #F1F5F9;';
-    H+='<div style="display:grid;grid-template-columns:'+GTC+';">';
-    ['고객사','프로젝트','품목','구분','금액','상태'].forEach(function(lbl,li){
+    H+='<div style="display:grid;grid-template-columns:'+GTC+';position:sticky;top:0;z-index:2;">';
+    ['고객사','프로젝트','품목','구분','금액','상태'].forEach(function(lbl){
       H+='<div style="'+thS+'text-align:center;">'+lbl+'</div>';
     });
     H+='</div>';
-    // 테이블 행
-    if(!cls.length){
-    var _sc=cls.length>10?'max-height:320px;overflow-y:auto;-webkit-overflow-scrolling:touch;':'';
-    H+='<div style="'+_sc+'">';
+    // 테이블 행 (스크롤)
+    if(!_wkCls.length){
       H+='<div style="padding:14px;font-size:12px;color:#94A3B8;text-align:center;">주간회의 포함 항목이 없습니다.</div>';
     } else {
-      cls.forEach(function(cl,ci){
+      var _sc=_wkCls.length>10?'max-height:340px;overflow-y:auto;':'' ;
+      H+='<div style="'+_sc+'">';
+      _wkCls.forEach(function(cl,ci){
         var clAct=Array.isArray(cl.actual)?(parseFloat(cl.actual[moIdx])||0):(parseFloat(cl.actual)||0);
         var isExp=cl.status==='예상';
         var clFore=isExp?clAct:0;
@@ -20421,18 +20424,19 @@ function _wkRenderRepTable(){
         var prod=cl.product||'—';
         var type=cl.type||'—';
         var rowBg=ci%2===1?'background:#FAFBFF;':'background:#fff;';
-        var cs='padding:6px 8px;font-size:11px;color:#1E293B;text-align:center;vertical-align:middle;'+rowBg+'border-bottom:1px solid #F8FAFC;';
+        var cs='padding:6px 8px;font-size:11px;color:#1E293B;text-align:center;'+rowBg+'border-bottom:1px solid #F8FAFC;';
         H+='<div style="display:grid;grid-template-columns:'+GTC+';">';
         H+='<div style="'+cs+'font-weight:600;color:#0F172A;text-align:left;">'+(cl.name||cl.client||'—')+'</div>';
-        H+='<div style="'+cs+'text-align:left;color:#1E293B;font-size:11px;">'+(cl.project||'—')+'</div>';
+        H+='<div style="'+cs+'text-align:left;">'+(cl.project||'—')+'</div>';
         H+='<div style="'+cs+'"><span style="display:inline-flex;width:66px;justify-content:center;padding:2px 4px;border-radius:5px;font-size:9px;font-weight:600;background:#DBEAFE;color:#1D4ED8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+prod+'</span></div>';
         H+='<div style="'+cs+'"><span style="display:inline-flex;width:36px;justify-content:center;padding:2px 4px;border-radius:5px;font-size:9px;font-weight:600;background:#EDE9FE;color:#5B21B6;white-space:nowrap;">'+type+'</span></div>';
-        H+='<div style="'+cs+'font-weight:600;color:#0F172A;font-size:11px;">'+fmt(clFore>0?clFore:clActD)+'K</div>';
+        H+='<div style="'+cs+'font-weight:600;text-align:right;padding-right:6px;">'+fmt(clFore>0?clFore:clActD)+'K</div>';
         H+='<div style="'+cs+'"><span style="display:inline-flex;width:36px;justify-content:center;padding:2px 4px;border-radius:5px;font-size:9px;font-weight:600;background:'+sp[0]+';color:'+sp[1]+';white-space:nowrap;">'+(cl.status||'달성')+'</span></div>';
         H+='</div>';
       });
+      H+='</div>';
     }
-    H+='</div>';
+    H+='</div>'; // 카드 닫기
   });
   el.innerHTML=H;
 }
@@ -20978,7 +20982,7 @@ window._wkToggleNotif=function(e){
   var drop=document.getElementById('wk-notif-drop');
   if(!drop) return;
   var showing=drop.style.display==='block';
-  drop.style.display=showing?'none':'block';
+  drop.style.display=showing?'none':'flex';
   if(!showing) _wkRenderNotifDrop();
 };
 function _wkRenderNotifDrop(){
