@@ -2347,8 +2347,10 @@ function _saveMenuOrder(order){
 /* ═══ Rich Editor 핵심 함수 ═══ */
 window._sanitizeRich=function(h){
   if(!h)return'';
+  // li/ul/ol: li 닫기 → <br>, 나머지 태그 제거
+  h=h.replace(/<\/li>/gi,'<br>').replace(/<li[^>]*>/gi,'').replace(/<\/ul>/gi,'').replace(/<ul[^>]*>/gi,'').replace(/<\/ol>/gi,'').replace(/<ol[^>]*>/gi,'');
   h=h.replace(/<\/div>/gi,'<br>').replace(/<\/p>/gi,'<br>').replace(/<div[^>]*>/gi,'').replace(/<p[^>]*>/gi,'');
-  // &amp; 이중인코딩 방지: &amp; → & 복원 후 innerHTML 설정
+  // &amp; 이중인코딩 방지
   h=h.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ');
   var d=document.createElement('div');
   d.innerHTML=h;
@@ -19273,7 +19275,7 @@ function _wkRenderIssues(){
       if(i.wk!==true) return;
       var due=i.dueDate?new Date(i.dueDate):null;
       var diff=due?Math.round((due-today)/86400000):999;
-      var _ic=i.content||i.note||i.issueContent||''; if(_ic) console.log('[RAW]',JSON.stringify(_ic.slice(0,200))); issues.push({rep:rep, client:i.client, project:i.project||'', content:_ic, diff:diff, sev:i.sev||'mid'});
+      var _ic=i.content||i.note||i.issueContent||''; issues.push({rep:rep, client:i.client, project:i.project||'', content:_ic, diff:diff, sev:i.sev||'mid'});
     });
   });
   issues.sort(function(a,b){ return a.diff-b.diff; });
@@ -19336,26 +19338,24 @@ function _wkRenderVisitList(){
     el.style.maxHeight=''; el.style.overflowY='';
     return;
   }
-  // 그리드: 담당자(56px) 고객사(100px) 접점유형(56px) 접점내용(1fr) 접점일자(56px)
-  var VGTC='56px 100px 56px 1fr 56px';
-  var thS='padding:5px 8px;font-size:10px;font-weight:600;color:#94A3B8;background:var(--bg);border-bottom:2px solid var(--border);text-align:center;white-space:nowrap;';
-  var _vhdr='<div style="display:grid;grid-template-columns:'+VGTC+';position:sticky;top:0;z-index:2;">'
-    +'<div style="'+thS+'">담당자</div>'
-    +'<div style="'+thS+'text-align:left;">고객사</div>'
-    +'<div style="'+thS+'">접점유형</div>'
-    +'<div style="'+thS+'text-align:left;">접점 내용</div>'
-    +'<div style="'+thS+'">접점 일자</div>'
+  // 계약현황과 완전히 동일한 헤더 구조
+  var _vhdr='<div class="wk-row-con" style="position:sticky;top:0;z-index:2;background:var(--bg);border-bottom:2px solid var(--border);font-size:10px;font-weight:600;color:var(--muted);">'
+    +'<span style="text-align:center;">담당자</span>'
+    +'<span>고객사</span>'
+    +'<span style="text-align:center;">접점유형</span>'
+    +'<span>접점 내용</span>'
+    +'<span style="text-align:center;">접점 일자</span>'
     +'</div>';
-  var cs='padding:7px 8px;font-size:11px;color:#1E293B;border-bottom:1px solid #F8FAFC;';
   var _vrows=visits.map(function(v,_i){
     var _bg=_i%2===1?'background:#FAFBFC;':'';
     var dtStr=v.date?v.date.slice(5,10).replace('-','.'):' ';
-    return '<div style="display:grid;grid-template-columns:'+VGTC+';align-items:start;'+_bg+'">'
-      +'<div style="'+cs+'text-align:center;">'+_wkRepBadge(v.rep)+'</div>'
-      +'<div style="'+cs+'font-weight:600;color:#0F172A;min-width:0;">'+_wkEsc(v.company)+'</div>'
-      +'<div style="'+cs+'text-align:center;color:#64748B;font-size:10px;">'+_wkEsc(v.contactType)+'</div>'
-      +'<div style="'+cs+'white-space:pre-wrap;word-break:break-word;display:block;min-width:0;overflow:visible;line-height:1.6;">'+_renderRich(v.content)+'</div>'
-      +'<div style="'+cs+'text-align:center;color:#64748B;white-space:nowrap;">'+dtStr+'</div>'
+    // 계약 행과 동일한 구조 - wk-dchip 대신 날짜span
+    return '<div class="wk-row-con" style="'+_bg+'">'
+      +_wkRepBadge(v.rep)
+      +'<span class="wk-cli">'+_wkEsc(v.company)+'</span>'
+      +'<span style="font-size:10px;color:#64748B;text-align:center;padding:0 4px;">'+_wkEsc(v.contactType)+'</span>'
+      +'<span class="wk-cont" style="font-size:11px;white-space:pre-wrap;word-break:break-word;overflow:visible;line-height:1.6;">'+_renderRich(v.content)+'</span>'
+      +'<span style="font-size:11px;color:#64748B;text-align:center;white-space:nowrap;padding:0 4px;">'+dtStr+'</span>'
       +'</div>';
   }).join('');
   el.innerHTML=_vhdr+'<div style="max-height:340px;overflow-y:auto;">'+_vrows+'</div>';
