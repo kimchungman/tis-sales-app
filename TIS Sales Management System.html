@@ -9824,6 +9824,32 @@ function _setSPStatus(state) {
     error:      '#DA1E28',
     offline:    '#DA1E28'
   }[state] || '#DA1E28';
+  // SP 연결 끊김 시 로그인창 표시
+  if((state==='error'||state==='offline') && session && session.role && window._spDataLoaded){
+    if(window._spDisconnectTimer) clearTimeout(window._spDisconnectTimer);
+    window._spDisconnectTimer = setTimeout(function(){
+      if(!window._isSPReady){
+        // auth-modal 표시
+        var _authEl = document.getElementById('auth-modal');
+        if(_authEl){
+          _authEl.style.display='flex';
+          // 재연결 메시지 표시
+          var _authMsg = _authEl.querySelector('.auth-subtitle')||_authEl.querySelector('p');
+          if(_authMsg) _authMsg.textContent='SP 연결이 끊겼습니다. 다시 로그인해주세요.';
+        } else if(typeof openAuth==='function'){
+          openAuth();
+        }
+        window._spDataLoaded = false;
+      }
+    }, 5000);
+  } else if(state==='connected'){
+    if(window._spDisconnectTimer){ clearTimeout(window._spDisconnectTimer); window._spDisconnectTimer=null; }
+    // 재연결 시 auth-modal 닫기
+    var _authEl2 = document.getElementById('auth-modal');
+    if(_authEl2 && _authEl2.style.display==='flex'){
+      if(session && session.role) _authEl2.style.display='none';
+    }
+  }
   var bgCol = {
     connecting: '#FFF8E1',
     connected:  '#DEFBE6',
@@ -10046,7 +10072,12 @@ async function _initSP() {
         renderDashboard();
         renderIssues();
         renderPipeline();
-      }catch(e){}
+      }catch(syncErr){
+        // sync 오류 = SP 연결 문제
+        window._isSPReady = false;
+        if(typeof _setSPStatus==='function') _setSPStatus('error');
+        console.warn('[sync] 오류:', syncErr);
+      }
       // 회의록 데이터 주기적 동기화 (페이지 열려있으면 즉시, 닫혀있으면 캐시만)
       try{
         if(typeof window._syncWeeklyFeed==='function') await window._syncWeeklyFeed();
@@ -15595,26 +15626,16 @@ async function _spSyncOtherReps(){
           return;
         }
 
-        // 다른 담당자 처리
+        // 다른 담당자 처리 - SP가 단일 진실 소스, 로컬 보정 없음
         if(!store.reps[repName]) store.reps[repName] = {plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[],contracts:[]};
         var before = JSON.stringify(store.reps[repName]);
-        // savedAt 기준: SP가 로컬보다 최신이면 항상 적용 (빈 데이터 포함)
         var _spAt2 = new Date(repData.savedAt||0).getTime();
         var _localAt2 = new Date((store.reps[repName]&&store.reps[repName].savedAt)||0).getTime();
-        if(_spAt2 >= _localAt2){
-          // wk 값 보존: 덮어쓰기 전 로컬 cl.wk=true 목록 저장
-          var _localWkMap={};
-          (store.reps[repName].clients||[]).forEach(function(cl,ci){
-            if(cl.wk===true) _localWkMap[cl.name+'|'+cl.project]=true;
-          });
+        // SP가 로컬보다 최신이면 무조건 SP 데이터 적용 (로컬 wk 보정 없음 - SP가 진실)
+        if(_spAt2 > _localAt2){
           ['plan','actual','forecast','clients','activities','issuesList'].forEach(function(k){
             if(repData[k]!==undefined) store.reps[repName][k]=repData[k];
           });
-          // wk 보정: 로컬에서 true였던 항목은 SP 덮어쓰기 후에도 true 유지
-          (store.reps[repName].clients||[]).forEach(function(cl){
-            if(_localWkMap[cl.name+'|'+cl.project]) cl.wk=true;
-          });
-          // visitLog: rep_data에 실제 데이터 있을 때만 교체 (빈 배열로 덮어쓰기 방지)
           if(repData.visitLog&&repData.visitLog.length>0) store.reps[repName].visitLog = repData.visitLog;
           if(repData.savedAt) store.reps[repName].savedAt = repData.savedAt;
         }
