@@ -2517,7 +2517,7 @@ document.addEventListener('mousedown',function(e){
 /* 점 */
 /* .wk-dot — replaced by .wk-dot-filled */
 .wk-dchip{font-size:10px;font-weight:700;width:48px;text-align:center;border-radius:20px;white-space:nowrap;padding:3px 0;display:inline-block;}
-.wk-row-con{display:grid;grid-template-columns:60px 110px 1fr 52px;align-items:center;gap:0 8px;padding:8px 14px;border-bottom:0.5px solid #F1F5F9;font-size:12px;}
+.wk-row-con{display:grid;grid-template-columns:60px 100px 60px 1fr 52px;align-items:center;gap:0 8px;padding:8px 14px;border-bottom:0.5px solid #F1F5F9;font-size:12px;}
 .wk-row-con:last-child{border-bottom:none;}
 .wk-row-con:nth-child(even){background:#FAFBFC;}
 
@@ -19255,9 +19255,7 @@ function _wkRenderProjects(){
       +'</div>';
   }).join('');
   el.innerHTML=_hdr+'<div style="max-height:340px;overflow-y:auto;">'+_rows+'</div>';
-  var cnt=el.querySelectorAll('.wk-row').length;
-  if(cnt>10){ el.style.maxHeight='360px'; el.style.overflowY='auto'; }
-  else { el.style.maxHeight=''; el.style.overflowY=''; }
+  el.style.maxHeight=''; el.style.overflowY='';
 }
 
 function _wkRenderIssues(){
@@ -19275,7 +19273,7 @@ function _wkRenderIssues(){
       if(i.wk!==true) return;
       var due=i.dueDate?new Date(i.dueDate):null;
       var diff=due?Math.round((due-today)/86400000):999;
-      var _ic=i.content||i.note||i.issueContent||''; issues.push({rep:rep, client:i.client, project:i.project||'', content:_ic, diff:diff, sev:i.sev||'mid'});
+      var _ic=i.content||i.note||i.issueContent||''; if(_ic) console.log('[RAW]',JSON.stringify(_ic.slice(0,200))); issues.push({rep:rep, client:i.client, project:i.project||'', content:_ic, diff:diff, sev:i.sev||'mid'});
     });
   });
   issues.sort(function(a,b){ return a.diff-b.diff; });
@@ -19308,9 +19306,7 @@ function _wkRenderIssues(){
       +'</div>';
   }).join('');
   el.innerHTML=_ihdr+'<div style="max-height:340px;overflow-y:auto;">'+_irows+'</div>';
-  var c2=el.querySelectorAll('.wk-row').length;
-  if(c2>10){ el.style.maxHeight='360px'; el.style.overflowY='auto'; }
-  else { el.style.maxHeight=''; el.style.overflowY=''; }
+  el.style.maxHeight=''; el.style.overflowY='';
 }
 
 function _wkRenderVisitList(){
@@ -19329,7 +19325,7 @@ function _wkRenderVisitList(){
       var d=new Date(v.date||v.visitDate||'');
       if(isNaN(d.getTime())) return;
       if(d>=weekStart&&d<=weekEnd){
-        visits.push({rep:rep,company:v.company||v.client||'',content:v.content||'',date:v.date||v.visitDate||''});
+        visits.push({rep:rep,company:v.company||v.client||'',contactType:v.contactType||v.visitType||'',content:v.content||'',date:v.date||v.visitDate||''});
       }
     });
   });
@@ -19337,33 +19333,33 @@ function _wkRenderVisitList(){
   if(cnt) cnt.textContent=visits.length+'건';
   if(!visits.length){
     el.innerHTML='<div style="padding:16px 18px;font-size:12px;color:#94A3B8;">이번 주 고객 접점이 없습니다.</div>';
+    el.style.maxHeight=''; el.style.overflowY='';
     return;
   }
-  // 프로젝트 진행현황과 동일한 wk-row 클래스 사용
-  // 열: 담당자(60) 고객사(120) 접점내용(1fr) [빈자리skip:1.5fr→접점내용이 span] 접점일자(48px)
-  // grid-column span으로 접점내용이 3/5 차지
-  var thS='padding:5px 10px;font-size:10px;font-weight:600;color:#94A3B8;background:#FAFBFF;border-bottom:1px solid #F1F5F9;text-align:center;';
-  var _vhdr='<div class="wk-row" style="position:sticky;top:0;z-index:2;background:#FAFBFF;border-bottom:2px solid var(--border);">'
+  // 그리드: 담당자(56px) 고객사(100px) 접점유형(56px) 접점내용(1fr) 접점일자(56px)
+  var VGTC='56px 100px 56px 1fr 56px';
+  var thS='padding:5px 8px;font-size:10px;font-weight:600;color:#94A3B8;background:var(--bg);border-bottom:2px solid var(--border);text-align:center;white-space:nowrap;';
+  var _vhdr='<div style="display:grid;grid-template-columns:'+VGTC+';position:sticky;top:0;z-index:2;">'
     +'<div style="'+thS+'">담당자</div>'
     +'<div style="'+thS+'text-align:left;">고객사</div>'
-    +'<div style="'+thS+'text-align:left;grid-column:3/5;">접점 내용</div>'
+    +'<div style="'+thS+'">접점유형</div>'
+    +'<div style="'+thS+'text-align:left;">접점 내용</div>'
     +'<div style="'+thS+'">접점 일자</div>'
     +'</div>';
-  var cs='font-size:11px;color:#1E293B;border-bottom:1px solid #F8FAFC;padding:7px 10px;';
+  var cs='padding:7px 8px;font-size:11px;color:#1E293B;border-bottom:1px solid #F8FAFC;';
   var _vrows=visits.map(function(v,_i){
     var _bg=_i%2===1?'background:#FAFBFC;':'';
     var dtStr=v.date?v.date.slice(5,10).replace('-','.'):' ';
-    return '<div class="wk-row" style="'+_bg+'align-items:start;">'
+    return '<div style="display:grid;grid-template-columns:'+VGTC+';align-items:start;'+_bg+'">'
       +'<div style="'+cs+'text-align:center;">'+_wkRepBadge(v.rep)+'</div>'
       +'<div style="'+cs+'font-weight:600;color:#0F172A;min-width:0;">'+_wkEsc(v.company)+'</div>'
-      +'<div style="'+cs+'white-space:pre-wrap;word-break:break-word;min-width:0;display:block;grid-column:3/5;">'+_renderRich(v.content)+'</div>'
+      +'<div style="'+cs+'text-align:center;color:#64748B;font-size:10px;">'+_wkEsc(v.contactType)+'</div>'
+      +'<div style="'+cs+'white-space:pre-wrap;word-break:break-word;display:block;min-width:0;overflow:visible;line-height:1.6;">'+_renderRich(v.content)+'</div>'
       +'<div style="'+cs+'text-align:center;color:#64748B;white-space:nowrap;">'+dtStr+'</div>'
       +'</div>';
   }).join('');
   el.innerHTML=_vhdr+'<div style="max-height:340px;overflow-y:auto;">'+_vrows+'</div>';
-  var c3=el.querySelectorAll('.wk-row').length;
-  if(c3>10){ el.style.maxHeight='360px'; el.style.overflowY='auto'; }
-  else { el.style.maxHeight=''; el.style.overflowY=''; }
+  el.style.maxHeight=''; el.style.overflowY='';
 }
 
 function _wkRenderContractList(){
@@ -19381,7 +19377,7 @@ function _wkRenderContractList(){
       if(!d||isNaN(d.getTime())) return;
       var diff=Math.round((d-today)/86400000);
       if(diff>=0&&diff<=90){
-        contracts.push({rep:rep,client:con.client||'',project:con.projectName||'',endDate:con.endDate||'',diff:diff});
+        contracts.push({rep:rep,client:con.client||'',contractType:con.contractType||'',project:con.projectName||'',endDate:con.endDate||'',diff:diff});
       }
     });
   });
@@ -19394,6 +19390,7 @@ function _wkRenderContractList(){
   var _chdr='<div class="wk-row-con" style="position:sticky;top:0;z-index:2;background:var(--bg);border-bottom:2px solid var(--border);font-size:10px;font-weight:600;color:var(--muted);">'
     +'<span style="text-align:center;">담당자</span>'
     +'<span>고객사</span>'
+    +'<span style="text-align:center;">계약유형</span>'
     +'<span>계약명</span>'
     +'<span style="text-align:center;">D-Day</span>'
     +'</div>';
@@ -19405,14 +19402,13 @@ function _wkRenderContractList(){
     return '<div class="wk-row-con" style="'+_bg+'">'
       +_wkRepBadge(con.rep)
       +'<span class="wk-cli">'+_wkEsc(con.client)+'</span>'
+      +'<span style="font-size:10px;color:#64748B;text-align:center;padding:0 4px;">'+_wkEsc(con.contractType||'')+'</span>'
       +'<span class="wk-cont" style="font-size:11px;">'+_wkEsc(con.project||con.client)+'</span>'
       +'<span class="wk-dchip" style="'+diffColor+'">'+diffStr+'</span>'
       +'</div>';
   }).join('');
   el.innerHTML=_chdr+'<div style="max-height:340px;overflow-y:auto;">'+_crows+'</div>';
-  var c4=el.querySelectorAll('.wk-row-con').length;
-  if(c4>10){ el.style.maxHeight='360px'; el.style.overflowY='auto'; }
-  else { el.style.maxHeight=''; el.style.overflowY=''; }
+  el.style.maxHeight=''; el.style.overflowY='';
 }
 function _wkRenderReport(){
   _wkRenderPrevSection();
