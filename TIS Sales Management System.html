@@ -19273,7 +19273,7 @@ function _wkRenderIssues(){
       if(i.wk!==true) return;
       var due=i.dueDate?new Date(i.dueDate):null;
       var diff=due?Math.round((due-today)/86400000):999;
-      issues.push({rep:rep, client:i.client, project:i.project||'', content:i.content||i.note||i.issueContent||'', diff:diff, sev:i.sev||'mid'});
+      var _ic=i.content||i.note||i.issueContent||''; if(_ic) console.log('[이슈content]',typeof _ic, _ic.slice(0,50)); issues.push({rep:rep, client:i.client, project:i.project||'', content:_ic, diff:diff, sev:i.sev||'mid'});
     });
   });
   issues.sort(function(a,b){ return a.diff-b.diff; });
@@ -19301,7 +19301,7 @@ function _wkRenderIssues(){
       +_wkRepBadge(iss.rep)
       +'<span class="wk-cli">'+_wkEsc(iss.client)+'</span>'
       +'<span class="wk-proj">'+_wkEsc(iss.project)+'</span>'
-      +'<div class="wk-cont" style="display:block;white-space:pre-wrap;word-break:break-word;overflow:visible;line-height:1.6;">'+(_renderRich(iss.content)||'—')+'</div>'
+      +'<div class="wk-cont" style="display:block;white-space:pre-wrap;word-break:break-word;overflow:visible;line-height:1.6;">'+_renderRich(iss.content||iss.note||iss.issueContent||'')+'</div>'
       +'<span class="wk-dchip" style="'+diffColor+'">'+diffStr+'</span>'
       +'</div>';
   }).join('');
@@ -21084,6 +21084,14 @@ window._wkToggleNotif=function(e){
   var showing=drop.style.display==='block';
   drop.style.display=showing?'none':'flex';
   if(!showing) _wkRenderNotifDrop();
+};
+window._wkClickNotifByEl=function(el){
+  var nid=el.getAttribute('data-nid');
+  if(nid&&typeof _wkClickNotif==='function') _wkClickNotif(nid);
+};
+window._wkDismissByEl=function(btn){
+  var nid=btn.getAttribute('data-nid');
+  if(nid&&typeof _wkDismissNotifItem==='function') _wkDismissNotifItem(nid);
 };
 function _wkRenderNotifDrop(){
   var list=document.getElementById('wk-notif-list');
