@@ -9405,7 +9405,8 @@ function autoSave(){
   }catch(e){}
   // 디바운스: 1000ms (SP 저장용)
   clearTimeout(saveTimer);
-  window._lastAutoSaveTs = Date.now(); // 입력 시작 즉시 sync 보호 (3초)
+  // SP 로드 완료 후에만 sync 보호 타임스탬프 설정 (접속 초기 autoSave가 SP sync를 차단하는 문제 방지)
+  if(window._spDataLoaded) window._lastAutoSaveTs = Date.now();
   saveTimer = setTimeout(async ()=>{
     try{
       const data = {
@@ -15573,7 +15574,9 @@ async function _spSyncOtherReps(){
           var localAt = new Date((store.reps[myRep]&&store.reps[myRep].savedAt)||0).getTime();
           // SP가 로컬보다 5초 이상 최신이면 반영 (관리자 수정 포함)
           // 단, 내가 방금(3초 내) 저장했으면 로컬 우선 (내 입력 보호)
-          if(spAt > localAt && (Date.now()-(window._lastAutoSaveTs||0) > 5000) && spHasData){
+          // 첫 SP 로드 시(_spDataLoaded 전)에는 5초 조건 무시 → 관리자 수정 항상 반영
+          var _isFirstLoad = !window._spDataLoaded;
+          if(spAt > localAt && (_isFirstLoad || (Date.now()-(window._lastAutoSaveTs||0) > 5000)) && spHasData){
             if(!store.reps[myRep]) store.reps[myRep] = {plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[],contracts:[]};
             var localVL = store.reps[myRep].visitLog||[];
             var localVLSavedAt = store.reps[myRep].visitLogSavedAt||'';
