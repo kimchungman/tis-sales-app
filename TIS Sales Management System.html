@@ -2348,6 +2348,8 @@ function _saveMenuOrder(order){
 window._sanitizeRich=function(h){
   if(!h)return'';
   h=h.replace(/<\/div>/gi,'<br>').replace(/<\/p>/gi,'<br>').replace(/<div[^>]*>/gi,'').replace(/<p[^>]*>/gi,'');
+  // &amp; 이중인코딩 방지: &amp; → & 복원 후 innerHTML 설정
+  h=h.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ');
   var d=document.createElement('div');
   d.innerHTML=h;
   function clean(node){
@@ -19273,7 +19275,7 @@ function _wkRenderIssues(){
       if(i.wk!==true) return;
       var due=i.dueDate?new Date(i.dueDate):null;
       var diff=due?Math.round((due-today)/86400000):999;
-      var _ic=i.content||i.note||i.issueContent||''; if(_ic) console.log('[이슈content]',typeof _ic, _ic.slice(0,50)); issues.push({rep:rep, client:i.client, project:i.project||'', content:_ic, diff:diff, sev:i.sev||'mid'});
+      var _ic=i.content||i.note||i.issueContent||''; issues.push({rep:rep, client:i.client, project:i.project||'', content:_ic, diff:diff, sev:i.sev||'mid'});
     });
   });
   issues.sort(function(a,b){ return a.diff-b.diff; });
