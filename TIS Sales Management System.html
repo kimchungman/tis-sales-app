@@ -2384,7 +2384,7 @@ window._sanitizeRich=function(h){
     });
   }
   clean(d);
-  return d.innerHTML.replace(/(<br>\s*){3,}/g,'<br><br>');
+  return d.innerHTML;
 };
 window._renderRich=function(text){
   if(!text)return'\u2500';
@@ -19248,7 +19248,7 @@ function _wkRenderProjects(){
       +_wkRepBadge(it.rep)
       +'<span class="wk-cli">'+_wkEsc(it.client)+'</span>'
       +'<span class="wk-proj">'+_wkEsc(it.project)+'</span>'
-      +'<div class="wk-cont" style="display:block;white-space:pre-wrap;word-break:break-word;overflow:visible;line-height:1.6;">'+(_renderRich(it.content||it.note||''))+'</div>'
+      +'<div class="wk-cont" style="display:block;white-space:pre-wrap;word-break:break-word;overflow:visible;line-height:1.6;grid-column:4/6;">'+(_renderRich(it.content||it.note||''))+'</div>'
       +'<span></span>'
       +'</div>';
   }).join('');
@@ -21093,10 +21093,17 @@ function _wkRenderNotifDrop(){
     list.innerHTML='<div style="padding:20px;text-align:center;font-size:12px;color:var(--sub);">새로운 알림이 없습니다</div>';
     return;
   }
-  list.innerHTML=items.map(function(n){
-    var icon=n.type==='contract'?'📋':'⚠️';
-    var nid=String(n.id||'').replace(/'/g,"\\'");
-    return '<div class="wk-nd-item'+(n.read?'':' unread')+(n.urgent?' urgent':'')+'" onclick="_wkClickNotif(\''+nid+'\')"><div class="wk-nd-icon">'+icon+'</div><div class="wk-nd-content"><div class="wk-nd-msg">'+(n.msg||'')+'</div><div class="wk-nd-time">'+(n.time||'')+'</div></div><button class="wk-nd-del" onclick="event.stopPropagation();_wkDismissNotifItem(\''+nid+'\')">×</button></div>';
+  list.innerHTML=items.map(function(n,ni){
+    var icon=n.type==='contract'?'📋':'🔔';
+    var nid=String(n.id||ni);
+    return '<div class="wk-nd-item'+(n.read?'':' unread')+(n.urgent?' urgent':'')+'" data-nid="'+nid+'" onclick="_wkClickNotifByEl(this)">'
+      +'<div class="wk-nd-icon">'+icon+'</div>'
+      +'<div class="wk-nd-content">'
+      +'<div class="wk-nd-msg">'+(n.msg||'')+'</div>'
+      +'<div class="wk-nd-time">'+(n.time||'')+'</div>'
+      +'</div>'
+      +'<button class="wk-nd-del" data-nid="'+nid+'" onclick="event.stopPropagation();_wkDismissByEl(this)">×</button>'
+      +'</div>';
   }).join('');
 }
 window._wkDismissNotifItem=async function(id){
