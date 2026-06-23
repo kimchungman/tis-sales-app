@@ -2474,6 +2474,15 @@ aside.sidebar.collapsed,aside#main-sidebar.collapsed{
 
 /* 기존 nav 숨김 */
 .nav-item,.nav-sec,#nav-menu-container,.sidebar-logo{display:none!important;}
+
+#main-topbar{
+  margin-left:220px;
+  transition:margin-left 0.22s cubic-bezier(.4,0,.2,1);
+}
+aside.sidebar.collapsed~#main-topbar,
+aside#main-sidebar.collapsed~#main-topbar{
+  margin-left:56px;
+}
 </style>
 
 <script>
@@ -3001,12 +3010,13 @@ window.toggleSb=function(){
   var sb=document.getElementById('main-sidebar');
   if(!sb) return;
   var isCollapsed=sb.classList.toggle('collapsed');
-  // content/main margin 직접 제어
   var ml=isCollapsed?'56px':'220px';
   var ct=document.querySelector('.content');
   var mn=document.querySelector('.main');
+  var tb=document.getElementById('main-topbar');
   if(ct) ct.style.marginLeft=ml;
   if(mn) mn.style.marginLeft=ml;
+  if(tb) tb.style.marginLeft=ml;
 }
 
 // 사이드바 프로필 업데이트
@@ -3164,6 +3174,22 @@ window._updateSidebarByRole=function(){
     </div>
   </div>
 </aside>
+<div class="topbar" id="main-topbar">
+  <div style="display:flex;flex-direction:column;justify-content:center;">
+    <div class="topbar-title" id="pg-title">통합 대시보드</div>
+    <div class="topbar-sub" id="pg-sub">경영계획 vs 실적 현황</div>
+  </div>
+  <div class="topbar-right">
+    <span id="sp-status" style="font-size:11px;"></span>
+    <span id="save-indicator" style="font-size:12px;color:var(--muted);"></span>
+    <span id="sb-wk" style="font-size:11px;color:var(--muted);"></span>
+    <span id="sb-dt" style="font-size:11px;color:var(--muted);"></span>
+    <input type="date" id="mtg-date" style="height:30px;border:1px solid var(--border);border-radius:6px;padding:0 8px;font-size:12px;color:var(--text);background:var(--card);cursor:pointer;">
+    <button id="hist-btn" onclick="toggleHist()" style="height:30px;padding:0 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-size:12px;color:var(--text);cursor:pointer;">기록</button>
+    <button id="refresh-btn" onclick="location.reload()" style="height:30px;padding:0 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-size:12px;color:var(--text);cursor:pointer;">↻</button>
+    <button id="access-count-btn" onclick="showPage('accesslog')" style="height:30px;padding:0 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-size:12px;color:var(--text);cursor:pointer;display:none;">접속 <span id="access-count-num"></span></button>
+  </div>
+</div>
 <div class="content">
 
   <!-- DASHBOARD -->
