@@ -2509,6 +2509,12 @@ aside#main-sidebar.collapsed~.topbar{ left:56px; }
 .content{padding-top:54px!important;margin-top:0!important;}
 
 .wk-cli{text-align:center!important;display:block!important;}
+
+.ip-rich-view{white-space:pre-wrap;word-break:break-word;}
+.ip-rich-view b,.ip-rich-view strong{font-weight:700;}
+.ip-rich-view i,.ip-rich-view em{font-style:italic;}
+.ip-rich-view u{text-decoration:underline;}
+.ip-rich-view s{text-decoration:line-through;}
 </style>
 
 <script>
@@ -6467,7 +6473,7 @@ function cRow(rep,ci,cl){
   var isFore=(cl.status||'달성')==='예상';
   var actualDisp=isDal&&actualSum>0?actualSum.toLocaleString('ko-KR'):'<span style="color:#CBD5E1;">—</span>';
   var foreDisp=isFore&&actualSum>0?actualSum.toLocaleString('ko-KR'):'<span style="color:#CBD5E1;">—</span>';
-  var issueDisp=cl.issue?('<div style="font-size:12px;line-height:1.6;color:#0F172A;text-align:left;white-space:pre-wrap;word-break:break-word;">'+cl.issue+'</div>'):'<span style="color:#CBD5E1;font-size:11px;">—</span>';
+  var issueDisp=cl.issue?('<div class="ip-rich-view" style="font-size:12px;line-height:1.6;color:#0F172A;text-align:left;">'+cl.issue+'</div>'):'<span style="color:#CBD5E1;font-size:11px;">—</span>';
   var bgEven=ci%2===1?'background:#F8FBFF;':'';
   return '<div class="lr g-ct ip-row" style="'+bgEven+'" data-action="openClient" data-rep="'+rep+'" data-ci="'+ci+'" title="클릭하여 수정">'
     +'<div class="td-c"><span class="'+dotCls+'"></span></div>'
@@ -6498,7 +6504,7 @@ function _iRow2(rep,ii,iss){
     var ddColor=diff<0?'#DC2626':diff<=7?'#D97706':'#64748B';
     dday='<span style="font-size:11px;font-weight:600;color:'+ddColor+';">'+(diff<0?'D+'+Math.abs(diff):'D-'+diff)+'</span>';
   }
-  var contentHtml=iss.content?('<div style="text-align:left;font-size:12px;line-height:1.6;color:#334155;white-space:pre-wrap;word-break:break-word;">'+iss.content+'</div>'):'';
+  var contentHtml=iss.content?('<div class="ip-rich-view" style="text-align:left;font-size:12px;line-height:1.6;color:#334155;">'+iss.content+'</div>'):'';
   var bgEven=ii%2===1?'background:#F8FBFF;':'';
   var div=document.createElement('div');
   div.className='lr g-is ip-row ip-row-iss';
@@ -6527,7 +6533,7 @@ function aRow(rep,ai,a){
   var chipProd=a.product?_ipChipProduct(a.product):'<span style="color:#94A3B8;font-size:11px;">—</span>';
   var chipProg=a.progress?_ipChipProgress(a.progress):'<span style="color:#94A3B8;font-size:11px;">—</span>';
   var amt=a.amount&&parseFloat(a.amount)>0?parseFloat(a.amount).toLocaleString('ko-KR'):'<span style="color:#CBD5E1;">—</span>';
-  var contentHtml=a.content?('<div style="text-align:left;font-size:12px;line-height:1.6;color:#334155;white-space:pre-wrap;word-break:break-word;">'+a.content+'</div>'):'';
+  var contentHtml=a.content?('<div class="ip-rich-view" style="text-align:left;font-size:12px;line-height:1.6;color:#334155;">'+a.content+'</div>'):'';
   var bgEven=ai%2===1?'background:#F8FBFF;':'';
   return '<div class="lr g-at ip-row" style="'+bgEven+'" data-action="openActivity" data-rep="'+rep+'" data-ai="'+ai+'" title="클릭하여 수정">'
     +'<div class="td-c"><span class="'+dotCls+'"></span></div>'
@@ -9123,10 +9129,10 @@ function _ipOpenClient(rep,ci,readOnly){
     +'</div></div>'
     +'<div class="ip-f"><label>이슈사항</label>'
     +'<div class="ip-rich-toolbar">'
-    +'<button class="ip-tb" onclick="window._ipFmt(\'bold\')"><b>B</b></button>'
-    +'<button class="ip-tb" onclick="window._ipFmt(\'italic\')"><i>I</i></button>'
-    +'<button class="ip-tb" onclick="window._ipFmt(\'underline\')"><u>U</u></button>'
-    +'<button class="ip-tb" onclick="window._ipFmt(\'strikeThrough\')"><s>S</s></button>'
+    +'<button class="ip-tb" onmousedown="event.preventDefault()" onclick="window._ipFmt(\'bold\')"><b>B</b></button>'
+    +'<button class="ip-tb" onmousedown="event.preventDefault()" onclick="window._ipFmt(\'italic\')"><i>I</i></button>'
+    +'<button class="ip-tb" onmousedown="event.preventDefault()" onclick="window._ipFmt(\'underline\')"><u>U</u></button>'
+    +'<button class="ip-tb" onmousedown="event.preventDefault()" onclick="window._ipFmt(\'strikeThrough\')"><s>S</s></button>'
     +'</div>'
     +'<div class="ip-rich-ed" id="ip-ct-issue" contenteditable="true" data-ph="특이사항을 입력하세요"></div></div>'
     +'<label class="ip-wk-chk"><input type="checkbox" id="ip-ct-wk"'+(d.wk===true?' checked':'')+'><span>주간회의 포함</span></label>'
@@ -9148,7 +9154,7 @@ function _ipOpenClient(rep,ci,readOnly){
   }
   document.body.appendChild(div);
   var ed=document.getElementById('ip-ct-issue');
-  if(ed){ ed.innerHTML=(d.issue||''); ed.addEventListener('input',function(){_ipRichResize(this);}); }
+  if(ed){ ed.innerHTML=(d.issue||''); ed.addEventListener('input',function(){_ipRichResize(this);}); ed.addEventListener('blur',_ipSaveRange); }
   _ipCalcMonTotal();
 }
 
@@ -9266,7 +9272,17 @@ function _ipSaveRange(){
 function _ipRestoreRange(){
   if(_ipLastRange){var sel=window.getSelection();sel.removeAllRanges();sel.addRange(_ipLastRange);}
 }
-function _ipFmt(cmd){_ipRestoreRange();document.execCommand(cmd,false,null);}
+function _ipFmt(cmd){
+  // 현재 포커스된 ip-rich-ed 찾기
+  var focused=document.activeElement;
+  if(!focused||!focused.classList.contains('ip-rich-ed')){
+    // 마지막으로 활성화된 에디터에 포커스
+    var eds=document.querySelectorAll('.ip-rich-ed');
+    if(eds.length) eds[eds.length-1].focus();
+  }
+  _ipRestoreRange();
+  document.execCommand(cmd,false,null);
+}
 function _ipSetColor(color){
   document.querySelectorAll('.ip-color-drop').forEach(function(d){d.classList.remove('open');});
   _ipRestoreRange();document.execCommand('foreColor',false,color);
@@ -9590,10 +9606,10 @@ function _ipOpenActivity(rep,ai,readOnly){
     +'<div class="ip-f"><label>예상시기</label><input id="ip-at-timing" value="'+(d.timing||'')+'" placeholder="2026-07"></div></div>'
     +'<div class="ip-f"><label>활동내용 *</label>'
     +'<div class="ip-rich-toolbar">'
-    +'<button class="ip-tb" onclick="window._ipFmt(\'bold\')"><b>B</b></button>'
-    +'<button class="ip-tb" onclick="window._ipFmt(\'italic\')"><i>I</i></button>'
-    +'<button class="ip-tb" onclick="window._ipFmt(\'underline\')"><u>U</u></button>'
-    +'<button class="ip-tb" onclick="window._ipFmt(\'strikeThrough\')"><s>S</s></button>'
+    +'<button class="ip-tb" onmousedown="event.preventDefault()" onclick="window._ipFmt(\'bold\')"><b>B</b></button>'
+    +'<button class="ip-tb" onmousedown="event.preventDefault()" onclick="window._ipFmt(\'italic\')"><i>I</i></button>'
+    +'<button class="ip-tb" onmousedown="event.preventDefault()" onclick="window._ipFmt(\'underline\')"><u>U</u></button>'
+    +'<button class="ip-tb" onmousedown="event.preventDefault()" onclick="window._ipFmt(\'strikeThrough\')"><s>S</s></button>'
     +'</div>'
     +'<div class="ip-rich-ed" id="ip-at-content" contenteditable="true" data-ph="담당자 미팅, 제안서 전달 등"></div></div>'
     +'<label class="ip-wk-chk"><input type="checkbox" id="ip-at-wk"'+(wkChk?' checked':'')+'><span>이번 주 주간회의 포함</span></label>'
@@ -9615,7 +9631,7 @@ function _ipOpenActivity(rep,ai,readOnly){
   }
   document.body.appendChild(div);
   var ed=document.getElementById('ip-at-content');
-  if(ed){ ed.innerHTML=(d.content||''); ed.addEventListener('input',function(){_ipRichResize(this);}); }
+  if(ed){ ed.innerHTML=(d.content||''); ed.addEventListener('input',function(){_ipRichResize(this);}); ed.addEventListener('blur',_ipSaveRange); }
 }
 
 function _ipSaveActivity(){
@@ -9713,10 +9729,10 @@ function _ipOpenIssue(rep,ii,readOnly){
     +'<div class="ip-f"><label>프로젝트명</label><input id="ip-is-proj" value="'+(d.project||'')+'" placeholder="예) ERP 추가도입"></div>'
     +'<div class="ip-f"><label>이슈내용 *</label>'
     +'<div class="ip-rich-toolbar">'
-    +'<button class="ip-tb" onclick="window._ipFmt(\'bold\')"><b>B</b></button>'
-    +'<button class="ip-tb" onclick="window._ipFmt(\'italic\')"><i>I</i></button>'
-    +'<button class="ip-tb" onclick="window._ipFmt(\'underline\')"><u>U</u></button>'
-    +'<button class="ip-tb" onclick="window._ipFmt(\'strikeThrough\')"><s>S</s></button>'
+    +'<button class="ip-tb" onmousedown="event.preventDefault()" onclick="window._ipFmt(\'bold\')"><b>B</b></button>'
+    +'<button class="ip-tb" onmousedown="event.preventDefault()" onclick="window._ipFmt(\'italic\')"><i>I</i></button>'
+    +'<button class="ip-tb" onmousedown="event.preventDefault()" onclick="window._ipFmt(\'underline\')"><u>U</u></button>'
+    +'<button class="ip-tb" onmousedown="event.preventDefault()" onclick="window._ipFmt(\'strikeThrough\')"><s>S</s></button>'
     +'</div>'
     +'<div class="ip-rich-ed" id="ip-is-content" contenteditable="true" data-ph="이슈 내용을 입력하세요"></div></div>'
     +'<div class="ip-f2">'
@@ -9743,7 +9759,7 @@ function _ipOpenIssue(rep,ii,readOnly){
   }
   document.body.appendChild(div);
   var ed=document.getElementById('ip-is-content');
-  if(ed){ ed.innerHTML=(d.content||''); ed.addEventListener('input',function(){_ipRichResize(this);}); }
+  if(ed){ ed.innerHTML=(d.content||''); ed.addEventListener('input',function(){_ipRichResize(this);}); ed.addEventListener('blur',_ipSaveRange); }
   // 체크박스 초기값 + change 이벤트 등록
   window._ipIssWkChecked = !!wkChk;
   var _wkCb=document.getElementById('ip-is-wk');
@@ -20563,7 +20579,7 @@ window._wkInsertMentionAt  = function(){
   if(typeof _wkCheckMention==='function') _wkCheckMention('@');
 };
 
-function _wkLogSubmitReply(entryId){
+async function _wkLogSubmitReply(entryId){
   var ed=document.getElementById('wk-ri-editor-'+entryId);
   if(!ed||!ed.innerHTML.replace(/<[^>]+>/g,'').trim()) return;
   var entries, saveKey;
@@ -20585,8 +20601,8 @@ function _wkLogSubmitReply(entryId){
   var timeStr=(now.getMonth()+1)+'/'+now.getDate()+' '+(now.getHours()<10?'0':'')+now.getHours()+':'+(now.getMinutes()<10?'0':'')+now.getMinutes();
   if(!entry.replies) entry.replies=[];
   entry.replies.push({id:'r'+Date.now(),rep:myRep,displayName:myName,text:ed.innerHTML,time:timeStr});
-  if(typeof _wkSaveFeed==='function') _wkSaveFeed(saveKey,entry.rep,entries);
-  if(typeof _wkCreateReplyNotif==='function') _wkCreateReplyNotif(entry,myRep);
+  if(typeof _wkSaveFeed==='function') await _wkSaveFeed(saveKey,entry.rep,entries);
+  if(typeof _wkCreateReplyNotif==='function') await _wkCreateReplyNotif(entry,myRep);
   var form=document.getElementById('wk-reply-form-'+entryId);
   if(form) form.remove();
   _wkLogRender();
@@ -21538,24 +21554,27 @@ function _wkEsc(s){
 var _wkAllowedTags=/^(b|i|u|s|strong|em|ul|ol|li|p|br|div|span|blockquote)$/i;
 function _wkSanitize(html){
   if(!html) return '';
-  // span style\uc5d0\uc11c color, background-color\ub9cc \ud5c8\uc6a9
-  html=html.replace(/<(\/?)([\w]+)([^>]*)>/g, function(m,slash,tag,attrs){
+  var _aStyle=/^(color|background-color|font-weight|font-size|font-style|text-decoration)$/;
+  html=html.replace(/<(\/?)(\w+)([^>]*)>/g, function(m,slash,tag,attrs){
     if(!_wkAllowedTags.test(tag)) return '';
-    if(tag.toLowerCase()==='span'){
-      var style=attrs.match(/style\s*=\s*["']([^"']*)["']/);
-      if(style){
-        var safeStyle='';
-        var allowed=''; var parts=(style[1]||'').split(';');
-        parts.forEach(function(p){
-          var kv=p.trim().split(':'); if(kv.length<2) return;
-          var k=kv[0].trim().toLowerCase();
-          if(k==='color'||k==='background-color'||k==='font-weight'||k==='text-decoration')
-            allowed+=kv[0].trim()+':'+kv.slice(1).join(':').trim()+';';
-        });
-        return '<'+slash+tag+(allowed?' style="'+allowed+'"':'')+' class="wk-mention">';
-      }
+    var tagL=tag.toLowerCase();
+    // style 허용
+    var style=attrs.match(/style\s*=\s*["']([^"']*)["']/);
+    var allowed='';
+    if(style){
+      (style[1]||'').split(';').forEach(function(p){
+        var kv=p.trim().split(':'); if(kv.length<2) return;
+        var k=kv[0].trim().toLowerCase();
+        if(_aStyle.test(k)) allowed+=kv[0].trim()+':'+kv.slice(1).join(':').trim()+';';
+      });
+    }
+    if(tagL==='span'){
       var cls=attrs.match(/class\s*=\s*["']([^"']*)["']/);
-      if(cls&&cls[1].indexOf('wk-mention')>=0) return '<'+slash+tag+' class="wk-mention">';
+      var isMention=cls&&cls[1].indexOf('wk-mention')>=0;
+      return '<'+slash+tag+(allowed?' style="'+allowed+'"':'')+(isMention?' class="wk-mention"':'')+'>';
+    }
+    if(tagL==='div'||tagL==='p'){
+      return '<'+slash+tag+(allowed?' style="'+allowed+'"':'')+'>';
     }
     return '<'+slash+tag+'>';
   });
