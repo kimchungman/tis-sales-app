@@ -327,7 +327,7 @@ body{font-family:var(--font-family,'Noto Sans KR',sans-serif);background:var(--b
 .btn-primary:hover{background:#1650a0;}
 .btn-outline{background:white;color:var(--navy);border:1px solid var(--border);}
 .btn-outline:hover{background:var(--light);}
-.content{padding:var(--content-padding,22px 26px 60px);margin-left:220px;transition:margin-left 0.22s cubic-bezier(.4,0,.2,1);}.content.banner-on{padding-top:calc(var(--banner-h,40px) + 22px);}
+.content{padding:var(--content-padding,22px 26px 60px);padding-top:74px;margin-left:220px;transition:margin-left 0.22s cubic-bezier(.4,0,.2,1);}.content.banner-on{padding-top:calc(var(--banner-h,40px) + 22px);}
 .page{display:none;}.page.active{display:block;}
 .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
 .kpi-card{background:var(--card);border:1px solid var(--border);border-radius:var(--card-radius,12px);padding:18px;position:relative;overflow:hidden;}
@@ -2502,6 +2502,10 @@ aside#main-sidebar.collapsed~.topbar{ left:56px; }
 .topbar button:hover{ background:#F1F5F9!important;color:#0F172A!important; }
 #wk-notif-drop button:hover{ background:#F1F5F9!important; }
 .content{ padding-top:54px; }
+
+.tb-sep{width:1px;height:16px;background:#E2E8F0;flex-shrink:0;margin:0 8px;}
+
+.topbar button:hover{background:#F1F5F9!important;}
 </style>
 
 <script>
@@ -3111,6 +3115,9 @@ window._updateSidebarByRole=function(){
   // 게스트: 영업 진행 현황 표시 (조회만)
   var inputEl=document.getElementById('snav-input');
   if(inputEl) inputEl.style.display=(role==='guest'||role==='rep'||role==='admin')?'flex':'none';
+  // 관리자: 탑바 접속현황 버튼 표시
+  var accBtn=document.getElementById('access-count-btn');
+  if(accBtn) accBtn.style.display=(role==='admin')?'flex':'none';
 }
 
 })();
@@ -3223,52 +3230,101 @@ window._updateSidebarByRole=function(){
   </div>
 </aside>
 <div class="topbar" id="main-topbar">
-  <!-- 페이지 타이틀 -->
-  <div style="display:flex;flex-direction:column;justify-content:center;flex:1;min-width:0;">
-    <div id="pg-title" style="font-size:14px;font-weight:700;color:#0F172A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.02em;line-height:1.2;"></div>
-    <div id="pg-sub" style="font-size:10.5px;color:#94A3B8;white-space:nowrap;margin-top:1px;"></div>
+
+  <!-- 좌: 페이지 타이틀 -->
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;">
+    <div id="pg-title" style="font-size:14px;font-weight:700;color:#0F172A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.02em;"></div>
+    <div id="pg-sub" style="font-size:10.5px;color:#94A3B8;white-space:nowrap;"></div>
   </div>
+
   <!-- SP 상태 -->
-  <div id="sp-status" style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;white-space:nowrap;flex-shrink:0;background:#DCFCE7;color:#15803D;"></div>
+  <div id="sp-status" style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;white-space:nowrap;flex-shrink:0;"></div>
   <span id="sp-status-badge" style="display:none;"></span>
+
   <!-- 자동저장 -->
-  <span id="save-indicator" style="font-size:11px;color:#94A3B8;white-space:nowrap;flex-shrink:0;"></span>
+  <span id="save-indicator" style="font-size:11px;color:#94A3B8;white-space:nowrap;flex-shrink:0;margin-left:4px;"></span>
+
+  <!-- 숨김 요소 (JS 내부 참조용) -->
+  <input type="date" id="mtg-date" style="position:absolute;visibility:hidden;pointer-events:none;">
+  <button id="print-btn" onclick="window.print()" style="position:absolute;visibility:hidden;pointer-events:none;"></button>
+
   <!-- 구분선 -->
-  <div style="width:1px;height:16px;background:#E2E8F0;flex-shrink:0;margin:0 4px;"></div>
-  <!-- 날짜 -->
-  <input type="date" id="mtg-date" style="height:30px;border:1px solid #E2E8F0;border-radius:6px;padding:0 8px;font-size:12px;color:#374151;background:#FAFBFC;cursor:pointer;outline:none;font-family:inherit;flex-shrink:0;transition:border-color .15s;">
-  <!-- 구분선 -->
-  <div style="width:1px;height:16px;background:#E2E8F0;flex-shrink:0;margin:0 4px;"></div>
-  <!-- 인쇄 -->
-  <button id="print-btn" onclick="window.print()" title="인쇄" style="width:30px;height:30px;border-radius:6px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#64748B;flex-shrink:0;transition:background .12s,color .12s;position:relative;overflow:visible;">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-  </button>
-  <!-- 접속현황 (관리자만) -->
-  <button id="access-count-btn" onclick="showPage('accesslog')" title="접속현황" style="width:30px;height:30px;border-radius:6px;border:none;background:transparent;display:none;align-items:center;justify-content:center;cursor:pointer;color:#64748B;flex-shrink:0;transition:background .12s,color .12s;position:relative;overflow:visible;">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-    <span id="access-count-num" style="position:absolute;top:-4px;right:-4px;width:8px;height:8px;border-radius:50%;background:#2563EB;border:2px solid #fff;display:none;"></span>
-  </button>
-  <!-- 알림 -->
+  <div class="tb-sep"></div>
+
+  <!-- 접속현황 버튼 (관리자만 표시) -->
   <div style="position:relative;flex-shrink:0;">
-    <button id="wk-notif-btn-global" onclick="_wkToggleNotif(event)" title="알림" style="width:30px;height:30px;border-radius:6px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#64748B;flex-shrink:0;transition:background .12s,color .12s;position:relative;overflow:visible;">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-      <span id="wk-notif-badge-global" style="position:absolute;top:-4px;right:-4px;width:8px;height:8px;border-radius:50%;background:#EF4444;border:2px solid #fff;display:none;"></span>
+    <button id="access-count-btn" onclick="showPage('accesslog')" title="현재 접속자 현황"
+      style="display:none;width:30px;height:30px;border-radius:6px;border:none;
+      background:transparent;align-items:center;justify-content:center;
+      cursor:pointer;color:#64748B;transition:background .12s,color .12s;
+      position:relative;overflow:visible;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+      <span id="access-count-num"
+        style="position:absolute;top:-5px;right:-5px;min-width:8px;height:8px;
+        border-radius:50%;background:#2563EB;border:2px solid #fff;display:none;"></span>
     </button>
-    <div id="wk-notif-drop" style="display:none;position:absolute;top:calc(100% + 8px);right:-4px;width:320px;background:#fff;border:1px solid #E2E8F0;border-radius:12px;box-shadow:0 8px 30px rgba(15,23,42,.1);overflow:hidden;z-index:999;">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px 11px;border-bottom:1px solid #F1F5F9;">
+  </div>
+
+  <!-- 알림 버튼 -->
+  <div style="position:relative;flex-shrink:0;">
+    <button id="wk-notif-btn-global" onclick="_wkToggleNotif(event)" title="알림"
+      style="width:30px;height:30px;border-radius:6px;border:none;
+      background:transparent;display:flex;align-items:center;justify-content:center;
+      cursor:pointer;color:#64748B;transition:background .12s,color .12s;
+      position:relative;overflow:visible;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+      </svg>
+      <span id="wk-notif-badge-global"
+        style="position:absolute;top:-5px;right:-5px;width:8px;height:8px;
+        border-radius:50%;background:#EF4444;border:2px solid #fff;display:none;"></span>
+    </button>
+
+    <!-- 알림 드롭다운 -->
+    <div id="wk-notif-drop"
+      style="display:none;position:fixed;top:54px;right:12px;width:320px;
+      background:#fff;border:1px solid #E2E8F0;border-radius:12px;
+      box-shadow:0 8px 30px rgba(15,23,42,.12);z-index:9999;overflow:hidden;">
+      <!-- 헤더 -->
+      <div style="display:flex;align-items:center;justify-content:space-between;
+        padding:13px 16px 11px;border-bottom:1px solid #F1F5F9;">
         <span style="font-size:13px;font-weight:700;color:#0F172A;">알림</span>
         <div style="display:flex;gap:2px;">
-          <button class="wk-nd-clear" onclick="_wkMarkAllRead()" style="font-size:11px;color:#94A3B8;background:none;border:none;cursor:pointer;padding:3px 6px;border-radius:4px;">모두 읽음</button>
-          <button class="wk-nd-clear" onclick="_wkDeleteAllNotif()" style="font-size:11px;color:#94A3B8;background:none;border:none;cursor:pointer;padding:3px 6px;border-radius:4px;">전체 삭제</button>
+          <button onclick="_wkMarkAllRead()"
+            style="font-size:11px;color:#94A3B8;background:none;border:none;
+            cursor:pointer;padding:3px 6px;border-radius:4px;font-family:inherit;
+            transition:color .1s;">모두 읽음</button>
+          <button onclick="_wkDeleteAllNotif()"
+            style="font-size:11px;color:#94A3B8;background:none;border:none;
+            cursor:pointer;padding:3px 6px;border-radius:4px;font-family:inherit;
+            transition:color .1s;">전체 삭제</button>
         </div>
       </div>
-      <div id="wk-notif-list" style="max-height:360px;overflow-y:auto;"></div>
+      <!-- 목록 -->
+      <div id="wk-notif-list"
+        style="max-height:380px;overflow-y:auto;scrollbar-width:thin;
+        scrollbar-color:#E2E8F0 transparent;"></div>
     </div>
   </div>
+
   <!-- 새로고침 (맨 마지막) -->
-  <button id="refresh-btn" onclick="_spRefreshData()" title="새로고침" style="width:30px;height:30px;border-radius:6px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#64748B;flex-shrink:0;transition:background .12s,color .12s;">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23,4 23,10 17,10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+  <button id="refresh-btn" onclick="_spRefreshData()" title="새로고침"
+    style="width:30px;height:30px;border-radius:6px;border:none;
+    background:transparent;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;color:#64748B;flex-shrink:0;
+    transition:background .12s,color .12s;margin-left:2px;">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="23,4 23,10 17,10"/>
+      <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+    </svg>
   </button>
+
 </div>
 <div id="banner-bar" style="display:none;position:fixed;top:54px;left:220px;right:0;z-index:150;align-items:center;gap:8px;padding:8px 16px;background:#FEF3C7;border-bottom:1px solid #F59E0B;font-size:13px;color:#92400E;"></div>
 
@@ -21491,28 +21547,37 @@ window._wkDismissByEl=function(btn){
 function _wkRenderNotifDrop(){
   var list=document.getElementById('wk-notif-list');
   if(!list) return;
-  var items=(_wk&&_wk.notifications||[]).slice(0,20);
+  var items=(_wk&&_wk.notifications)||[];
   if(!items.length){
-    list.innerHTML='<div style="padding:32px 16px;text-align:center;font-size:12px;color:#94A3B8;">새로운 알림이 없습니다</div>';
+    list.innerHTML='<div style="padding:36px 16px;text-align:center;font-size:12px;color:#94A3B8;">새로운 알림이 없습니다</div>';
     return;
   }
-  var iconMap={contract:'📋',issue:'⚠️',mention:'💬',carryover:'📌',reply:'↩️'};
-  list.innerHTML=items.map(function(n,ni){
-    var nid=String(n.id||ni);
+  var html='';
+  items.slice(0,20).forEach(function(n,ni){
+    var nid=String(n.id!=null?n.id:ni);
+    var iconMap={contract:'📋',issue:'⚠️',mention:'💬',carryover:'📌',reply:'↩️'};
     var icon=iconMap[n.type]||'🔔';
-    var borderColor=n.urgent?'#EF4444':'#2563EB';
-    var unreadBar=!n.read?'<div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:'+borderColor+';border-radius:0 2px 2px 0;"></div>':'';
-    var bg=!n.read?'background:#F8FAFF;':'';
-    return '<div data-nid="'+nid+'" onclick="_wkClickNotifByEl(this)" style="display:flex;align-items:flex-start;gap:10px;padding:11px 14px;border-bottom:1px solid #F8FAFC;cursor:pointer;position:relative;'+bg+'transition:background .1s;">'
-      +unreadBar
-      +'<div style="width:30px;height:30px;border-radius:8px;background:'+(n.type==='contract'?'#EFF6FF':'#FFF7ED')+';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;">'+icon+'</div>'
-      +'<div style="flex:1;min-width:0;">'
-      +'<div style="font-size:12px;color:#1E293B;line-height:1.45;word-break:keep-all;">'+(n.msg||'')+'</div>'
-      +'<div style="font-size:10px;color:#94A3B8;margin-top:3px;">'+(n.time||'')+'</div>'
-      +'</div>'
-      +'<button data-nid="'+nid+'" onclick="event.stopPropagation();_wkDismissByEl(this)" style="width:20px;height:20px;border-radius:4px;border:none;background:none;color:#CBD5E1;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;margin-top:1px;transition:all .1s;">×</button>'
-      +'</div>';
-  }).join('');
+    var iconBg=n.type==='contract'?'#EFF6FF':'#FFF7ED';
+    var barColor=n.urgent?'#EF4444':'#2563EB';
+    var bg=n.read?'':'background:#F8FAFF;';
+    var bar=n.read?'':'<div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:'+barColor+';border-radius:0 2px 2px 0;"></div>';
+    html+='<div data-nid="'+nid+'" onclick="_wkClickNotifByEl(this)"';
+    html+=' style="display:flex;align-items:flex-start;gap:10px;padding:11px 14px;';
+    html+='border-bottom:1px solid #F8FAFC;cursor:pointer;position:relative;'+bg+'">';
+    html+=bar;
+    html+='<div style="width:30px;height:30px;min-width:30px;border-radius:8px;background:'+iconBg+';';
+    html+='display:flex;align-items:center;justify-content:center;font-size:14px;">'+icon+'</div>';
+    html+='<div style="flex:1;min-width:0;">';
+    html+='<div style="font-size:12px;color:#1E293B;line-height:1.5;word-break:keep-all;">'+(n.msg||'')+'</div>';
+    html+='<div style="font-size:10px;color:#94A3B8;margin-top:3px;">'+(n.time||'')+'</div>';
+    html+='</div>';
+    html+='<button data-nid="'+nid+'" onclick="event.stopPropagation();_wkDismissByEl(this)"';
+    html+=' style="width:20px;height:20px;min-width:20px;border-radius:4px;border:none;';
+    html+='background:none;color:#CBD5E1;cursor:pointer;font-size:15px;line-height:1;';
+    html+='display:flex;align-items:center;justify-content:center;margin-top:2px;">×</button>';
+    html+='</div>';
+  });
+  list.innerHTML=html;
 }
 window._wkDismissNotifItem=async function(id){
   // 계약 알림은 삭제하지 않고 dismissedAt만 기록 (다음 월요일에 재생성)
