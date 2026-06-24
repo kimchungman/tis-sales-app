@@ -18882,11 +18882,9 @@ function _wkAddDeletedNotifId(id){
   _wkSaveDeletedNotifIds().catch(function(){});
 }
 function _wkClearDeletedNotifId(id){
-  try{
-    var d=_wkGetDeletedNotifIds();
-    delete d[id];
-    localStorage.setItem(_wkGetNotifWeekKey(),JSON.stringify(d));
-  }catch(e){}
+  if(!_wk||!_wk._deletedNotifIds) return;
+  delete _wk._deletedNotifIds[id];
+  _wkSaveDeletedNotifIds().catch(function(){});
 }
 
 // ── 알림 생성 ──
