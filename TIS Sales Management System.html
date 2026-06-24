@@ -10533,15 +10533,14 @@ async function _initSP() {
           if(typeof _wkLoadDeletedNotifIds==='function') await _wkLoadDeletedNotifIds();
           var _notifs=await window._wkLoadNotif(session.rep);
           if(window._wk) window._wk.notifications=_notifs;
-          if(typeof _wkLoadContractMeta==='function') _wkLoadContractMeta().then(async function(){
-    // SP에서 로드한 알림 유지 + 신규 계약 알림만 추가
-    if(typeof _wkGenContractNotifs==='function') _wkGenContractNotifs();
-    // 재생성 후 SP에 저장 (삭제/읽음 상태 반영)
-    if(window._isSPReady&&session&&session.rep&&typeof _wkSaveNotif==='function'){
-      try{ await _wkSaveNotif(session.rep, window._wk.notifications); }catch(e){}
-    }
-  });
+          // contractMeta를 await로 로드 후 재생성 (순서 보장)
+          if(typeof _wkLoadContractMeta==='function') await _wkLoadContractMeta();
+          if(typeof _wkGenContractNotifs==='function') _wkGenContractNotifs();
           if(typeof _wkUpdateNotifBadge==='function') _wkUpdateNotifBadge();
+          // 재생성 후 SP 저장
+          if(window._isSPReady&&session&&session.rep&&typeof _wkSaveNotif==='function'){
+            try{ await _wkSaveNotif(session.rep, window._wk.notifications); }catch(e){}
+          }
         }
       }catch(e){ console.warn('[preload]',e); }
     }, 2000);
@@ -19180,6 +19179,9 @@ function _wkGenContractNotifs(){
     var _persistRead=_readDate&&_readDate>=thisMondayStr?true:false;
     var _persistDismissed=(_wk.contractDismissedAt&&_wk.contractDismissedAt[notifId])||null;
     var _dismissedAt=_persistDismissed||prev.dismissedAt||null;
+    // 삭제된 알림 ID 체크 (개별 삭제)
+    var _deletedIds=typeof _wkGetDeletedNotifIds==='function'?_wkGetDeletedNotifIds():{};
+    if(_deletedIds[notifId]) return;
     // 삭제(dismiss)된 알림: 같은 주 월요일이면 숨김, 다음 주부터 재생성
     if(_dismissedAt&&_dismissedAt>=thisMondayStr) return;
     var urgent=diff<=7;
@@ -21498,6 +21500,7 @@ window._wkSubmitReply=async function(entryId){
     if(session&&session.rep){
       var _nr=await _wkLoadNotif(session.rep);
       _wk.notifications=_nr;
+      if(typeof _wkLoadContractMeta==='function') await _wkLoadContractMeta();
       _wkGenContractNotifs();
       _wkUpdateNotifBadge();
     }
@@ -21519,6 +21522,7 @@ window._syncWeeklyFeed=async function(){
       try{
         var notifs=await _wkLoadNotif(session.rep);
         _wk.notifications=notifs;
+        if(typeof _wkLoadContractMeta==='function') await _wkLoadContractMeta();
         _wkGenContractNotifs();
         _wkUpdateNotifBadge();
       }catch(e){}
@@ -21540,7 +21544,8 @@ window._syncWeeklyFeed=async function(){
   if(session&&session.rep){
     var notifs=await _wkLoadNotif(session.rep);
     _wk.notifications=notifs;
-    _wkGenContractNotifs();
+    if(typeof _wkLoadContractMeta==='function') await _wkLoadContractMeta();
+        _wkGenContractNotifs();
     _wkUpdateNotifBadge();
   }
 };
@@ -21559,6 +21564,7 @@ window._initWeeklyPage=async function(){
   // \uc54c\ub9bc \ubc84\ud2bc \ube4c\ub4dc
   _wkBuildNotifBtn();
   // \uacc4\uc57d \uc54c\ub9bc \uccb4\ud06c
+  if(typeof _wkLoadContractMeta==='function') await _wkLoadContractMeta();
   _wkGenContractNotifs();
 };
 
