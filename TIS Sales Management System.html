@@ -327,7 +327,7 @@ body{font-family:var(--font-family,'Noto Sans KR',sans-serif);background:var(--b
 .btn-primary:hover{background:#1650a0;}
 .btn-outline{background:white;color:var(--navy);border:1px solid var(--border);}
 .btn-outline:hover{background:var(--light);}
-.content{padding:var(--content-padding,22px 26px 60px);padding-top:74px;margin-left:220px;transition:margin-left 0.22s cubic-bezier(.4,0,.2,1);}.content.banner-on{padding-top:calc(var(--banner-h,40px) + 22px);}
+.content{padding:var(--content-padding,22px 26px 60px);margin-left:220px;transition:margin-left 0.22s cubic-bezier(.4,0,.2,1);}.content.banner-on{padding-top:calc(var(--banner-h,40px) + 22px);}
 .page{display:none;}.page.active{display:block;}
 .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
 .kpi-card{background:var(--card);border:1px solid var(--border);border-radius:var(--card-radius,12px);padding:18px;position:relative;overflow:hidden;}
@@ -503,10 +503,7 @@ body.font-large {
   font-size:12px;display:inline-flex;align-items:center;gap:5px;
   transition:var(--trans);white-space:nowrap;}
 .tb-btn:hover{background:var(--light);border-color:var(--border2);color:var(--text);}
-.tb-icon-btn{width:32px;height:32px;padding:0;border:1px solid var(--border);
-  border-radius:var(--radius-sm);background:var(--card);color:var(--muted);
-  cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
-  transition:var(--trans);}
+.tb-icon-btn{width:30px;height:30px;padding:0;border:none;border-radius:6px;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#64748B;position:relative;overflow:visible;}
 .tb-icon-btn:hover{background:var(--light);border-color:var(--primary);color:var(--primary);}
 .tb-icon-btn svg{width:15px;height:15px;stroke:currentColor;fill:none;
   stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
@@ -800,10 +797,7 @@ label,th{color:var(--muted);}
   border: 1px solid rgba(79,127,255,0.25) !important;
   letter-spacing: 0 !important;
 }
-#access-count-btn {
-  gap: 5px !important;
-  align-items: center !important;
-}
+
 
 /* ════ 색상 체계 고도화 ════ */
 
@@ -3251,29 +3245,31 @@ window._updateSidebarByRole=function(){
 
   <!-- 접속현황 버튼 (관리자만 표시) -->
   <div style="position:relative;flex-shrink:0;">
-    <button id="access-count-btn" onclick="showPage('accesslog')" title="접속현황"
-      style="width:30px;height:30px;border-radius:6px;border:none;background:transparent;
+    <button id="access-count-btn" onclick="toggleAccessPopup()" title="접속현황"
+      style="width:30px;height:30px;border-radius:6px;border:none!important;background:transparent!important;
       display:flex;align-items:center;justify-content:center;cursor:pointer;
-      color:#64748B;transition:background .12s,color .12s;position:relative;overflow:visible;">
+      color:#64748B;transition:background .12s,color .12s;position:relative;overflow:visible;
+      box-shadow:none!important;">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
         <circle cx="9" cy="7" r="4"/>
         <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
         <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
       </svg>
+      <!-- dot 뱃지 -->
       <span id="access-count-num"
-        style="position:absolute;top:-5px;right:-5px;min-width:8px;height:8px;
-        border-radius:50%;background:#2563EB;border:2px solid #fff;display:none;"></span>
+        style="position:absolute;top:-4px;right:-4px;width:8px;height:8px;
+        border-radius:50%;background:#22C55E;border:2px solid #fff;display:none;"></span>
     </button>
   </div>
 
   <!-- 알림 버튼 -->
   <div style="position:relative;flex-shrink:0;">
     <button id="wk-notif-btn-global" onclick="_wkToggleNotif(event)" title="알림"
-      style="width:30px;height:30px;border-radius:6px;border:none;
-      background:transparent;display:flex;align-items:center;justify-content:center;
-      cursor:pointer;color:#64748B;transition:background .12s,color .12s;
-      position:relative;overflow:visible;">
+      style="width:30px;height:30px;border-radius:6px;border:none!important;background:transparent!important;
+      display:flex;align-items:center;justify-content:center;cursor:pointer;
+      color:#64748B;transition:background .12s,color .12s;position:relative;overflow:visible;
+      box-shadow:none!important;">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
         <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
@@ -3344,6 +3340,15 @@ window._updateSidebarByRole=function(){
   </button>
 
 </div>
+<!-- 접속현황 팝업 -->
+<div id="access-popup" style="display:none;position:fixed;top:54px;right:48px;width:260px;background:#fff;border:1px solid #E2E8F0;border-radius:12px;box-shadow:0 8px 24px rgba(15,23,42,.1);z-index:9999;overflow:hidden;">
+  <div style="padding:12px 14px 10px;border-bottom:1px solid #F1F5F9;display:flex;align-items:center;justify-content:space-between;">
+    <span style="font-size:13px;font-weight:700;color:#0F172A;">접속현황</span>
+    <span style="font-size:11px;color:#94A3B8;">오늘</span>
+  </div>
+  <div id="access-list" style="max-height:300px;overflow-y:auto;"></div>
+</div>
+
 <div id="banner-bar" style="display:none;position:fixed;top:54px;left:220px;right:0;z-index:150;align-items:center;gap:8px;padding:8px 16px;background:#FEF3C7;border-bottom:1px solid #F59E0B;font-size:13px;color:#92400E;"></div>
 
 <div class="content">
@@ -8932,7 +8937,7 @@ function updateAccessDisplay(){
 
   // 숫자 뱃지 업데이트
   var countEl = document.getElementById('access-count-num');
-  if(countEl) countEl.textContent = totalOnline;
+  if(countEl) countEl.style.display='block';
 
   // 드롭다운 목록 렌더
   var listEl = document.getElementById('access-list');
