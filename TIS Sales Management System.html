@@ -780,23 +780,7 @@ label,th{color:var(--muted);}
 }
 
 /* ── Fix4: 접속현황 뱃지 ── */
-#access-count-num {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  vertical-align: middle !important;
-  min-width: 20px !important;
-  height: 20px !important;
-  line-height: 1 !important;
-  padding: 0 6px !important;
-  font-size: 11px !important;
-  font-weight: 700 !important;
-  background: rgba(79,127,255,0.15) !important;
-  color: var(--primary) !important;
-  border-radius: 6px !important;
-  border: 1px solid rgba(79,127,255,0.25) !important;
-  letter-spacing: 0 !important;
-}
+
 
 
 /* ════ 색상 체계 고도화 ════ */
@@ -2500,6 +2484,29 @@ aside#main-sidebar.collapsed~.topbar{ left:56px; }
 .tb-sep{width:1px;height:16px;background:#E2E8F0;flex-shrink:0;margin:0 8px;}
 
 .topbar button:hover{background:#F1F5F9!important;}
+
+/* 접속현황 dot - 파란색, 우상단 */
+#access-count-num {
+  position:absolute !important;
+  top:2px !important; right:2px !important;
+  width:7px !important; height:7px !important;
+  min-width:7px !important; padding:0 !important;
+  border-radius:50% !important;
+  background:#2563EB !important;
+  border:1.5px solid #fff !important;
+  display:none;
+}
+/* 알림 dot - 빨간색, 우상단 */
+#wk-notif-badge-global {
+  position:absolute !important;
+  top:2px !important; right:2px !important;
+  width:7px !important; height:7px !important;
+  min-width:7px !important; padding:0 !important;
+  border-radius:50% !important;
+  background:#EF4444 !important;
+  border:1.5px solid #fff !important;
+  display:none;
+}
 </style>
 
 <script>
@@ -3245,7 +3252,7 @@ window._updateSidebarByRole=function(){
 
   <!-- 접속현황 버튼 (관리자만 표시) -->
   <div style="position:relative;flex-shrink:0;">
-    <button id="access-count-btn" onclick="toggleAccessPopup()" title="접속현황"
+    <button id="access-count-btn" onclick="window.toggleAccessPopup()" title="접속현황"
       style="width:30px;height:30px;border-radius:6px;border:none!important;background:transparent!important;
       display:flex;align-items:center;justify-content:center;cursor:pointer;
       color:#64748B;transition:background .12s,color .12s;position:relative;overflow:visible;
@@ -3257,15 +3264,13 @@ window._updateSidebarByRole=function(){
         <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
       </svg>
       <!-- dot 뱃지 -->
-      <span id="access-count-num"
-        style="position:absolute;top:-4px;right:-4px;width:8px;height:8px;
-        border-radius:50%;background:#22C55E;border:2px solid #fff;display:none;"></span>
+      <span id="access-count-num"></span>
     </button>
   </div>
 
   <!-- 알림 버튼 -->
   <div style="position:relative;flex-shrink:0;">
-    <button id="wk-notif-btn-global" onclick="_wkToggleNotif(event)" title="알림"
+    <button id="wk-notif-btn-global" onclick="window._wkToggleNotif(event)" title="알림"
       style="width:30px;height:30px;border-radius:6px;border:none!important;background:transparent!important;
       display:flex;align-items:center;justify-content:center;cursor:pointer;
       color:#64748B;transition:background .12s,color .12s;position:relative;overflow:visible;
@@ -3290,10 +3295,10 @@ window._updateSidebarByRole=function(){
         padding:13px 16px 11px;border-bottom:1px solid #F1F5F9;flex-shrink:0;">
         <span style="font-size:13px;font-weight:700;color:#0F172A;">알림</span>
         <div style="display:flex;gap:2px;">
-          <button onclick="_wkMarkAllRead()"
+          <button onclick="window._wkMarkAllRead()"
             style="font-size:11px;color:#94A3B8;background:none;border:none;
             cursor:pointer;padding:3px 6px;border-radius:4px;font-family:inherit;">모두 읽음</button>
-          <button onclick="_wkDeleteAllNotif()"
+          <button onclick="window._wkDeleteAllNotif()"
             style="font-size:11px;color:#94A3B8;background:none;border:none;
             cursor:pointer;padding:3px 6px;border-radius:4px;font-family:inherit;">전체 삭제</button>
         </div>
@@ -3310,11 +3315,11 @@ window._updateSidebarByRole=function(){
         padding:13px 16px 11px;border-bottom:1px solid #F1F5F9;">
         <span style="font-size:13px;font-weight:700;color:#0F172A;">알림</span>
         <div style="display:flex;gap:2px;">
-          <button onclick="_wkMarkAllRead()"
+          <button onclick="window._wkMarkAllRead()"
             style="font-size:11px;color:#94A3B8;background:none;border:none;
             cursor:pointer;padding:3px 6px;border-radius:4px;font-family:inherit;
             transition:color .1s;">모두 읽음</button>
-          <button onclick="_wkDeleteAllNotif()"
+          <button onclick="window._wkDeleteAllNotif()"
             style="font-size:11px;color:#94A3B8;background:none;border:none;
             cursor:pointer;padding:3px 6px;border-radius:4px;font-family:inherit;
             transition:color .1s;">전체 삭제</button>
@@ -4425,8 +4430,8 @@ window._updateSidebarByRole=function(){
   <div class="wk-nd-head">
     <span class="wk-nd-title">🔔 알림</span>
     <div style="display:flex;gap:4px;">
-      <button class="wk-nd-clear" onclick="_wkMarkAllRead()">모두 읽음</button>
-      <button class="wk-nd-clear" style="color:#DC2626;" onclick="_wkDeleteAllNotif()">전체 삭제</button>
+      <button class="wk-nd-clear" onclick="window._wkMarkAllRead()">모두 읽음</button>
+      <button class="wk-nd-clear" style="color:#DC2626;" onclick="window._wkDeleteAllNotif()">전체 삭제</button>
     </div>
   </div>
   <div class="wk-nd-list" id="wk-notif-list"></div>
@@ -8937,7 +8942,7 @@ function updateAccessDisplay(){
 
   // 숫자 뱃지 업데이트
   var countEl = document.getElementById('access-count-num');
-  if(countEl) countEl.style.display='block';
+  if(countEl) countEl.style.display=totalOnline>0?'block':'none';
 
   // 드롭다운 목록 렌더
   var listEl = document.getElementById('access-list');
@@ -8974,7 +8979,7 @@ function updateAccessDisplay(){
   }
   listEl.innerHTML = html2;
 }
-function toggleAccessPopup(){
+window.toggleAccessPopup=function toggleAccessPopup(){
   updateAccessDisplay();
   const pop=document.getElementById('access-popup');
   if(!pop)return;
