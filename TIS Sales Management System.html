@@ -2515,6 +2515,8 @@ aside#main-sidebar.collapsed~.topbar{ left:56px; }
 .ip-rich-view i,.ip-rich-view em{font-style:italic;}
 .ip-rich-view u{text-decoration:underline;}
 .ip-rich-view s{text-decoration:line-through;}
+
+.wk-row-con>*{align-self:center;}
 </style>
 
 <script>
@@ -2744,6 +2746,7 @@ document.addEventListener('mousedown',function(e){
 /* .wk-dot — replaced by .wk-dot-filled */
 .wk-dchip{font-size:10px;font-weight:700;width:48px;text-align:center;border-radius:20px;white-space:nowrap;padding:3px 0;display:inline-block;}
 .wk-row-con{display:grid;grid-template-columns:60px 100px 60px 1fr 52px;align-items:center;gap:0 8px;padding:8px 14px;border-bottom:0.5px solid #F1F5F9;font-size:12px;}
+.wk-row-con>*{align-self:center;}
 .wk-row-con:last-child{border-bottom:none;}
 .wk-row-con:nth-child(even){background:#FAFBFC;}
 
@@ -4330,10 +4333,10 @@ window._updateSidebarByRole=function(){
             <span id="wk-log-role" style="font-size:10px;color:var(--muted);"></span>
           </div>
           <div style="display:flex;align-items:center;gap:2px;padding:2px 14px 4px;flex-wrap:wrap;">
-            <button class="wk-tb" title="굵게" onclick="_wkFmt('bold')"><b>B</b></button>
-            <button class="wk-tb" title="기울임" onclick="_wkFmt('italic')"><i style="font-size:12px;">I</i></button>
-            <button class="wk-tb" title="밑줄" onclick="_wkFmt('underline')"><u>U</u></button>
-            <button class="wk-tb" title="취소선" onclick="_wkFmt('strikeThrough')"><s>S</s></button>
+            <button class="wk-tb" title="굵게" onmousedown="event.preventDefault()" onclick="_wkFmt('bold')"><b>B</b></button>
+            <button class="wk-tb" title="기울임" onmousedown="event.preventDefault()" onclick="_wkFmt('italic')"><i style="font-size:12px;">I</i></button>
+            <button class="wk-tb" title="밑줄" onmousedown="event.preventDefault()" onclick="_wkFmt('underline')"><u>U</u></button>
+            <button class="wk-tb" title="취소선" onmousedown="event.preventDefault()" onclick="_wkFmt('strikeThrough')"><s>S</s></button>
             <div style="width:1px;height:14px;background:var(--border);margin:0 3px;flex-shrink:0;"></div>
             <button class="wk-tb" style="width:auto;padding:0 6px;font-size:10px;gap:3px;color:#185FA5;display:flex;align-items:center;" onclick="_wkInsertMentionAt(this)" title="@멘션">@ 멘션</button>
           </div>
@@ -4384,10 +4387,10 @@ window._updateSidebarByRole=function(){
         <span class="wk-fi-role" id="wk-author-role"></span>
       </div>
       <div class="wk-toolbar">
-        <button class="wk-tb" title="굵게 (Ctrl+B)" onclick="_wkFmt('bold')"><b>B</b></button>
-        <button class="wk-tb" title="기울임 (Ctrl+I)" onclick="_wkFmt('italic')"><i style="font-size:12px;">I</i></button>
-        <button class="wk-tb" title="밑줄 (Ctrl+U)" onclick="_wkFmt('underline')"><u>U</u></button>
-        <button class="wk-tb" title="취소선" onclick="_wkFmt('strikeThrough')"><s>S</s></button>
+        <button class="wk-tb" title="굵게 (Ctrl+B)" onmousedown="event.preventDefault()" onclick="_wkFmt('bold')"><b>B</b></button>
+        <button class="wk-tb" title="기울임 (Ctrl+I)" onmousedown="event.preventDefault()" onclick="_wkFmt('italic')"><i style="font-size:12px;">I</i></button>
+        <button class="wk-tb" title="밑줄 (Ctrl+U)" onmousedown="event.preventDefault()" onclick="_wkFmt('underline')"><u>U</u></button>
+        <button class="wk-tb" title="취소선" onmousedown="event.preventDefault()" onclick="_wkFmt('strikeThrough')"><s>S</s></button>
         <div style="width:1px;height:14px;background:#E2E8F0;margin:0 4px;flex-shrink:0;"></div>
         <button class="wk-tb" title="이전 회의록 불러오기" onclick="_wkOpenLoadWeek()" style="width:auto;gap:4px;color:#4f7fff;border-color:#BFDBFE;background:#EFF6FF;padding:3px 10px;font-size:10px;font-weight:700;white-space:nowrap;">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>이전 회의록 불러오기
@@ -21012,7 +21015,7 @@ function _wkRenderRepTable(){
     H+='<div style="height:100%;width:'+Math.min(rate,100)+'%;border-radius:99px;background:linear-gradient(90deg,'+barGrad+');"></div></div>';
     H+='<div style="font-size:10px;font-weight:600;color:'+rc+';width:32px;text-align:right;">'+rate+'%</div></div></div>';
     // KPI
-    H+='<div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid #F1F5F9;">';
+    H+='<div style="display:grid;align-items:center;grid-template-columns:repeat(4,1fr);border-bottom:1px solid #F1F5F9;">';
     [{l:'경영계획',v:fmt(plan)+'K',c:'#3B5BDB',s:'목표'},
      {l:'달성매출',v:fmt(act)+'K',c:rc,s:monthLabel},
      {l:'예상매출',v:forecast>0?fmt(forecast)+'K':'-',c:'#E65100',s:'예정'},
@@ -21026,7 +21029,7 @@ function _wkRenderRepTable(){
     H+='</div>';
     // 테이블 헤더 sticky
     var thS='padding:5px 0;font-size:10px;font-weight:600;color:#94A3B8;background:#FAFBFF;border-bottom:1px solid #F1F5F9;text-align:center;';
-    H+='<div style="display:grid;grid-template-columns:'+GTC+';position:sticky;top:0;z-index:2;">';
+    H+='<div style="display:grid;align-items:center;grid-template-columns:'+GTC+';position:sticky;top:0;z-index:2;">';
     ['고객사','프로젝트','품목','구분','금액','상태'].forEach(function(lbl,li){
       H+='<div style="'+thS+'text-align:center;">'+lbl+'</div>';
     });
@@ -21042,14 +21045,14 @@ function _wkRenderRepTable(){
         var isExp=cl.status==='예상';
         var dispAmt=clAct;
         var rowBg=ci%2===1?'background:#FAFBFF;':'';
-        var cs='padding:7px 0;font-size:11px;text-align:center;'+rowBg+'border-bottom:1px solid #F8FAFC;';
+        var cs='padding:7px 0;font-size:11px;text-align:center;align-self:center;'+rowBg+'border-bottom:1px solid #F8FAFC;';
         var prod=cl.product||'—';
         var type=cl.type||'—';
         var stat=cl.status||'달성';
         var pc=PROD_COLOR[prod]||PROD_COLOR['default'];
         var tc=TYPE_COLOR[type]||TYPE_COLOR['default'];
         var sc2=ST_COLOR[stat]||{bg:'#F1F3F5',c:'#495057',fw:'600'};
-        H+='<div style="display:grid;grid-template-columns:'+GTC+';">';
+        H+='<div style="display:grid;align-items:center;grid-template-columns:'+GTC+';">';
         H+='<div style="'+cs+'font-weight:600;color:#0F172A;text-align:center;">'+(cl.name||cl.client||'—')+'</div>';
         H+='<div style="'+cs+'text-align:center;color:#334155;">'+(cl.project||'—')+'</div>';
         H+='<div style="'+cs+'"><span style="font-size:10px;font-weight:600;color:'+pc.c+';">'+prod+'</span></div>';
@@ -21356,8 +21359,13 @@ window._wkSelectMention=function(name, title){
 
 // \u2500\u2500 \uc11c\uc2dd \ub3c4\uad6c \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 window._wkFmt=function(cmd){
-  var editor=document.getElementById('wk-editor');
-  if(editor) editor.focus();
+  // 현재 포커스된 에디터 또는 마지막 활성 에디터
+  var active=document.activeElement;
+  var isEd=active&&(active.id==='wk-editor'||active.id==='wk-log-editor'||active.classList.contains('rich-ed'));
+  if(!isEd){
+    var ed=document.getElementById('wk-log-editor')||document.getElementById('wk-editor');
+    if(ed) ed.focus();
+  }
   document.execCommand(cmd, false, null);
 };
 
@@ -21551,29 +21559,40 @@ function _wkEsc(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-var _wkAllowedTags=/^(b|i|u|s|strong|em|ul|ol|li|p|br|div|span|blockquote)$/i;
+var _wkAllowedTags=/^(b|i|u|s|strong|em|ul|ol|li|p|br|div|span|blockquote|font)$/i;
 function _wkSanitize(html){
   if(!html) return '';
   var _aStyle=/^(color|background-color|font-weight|font-size|font-style|text-decoration)$/;
   html=html.replace(/<(\/?)(\w+)([^>]*)>/g, function(m,slash,tag,attrs){
     if(!_wkAllowedTags.test(tag)) return '';
     var tagL=tag.toLowerCase();
-    // style 허용
-    var style=attrs.match(/style\s*=\s*["']([^"']*)["']/);
-    var allowed='';
-    if(style){
-      (style[1]||'').split(';').forEach(function(p){
-        var kv=p.trim().split(':'); if(kv.length<2) return;
-        var k=kv[0].trim().toLowerCase();
-        if(_aStyle.test(k)) allowed+=kv[0].trim()+':'+kv.slice(1).join(':').trim()+';';
-      });
+    // font 태그 - color/size 속성 보존
+    if(tagL==='font'){
+      var colorM=attrs.match(/color\s*=\s*["']?([^"'\s>]+)["']?/);
+      var sizeM=attrs.match(/size\s*=\s*["']?([^"'\s>]+)["']?/);
+      var faceM=attrs.match(/face\s*=\s*["']([^"']*)["']/);
+      var extra='';
+      if(colorM) extra+=' color="'+colorM[1]+'"';
+      if(sizeM) extra+=' size="'+sizeM[1]+'"';
+      if(faceM) extra+=' face="'+faceM[1]+'"';
+      return '<'+slash+'font'+extra+'>';
     }
-    if(tagL==='span'){
-      var cls=attrs.match(/class\s*=\s*["']([^"']*)["']/);
-      var isMention=cls&&cls[1].indexOf('wk-mention')>=0;
-      return '<'+slash+tag+(allowed?' style="'+allowed+'"':'')+(isMention?' class="wk-mention"':'')+'>';
-    }
-    if(tagL==='div'||tagL==='p'){
+    // span/div/p - style 허용
+    if(tagL==='span'||tagL==='div'||tagL==='p'){
+      var style=attrs.match(/style\s*=\s*["']([^"']*)["']/);
+      var allowed='';
+      if(style){
+        (style[1]||'').split(';').forEach(function(p){
+          var kv=p.trim().split(':'); if(kv.length<2) return;
+          var k=kv[0].trim().toLowerCase();
+          if(_aStyle.test(k)) allowed+=kv[0].trim()+':'+kv.slice(1).join(':').trim()+';';
+        });
+      }
+      if(tagL==='span'){
+        var cls=attrs.match(/class\s*=\s*["']([^"']*)["']/);
+        var isMention=cls&&cls[1].indexOf('wk-mention')>=0;
+        return '<'+slash+tag+(allowed?' style="'+allowed+'"':'')+(isMention?' class="wk-mention"':'')+'>';
+      }
       return '<'+slash+tag+(allowed?' style="'+allowed+'"':'')+'>';
     }
     return '<'+slash+tag+'>';
