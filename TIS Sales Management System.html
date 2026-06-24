@@ -292,7 +292,7 @@ if(typeof msal === 'undefined'){
   /* 레이아웃 */
   --sidebar-width:180px;
   --card-radius:10px;
-  --content-padding:24px 28px 60px;
+  --content-padding:54px 28px 28px 28px;
   /* 영업활동 컬럼 너비 */
   --col-no:44px;--col-type:90px;--col-client:130px;--col-product:100px;
   --col-amount:72px;--col-prob:60px;--col-timing:80px;--col-content:300px;
@@ -327,7 +327,7 @@ body{font-family:var(--font-family,'Noto Sans KR',sans-serif);background:var(--b
 .btn-primary:hover{background:#1650a0;}
 .btn-outline{background:white;color:var(--navy);border:1px solid var(--border);}
 .btn-outline:hover{background:var(--light);}
-.content{padding:var(--content-padding,22px 26px 60px);margin-left:220px;transition:margin-left 0.22s cubic-bezier(.4,0,.2,1);}.content.banner-on{padding-top:calc(var(--banner-h,40px) + 22px);}
+.content{padding:var(--content-padding,22px 26px 60px);padding-top:54px;margin-left:220px;transition:margin-left 0.22s cubic-bezier(.4,0,.2,1);}.content.banner-on{padding-top:calc(var(--banner-h,40px) + 22px);}
 .page{display:none;}.page.active{display:block;}
 .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
 .kpi-card{background:var(--card);border:1px solid var(--border);border-radius:var(--card-radius,12px);padding:18px;position:relative;overflow:hidden;}
