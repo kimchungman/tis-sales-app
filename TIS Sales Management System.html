@@ -2517,6 +2517,10 @@ aside#main-sidebar.collapsed~.topbar{ left:56px; }
 .ip-rich-view s{text-decoration:line-through;}
 
 .wk-row-con>*{align-self:center;}
+
+.wk-row>*{align-self:center;}
+
+.wk-row .wk-cont{align-self:center;}
 </style>
 
 <script>
@@ -2728,7 +2732,7 @@ document.addEventListener('mousedown',function(e){
 .wk-4grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
 
 /* 섹션 행 */
-.wk-row{display:grid;grid-template-columns:60px 120px 1fr 1.5fr 48px;align-items:start;gap:0 8px;padding:8px 14px;border-bottom:0.5px solid #F1F5F9;font-size:12px;}
+.wk-row{display:grid;grid-template-columns:60px 120px 1.3fr 1fr 48px;align-items:center;gap:0 8px;padding:8px 14px;border-bottom:0.5px solid #F1F5F9;font-size:12px;}
 .wk-row:last-child{border-bottom:none;}
 .wk-row:nth-child(even){background:#FAFBFC;}.wk-row:last-child{border-bottom:none;}
 
@@ -2737,7 +2741,7 @@ document.addEventListener('mousedown',function(e){
 
 /* 고객사 */
 .wk-cli{font-size:12px;font-weight:600;color:#0F172A;white-space:normal;word-break:break-word;}
-.wk-proj{font-size:11px;color:#1E293B;white-space:normal;word-break:break-word;}
+.wk-proj{font-size:11px;color:#1E293B;white-space:normal;word-break:break-word;text-align:center;}
 /* 내용 */
 .wk-cont{font-size:11px;color:#1E293B;white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;display:block;min-width:0;}
 /* 날짜 */
@@ -4942,11 +4946,29 @@ document.addEventListener('DOMContentLoaded',()=>{
     renderIssues();
     renderDashIssues();
     // 리다이렉트 복귀 중이면 openAuth 스킵 (세션 복원 후 앱 진입)
-    if(localStorage.getItem('_spPending')==='1' ||
-       localStorage.getItem('_savedSession') ||
-       location.search.indexOf('code=')>-1 ||
-       location.hash.indexOf('code=')>-1 ||
-       location.search.indexOf('state=')>-1){
+    var _isRedirect = location.search.indexOf('code=')>-1 ||
+                      location.hash.indexOf('code=')>-1 ||
+                      location.search.indexOf('state=')>-1;
+    // _spPending이 오래된 경우 강제 제거 (비정상 종료 방지)
+    var _spPendingTs = parseInt(localStorage.getItem('_spPendingTs')||'0');
+    if(_spPendingTs && Date.now()-_spPendingTs > 30000){
+      // 30초 이상 지난 _spPending은 비정상으로 간주 → 제거
+      localStorage.removeItem('_spPending');
+      localStorage.removeItem('_spPendingTs');
+      localStorage.removeItem('_savedSession');
+    }
+    if(_isRedirect ||
+       localStorage.getItem('_spPending')==='1' ||
+       localStorage.getItem('_savedSession')){
+      // 5초 내 처리 안 되면 강제 openAuth
+      setTimeout(function(){
+        if(!session||!session.role){
+          localStorage.removeItem('_spPending');
+          localStorage.removeItem('_spPendingTs');
+          localStorage.removeItem('_savedSession');
+          openAuth();
+        }
+      }, 5000);
     } else {
       localStorage.removeItem('_tisSavedSession');
       openAuth();
@@ -16420,6 +16442,7 @@ async function _startSP(){
   }else{
     if(session && session.role) localStorage.setItem('_savedSession',JSON.stringify(session));
     localStorage.setItem('_spPending','1');
+    localStorage.setItem('_spPendingTs', Date.now().toString());
     _setBar('connecting');
     try{ await app.loginRedirect({scopes:[SP_SCOPE]}); }
     catch(e){
