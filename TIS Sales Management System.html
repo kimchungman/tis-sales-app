@@ -2507,6 +2507,8 @@ aside#main-sidebar.collapsed~.topbar{ left:56px; }
 }
 
 .content{padding-top:54px!important;margin-top:0!important;}
+
+.wk-cli{text-align:center!important;display:block!important;}
 </style>
 
 <script>
@@ -19758,7 +19760,7 @@ function _wkRenderProjects(){
     var newDot=it.isNew?'<span style="width:6px;height:6px;border-radius:50%;background:#10B981;flex-shrink:0;display:inline-block;"></span>':'<span style="width:6px;height:6px;flex-shrink:0;display:inline-block;"></span>';
     return '<div class="wk-row" style="'+_bg+'">'
       +_wkRepBadge(it.rep)
-      +'<span class="wk-cli">'+_wkEsc(it.client)+'</span>'
+      +'<span class="wk-cli" style="text-align:center;display:block;">'+_wkEsc(it.client)+'</span>'
       +'<span class="wk-proj">'+_wkEsc(it.project)+'</span>'
       +'<div class="wk-cont" style="display:block;white-space:pre-wrap;word-break:break-word;overflow:visible;line-height:1.6;grid-column:4/6;">'+(_renderRich(it.content||it.note||''))+'</div>'
       +'<span></span>'
@@ -19809,7 +19811,7 @@ function _wkRenderIssues(){
     return '<div class="wk-row" style="'+_bg+'">'
       
       +_wkRepBadge(iss.rep)
-      +'<span class="wk-cli">'+_wkEsc(iss.client)+'</span>'
+      +'<span class="wk-cli" style="text-align:center;display:block;">'+_wkEsc(iss.client)+'</span>'
       +'<span class="wk-proj">'+_wkEsc(iss.project)+'</span>'
       +'<div class="wk-cont" style="display:block;white-space:pre-wrap;word-break:break-word;overflow:visible;line-height:1.6;">'+_renderRich(iss.content||iss.note||iss.issueContent||'')+'</div>'
       +'<span class="wk-dchip" style="'+diffColor+'">'+diffStr+'</span>'
@@ -19860,7 +19862,7 @@ function _wkRenderVisitList(){
     // 계약 행과 동일한 구조 - wk-dchip 대신 날짜span
     return '<div class="wk-row-con" style="'+_bg+'">'
       +_wkRepBadge(v.rep)
-      +'<span class="wk-cli">'+_wkEsc(v.company)+'</span>'
+      +'<span class="wk-cli" style="text-align:center;display:block;">'+_wkEsc(v.company)+'</span>'
       +'<span style="font-size:10px;color:#64748B;text-align:center;padding:0 4px;">'+_wkEsc(v.contactType)+'</span>'
       +'<span class="wk-cont" style="font-size:11px;white-space:pre-wrap;word-break:break-word;overflow:visible;line-height:1.6;">'+_renderRich(v.content)+'</span>'
       +'<span style="font-size:11px;color:#64748B;text-align:center;white-space:nowrap;padding:0 4px;">'+dtStr+'</span>'
@@ -19909,7 +19911,7 @@ function _wkRenderContractList(){
     var diffColor=diff<=7?'background:#FEE2E2;color:#DC2626;':diff<=30?'background:#FEF3C7;color:#D97706;':'background:#F1F5F9;color:#1E293B;';
     return '<div class="wk-row-con" style="'+_bg+'">'
       +_wkRepBadge(con.rep)
-      +'<span class="wk-cli">'+_wkEsc(con.client)+'</span>'
+      +'<span class="wk-cli" style="text-align:center;display:block;">'+_wkEsc(con.client)+'</span>'
       +'<span style="font-size:10px;color:#64748B;text-align:center;padding:0 4px;">'+_wkEsc(con.contractType||'')+'</span>'
       +'<span class="wk-cont" style="font-size:11px;">'+_wkEsc(con.project||con.client)+'</span>'
       +'<span class="wk-dchip" style="'+diffColor+'">'+diffStr+'</span>'
@@ -21010,7 +21012,7 @@ function _wkRenderRepTable(){
     var thS='padding:5px 0;font-size:10px;font-weight:600;color:#94A3B8;background:#FAFBFF;border-bottom:1px solid #F1F5F9;text-align:center;';
     H+='<div style="display:grid;grid-template-columns:'+GTC+';position:sticky;top:0;z-index:2;">';
     ['고객사','프로젝트','품목','구분','금액','상태'].forEach(function(lbl,li){
-      H+='<div style="'+thS+(li<2?'text-align:left;padding-left:8px;':'')+'">'+lbl+'</div>';
+      H+='<div style="'+thS+'text-align:center;">'+lbl+'</div>';
     });
     H+='</div>';
     // 테이블 행
@@ -21032,8 +21034,8 @@ function _wkRenderRepTable(){
         var tc=TYPE_COLOR[type]||TYPE_COLOR['default'];
         var sc2=ST_COLOR[stat]||{bg:'#F1F3F5',c:'#495057',fw:'600'};
         H+='<div style="display:grid;grid-template-columns:'+GTC+';">';
-        H+='<div style="'+cs+'font-weight:600;color:#0F172A;text-align:left;padding-left:8px;">'+(cl.name||cl.client||'—')+'</div>';
-        H+='<div style="'+cs+'text-align:left;padding-left:8px;color:#334155;">'+(cl.project||'—')+'</div>';
+        H+='<div style="'+cs+'font-weight:600;color:#0F172A;text-align:center;">'+(cl.name||cl.client||'—')+'</div>';
+        H+='<div style="'+cs+'text-align:center;color:#334155;">'+(cl.project||'—')+'</div>';
         H+='<div style="'+cs+'"><span style="font-size:10px;font-weight:600;color:'+pc.c+';">'+prod+'</span></div>';
         H+='<div style="'+cs+'"><span style="font-size:10px;font-weight:600;color:'+tc.c+';">'+type+'</span></div>';
         H+='<div style="'+cs+'font-weight:700;color:#0F172A;">'+fmt(dispAmt)+'K</div>';
