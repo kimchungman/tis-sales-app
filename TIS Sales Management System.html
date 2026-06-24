@@ -2488,6 +2488,20 @@ aside.sidebar.collapsed~#banner-bar,
 aside#main-sidebar.collapsed~#banner-bar{
   left:56px!important;
 }
+
+/* ══ 탑바 ══ */
+.topbar{
+  position:fixed;left:220px;right:0;top:0;height:54px;
+  background:#fff;border-bottom:1px solid #E8ECF0;
+  display:flex;align-items:center;padding:0 20px;gap:6px;
+  z-index:150;transition:left 0.22s cubic-bezier(.4,0,.2,1);
+}
+aside.sidebar.collapsed~.topbar,
+aside#main-sidebar.collapsed~.topbar{ left:56px; }
+#main-topbar{ margin-left:0!important; }
+.topbar button:hover{ background:#F1F5F9!important;color:#0F172A!important; }
+#wk-notif-drop button:hover{ background:#F1F5F9!important; }
+.content{ padding-top:54px; }
 </style>
 
 <script>
@@ -3011,6 +3025,34 @@ document.addEventListener('selectionchange',function(){
 
 
 // ── 사이드바 토글 ──
+
+// 새로고침: 로그인 유지하며 SP 최신 데이터만 로드
+window._spRefreshData=async function _spRefreshData(){
+  try{
+    if(typeof showToast==='function') showToast('최신 데이터를 불러오는 중...','info');
+    // SP 연결된 경우 최신 데이터 동기화
+    if(window._isSPReady&&window._spDataLoaded){
+      await _spSyncOtherReps();
+    }
+    // 현재 페이지 재렌더 (SP 연결 여부 무관)
+    try{ renderDashboard(); }catch(e){}
+    try{ renderIssues(); }catch(e){}
+    try{ renderPipeline(); }catch(e){}
+    if(typeof _wkRenderAll==='function') try{ _wkRenderAll(); }catch(e){}
+    if(typeof showToast==='function') showToast('✅ 업데이트됐습니다.','success');
+  }catch(e){
+    console.warn('[refresh]', e);
+    if(typeof showToast==='function') showToast('데이터 갱신 중 오류가 발생했습니다.','error');
+  }
+}
+
+// 브라우저 네트워크 끊김 즉시 감지
+window.addEventListener('offline',function(){
+  if(window._spDataLoaded&&typeof _setSPStatus==='function') _setSPStatus('error');
+});
+window.addEventListener('online',function(){
+  if(!window._isSPReady&&typeof _initSP==='function') _initSP();
+});
 window.toggleSb=function(){
   var sb=document.getElementById('main-sidebar');
   if(!sb) return;
@@ -3022,7 +3064,6 @@ window.toggleSb=function(){
   var bb=document.getElementById('banner-bar');
   if(ct) ct.style.marginLeft=ml;
   if(mn) mn.style.marginLeft=ml;
-  if(tb) tb.style.marginLeft=ml;
   if(bb) bb.style.left=ml;
 }
 
@@ -3182,20 +3223,52 @@ window._updateSidebarByRole=function(){
   </div>
 </aside>
 <div class="topbar" id="main-topbar">
-  <div style="display:flex;flex-direction:column;justify-content:center;">
-    <div class="topbar-title" id="pg-title">통합 대시보드</div>
-    <div class="topbar-sub" id="pg-sub">경영계획 vs 실적 현황</div>
+  <!-- 페이지 타이틀 -->
+  <div style="display:flex;flex-direction:column;justify-content:center;flex:1;min-width:0;">
+    <div id="pg-title" style="font-size:14px;font-weight:700;color:#0F172A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.02em;line-height:1.2;"></div>
+    <div id="pg-sub" style="font-size:10.5px;color:#94A3B8;white-space:nowrap;margin-top:1px;"></div>
   </div>
-  <div class="topbar-right">
-    <span id="sp-status" style="font-size:11px;"></span>
-    <span id="save-indicator" style="font-size:12px;color:var(--muted);"></span>
-    <span id="sb-wk" style="font-size:11px;color:var(--muted);"></span>
-    <span id="sb-dt" style="font-size:11px;color:var(--muted);"></span>
-    <input type="date" id="mtg-date" style="height:30px;border:1px solid var(--border);border-radius:6px;padding:0 8px;font-size:12px;color:var(--text);background:var(--card);cursor:pointer;">
-    <button id="hist-btn" onclick="toggleHist()" style="height:30px;padding:0 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-size:12px;color:var(--text);cursor:pointer;">기록</button>
-    <button id="refresh-btn" onclick="location.reload()" style="height:30px;padding:0 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-size:12px;color:var(--text);cursor:pointer;">↻</button>
-    <button id="access-count-btn" onclick="showPage('accesslog')" style="height:30px;padding:0 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-size:12px;color:var(--text);cursor:pointer;display:none;">접속 <span id="access-count-num"></span></button>
+  <!-- SP 상태 -->
+  <div id="sp-status" style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;white-space:nowrap;flex-shrink:0;background:#DCFCE7;color:#15803D;"></div>
+  <span id="sp-status-badge" style="display:none;"></span>
+  <!-- 자동저장 -->
+  <span id="save-indicator" style="font-size:11px;color:#94A3B8;white-space:nowrap;flex-shrink:0;"></span>
+  <!-- 구분선 -->
+  <div style="width:1px;height:16px;background:#E2E8F0;flex-shrink:0;margin:0 4px;"></div>
+  <!-- 날짜 -->
+  <input type="date" id="mtg-date" style="height:30px;border:1px solid #E2E8F0;border-radius:6px;padding:0 8px;font-size:12px;color:#374151;background:#FAFBFC;cursor:pointer;outline:none;font-family:inherit;flex-shrink:0;transition:border-color .15s;">
+  <!-- 구분선 -->
+  <div style="width:1px;height:16px;background:#E2E8F0;flex-shrink:0;margin:0 4px;"></div>
+  <!-- 인쇄 -->
+  <button id="print-btn" onclick="window.print()" title="인쇄" style="width:30px;height:30px;border-radius:6px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#64748B;flex-shrink:0;transition:background .12s,color .12s;position:relative;overflow:visible;">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+  </button>
+  <!-- 접속현황 (관리자만) -->
+  <button id="access-count-btn" onclick="showPage('accesslog')" title="접속현황" style="width:30px;height:30px;border-radius:6px;border:none;background:transparent;display:none;align-items:center;justify-content:center;cursor:pointer;color:#64748B;flex-shrink:0;transition:background .12s,color .12s;position:relative;overflow:visible;">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <span id="access-count-num" style="position:absolute;top:-4px;right:-4px;width:8px;height:8px;border-radius:50%;background:#2563EB;border:2px solid #fff;display:none;"></span>
+  </button>
+  <!-- 알림 -->
+  <div style="position:relative;flex-shrink:0;">
+    <button id="wk-notif-btn-global" onclick="_wkToggleNotif(event)" title="알림" style="width:30px;height:30px;border-radius:6px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#64748B;flex-shrink:0;transition:background .12s,color .12s;position:relative;overflow:visible;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span id="wk-notif-badge-global" style="position:absolute;top:-4px;right:-4px;width:8px;height:8px;border-radius:50%;background:#EF4444;border:2px solid #fff;display:none;"></span>
+    </button>
+    <div id="wk-notif-drop" style="display:none;position:absolute;top:calc(100% + 8px);right:-4px;width:320px;background:#fff;border:1px solid #E2E8F0;border-radius:12px;box-shadow:0 8px 30px rgba(15,23,42,.1);overflow:hidden;z-index:999;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px 11px;border-bottom:1px solid #F1F5F9;">
+        <span style="font-size:13px;font-weight:700;color:#0F172A;">알림</span>
+        <div style="display:flex;gap:2px;">
+          <button class="wk-nd-clear" onclick="_wkMarkAllRead()" style="font-size:11px;color:#94A3B8;background:none;border:none;cursor:pointer;padding:3px 6px;border-radius:4px;">모두 읽음</button>
+          <button class="wk-nd-clear" onclick="_wkDeleteAllNotif()" style="font-size:11px;color:#94A3B8;background:none;border:none;cursor:pointer;padding:3px 6px;border-radius:4px;">전체 삭제</button>
+        </div>
+      </div>
+      <div id="wk-notif-list" style="max-height:360px;overflow-y:auto;"></div>
+    </div>
   </div>
+  <!-- 새로고침 (맨 마지막) -->
+  <button id="refresh-btn" onclick="_spRefreshData()" title="새로고침" style="width:30px;height:30px;border-radius:6px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#64748B;flex-shrink:0;transition:background .12s,color .12s;">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23,4 23,10 17,10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+  </button>
 </div>
 <div id="banner-bar" style="display:none;position:fixed;top:54px;left:220px;right:0;z-index:150;align-items:center;gap:8px;padding:8px 16px;background:#FEF3C7;border-bottom:1px solid #F59E0B;font-size:13px;color:#92400E;"></div>
 
@@ -10112,27 +10185,21 @@ function _setSPStatus(state) {
     error:      '#DA1E28',
     offline:    '#DA1E28'
   }[state] || '#DA1E28';
-  // SP 연결 끊김 시 로그인창 표시
+  // SP 연결 끊김 시 즉시 로그인창
   if((state==='error'||state==='offline') && session && session.role && window._spDataLoaded){
     if(window._spDisconnectTimer) clearTimeout(window._spDisconnectTimer);
-    window._spDisconnectTimer = setTimeout(function(){
-      if(!window._isSPReady){
-        // auth-modal 표시
-        var _authEl = document.getElementById('auth-modal');
-        if(_authEl){
-          _authEl.style.display='flex';
-          // 재연결 메시지 표시
-          var _authMsg = _authEl.querySelector('.auth-subtitle')||_authEl.querySelector('p');
-          if(_authMsg) _authMsg.textContent='SP 연결이 끊겼습니다. 다시 로그인해주세요.';
-        } else if(typeof openAuth==='function'){
-          openAuth();
-        }
-        window._spDataLoaded = false;
-      }
-    }, 5000);
+    window._isSPReady = false;
+    window._spDataLoaded = false;
+    var _authEl = document.getElementById('auth-modal');
+    if(_authEl){
+      _authEl.style.display='flex';
+      var _authMsg = _authEl.querySelector('.auth-subtitle')||_authEl.querySelector('p');
+      if(_authMsg) _authMsg.textContent='SP 연결이 끊겼습니다. 다시 로그인해주세요.';
+    } else if(typeof openAuth==='function'){
+      openAuth();
+    }
   } else if(state==='connected'){
     if(window._spDisconnectTimer){ clearTimeout(window._spDisconnectTimer); window._spDisconnectTimer=null; }
-    // 재연결 시 auth-modal 닫기
     var _authEl2 = document.getElementById('auth-modal');
     if(_authEl2 && _authEl2.style.display==='flex'){
       if(session && session.role) _authEl2.style.display='none';
@@ -10329,6 +10396,8 @@ async function _initSP() {
         }
         // 3. 알림 로드
         if(session&&session.rep&&typeof window._wkLoadNotif==='function'){
+          // 삭제된 알림 ID 먼저 로드
+          if(typeof _wkLoadDeletedNotifIds==='function') await _wkLoadDeletedNotifIds();
           var _notifs=await window._wkLoadNotif(session.rep);
           if(window._wk) window._wk.notifications=_notifs;
           if(typeof _wkLoadContractMeta==='function') _wkLoadContractMeta().then(function(){
@@ -10609,6 +10678,7 @@ async function _spSaveItem(dtype, dkey, payload, _retry) {
       }
     } else if(err.message && err.message.indexOf('401')>=0) {
       console.warn('[SP] 401 인증만료');
+      if(typeof _setSPStatus==='function') _setSPStatus('error');
     } else {
       if(dtype !== 'accessLog' && dtype !== 'snapshot'){
         showToast('저장 실패 (' + err.message + ')', 'warn');
@@ -18671,14 +18741,28 @@ function _wkGetNotifWeekKey(){
   return 'wk_notif_del_'+d.getFullYear()+'_'+(d.getMonth()+1)+'_'+d.getDate();
 }
 function _wkGetDeletedNotifIds(){
-  try{ return JSON.parse(localStorage.getItem(_wkGetNotifWeekKey())||'{}'); }catch(e){ return {}; }
+  return (_wk&&_wk._deletedNotifIds)||{};
+}
+async function _wkSaveDeletedNotifIds(){
+  if(!window._isSPReady||!session||!session.rep) return;
+  try{
+    var key=_sanitizeDKey('notifDeleted_'+session.rep);
+    await _spSaveItem('weeklyNotif',key,{ids:(_wk&&_wk._deletedNotifIds)||{},savedAt:new Date().toISOString()});
+  }catch(e){}
+}
+async function _wkLoadDeletedNotifIds(){
+  if(!window._isSPReady||!session||!session.rep) return;
+  try{
+    var key=_sanitizeDKey('notifDeleted_'+session.rep);
+    var d=await _spLoadItem('weeklyNotif',key);
+    if(d&&d.ids&&_wk) _wk._deletedNotifIds=d.ids;
+  }catch(e){}
 }
 function _wkAddDeletedNotifId(id){
-  try{
-    var d=_wkGetDeletedNotifIds();
-    d[id]=Date.now();
-    localStorage.setItem(_wkGetNotifWeekKey(),JSON.stringify(d));
-  }catch(e){}
+  if(!_wk) return;
+  if(!_wk._deletedNotifIds) _wk._deletedNotifIds={};
+  _wk._deletedNotifIds[id]=Date.now();
+  _wkSaveDeletedNotifIds().catch(function(){});
 }
 function _wkClearDeletedNotifId(id){
   try{
@@ -19654,9 +19738,9 @@ function _wkRenderVisitList(){
   // 계약현황과 완전히 동일한 헤더 구조
   var _vhdr='<div class="wk-row-con" style="position:sticky;top:0;z-index:2;background:var(--bg);border-bottom:2px solid var(--border);font-size:10px;font-weight:600;color:var(--muted);">'
     +'<span style="text-align:center;">담당자</span>'
-    +'<span>고객사</span>'
+    +'<span style="text-align:center;">고객사</span>'
     +'<span style="text-align:center;">접점유형</span>'
-    +'<span>접점 내용</span>'
+    +'<span style="text-align:center;">접점 내용</span>'
     +'<span style="text-align:center;">접점 일자</span>'
     +'</div>';
   var _vrows=visits.map(function(v,_i){
@@ -19702,9 +19786,9 @@ function _wkRenderContractList(){
   }
   var _chdr='<div class="wk-row-con" style="position:sticky;top:0;z-index:2;background:var(--bg);border-bottom:2px solid var(--border);font-size:10px;font-weight:600;color:var(--muted);">'
     +'<span style="text-align:center;">담당자</span>'
-    +'<span>고객사</span>'
+    +'<span style="text-align:center;">고객사</span>'
     +'<span style="text-align:center;">계약유형</span>'
-    +'<span>계약명</span>'
+    +'<span style="text-align:center;">계약명</span>'
     +'<span style="text-align:center;">D-Day</span>'
     +'</div>';
   var _crows=contracts.map(function(con,_i){
@@ -20769,14 +20853,14 @@ function _wkRenderRepTable(){
     // wk 체크 + 이번달 매출 있는 건만
     var _wkCls=(rd.clients||[]).filter(function(cl){
       if(cl.wk!==true) return false;
-      var v=Array.isArray(cl.actual)?(parseFloat(cl.actual[moIdx])||0):(parseFloat(cl.actual)||0);
+      var v=Array.isArray(cl.actual)?(parseFloat(cl.actual[moIdx])||0):0;
       return v>0;
     });
 
     var act=_wkCls.filter(function(cl){return (cl.status||'달성')==='달성';})
-      .reduce(function(s,cl){return s+(Array.isArray(cl.actual)?parseFloat(cl.actual[moIdx])||0:parseFloat(cl.actual)||0);},0);
+      .reduce(function(s,cl){return s+(Array.isArray(cl.actual)?parseFloat(cl.actual[moIdx])||0:0);},0);
     var forecast=_wkCls.filter(function(cl){return cl.status==='예상';})
-      .reduce(function(s,cl){return s+(Array.isArray(cl.actual)?parseFloat(cl.actual[moIdx])||0:parseFloat(cl.actual)||0);},0);
+      .reduce(function(s,cl){return s+(Array.isArray(cl.actual)?parseFloat(cl.actual[moIdx])||0:0);},0);
     var rate=plan>0?Math.round(act/plan*100):0;
     var rc=rate>=80?'#1B5E20':rate>=60?'#E65100':'#B71C1C';
     var avc=AVCOLS[ri%AVCOLS.length];
@@ -20825,7 +20909,7 @@ function _wkRenderRepTable(){
       var _sc=_wkCls.length>10?'max-height:340px;overflow-y:auto;':'';
       H+='<div style="'+_sc+'">';
       _wkCls.forEach(function(cl,ci){
-        var clAct=Array.isArray(cl.actual)?(parseFloat(cl.actual[moIdx])||0):(parseFloat(cl.actual)||0);
+        var clAct=Array.isArray(cl.actual)?(parseFloat(cl.actual[moIdx])||0):0;
         var isExp=cl.status==='예상';
         var dispAmt=clAct;
         var rowBg=ci%2===1?'background:#FAFBFF;':'';
@@ -21409,19 +21493,24 @@ function _wkRenderNotifDrop(){
   if(!list) return;
   var items=(_wk&&_wk.notifications||[]).slice(0,20);
   if(!items.length){
-    list.innerHTML='<div style="padding:20px;text-align:center;font-size:12px;color:var(--sub);">새로운 알림이 없습니다</div>';
+    list.innerHTML='<div style="padding:32px 16px;text-align:center;font-size:12px;color:#94A3B8;">새로운 알림이 없습니다</div>';
     return;
   }
+  var iconMap={contract:'📋',issue:'⚠️',mention:'💬',carryover:'📌',reply:'↩️'};
   list.innerHTML=items.map(function(n,ni){
-    var icon=n.type==='contract'?'📋':'🔔';
     var nid=String(n.id||ni);
-    return '<div class="wk-nd-item'+(n.read?'':' unread')+(n.urgent?' urgent':'')+'" data-nid="'+nid+'" onclick="_wkClickNotifByEl(this)">'
-      +'<div class="wk-nd-icon">'+icon+'</div>'
-      +'<div class="wk-nd-content">'
-      +'<div class="wk-nd-msg">'+(n.msg||'')+'</div>'
-      +'<div class="wk-nd-time">'+(n.time||'')+'</div>'
+    var icon=iconMap[n.type]||'🔔';
+    var borderColor=n.urgent?'#EF4444':'#2563EB';
+    var unreadBar=!n.read?'<div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:'+borderColor+';border-radius:0 2px 2px 0;"></div>':'';
+    var bg=!n.read?'background:#F8FAFF;':'';
+    return '<div data-nid="'+nid+'" onclick="_wkClickNotifByEl(this)" style="display:flex;align-items:flex-start;gap:10px;padding:11px 14px;border-bottom:1px solid #F8FAFC;cursor:pointer;position:relative;'+bg+'transition:background .1s;">'
+      +unreadBar
+      +'<div style="width:30px;height:30px;border-radius:8px;background:'+(n.type==='contract'?'#EFF6FF':'#FFF7ED')+';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;">'+icon+'</div>'
+      +'<div style="flex:1;min-width:0;">'
+      +'<div style="font-size:12px;color:#1E293B;line-height:1.45;word-break:keep-all;">'+(n.msg||'')+'</div>'
+      +'<div style="font-size:10px;color:#94A3B8;margin-top:3px;">'+(n.time||'')+'</div>'
       +'</div>'
-      +'<button class="wk-nd-del" data-nid="'+nid+'" onclick="event.stopPropagation();_wkDismissByEl(this)">×</button>'
+      +'<button data-nid="'+nid+'" onclick="event.stopPropagation();_wkDismissByEl(this)" style="width:20px;height:20px;border-radius:4px;border:none;background:none;color:#CBD5E1;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;margin-top:1px;transition:all .1s;">×</button>'
       +'</div>';
   }).join('');
 }
@@ -21522,9 +21611,9 @@ window._wkDeleteAllNotif=async function(){
   }
 };
 function _wkUpdateNotifBadge(){
-  var cnt=((_wk&&_wk.notifications)||[]).filter(function(n){return !n.read;}).length;
+  var cnt=(_wk&&_wk.notifications||[]).filter(function(n){return !n.read;}).length;
   var badge=document.getElementById('wk-notif-badge-global');
-  if(badge){ badge.textContent=cnt; badge.style.display=cnt>0?'':'none'; }
+  if(badge) badge.style.display=cnt>0?'block':'none';
 }
 
 window._wkClosePeriod=function(){
