@@ -18874,35 +18874,43 @@ function _wkGenId(){
 }
 
 async function _wkCreateNotifs(entry){
-  // 1. 언급된 담당자 알림
+  var myRep=session&&session.rep||'';
+  // 1. 멘션 알림
   var text=entry.text||'';
   var mentioned=[];
   var allReps=(typeof REPS!=='undefined'?REPS:[]);
   var guests=(typeof authCfg!=='undefined'&&authCfg.guestAllowList)?authCfg.guestAllowList.map(function(g){return g.name||g;}):[];
   var allNames=allReps.concat(guests);
   allNames.forEach(function(name){
-    if(!name) return; // 자신 멘션도 허용 (팀원들에게 알림)
-    // @이름 감지 (mention span 포함)
+    if(!name) return;
     var _plainText=text.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ');
-    var _spanText=text; // mention span에서도 감지
+    var _spanText=text;
     if(_plainText.indexOf('@'+name)>=0||_spanText.indexOf('>@'+name+'<')>=0){
       if(mentioned.indexOf(name)<0) mentioned.push(name);
     }
   });
   for(var i=0;i<mentioned.length;i++){
     var target=mentioned[i];
-    var items=await _wkLoadNotif(target);
-    items.unshift({
+    var notif={
       id:_wkGenId(), type:'mention', read:false,
       title:'회의록에서 언급되었습니다',
-      msg:'<b>'+entry.displayName+'</b>님이 회의록에서 회원님을 언급했습니다',
+      msg:'<b>'+_wkEsc(entry.displayName||entry.rep||'')+'</b>님이 회의록에서 회원님을 언급했습니다',
       targetPage:'weekly', weekKey:_wkThisKey(),
       entryId:entry.id, time:_wkNowStr()
-    });
+    };
+    // 본인이면 메모리 즉시 업데이트
+    if(target===myRep&&_wk){
+      _wk.notifications=(_wk.notifications||[]);
+      _wk.notifications.unshift(notif);
+      _wkUpdateNotifBadge();
+    }
+    // SP 저장
+    var items=await _wkLoadNotif(target);
+    items.unshift(notif);
     items=items.slice(0,50);
     await _wkSaveNotif(target, items);
   }
-  // 2. 답변 알림 (reply 등록 시 원글 작성자에게)
+  // 2. 답변 알림 - _wkCreateReplyNotif에서 처리
 }
 
 
@@ -19045,20 +19053,27 @@ window._wkCheckCarryOver=async function(){
 
 async function _wkCreateReplyNotif(entry, replyRep){
   if(!entry||!entry.rep) return;
-  // 원글 작성자와 답변자가 같으면 알림 불필요 (단, 테스트 시 주석 처리 가능)
-  // 동일 형식 비교 보장
   var _entryRep=entry.rep||'';
   var _replyRep=replyRep||'';
-  if(!_entryRep||_entryRep===_replyRep) return;
+  if(!_entryRep||_entryRep===_replyRep) return; // 자신 답변 제외
   var target=entry.rep;
-  var items=await _wkLoadNotif(target);
-  items.unshift({
+  var myRep=session&&session.rep||'';
+  var notif={
     id:_wkGenId(), type:'reply', read:false,
     title:'회의록에 답변이 등록되었습니다',
-    msg:'<b>'+_wkDisplayName(replyRep)+'</b>님이 회원님의 회의록에 답변을 달았습니다',
+    msg:'<b>'+_wkEsc(_wkDisplayName(replyRep))+'</b>님이 회원님의 회의록에 답변을 달았습니다',
     targetPage:'weekly', weekKey:_wkThisKey(),
     entryId:entry.id, time:_wkNowStr()
-  });
+  };
+  // 원글 작성자가 본인이면 메모리 즉시 업데이트
+  if(target===myRep&&_wk){
+    _wk.notifications=(_wk.notifications||[]);
+    _wk.notifications.unshift(notif);
+    _wkUpdateNotifBadge();
+  }
+  // SP 저장
+  var items=await _wkLoadNotif(target);
+  items.unshift(notif);
   items=items.slice(0,50);
   await _wkSaveNotif(target, items);
 }
