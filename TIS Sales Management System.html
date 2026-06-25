@@ -2054,8 +2054,8 @@ td.at-cell-timing input[type="text"]::placeholder {
 .lr>.td-l{text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
 /* ── grid 정의 ── */
-/* 고객사: dot|#|고객사명|프로젝트명|제품|유형|달성|예상|상태 */
-.g-ct{grid-template-columns:14px 36px 160px 280px 68px 52px 80px 80px 60px 1fr;}
+/* 고객사: dot|#|고객사명|프로젝트명|제품|유형|달성|예상|이슈사항 */
+.g-ct{grid-template-columns:14px 36px 160px 280px 68px 52px 80px 80px 1fr;}
 /* 영업: dot|#|고객사|구분|프로젝트명|제품|진행|금액|활동내용 */
 .g-at{grid-template-columns:14px 36px 140px 70px 310px 68px 68px 80px 1fr;}
 /* 이슈: dot|#|고객사|프로젝트명|이슈내용|중요도|상태|기한 */
@@ -6337,7 +6337,7 @@ function buildRepInputs(){
             <span></span><span>#</span>
             <span>고객사명</span><span>프로젝트명</span>
             <span>제품</span><span>유형</span>
-            <span>달성(천원)</span><span>예상(천원)</span><span>상태</span><span>이슈사항</span>
+            <span>달성(천원)</span><span>예상(천원)</span><span>이슈사항</span>
           </div>
           <div id="ct-ip-${rep}" style="min-width:1000px;">
             ${(store.reps[rep].clients||[]).map((cl,ci)=>cRow(rep,ci,cl)).join('')}
