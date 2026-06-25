@@ -9193,7 +9193,7 @@ function _ipOpenClient(rep,ci,readOnly){
     +'<button class="ip-tb" onmousedown="event.preventDefault()" onclick="window._ipFmt(\'strikeThrough\')"><s>S</s></button>'
     +'</div>'
     +'<div class="ip-rich-ed" id="ip-ct-issue" contenteditable="true" data-ph="특이사항을 입력하세요"></div></div>'
-    +'<label class="ip-wk-chk"><input type="checkbox" id="ip-ct-wk"'+(d.wk===true?' checked':'')+'><span>주간회의 포함</span></label>'
+    +'<label class="ip-wk-chk"><input type="checkbox" id="ip-ct-wk"'+((isEdit?d.wk===true:true)?' checked':'')+'><span>주간회의 포함</span></label>'
     +'</div>'
     +'<div class="ip-foot">'
     +'<button class="btn-ip-cancel" onclick="window._ipClose(\'ip-client-pop\')">취소</button>'
@@ -21169,65 +21169,42 @@ function _wkRenderRepTable(){
   if(_repMonthEl) _repMonthEl.textContent=curY+'년 '+monthLabel;
   function fmt(v){ v=parseFloat(v)||0; return v>=1000?Math.round(v).toLocaleString():v>0?v.toLocaleString():'-'; }
 
-  // 품목별 색상 (대기업 스타일 - IBM Color)
-  var PROD_COLOR={
-    '그룹웨어':{bg:'#EFF3FF',c:'#3B5BDB'},
-    '웹메일':{bg:'#E3FAFC',c:'#0B7285'},
-    '전자결재':{bg:'#F3F0FF',c:'#5F3DC4'},
-    '통합보안':{bg:'#FFF9DB',c:'#E67700'},
-    '클라우드':{bg:'#E8F5E9',c:'#2E7D32'},
-    '상품판매':{bg:'#FFF0F6',c:'#A61E4D'},
-    'default':{bg:'#F1F3F5',c:'#495057'}
-  };
-  // 구분별 색상
-  var TYPE_COLOR={
-    'MA':{bg:'#E8F5E9',c:'#1B5E20'},
-    '개발':{bg:'#E3F2FD',c:'#0D47A1'},
-    '라이선스':{bg:'#FFF8E1',c:'#E65100'},
-    '상품':{bg:'#FCE4EC',c:'#880E4F'},
-    '컨설팅':{bg:'#F3E5F5',c:'#4A148C'},
-    'default':{bg:'#F1F3F5',c:'#495057'}
-  };
-  // 상태별 색상
-  var ST_COLOR={
-    '달성':{bg:'#E8F5E9',c:'#1B5E20',fw:'700'},
-    '예상':{bg:'#FFF3E0',c:'#E65100',fw:'700'},
-    '진행':{bg:'#E3F2FD',c:'#0D47A1',fw:'600'},
-    '대기':{bg:'#F5F5F5',c:'#616161',fw:'600'},
-    '계약':{bg:'#EDE7F6',c:'#4527A0',fw:'700'},
-    '종료':{bg:'#FFEBEE',c:'#B71C1C',fw:'600'}
-  };
-
-  var AVCOLS=[
-    {bg:'#E6F1FB',fg:'#185FA5'},{bg:'#E1F5EE',fg:'#0F6E56'},
-    {bg:'#EEEDFE',fg:'#3C3489'},{bg:'#FAECE7',fg:'#993C1D'},
-    {bg:'#FEF3E2',fg:'#854F0B'},{bg:'#F3EEF8',fg:'#6B3A8C'}
-  ];
+  var PROD_COLOR={'그룹웨어':{bg:'#EFF3FF',c:'#3B5BDB'},'웹메일':{bg:'#E3FAFC',c:'#0B7285'},'전자결재':{bg:'#F3F0FF',c:'#5F3DC4'},'통합보안':{bg:'#FFF9DB',c:'#E67700'},'클라우드':{bg:'#E8F5E9',c:'#2E7D32'},'상품판매':{bg:'#FFF0F6',c:'#A61E4D'},'default':{bg:'#F1F3F5',c:'#495057'}};
+  var TYPE_COLOR={'MA':{bg:'#E8F5E9',c:'#1B5E20'},'개발':{bg:'#E3F2FD',c:'#0D47A1'},'라이선스':{bg:'#FFF8E1',c:'#E65100'},'상품':{bg:'#FCE4EC',c:'#880E4F'},'컨설팅':{bg:'#F3E5F5',c:'#4A148C'},'default':{bg:'#F1F3F5',c:'#495057'}};
+  var ST_COLOR={'달성':{bg:'#E8F5E9',c:'#1B5E20',fw:'700'},'예상':{bg:'#FFF3E0',c:'#E65100',fw:'700'},'진행':{bg:'#E3F2FD',c:'#0D47A1',fw:'600'},'대기':{bg:'#F5F5F5',c:'#616161',fw:'600'}};
+  var AVCOLS=[{bg:'#E6F1FB',fg:'#185FA5'},{bg:'#E1F5EE',fg:'#0F6E56'},{bg:'#EEEDFE',fg:'#3C3489'},{bg:'#FAECE7',fg:'#993C1D'},{bg:'#FEF3E2',fg:'#854F0B'},{bg:'#F3EEF8',fg:'#6B3A8C'}];
   var GTC='108px minmax(90px,1.2fr) 68px 48px 72px 52px';
   var H='';
 
   reps.forEach(function(rep,ri){
     var rd=store&&store.reps&&store.reps[rep];
     if(!rd){
-      // store에 없으면 빈 구조로 초기화 후 표시
-      if(store&&store.reps) store.reps[rep]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[],contracts:[]};
+      if(store&&store.reps) store.reps[rep]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[],contracts:[]};
       rd=store&&store.reps&&store.reps[rep];
       if(!rd) return;
     }
-
     var plan=parseFloat((rd.plan&&rd.plan[moIdx])||0);
 
-    // wk 체크 + 이번달 매출 있는 건만
+    // wk=true + 이번달 달성 또는 예상 금액 있는 고객사
     var _wkCls=(rd.clients||[]).filter(function(cl){
       if(cl.wk!==true) return false;
-      var v=Array.isArray(cl.actual)?(parseFloat(cl.actual[moIdx])||0):0;
-      return v>0;
+      var a=Array.isArray(cl.actual)?(parseFloat(cl.actual[moIdx])||0):0;
+      var f=cl._migrated?(Array.isArray(cl.forecast)?(parseFloat(cl.forecast[moIdx])||0):0)
+                        :((cl.status==='예상')?(parseFloat((cl.actual||[])[moIdx])||0):0);
+      return a>0||f>0;
     });
 
-    var act=_wkCls.filter(function(cl){return (cl.status||'달성')==='달성';})
-      .reduce(function(s,cl){return s+(Array.isArray(cl.actual)?parseFloat(cl.actual[moIdx])||0:0);},0);
-    var forecast=_wkCls.filter(function(cl){return cl.status==='예상';})
-      .reduce(function(s,cl){return s+(Array.isArray(cl.actual)?parseFloat(cl.actual[moIdx])||0:0);},0);
+    // 달성 합계 (신/구 모두)
+    var act=_wkCls.reduce(function(s,cl){
+      if(cl._migrated) return s+(Array.isArray(cl.actual)?(parseFloat(cl.actual[moIdx])||0):0);
+      return (cl.status||'달성')==='달성'?s+(Array.isArray(cl.actual)?(parseFloat(cl.actual[moIdx])||0):0):s;
+    },0);
+    // 예상 합계 (신/구 모두)
+    var forecast=_wkCls.reduce(function(s,cl){
+      if(cl._migrated) return s+(Array.isArray(cl.forecast)?(parseFloat(cl.forecast[moIdx])||0):0);
+      return cl.status==='예상'?s+(Array.isArray(cl.actual)?(parseFloat(cl.actual[moIdx])||0):0):s;
+    },0);
+
     var rate=plan>0?Math.round(act/plan*100):0;
     var rc=rate>=80?'#1B5E20':rate>=60?'#E65100':'#B71C1C';
     var avc=AVCOLS[ri%AVCOLS.length];
@@ -21236,7 +21213,6 @@ function _wkRenderRepTable(){
 
     // 카드
     H+='<div style="min-width:0;background:#fff;border-radius:12px;border:1px solid #E2E8F0;overflow:hidden;box-shadow:0 1px 4px rgba(15,23,42,.06);">';
-    // 헤더
     H+='<div style="padding:14px 16px 10px;border-bottom:1px solid #F1F5F9;">';
     H+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">';
     H+='<div style="display:flex;align-items:center;gap:9px;">';
@@ -21262,11 +21238,11 @@ function _wkRenderRepTable(){
       H+='<div style="font-size:10px;color:#CBD5E1;margin-top:1px;">'+k.s+'</div></div>';
     });
     H+='</div>';
-    // 테이블 헤더 sticky
+    // 테이블 헤더
     var thS='padding:5px 0;font-size:10px;font-weight:600;color:#94A3B8;background:#FAFBFF;border-bottom:1px solid #F1F5F9;text-align:center;';
     H+='<div style="display:grid;align-items:center;grid-template-columns:'+GTC+';position:sticky;top:0;z-index:2;">';
-    ['고객사','프로젝트','품목','구분','금액','상태'].forEach(function(lbl,li){
-      H+='<div style="'+thS+'text-align:center;">'+lbl+'</div>';
+    ['고객사','프로젝트','품목','구분','금액','상태'].forEach(function(lbl){
+      H+='<div style="'+thS+'">'+lbl+'</div>';
     });
     H+='</div>';
     // 테이블 행
@@ -21275,26 +21251,31 @@ function _wkRenderRepTable(){
     } else {
       var _sc=_wkCls.length>10?'max-height:340px;overflow-y:auto;':'';
       H+='<div style="'+_sc+'">';
-      _wkCls.forEach(function(cl,ci){
-        var clAct=Array.isArray(cl.actual)?(parseFloat(cl.actual[moIdx])||0):0;
-        var isExp=cl.status==='예상';
-        var dispAmt=clAct;
-        var rowBg=ci%2===1?'background:#FAFBFF;':'';
-        var cs='padding:7px 0;font-size:11px;text-align:center;align-self:center;'+rowBg+'border-bottom:1px solid #F8FAFC;';
-        var prod=cl.product||'—';
-        var type=cl.type||'—';
-        var stat=cl.status||'달성';
+      var rowIdx=0;
+      _wkCls.forEach(function(cl){
+        var clAct=cl._migrated?(Array.isArray(cl.actual)?(parseFloat(cl.actual[moIdx])||0):0)
+                              :(Array.isArray(cl.actual)?(parseFloat(cl.actual[moIdx])||0):0);
+        var clFore=cl._migrated?(Array.isArray(cl.forecast)?(parseFloat(cl.forecast[moIdx])||0):0)
+                               :((cl.status==='예상')?(parseFloat((cl.actual||[])[moIdx])||0):0);
+        var prod=cl.product||'—'; var type=cl.type||'—';
         var pc=PROD_COLOR[prod]||PROD_COLOR['default'];
         var tc=TYPE_COLOR[type]||TYPE_COLOR['default'];
-        var sc2=ST_COLOR[stat]||{bg:'#F1F3F5',c:'#495057',fw:'600'};
-        H+='<div style="display:grid;align-items:center;grid-template-columns:'+GTC+';">';
-        H+='<div style="'+cs+'font-weight:600;color:#0F172A;text-align:center;">'+(cl.name||cl.client||'—')+'</div>';
-        H+='<div style="'+cs+'text-align:center;color:#334155;">'+(cl.project||'—')+'</div>';
-        H+='<div style="'+cs+'"><span style="font-size:10px;font-weight:600;color:'+pc.c+';">'+prod+'</span></div>';
-        H+='<div style="'+cs+'"><span style="font-size:10px;font-weight:600;color:'+tc.c+';">'+type+'</span></div>';
-        H+='<div style="'+cs+'font-weight:700;color:#0F172A;">'+fmt(dispAmt)+'K</div>';
-        H+='<div style="'+cs+'"><span style="font-size:10px;font-weight:'+sc2.fw+';color:'+sc2.c+';">'+stat+'</span></div>';
-        H+='</div>';
+        function makeRow(amt, isF){
+          var sc=ST_COLOR[isF?'예상':'달성'];
+          var rowBg=rowIdx%2===1?'background:#FAFBFF;':'';
+          rowIdx++;
+          var cs='padding:7px 0;font-size:11px;text-align:center;align-self:center;'+rowBg+'border-bottom:1px solid #F8FAFC;';
+          H+='<div style="display:grid;align-items:center;grid-template-columns:'+GTC+';">';
+          H+='<div style="'+cs+'font-weight:600;color:#0F172A;text-align:center;">'+(cl.name||cl.client||'—')+'</div>';
+          H+='<div style="'+cs+'text-align:center;color:#334155;">'+(cl.project||'—')+'</div>';
+          H+='<div style="'+cs+'"><span style="font-size:10px;font-weight:600;color:'+pc.c+';">'+prod+'</span></div>';
+          H+='<div style="'+cs+'"><span style="font-size:10px;font-weight:600;color:'+tc.c+';">'+type+'</span></div>';
+          H+='<div style="'+cs+'font-weight:700;color:'+(isF?'#F59E0B':'#0F172A')+';">'+fmt(amt)+'K</div>';
+          H+='<div style="'+cs+'"><span style="font-size:10px;font-weight:'+sc.fw+';color:'+sc.c+';">'+(isF?'예상':'달성')+'</span></div>';
+          H+='</div>';
+        }
+        if(clAct>0) makeRow(clAct, false);
+        if(clFore>0) makeRow(clFore, true);
       });
       H+='</div>';
     }
