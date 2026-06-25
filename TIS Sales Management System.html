@@ -2813,7 +2813,7 @@ document.addEventListener('mousedown',function(e){
 .wk-cnt{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;font-size:10px;font-weight:700;margin-left:6px;background:#FCEBEB;color:#A32D2D;}
 
 /* 필터 드롭다운 패널 */
-.wk-dd-panel{position:fixed;background:#fff;border:1px solid #E8EDF5;border-radius:10px;box-shadow:0 8px 24px rgba(15,23,42,.12);z-index:500;overflow:hidden;min-width:160px;}
+.wk-dd-panel{position:fixed;background:#fff;border:1px solid #E8EDF5;border-radius:10px;box-shadow:0 8px 24px rgba(15,23,42,.12);z-index:9999;overflow:hidden;min-width:160px;}
 .wk-dd-item{padding:8px 14px;font-size:12px;color:#334155;cursor:pointer;transition:background .1s;}
 .wk-dd-item:hover{background:#F8FAFC;}
 .wk-dd-item.on{color:#4f7fff;font-weight:600;background:#EFF6FF;}
@@ -4262,8 +4262,6 @@ window._updateSidebarByRole=function(){
       <span onclick="_wkLogSwitchThis()" style="cursor:pointer;opacity:.6;font-size:11px;">✕</span>
     </div>
   </div>
-  <!-- 담당자 드롭다운 패널 -->
-  <div id="wk-rep-dd" class="wk-dd-panel" style="display:none;"></div>
 
 <!-- 이전 회차 불러오기 모달 -->
 <div id="wk-load-modal" style="position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:700;display:none;align-items:center;justify-content:center;backdrop-filter:blur(2px);">
@@ -6492,12 +6490,18 @@ function cRow(rep,ci,cl){
   var dotCls=cl.wk!==false?'wk-dot-filled':'wk-dot-empty-ring';
   var chipProduct=cl.product?_ipChipProduct(cl.product):'<span style="color:#94A3B8;font-size:11px;">—</span>';
   var chipType=cl.type?_ipChipType(cl.type):'<span style="color:#94A3B8;font-size:11px;">—</span>';
-  var statusCls=cl.status==='달성'?'s-달성':cl.status==='예상'?'s-예상':cl.status==='진행'?'s-진행':'s-대기';
-  var actualSum=(cl.actual||[]).reduce(function(a,b){return a+(parseFloat(b)||0);},0);
-  var isDal=(cl.status||'달성')==='달성';
-  var isFore=(cl.status||'달성')==='예상';
-  var actualDisp=isDal&&actualSum>0?actualSum.toLocaleString('ko-KR'):'<span style="color:#CBD5E1;">—</span>';
-  var foreDisp=isFore&&actualSum>0?actualSum.toLocaleString('ko-KR'):'<span style="color:#CBD5E1;">—</span>';
+  // 신버전: actual[]+forecast[] / 구버전: status+actual[]
+  var actualSum, forecastSum;
+  if(cl._migrated){
+    actualSum=(cl.actual||[]).reduce(function(a,b){return a+(parseFloat(b)||0);},0);
+    forecastSum=(cl.forecast||[]).reduce(function(a,b){return a+(parseFloat(b)||0);},0);
+  } else {
+    var oldSum=(cl.actual||[]).reduce(function(a,b){return a+(parseFloat(b)||0);},0);
+    actualSum=(cl.status||'달성')==='달성'?oldSum:0;
+    forecastSum=(cl.status||'달성')==='예상'?oldSum:0;
+  }
+  var actualDisp=actualSum>0?actualSum.toLocaleString('ko-KR'):'<span style="color:#CBD5E1;">—</span>';
+  var foreDisp=forecastSum>0?forecastSum.toLocaleString('ko-KR'):'<span style="color:#CBD5E1;">—</span>';
   var issueDisp=cl.issue?('<div class="ip-rich-view" style="font-size:12px;line-height:1.6;color:#0F172A;text-align:left;">'+cl.issue+'</div>'):'<span style="color:#CBD5E1;font-size:11px;">—</span>';
   var bgEven=ci%2===1?'background:#F8FBFF;':'';
   return '<div class="lr g-ct ip-row" style="'+bgEven+'" data-action="openClient" data-rep="'+rep+'" data-ci="'+ci+'" title="클릭하여 수정">'
@@ -6509,7 +6513,6 @@ function cRow(rep,ci,cl){
     +'<div class="td-c">'+chipType+'</div>'
     +'<div class="td-c" style="font-weight:600;">'+actualDisp+'</div>'
     +'<div class="td-c" style="font-weight:600;color:#F59E0B;">'+foreDisp+'</div>'
-    +'<div class="td-c"><span class="status '+statusCls+'">'+(cl.status||'달성')+'</span></div>'
     +'<div class="td-l" style="align-self:start;padding-top:4px;">'+issueDisp+'</div>'
     +'</div>';
 }
@@ -6785,15 +6788,19 @@ function showRepInput(rep){showPage('input',null);const t=[...document.querySele
 // 달성/예상 자동계산
 function refreshActualForecast(rep){
   const clients = store.reps[rep].clients || [];
-  // 달성: status='달성' 인 고객사 합산
+  // 달성: _migrated 데이터는 actual[], 구버전은 status='달성'
   store.reps[rep].actual = MONTHS.map((_,i)=>
-    clients.filter(c=>(c.status||'달성')==='달성')
-           .reduce((s,c)=>s+((c.actual&&c.actual[i])||0),0)
+    clients.reduce((s,cl)=>{
+      if(cl._migrated) return s+((cl.actual&&cl.actual[i])||0);
+      return s+((cl.status||'달성')==='달성'?((cl.actual&&cl.actual[i])||0):0);
+    },0)
   );
-  // 예상: status='예상' 인 고객사 합산
+  // 예상: _migrated 데이터는 forecast[], 구버전은 status='예상'
   store.reps[rep].forecast = MONTHS.map((_,i)=>
-    clients.filter(c=>(c.status||'달성')==='예상')
-           .reduce((s,c)=>s+((c.actual&&c.actual[i])||0),0)
+    clients.reduce((s,cl)=>{
+      if(cl._migrated) return s+((cl.forecast&&cl.forecast[i])||0);
+      return s+((cl.status||'달성')==='예상'?((cl.actual&&cl.actual[i])||0):0);
+    },0)
   );
   // 화면 업데이트
   MONTHS.forEach((_,i)=>{
@@ -9114,44 +9121,70 @@ var _ipCurRep='', _ipCurCi=-1;
 function _ipOpenClient(rep,ci,readOnly){
   _ipCurRep=rep; _ipCurCi=ci;
   var isEdit=ci>=0;
-  var d=isEdit?(store.reps[rep].clients[ci]||{}):{};
+  var d=isEdit?(store.reps[rep].clients[ci]||{}):({});
+  // 기존 데이터 마이그레이션 (status → actual/forecast 분리)
+  if(!d._migrated){
+    if(!d.forecast) d.forecast=new Array(12).fill(0);
+    if(d.status==='예상'){
+      d.forecast=d.actual?d.actual.slice():new Array(12).fill(0);
+      d.actual=new Array(12).fill(0);
+    } else {
+      d.actual=d.actual||new Array(12).fill(0);
+      d.forecast=d.forecast||new Array(12).fill(0);
+    }
+    d._migrated=true;
+    if(isEdit) store.reps[rep].clients[ci]=d;
+  }
+  if(!d.forecast) d.forecast=new Array(12).fill(0);
+  if(!d.actual) d.actual=new Array(12).fill(0);
+
   var MONTHS_KR=['4월','5월','6월','7월','8월','9월','10월','11월','12월','1월','2월','3월'];
-  var monRows=MONTHS_KR.map(function(m,i){
-    var v=(d.actual&&d.actual[i])||0;
-    return '<div class="ip-mon-item">'
-      +'<div class="ip-mon-lbl">'+m+'</div>'
-      +'<input class="ip-mon-inp" id="ip-ct-m'+i+'" type="text" placeholder="0" value="'+(v||'')+'" oninput="window._ipCalcMonTotal()">'
-      +'</div>';
-  }).join('');
   var typeOpts=(typeof getSelectOpts==='function'?getSelectOpts('clientType'):['MA','개발','상품','기타']).map(function(t){
     return '<option'+((d.type||'MA')===t?' selected':'')+'>'+t+'</option>';
   }).join('');
   var prodOpts=(typeof getSelectOpts==='function'?getSelectOpts('clientProduct'):['그룹웨어','웹메일','ERP','MES','PIMS','스포츠','기타']).map(function(p){
     return '<option'+(d.product===p?' selected':'')+'>'+p+'</option>';
   }).join('');
-  var stList=['달성','예상','진행','대기'];
-  var segBtns=stList.map(function(s){
-    return '<button class="ip-seg-btn'+((d.status||'달성')===s?' on':'')+'" onclick="window._ipSegSel(this,\'ip-ct-seg\')" data-v="'+s+'">'+s+'</button>';
-  }).join('');
+
+  function makeMonRows(arrKey){
+    return MONTHS_KR.map(function(mn,i){
+      var v=(d[arrKey]&&d[arrKey][i])||0;
+      return '<div class="ip-mon-item">'
+        +'<div class="ip-mon-lbl">'+mn+'</div>'
+        +'<input class="ip-mon-inp" id="ip-ct-m-'+arrKey+'-'+i+'" type="text" placeholder="0" value="'+(v||'')+'" oninput="window._ipCalcMonTotal()">'
+        +'</div>';
+    }).join('');
+  }
+
   var old=document.getElementById('ip-client-pop'); if(old) old.remove();
   var div=document.createElement('div');
   div.id='ip-client-pop';
   div.className='ip-pop open';
-  // 배경 클릭으로 닫기 비활성화
   div.innerHTML='<div class="ip-box wide">'
     +'<div class="ip-head"><div><div class="ip-title">'+(isEdit?'고객사 수정':'고객사 추가')+'</div><div class="ip-sub">고객사 정보와 월별 실적을 입력하세요</div></div>'
     +'<button class="ip-close" onclick="window._ipClose(\'ip-client-pop\')">✕</button></div>'
     +'<div class="ip-body">'
-    +'<div class="ip-f"><label>고객사명 *</label><input id="ip-ct-name" value="'+(d.name||'')+'" placeholder="예) SK하이닉스(본사)"></div>'
+    +'<div class="ip-f" style="position:relative;"><label>고객사명 *</label><input id="ip-ct-name" value="'+(d.name||'')+'" placeholder="예) SK하이닉스(본사)"><div id="ip-ct-cdb-drop" style="display:none;position:fixed;background:#fff;border:1px solid #E2E8F0;border-radius:8px;box-shadow:0 4px 16px rgba(15,23,42,.1);max-height:200px;overflow-y:auto;z-index:99999;"></div></div>'
     +'<div class="ip-f"><label>프로젝트명</label><input id="ip-ct-proj" value="'+(d.project||'')+'" placeholder="예) 웹메일 MA 2026"></div>'
     +'<div class="ip-f2"><div class="ip-f"><label>제품</label><select id="ip-ct-prod">'+prodOpts+'</select></div>'
     +'<div class="ip-f"><label>유형</label><select id="ip-ct-type">'+typeOpts+'</select></div></div>'
-    +'<div class="ip-f"><label>상태</label><div class="ip-seg" id="ip-ct-seg">'+segBtns+'</div></div>'
     +'<hr class="ip-divider">'
-    +'<div class="ip-f"><div class="ip-sec-div">월별 달성 실적 <span>(천원 · 4월~3월)</span></div>'
-    +'<div class="ip-mon-grid" style="margin-top:6px;">'+monRows
-    +'<div class="ip-mon-item"><div class="ip-mon-lbl" style="color:#4f7fff;font-weight:700;">합계</div><div class="ip-mon-tot" id="ip-ct-tot">0</div></div>'
-    +'</div></div>'
+    +'<div class="ip-f">'
+    +'<div style="display:flex;gap:0;background:#F1F5F9;border-radius:10px;padding:3px;margin-bottom:14px;">'
+    +'<button id="ip-ct-tab-actual" style="flex:1;padding:8px;font-size:12.5px;font-weight:600;border:none;border-radius:8px;cursor:pointer;background:#fff;color:#2563EB;box-shadow:0 1px 4px rgba(15,23,42,.1);transition:all .15s;" onclick="window._ipSwitchClientTab(\'actual\')">달성</button>'
+    +'<button id="ip-ct-tab-forecast" style="flex:1;padding:8px;font-size:12.5px;font-weight:600;border:none;border-radius:8px;cursor:pointer;background:transparent;color:#94A3B8;" onclick="window._ipSwitchClientTab(\'forecast\')">예상</button>'
+    +'</div>'
+    +'<div id="ip-ct-panel-actual"><div class="ip-sec-div" style="margin-bottom:8px;">월별 달성 실적 <span>(천원 · 4월~3월)</span></div>'
+    +'<div class="ip-mon-grid">'+makeMonRows('actual')+'</div></div>'
+    +'<div id="ip-ct-panel-forecast" style="display:none;"><div class="ip-sec-div" style="margin-bottom:8px;">월별 예상 매출 <span>(천원 · 4월~3월)</span></div>'
+    +'<div class="ip-mon-grid">'+makeMonRows('forecast')+'</div></div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#EFF6FF,#F5F3FF);border:1px solid #DBEAFE;border-radius:12px;padding:14px 18px;margin-top:10px;">'
+    +'<div><div id="ip-ct-tot-label" style="font-size:10.5px;font-weight:600;color:#94A3B8;letter-spacing:.06em;">TOTAL ACTUAL</div>'
+    +'<div style="font-size:11px;color:#64748B;margin-top:2px;">부가세 별도 · 천원 단위</div></div>'
+    +'<div><span id="ip-ct-tot" style="font-size:22px;font-weight:800;color:#1D4ED8;letter-spacing:-.03em;">0</span>'
+    +'<span style="font-size:11px;color:#94A3B8;margin-left:3px;">천원</span></div>'
+    +'</div>'
+    +'</div>'
     +'<div class="ip-f"><label>이슈사항</label>'
     +'<div class="ip-rich-toolbar">'
     +'<button class="ip-tb" onmousedown="event.preventDefault()" onclick="window._ipFmt(\'bold\')"><b>B</b></button>'
@@ -9167,56 +9200,111 @@ function _ipOpenClient(rep,ci,readOnly){
     +(isEdit?'<button class="btn-ip-del" onclick="window._ipDelClient()">삭제</button>':'')
     +'<button class="btn-ip-save" onclick="window._ipSaveClient()">저장</button>'
     +'</div></div>';
-  // readOnly 모드: 입력 비활성화
+
   if(readOnly){
-    div.querySelectorAll&&setTimeout(function(){
-      document.getElementById('ip-client-pop')&&document.getElementById('ip-client-pop').querySelectorAll('input,select,textarea,[contenteditable]').forEach(function(el){el.disabled=true;el.setAttribute('contenteditable','false');el.style.opacity='0.7';el.style.cursor='not-allowed';});
-      var f=document.getElementById('ip-client-pop');
-      if(f){ var btns=f.querySelectorAll('.btn-ip-save,.btn-ip-del'); btns.forEach(function(b){b.style.display='none';}); }
-      var hd=document.getElementById('ip-client-pop')&&document.getElementById('ip-client-pop').querySelector('.ip-title');
-      if(hd) hd.textContent+=' (조회)';
+    setTimeout(function(){
+      var pop=document.getElementById('ip-client-pop'); if(!pop) return;
+      pop.querySelectorAll('input,select,textarea,[contenteditable]').forEach(function(el){
+        el.disabled=true; el.setAttribute('contenteditable','false');
+        el.style.opacity='0.7'; el.style.cursor='not-allowed';
+      });
+      pop.querySelectorAll('.btn-ip-save,.btn-ip-del').forEach(function(b){ b.style.display='none'; });
+      var hd=pop.querySelector('.ip-title'); if(hd) hd.textContent+=' (조회)';
     },0);
   }
   document.body.appendChild(div);
   var ed=document.getElementById('ip-ct-issue');
   if(ed){ ed.innerHTML=(d.issue||''); ed.addEventListener('input',function(){_ipRichResize(this);}); ed.addEventListener('blur',_ipSaveRange); }
-  _ipCalcMonTotal();
+  window._ipCurClientTab='actual';
+  window._ipCalcMonTotal();
+  _bindClientDrop('ip-ct-name','ip-ct-cdb-drop');
+  // 월별 금액 콤마 포맷팅
+  div.addEventListener('input',function(e){
+    var el=e.target;
+    if(!el||!el.classList.contains('ip-mon-inp')) return;
+    var raw=el.value.replace(/,/g,'').replace(/[^0-9.]/g,'');
+    if(raw==='') return;
+    var num=parseFloat(raw);
+    if(!isNaN(num)){
+      var pos=el.selectionStart;
+      var oldLen=el.value.length;
+      el.value=num.toLocaleString('ko-KR');
+      var newLen=el.value.length;
+      el.setSelectionRange(pos+(newLen-oldLen),pos+(newLen-oldLen));
+    }
+    window._ipCalcMonTotal();
+  });
 }
 
+window._ipSwitchClientTab=function(tab){
+  window._ipCurClientTab=tab;
+  var pA=document.getElementById('ip-ct-panel-actual');
+  var pF=document.getElementById('ip-ct-panel-forecast');
+  var tA=document.getElementById('ip-ct-tab-actual');
+  var tF=document.getElementById('ip-ct-tab-forecast');
+  var lbl=document.getElementById('ip-ct-tot-label');
+  var totEl=document.getElementById('ip-ct-tot');
+  var wrap=document.getElementById('ip-ct-total-wrap');
+  if(!pA||!pF||!tA||!tF) return;
+  var BASE='flex:1;padding:8px;font-size:12.5px;font-weight:600;border:none;border-radius:8px;cursor:pointer;transition:all .15s;';
+  if(tab==='actual'){
+    pA.style.display=''; pF.style.display='none';
+    tA.style.cssText=BASE+'background:#fff;color:#2563EB;box-shadow:0 1px 4px rgba(15,23,42,.1);';
+    tF.style.cssText=BASE+'background:transparent;color:#94A3B8;';
+    if(lbl) lbl.textContent='TOTAL ACTUAL';
+    if(totEl) totEl.style.color='#1D4ED8';
+    if(wrap) wrap.style.background='linear-gradient(135deg,#EFF6FF,#F5F3FF)';
+    if(wrap) wrap.style.borderColor='#DBEAFE';
+  } else {
+    pA.style.display='none'; pF.style.display='';
+    tF.style.cssText=BASE+'background:#fff;color:#F59E0B;box-shadow:0 1px 4px rgba(15,23,42,.1);';
+    tA.style.cssText=BASE+'background:transparent;color:#94A3B8;';
+    if(lbl) lbl.textContent='TOTAL FORECAST';
+    if(totEl) totEl.style.color='#D97706';
+    if(wrap) wrap.style.background='linear-gradient(135deg,#FFFBEB,#FEF3C7)';
+    if(wrap) wrap.style.borderColor='#FDE68A';
+  }
+  window._ipCalcMonTotal();
+};
 function _ipCalcMonTotal(){
+  var tab=window._ipCurClientTab||'actual';
+  var prefix='ip-ct-m-'+tab+'-';
   var tot=0;
   for(var i=0;i<12;i++){
-    var el=document.getElementById('ip-ct-m'+i);
+    var el=document.getElementById(prefix+i);
     if(el) tot+=parseFloat(el.value.replace(/,/g,''))||0;
   }
   var totEl=document.getElementById('ip-ct-tot');
   if(totEl) totEl.textContent=tot?tot.toLocaleString('ko-KR'):'0';
+  // 레이블 업데이트
+  var lbl=document.getElementById('ip-ct-tot-label');
+  if(lbl) lbl.textContent=tab==='actual'?'TOTAL ACTUAL':'TOTAL FORECAST';
 }
 
 function _ipSaveClient(){
   if(session&&session.role==='guest'){alert('게스트는 수정할 수 없습니다.');return;}
   var rep=_ipCurRep;
-  // 권한 체크: 관리자 또는 본인만 저장 가능
   if(session&&session.role==='rep'){
     var _myBase=session.rep?session.rep.replace(/[（(\[【].*$/,'').trim():'';
     if(_myBase!==rep){ alert('본인의 데이터만 수정할 수 있습니다.'); return; }
-  } var ci=_ipCurCi; var isEdit=ci>=0;
+  }
+  var ci=_ipCurCi; var isEdit=ci>=0;
   var name=(document.getElementById('ip-ct-name')||{}).value||'';
   if(!name.trim()){alert('고객사명을 입력하세요.');return;}
   var proj=(document.getElementById('ip-ct-proj')||{}).value||'';
   var prod=(document.getElementById('ip-ct-prod')||{}).value||'';
   var type=(document.getElementById('ip-ct-type')||{}).value||'MA';
-  var segEl=document.querySelector('#ip-ct-seg .ip-seg-btn.on');
-  var status=segEl?segEl.dataset.v:'달성';
-  var actual=[];
+  var actual=[]; var forecast=[];
   for(var i=0;i<12;i++){
-    var el=document.getElementById('ip-ct-m'+i);
-    actual.push(el?parseFloat(el.value.replace(/,/g,''))||0:0);
+    var eA=document.getElementById('ip-ct-m-actual-'+i);
+    var eF=document.getElementById('ip-ct-m-forecast-'+i);
+    actual.push(eA?parseFloat(eA.value.replace(/,/g,''))||0:0);
+    forecast.push(eF?parseFloat(eF.value.replace(/,/g,''))||0:0);
   }
   var issueEl=document.getElementById('ip-ct-issue');
   var issue=issueEl?issueEl.innerHTML:'';
   var wk=(document.getElementById('ip-ct-wk')||{}).checked===true;
-  var obj={name:name,project:proj,product:prod,type:type,status:status,actual:actual,issue:issue,wk:wk,sev:'none'};
+  var obj={name:name,project:proj,product:prod,type:type,actual:actual,forecast:forecast,issue:issue,wk:wk,sev:'none',_migrated:true};
   if(isEdit){
     store.reps[rep].clients[ci]=obj;
   } else {
@@ -9297,6 +9385,72 @@ function _ipSaveRange(){
 function _ipRestoreRange(){
   if(_ipLastRange){var sel=window.getSelection();sel.removeAllRanges();sel.addRange(_ipLastRange);}
 }
+
+// ── 고객사 자동완성 ──
+function _getClientNames(){
+  var names=[];
+  if(typeof store!=='undefined'&&store){
+    (store.clientDB||[]).forEach(function(cl){ if(cl.name) names.push(cl.name); });
+    Object.keys(store.reps||{}).forEach(function(rep){
+      var d=store.reps[rep]; if(!d) return;
+      (d.clients||[]).forEach(function(cl){ if(cl.name) names.push(cl.name); });
+      (d.activities||[]).forEach(function(a){ if(a.client) names.push(a.client); });
+      (d.issuesList||[]).forEach(function(iss){ if(iss.client) names.push(iss.client); });
+      (d.contracts||[]).forEach(function(con){ if(con.client) names.push(con.client); });
+    });
+  }
+  return [...new Set(names)].filter(Boolean);
+}
+window._showClientDrop=function(inputEl, drop){
+  try{
+    var val=(inputEl.value!==undefined?inputEl.value:(inputEl.innerText||'')).trim();
+    if(!val){ drop.style.display='none'; return; }
+    var lower=val.toLowerCase();
+    var filtered=_getClientNames().filter(function(n){ return n&&n.toLowerCase().indexOf(lower)>=0; }).slice(0,8);
+    if(!filtered.length){ drop.style.display='none'; return; }
+    var html='<div style="padding:6px 12px;font-size:10px;font-weight:600;color:#94A3B8;letter-spacing:.06em;border-bottom:1px solid #F1F5F9;">고객사 '+filtered.length+'건</div>';
+    filtered.forEach(function(n){
+      var safe=n.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      var safeLower=safe.toLowerCase();
+      var lowerSafe=lower.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      var hi2=safeLower.indexOf(lowerSafe);
+      var highlighted = hi2>=0
+        ? safe.slice(0,hi2)+'<b style="color:#2563EB;font-weight:600;">'+safe.slice(hi2,hi2+lowerSafe.length)+'</b>'+safe.slice(hi2+lowerSafe.length)
+        : safe;
+      html+='<div class="_cdb-item" style="padding:9px 12px;font-size:12.5px;color:#334155;cursor:pointer;">'+highlighted+'</div>';
+    });
+    drop.innerHTML=html;
+    drop.querySelectorAll('._cdb-item').forEach(function(item){
+      item.addEventListener('mouseover',function(){ item.style.background='#EFF6FF'; });
+      item.addEventListener('mouseout',function(){ item.style.background=''; });
+      item.addEventListener('pointerdown',function(e){
+        e.preventDefault();
+        var text=item.textContent.trim();
+        if(inputEl.contentEditable==='true'){
+          inputEl.innerText=text;
+          // blur 이벤트 발화
+          try{ inputEl.blur(); }catch(ex){}
+        } else {
+          inputEl.value=text;
+        }
+        drop.style.display='none';
+      });
+    });
+    var br=inputEl.getBoundingClientRect();
+    drop.style.cssText='display:block;position:fixed;left:'+br.left+'px;top:'+(br.bottom+4)+'px;width:'+br.width+'px;background:#fff;border:1.5px solid #DBEAFE;border-radius:10px;box-shadow:0 8px 24px rgba(37,99,235,.1);overflow:hidden;z-index:99999;max-height:280px;overflow-y:auto;';
+  }catch(e){ console.warn('[clientDrop]',e); }
+}
+window._hideClientDrop=function(drop){ setTimeout(function(){ drop.style.display='none'; },200); }
+function _bindClientDrop(inputId, dropId){
+  var inp=document.getElementById(inputId);
+  var drop=document.getElementById(dropId);
+  if(!inp||!drop) return;
+  inp.setAttribute('autocomplete','off');
+  inp.addEventListener('input',function(){ _showClientDrop(inp,drop); });
+  inp.addEventListener('blur',function(){ _hideClientDrop(drop); });
+  inp.addEventListener('focus',function(){ if(inp.value) _showClientDrop(inp,drop); });
+}
+
 function _ipFmt(cmd){
   // 현재 포커스된 ip-rich-ed 찾기
   var focused=document.activeElement;
@@ -9623,7 +9777,7 @@ function _ipOpenActivity(rep,ai,readOnly){
     +'<div class="ip-body">'
     +'<div class="ip-f2"><div class="ip-f"><label>구분</label><select id="ip-at-type">'+typeOpts+'</select></div>'
     +'<div class="ip-f"><label>진행사항</label><select id="ip-at-prog">'+progOpts+'</select></div></div>'
-    +'<div class="ip-f"><label>고객사명 *</label><input id="ip-at-client" value="'+(d.client||'')+'" placeholder="예) SK하이닉스(본사)"></div>'
+    +'<div class="ip-f" style="position:relative;"><label>고객사명 *</label><input id="ip-at-client" value="'+(d.client||'')+'" placeholder="예) SK하이닉스(본사)"><div id="ip-at-cdb-drop" style="display:none;position:fixed;background:#fff;border:1px solid #E2E8F0;border-radius:8px;box-shadow:0 4px 16px rgba(15,23,42,.1);max-height:200px;overflow-y:auto;z-index:99999;"></div></div>'
     +'<div class="ip-f"><label>프로젝트명</label><input id="ip-at-proj" value="'+(d.project||'')+'" placeholder="예) 웹메일 MA 2026"></div>'
     +'<div class="ip-f2"><div class="ip-f"><label>제품</label><input id="ip-at-prod" value="'+(d.product||'')+'" placeholder="예) 웹메일"></div>'
     +'<div class="ip-f"><label>금액(천원)</label><input id="ip-at-amt" value="'+(d.amount||'')+'" placeholder="0"></div></div>'
@@ -9657,6 +9811,11 @@ function _ipOpenActivity(rep,ai,readOnly){
   document.body.appendChild(div);
   var ed=document.getElementById('ip-at-content');
   if(ed){ ed.innerHTML=(d.content||''); ed.addEventListener('input',function(){_ipRichResize(this);}); ed.addEventListener('blur',_ipSaveRange); }
+
+  // 고객사 자동완성 - 이벤트 위임 (팝업 컨테이너에 연결)
+
+  // 고객사 자동완성 바인딩
+  _bindClientDrop('ip-at-client','ip-at-cdb-drop');
 }
 
 function _ipSaveActivity(){
@@ -9750,7 +9909,7 @@ function _ipOpenIssue(rep,ii,readOnly){
     +'<div class="ip-head"><div><div class="ip-title">'+(isEdit?'이슈 수정':'이슈 추가')+'</div><div class="ip-sub">이슈 내용을 등록하세요</div></div>'
     +'<button class="ip-close" onclick="window._ipClose(\'ip-iss-pop\')">✕</button></div>'
     +'<div class="ip-body">'
-    +'<div class="ip-f"><label>고객사명 *</label><input id="ip-is-client" value="'+(d.client||'')+'" placeholder="예) 형지엘리트"></div>'
+    +'<div class="ip-f" style="position:relative;"><label>고객사명 *</label><input id="ip-is-client" value="'+(d.client||'')+'" placeholder="예) 형지엘리트"><div id="ip-is-cdb-drop" style="display:none;position:fixed;background:#fff;border:1px solid #E2E8F0;border-radius:8px;box-shadow:0 4px 16px rgba(15,23,42,.1);max-height:200px;overflow-y:auto;z-index:99999;"></div></div>'
     +'<div class="ip-f"><label>프로젝트명</label><input id="ip-is-proj" value="'+(d.project||'')+'" placeholder="예) ERP 추가도입"></div>'
     +'<div class="ip-f"><label>이슈내용 *</label>'
     +'<div class="ip-rich-toolbar">'
@@ -9793,6 +9952,10 @@ function _ipOpenIssue(rep,ii,readOnly){
       window._ipIssWkChecked=this.checked;
     });
   }
+
+
+  // 고객사 자동완성 바인딩
+  _bindClientDrop('ip-is-client','ip-is-cdb-drop');
 }
 
 function _ipSaveIssue(){
@@ -10573,6 +10736,14 @@ async function _initSP() {
         console.warn('[sync] 오류:', syncErr);
       }
       // 회의록 데이터 주기적 동기화 (페이지 열려있으면 즉시, 닫혀있으면 캐시만)
+      // 접속현황 주기적 동기화 (30초마다)
+      if(!window._lastAccessSync||Date.now()-window._lastAccessSync>30000){
+        try{
+          await _loadAccessLog();
+          if(typeof updateAccessDisplay==='function') updateAccessDisplay();
+          window._lastAccessSync=Date.now();
+        }catch(e){}
+      }
       try{
         if(typeof window._syncWeeklyFeed==='function') await window._syncWeeklyFeed();
       }catch(e){}
@@ -15155,12 +15326,34 @@ function _rebuildVisitTable(rep){
   if(!tbody) return;
   var _vl=(store.reps[rep].visitLog||[]).filter(function(v){return v&&typeof v==='object';});
   tbody.innerHTML=_vl.map(function(v,i){ return _vRow(rep,i,v); }).join('');
+  // company textarea 자동완성 바인딩
+  tbody.querySelectorAll('div[id^="vco_"]').forEach(function(ta){
+    ta.setAttribute('autocomplete','new-password');
+    ta.setAttribute('name','x'+Math.random().toString(36).slice(2));
+    var _dropId=ta.id+'-drop';
+    if(!document.getElementById(_dropId)){
+      var _d=document.createElement('div');
+      _d.id=_dropId;
+      _d.style.cssText='display:none;position:fixed;background:#fff;border:1px solid #E2E8F0;border-radius:8px;box-shadow:0 4px 16px rgba(15,23,42,.1);max-height:200px;overflow-y:auto;z-index:99999;';
+      document.body.appendChild(_d);
+    }
+    var _drop=document.getElementById(_dropId);
+    ta.addEventListener('input',function(){ window._showClientDrop&&window._showClientDrop(ta,_drop); });
+    ta.addEventListener('blur',function(){ setTimeout(function(){ if(_drop) _drop.style.display='none'; },200); });
+    ta.addEventListener('focus',function(){ if(ta.value.trim()) window._showClientDrop&&window._showClientDrop(ta,_drop); });
+  });
+  // 나머지 input도 autocomplete 차단
+  tbody.querySelectorAll('input[type="text"]').forEach(function(inp){
+    inp.setAttribute('autocomplete','off');
+  });
 }
 
 // ─── 접점 행 HTML ───
 
 var _vLogDirty={};var _vLogTimer=null;
 function _markVisitLogDirty(rep){_vLogDirty[rep]=true;clearTimeout(_vLogTimer);_vLogTimer=setTimeout(function(){var d=Object.keys(_vLogDirty);_vLogDirty={};d.forEach(function(r){if(typeof _spSaveVisitLog==='function')_spSaveVisitLog(r).catch(function(e){});});},2000);}
+
+function _escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function _vRow(rep,idx,v){
   if(!v||typeof v!=='object') return '';
   var r=rep.replace(/'/g,"\\'");
@@ -15174,17 +15367,18 @@ function _vRow(rep,idx,v){
   function inp(field,val,w){
     var style='width:100%;height:30px;box-sizing:border-box;font-size:12px;font-family:inherit;border:1px solid #E2E8F0;border-radius:6px;padding:0 8px;outline:none;transition:border-color 0.15s;';
     if(!canEdit) return '<span style="font-size:12px;color:#374151;padding:2px 4px;display:block;text-align:left;white-space:pre-wrap;word-break:break-word;">'+( val||'─')+'</span>';
-    return '<input type="text" value="'+(val||'')+'" style="'+style+'" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" onchange="store.reps[\''+r+'\'].visitLog['+idx+'].'+field+'=this.value;autoSave&&autoSave();_markVisitLogDirty(\''+r+'\');typeof renderVisits===\'function\'&&renderVisits();">';
+    return '<input type="text" value="'+(val||'')+'" autocomplete="off" style="'+style+'" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" onchange="store.reps[\''+r+'\'].visitLog['+idx+'].'+field+'=this.value;autoSave&&autoSave();_markVisitLogDirty(\''+r+'\');typeof renderVisits===\'function\'&&renderVisits();">';
   }
   // 중앙정렬 + 자동높이 textarea (company, contactRep, clientRep)
   function inpCenter(field,val,acKey){
     if(!canEdit) return '<span style="font-size:12px;color:#374151;padding:2px 4px;display:block;text-align:center;">'+( val||'─')+'</span>';
-    return '<textarea '+(acKey?'id="'+acKey+'" ':'')+'rows="1" style="width:100%;min-height:30px;height:30px;box-sizing:border-box;font-size:12px;font-family:inherit;border:1px solid #E2E8F0;border-radius:6px;padding:4px 8px;outline:none;resize:none;overflow-y:hidden;text-align:center;line-height:1.5;transition:border-color 0.15s;" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" oninput="this.style.setProperty(\'height\',\'1px\',\'important\');this.style.setProperty(\'height\',Math.max(30,this.scrollHeight)+\'px\',\'important\');" onchange="store.reps[\''+r+'\'].visitLog['+idx+'].'+field+'=this.value;autoSave&&autoSave();_markVisitLogDirty(\''+r+'\');">'+(val||'')+'</textarea>';
+    // contenteditable div - 브라우저 자동완성 완전 차단
+    return '<div '+(acKey?'id="'+acKey+'" ':'')+'contenteditable="true" data-field="'+field+'" data-rep="'+r+'" data-idx="'+idx+'" style="width:100%;min-height:30px;box-sizing:border-box;font-size:12px;font-family:inherit;border:1px solid #E2E8F0;border-radius:6px;padding:4px 8px;outline:none;text-align:center;line-height:1.8;transition:border-color 0.15s;word-break:break-all;white-space:pre-wrap;" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\';var _f=this.dataset.field,_r=this.dataset.rep,_i=parseInt(this.dataset.idx);if(store.reps[_r]&&store.reps[_r].visitLog[_i])store.reps[_r].visitLog[_i][_f]=this.innerText.trim();autoSave&&autoSave();_markVisitLogDirty(_r);">'+_escHtml(val||'')+'</div>';
   }
   function dateInp(field,val){
     var style='width:100%;height:30px;box-sizing:border-box;font-size:12px;font-family:inherit;border:1px solid #E2E8F0;border-radius:6px;padding:0 6px;outline:none;transition:border-color 0.15s;';
     if(!canEdit) return '<span style="font-size:12px;color:#374151;padding:2px 4px;display:block;text-align:left;white-space:pre-wrap;word-break:break-word;">'+( val||'─')+'</span>';
-    return '<input type="date" value="'+(val||'')+'" style="'+style+'" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" onchange="store.reps[\''+r+'\'].visitLog['+idx+'].'+field+'=this.value;autoSave&&autoSave();_markVisitLogDirty(\''+r+'\');typeof renderVisits===\'function\'&&renderVisits();">';
+    return '<input type="date" value="'+(val||'')+'" autocomplete="off" style="'+style+'" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\'" onchange="store.reps[\''+r+'\'].visitLog['+idx+'].'+field+'=this.value;autoSave&&autoSave();_markVisitLogDirty(\''+r+'\');typeof renderVisits===\'function\'&&renderVisits();">';
   }
   function ta(field,val){
     var safeVal=(typeof _sanitizeRich==='function')?_sanitizeRich(val||''):(val||'');
@@ -15955,8 +16149,7 @@ async function _spSaveRepByName(repName){
   // 크기 체크
   // visitLog는 visit_log:{rep} 별도 키로 저장 - rep_data에서 항상 제외
   // (관리자 save가 다른 담당자의 visitLog를 덮어쓰는 문제 방지)
-  delete _d.visitLog;
-  delete _d.contracts;
+  delete _d.visitLog; // visitLog는 visit_log 별도 키로 관리
   await _spSaveItem('rep_data', _repKey, _d);
 }
 
@@ -17823,7 +18016,7 @@ function showContractModal(rep,cid){
     +'</div>'
     +'<div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px;">'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
-    +'<div><div style="font-size:11px;font-weight:600;color:#64748B;margin-bottom:4px;">고객사 *</div><input id="_cm-client" type="text" value="'+(c&&c.client||'')+'" placeholder="고객사명" style="width:100%;padding:8px 10px;border:1px solid #E2E8F0;border-radius:8px;font-size:13px;box-sizing:border-box;"></div>'
+    +'<div><div style="font-size:11px;font-weight:600;color:#64748B;margin-bottom:4px;">고객사 *</div><input id="_cm-client" type="text" value="'+(c&&c.client||'')+'" placeholder="고객사명" style="width:100%;padding:8px 10px;border:1px solid #E2E8F0;border-radius:8px;font-size:13px;box-sizing:border-box;"><div id="_cm-client-drop" style="display:none;position:fixed;background:#fff;border:1px solid #E2E8F0;border-radius:8px;box-shadow:0 4px 16px rgba(15,23,42,.1);max-height:200px;overflow-y:auto;z-index:99999;"></div></div>'
     +'<div><div style="font-size:11px;font-weight:600;color:#64748B;margin-bottom:4px;">계약 유형</div>'+mkSel('_cm-ctype',ctypes,c&&c.contractType||ctypes[0])+'</div>'
     +'</div>'
     +'<div><div style="font-size:11px;font-weight:600;color:#64748B;margin-bottom:4px;">프로젝트명</div><input id="_cm-proj" type="text" value="'+(c&&c.projectName||'')+'" placeholder="프로젝트명" style="width:100%;padding:8px 10px;border:1px solid #E2E8F0;border-radius:8px;font-size:13px;box-sizing:border-box;"></div>'
@@ -17849,6 +18042,23 @@ function showContractModal(rep,cid){
     +'</div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
+  // _cm-client input → contenteditable div로 교체 (브라우저 자동완성 차단)
+  (function(){
+    var _inp=document.getElementById('_cm-client');
+    if(!_inp) return;
+    var _val=_inp.value||'';
+    var _drop=document.getElementById('_cm-client-drop');
+    var _div=document.createElement('div');
+    _div.id='_cm-client';
+    _div.contentEditable='true';
+    _div.innerText=_val;
+    _div.style.cssText='width:100%;min-height:36px;padding:8px 10px;border:1px solid #E2E8F0;border-radius:8px;font-size:13px;box-sizing:border-box;outline:none;cursor:text;line-height:1.5;';
+    _div.addEventListener('focus',function(){ this.style.borderColor='#2563EB'; });
+    _div.addEventListener('blur',function(){ this.style.borderColor='#E2E8F0'; });
+    _div.addEventListener('input',function(){ window._showClientDrop&&window._showClientDrop(this,_drop); });
+    _div.addEventListener('blur',function(){ setTimeout(function(){if(_drop)_drop.style.display='none';},200); });
+    _inp.parentNode.replaceChild(_div,_inp);
+  })();
   // 오버레이 클릭으로 닫기
   // 팝업 외부클릭으로 닫히지 않음 (드래그 중 마우스 이탈 방지)
   // ESC 키로 닫기
@@ -19626,9 +19836,11 @@ window._wkToggleRepDD=function(btn){
   // 내용 없으면 채우기
   if(!dd.innerHTML.trim()) _wkBuildRepTabs();
   var br=btn.getBoundingClientRect();
+  dd.style.position='fixed';
   dd.style.left=br.left+'px';
   dd.style.top=(br.bottom+4)+'px';
   dd.style.minWidth=Math.max(br.width,160)+'px';
+  dd.style.zIndex='9999';
   dd.style.display='block';
   // 외부 클릭 시 닫기
   setTimeout(function(){
@@ -21869,6 +22081,8 @@ function _wkBuildNotifBtn(){
     </div>
   </div>
 </div>
+<!-- 담당자 드롭다운 패널 - body 레벨 (fixed 정상 동작) -->
+<div id="wk-rep-dd" class="wk-dd-panel" style="display:none;"></div>
 </body>
 </html
 /* ── 주차선택 모달 (새 디자인) ── */
@@ -21899,3 +22113,4 @@ function _wkBuildNotifBtn(){
 .wk-period-ok{flex:1;padding:11px;border:none;border-radius:10px;font-size:13px;font-weight:700;color:#fff;background:linear-gradient(135deg,#4f7fff,#6366F1);cursor:pointer;box-shadow:0 2px 8px rgba(79,127,255,.3);}
 
 
+// 고객사 자동완성
