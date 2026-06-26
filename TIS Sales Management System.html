@@ -8275,19 +8275,47 @@ function goStep0(){
 function selectTeam(team){
   currentTeam = team;
   applyCurrentTeam(team);
-  // store에 해당 팀 멤버 초기화
   (TEAM_REPS[team]||[]).forEach(rep=>{
     if(!store.reps[rep]){
       store.reps[rep]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],contracts:[]};
     }
   });
   buildRepBtns();
-  // 담당자 선택 화면으로
   document.getElementById('auth-s0').style.display='none';
   document.getElementById('auth-s1').style.display='block';
   document.getElementById('auth-s2').style.display='none';
-  const sub = document.getElementById('auth-sub-title');
-  if(sub) sub.textContent = team + ' · 담당자 선택';
+  document.getElementById('auth-s3')&&(document.getElementById('auth-s3').style.display='none');
+
+  // MS 로그인 시도 (백그라운드 - 담당자/게스트 이메일 체크 준비)
+  if(!window._msalApp||(window._msalApp&&window._msalApp.getAllAccounts().length===0)){
+    if(typeof _getMSAL==='function'){
+      _getMSAL().then(function(app){
+        if(!app) return;
+        window._msalApp=app;
+        var _ac=app.getActiveAccount()||app.getAllAccounts()[0];
+        if(_ac){
+          // 계정 있음 → SP 백그라운드 연결 (설정 로드 포함)
+          if(!window._isSPReady&&typeof _connectSP==='function'){
+            _connectSP(app,_ac).catch(function(){});
+          }
+        } else {
+          // 계정 없음 → MS 로그인 팝업
+          app.loginPopup({scopes:[SP_SCOPE]}).then(function(result){
+            var _ac2=result&&result.account?result.account:app.getAllAccounts()[0];
+            if(_ac2&&!window._isSPReady&&typeof _connectSP==='function'){
+              _connectSP(app,_ac2).catch(function(){});
+            }
+          }).catch(function(){
+            // 로그인 취소해도 화면 유지 (비밀번호로 접속 가능)
+          });
+        }
+      }).catch(function(){});
+    }
+  } else if(window._msalApp&&!window._isSPReady){
+    // 이미 _msalApp 있고 SP 미연결 → 백그라운드 연결
+    var _ac=window._msalApp.getActiveAccount()||window._msalApp.getAllAccounts()[0];
+    if(_ac&&typeof _connectSP==='function') _connectSP(window._msalApp,_ac).catch(function(){});
+  }
 }
 
 function goStep1(){
@@ -20146,10 +20174,12 @@ function _wkRenderProjects(){
     el.innerHTML='<div style="padding:16px 18px;font-size:12px;color:#94A3B8;">이번 주 프로젝트 진행 항목이 없습니다.</div>';
     return;
   }
-  var cols='60px 100px 68px 220px 68px 68px 72px 1fr';
-  var minW='780px';
+  // 고객접점과 동일: 담당자60 | 고객사100 | 구분80(신규영업 안짤림) | 프로젝트명220 | 제품68 | 진행68 | 금액72 | 내용1fr
+  var cols='60px 100px 80px 220px 68px 68px 72px 1fr';
+  var minW='800px';
+  // 헤더 - 고객접점과 동일한 스타일
   var thS='padding:6px 8px;font-size:10px;font-weight:600;color:var(--muted);text-align:center;background:var(--bg);border-bottom:2px solid var(--border);';
-  var _hdr='<div style="display:grid;grid-template-columns:'+cols+';min-width:'+minW+';position:sticky;top:0;z-index:2;">'
+  var _hdr='<div style="display:grid;grid-template-columns:'+cols+';min-width:'+minW+';position:sticky;top:0;z-index:2;gap:0 8px;">'
     +'<span style="'+thS+'">담당자</span>'
     +'<span style="'+thS+'">고객사</span>'
     +'<span style="'+thS+'">구분</span>'
@@ -20157,23 +20187,24 @@ function _wkRenderProjects(){
     +'<span style="'+thS+'">제품</span>'
     +'<span style="'+thS+'">진행</span>'
     +'<span style="'+thS+'">금액(천원)</span>'
-    +'<span style="'+thS+'text-align:left;">내용</span>'
+    +'<span style="'+thS+'text-align:center;">내용</span>'
     +'</div>';
   var PROG={'완료':['#D1FAE5','#065F46'],'진행중':['#DBEAFE','#1E40AF'],'대기':['#F1F5F9','#475569'],'보류':['#FEF3C7','#92400E']};
   var TYPE={'신규영업':['#EFF6FF','#2563EB'],'유지보수':['#F0FDF4','#15803D'],'재계약':['#FFF7ED','#C2410C'],'기타':['#F8FAFC','#64748B']};
+  // 행 - 고객접점과 동일: padding:8px 14px, font-size:12px, gap:0 8px
   var _rows=items.map(function(it,_i){
     var _bg=_i%2===1?'background:#FAFBFC;':'';
     var cs='padding:8px 14px;font-size:12px;text-align:center;align-self:center;border-bottom:0.5px solid #F1F5F9;'+_bg;
     var pc=PROG[it.progress]||['#F1F5F9','#475569'];
     var tc=TYPE[it.type]||['#F8FAFC','#64748B'];
     var amt=it.amount>0?parseFloat(it.amount).toLocaleString('ko-KR'):'—';
-    return '<div style="display:grid;grid-template-columns:'+cols+';min-width:'+minW+';align-items:center;">'
+    return '<div style="display:grid;grid-template-columns:'+cols+';min-width:'+minW+';align-items:center;gap:0 8px;">'
       +'<div style="'+cs+'">'+_wkRepBadge(it.rep)+'</div>'
-      +'<div style="'+cs+'font-weight:600;color:#0F172A;text-align:center;">'+_wkEsc(it.client)+'</div>'
-      +'<div style="'+cs+'"><span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;background:'+tc[0]+';color:'+tc[1]+';">'+_wkEsc(it.type||'—')+'</span></div>'
-      +'<div style="'+cs+'text-align:center;color:#334155;">'+_wkEsc(it.project||'—')+'</div>'
+      +'<div style="'+cs+'font-weight:600;color:#0F172A;">'+_wkEsc(it.client)+'</div>'
+      +'<div style="'+cs+'"><span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;background:'+tc[0]+';color:'+tc[1]+';white-space:nowrap;">'+_wkEsc(it.type||'—')+'</span></div>'
+      +'<div style="'+cs+'color:#334155;">'+_wkEsc(it.project||'—')+'</div>'
       +'<div style="'+cs+'font-size:11px;color:#64748B;">'+_wkEsc(it.product||'—')+'</div>'
-      +'<div style="'+cs+'"><span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;background:'+pc[0]+';color:'+pc[1]+';">'+_wkEsc(it.progress||'—')+'</span></div>'
+      +'<div style="'+cs+'"><span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;background:'+pc[0]+';color:'+pc[1]+';white-space:nowrap;">'+_wkEsc(it.progress||'—')+'</span></div>'
       +'<div style="'+cs+'font-weight:600;color:#0F172A;">'+amt+'</div>'
       +'<div style="padding:8px 14px;font-size:12px;align-self:center;border-bottom:0.5px solid #F1F5F9;'+_bg+'white-space:pre-wrap;word-break:break-word;line-height:1.6;">'+_renderRich(it.content)+'</div>'
       +'</div>';
@@ -20207,10 +20238,11 @@ function _wkRenderIssues(){
     el.innerHTML='<div style="padding:16px 18px;font-size:12px;color:#94A3B8;">오픈 이슈가 없습니다.</div>';
     return;
   }
-  var cols='60px 100px 220px 1fr 60px 68px 62px';
+  // 고객접점과 동일: 담당자60 | 고객사100 | 프로젝트명180 | 내용1fr | 중요도60 | 상태68 | DDAY70(D+999 안짤림)
+  var cols='60px 100px 180px 1fr 60px 68px 70px';
   var minW='720px';
   var thS='padding:6px 8px;font-size:10px;font-weight:600;color:var(--muted);text-align:center;background:var(--bg);border-bottom:2px solid var(--border);';
-  var _ihdr='<div style="display:grid;grid-template-columns:'+cols+';min-width:'+minW+';position:sticky;top:0;z-index:2;">'
+  var _ihdr='<div style="display:grid;grid-template-columns:'+cols+';min-width:'+minW+';position:sticky;top:0;z-index:2;gap:0 8px;">'
     +'<span style="'+thS+'">담당자</span>'
     +'<span style="'+thS+'">고객사</span>'
     +'<span style="'+thS+'">프로젝트명</span>'
@@ -20219,29 +20251,31 @@ function _wkRenderIssues(){
     +'<span style="'+thS+'">상태</span>'
     +'<span style="'+thS+'">D-DAY</span>'
     +'</div>';
-  var SEV={'hi':['#FEE2E2','#DC2626','높음'],'mid':['#FEF3C7','#D97706','중간'],'lo':['#DBEAFE','#2563EB','낮음'],
-    '높음':['#FEE2E2','#DC2626','높음'],'중간':['#FEF3C7','#D97706','중간'],'낮음':['#DBEAFE','#2563EB','낮음']};
+  var SEV={
+    'hi':['#FEE2E2','#DC2626','높음'],'mid':['#FEF3C7','#D97706','중간'],'lo':['#DBEAFE','#2563EB','낮음'],
+    '높음':['#FEE2E2','#DC2626','높음'],'중간':['#FEF3C7','#D97706','중간'],'낮음':['#DBEAFE','#2563EB','낮음']
+  };
   var ST={'Open':'#EFF6FF|#2563EB','진행중':'#EFF6FF|#2563EB','완료':'#D1FAE5|#065F46','보류':'#FEF3C7|#92400E','Closed':'#F1F5F9|#475569'};
   var _irows=issues.map(function(iss,_i){
     var _bg=_i%2===1?'background:#FAFBFC;':'';
-    // 내용 높이에 맞게 다른 셀도 align-self:center
+    // 고객접점과 동일: padding:8px 14px, font-size:12px, gap:0 8px
     var cs='padding:8px 14px;font-size:12px;text-align:center;align-self:center;border-bottom:0.5px solid #F1F5F9;'+_bg;
     var diff=iss.diff;
     var diffStr=diff<0?'D+'+Math.abs(diff):(diff===999?'—':'D-'+diff);
     var diffColor=diff<0||diff<=7?'background:#FEE2E2;color:#DC2626;':diff<=30?'background:#FEF3C7;color:#D97706;':'background:#F1F5F9;color:#1E293B;';
     var sv=SEV[iss.sev]||['#FEF3C7','#D97706','중간'];
     var stParts=(ST[iss.status]||'#F1F5F9|#475569').split('|');
-    // 내용: pre-wrap으로 엔터 보존, align-self:center로 세로 중앙
-    var contentCell='<div style="padding:8px 14px;font-size:12px;align-self:center;border-bottom:0.5px solid #F1F5F9;'+_bg
-      +'white-space:pre-wrap;word-break:break-word;line-height:1.6;">'+_renderRich(iss.content)+'</div>';
-    return '<div style="display:grid;grid-template-columns:'+cols+';min-width:'+minW+';align-items:center;">'
+    // 내용: pre-wrap으로 엔터 보존, _wkEsc 후 줄바꿈 복원
+    var rawContent=(iss.content||'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+    var escapedContent=_wkEsc(rawContent).replace(/\n/g,'<br>');
+    return '<div style="display:grid;grid-template-columns:'+cols+';min-width:'+minW+';align-items:center;gap:0 8px;">'
       +'<div style="'+cs+'">'+_wkRepBadge(iss.rep)+'</div>'
       +'<div style="'+cs+'font-weight:600;color:#0F172A;">'+_wkEsc(iss.client)+'</div>'
       +'<div style="'+cs+'color:#334155;">'+_wkEsc(iss.project||'—')+'</div>'
-      +contentCell
-      +'<div style="'+cs+'"><span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;background:'+sv[0]+';color:'+sv[1]+';">'+sv[2]+'</span></div>'
-      +'<div style="'+cs+'"><span style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;background:'+stParts[0]+';color:'+stParts[1]+';">'+_wkEsc(iss.status)+'</span></div>'
-      +'<div style="'+cs+'"><span style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;'+diffColor+'">'+diffStr+'</span></div>'
+      +'<div style="padding:8px 14px;font-size:12px;align-self:center;border-bottom:0.5px solid #F1F5F9;'+_bg+'word-break:break-word;line-height:1.6;">'+escapedContent+'</div>'
+      +'<div style="'+cs+'"><span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;background:'+sv[0]+';color:'+sv[1]+';white-space:nowrap;">'+sv[2]+'</span></div>'
+      +'<div style="'+cs+'"><span style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;background:'+stParts[0]+';color:'+stParts[1]+';white-space:nowrap;">'+_wkEsc(iss.status)+'</span></div>'
+      +'<div style="'+cs+'"><span style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;'+diffColor+'white-space:nowrap;">'+diffStr+'</span></div>'
       +'</div>';
   }).join('');
   el.innerHTML=_ihdr+'<div style="max-height:380px;overflow-y:auto;overflow-x:hidden;">'+_irows+'</div>';
