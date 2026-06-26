@@ -8046,6 +8046,7 @@ function doGuestWithName(name, skipPwCheck, guestTitle){
   closeAuth();
   _showSPLoading((guestTitle||name)+' SP 연결 중...');
   (async function _tryGuestConnect(){
+    window._spConnectFn=_tryGuestConnect;
     try{
       if(!window._isSPReady&&typeof _initSP==='function'){
         await Promise.race([
@@ -8157,6 +8158,7 @@ function _showSPLoading(msg){
   if(window._spOnlineHandler) window.removeEventListener('online',window._spOnlineHandler);
   window._spOnlineHandler=function(){
     window.removeEventListener('online',window._spOnlineHandler);
+    window._spOnlineHandler=null;
     var msgEl2=document.getElementById('sp-loading-msg');
     if(msgEl2) msgEl2.textContent='네트워크 복구됨 - 재연결 중...';
     var conn2=document.getElementById('sp-loading-connecting');
@@ -8164,7 +8166,9 @@ function _showSPLoading(msg){
     if(conn2) conn2.style.display='block';
     if(err2) err2.style.display='none';
     window._isSPReady=false;
+    // _spRetry(실패 후) 또는 _spConnectFn(연결 중) 모두 시도
     if(typeof window._spRetry==='function') window._spRetry();
+    else if(typeof window._spConnectFn==='function') window._spConnectFn();
   };
   window.addEventListener('online',window._spOnlineHandler);
 }
@@ -8177,6 +8181,7 @@ function _hideSPLoading(){
   }
   window._spRetry=null;
   window._spClose=null;
+  window._spConnectFn=null;
 }
 function _showSPError(msg){
   var conn=document.getElementById('sp-loading-connecting');
@@ -8350,6 +8355,7 @@ function doRepLogin(rep){
   closeAuth();
   _showSPLoading(rep+' SP 연결 중...');
   (async function _tryRepConnect(){
+    window._spConnectFn=_tryRepConnect;
     try{
       if(!window._isSPReady&&typeof _initSP==='function'){
         await Promise.race([
@@ -8400,6 +8406,7 @@ function tryAdmin(){
     closeAuth();
     _showSPLoading('관리자 SP 연결 중...');
     (async function _tryAdminConnect(){
+      window._spConnectFn=_tryAdminConnect;
       try{
         if(!window._isSPReady&&typeof _initSP==='function'){
           await Promise.race([
