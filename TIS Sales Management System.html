@@ -7964,29 +7964,73 @@ function goGuestStep(){
   if(!gs) return;
   gs.style.display='block';
   var _msE='';
-  if(window._msalApp){var _ac=window._msalApp.getAllAccounts();if(_ac.length>0)_msE=(_ac[0].username||'').toLowerCase().trim();}
-  // SP 설정이 아직 로드 안 됐으면 로드 후 재시도
-  if(_msE && (!authCfg.guestAllowList||!authCfg.guestAllowList.length) && window._isSPReady && !window._spSettingsLoaded){
-    _spLoadSettings().then(function(){
-      window._spSettingsLoaded=true;
-      goGuestStep();
-    }).catch(function(){ goGuestStep._direct=true; });
-    return;
+  if(window._msalApp){
+    var _ac=window._msalApp.getAllAccounts();
+    if(_ac.length>0) _msE=(_ac[0].username||'').toLowerCase().trim();
   }
-  var _gm=(typeof _getGuestAllowMatch==='function')?_getGuestAllowMatch(_msE):null;
-  var _kd=document.getElementById('auth-s-guest-known');
-  var _ud=document.getElementById('auth-s-guest-unknown');
-  if(_gm){
-    window._matchedGuest=_gm;
-    if(_kd)_kd.style.display='block'; if(_ud)_ud.style.display='none';
-    var _ne=document.getElementById('guest-known-name');
-    if(_ne)_ne.textContent=_gm.name+(_gm.title?' '+_gm.title:'');
-  } else {
-    window._matchedGuest=null;
-    if(_kd)_kd.style.display='none'; if(_ud)_ud.style.display='block';
-    var _gi=document.getElementById('guest-name-input');if(_gi){_gi.value='';_gi.focus();}
-    var _gb=document.getElementById('guest-confirm-btn');if(_gb){_gb.disabled=true;_gb.style.opacity='0.5';}
+  function _esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function _doRender(){
+    var _gm=_msE?(typeof _getGuestAllowMatch==='function'?_getGuestAllowMatch(_msE):null):null;
+    var _kd=document.getElementById('auth-s-guest-known');
+    var _ud=document.getElementById('auth-s-guest-unknown');
+    if(_gm&&!_gm.isRep){
+      // 이메일 완전 매칭
+      window._matchedGuest=_gm;
+      if(_kd) _kd.style.display='block';
+      if(_ud) _ud.style.display='none';
+      var _ne=document.getElementById('guest-known-name');
+      if(_ne) _ne.textContent=_gm.name+(_gm.title?' '+_gm.title:'');
+    } else {
+      // 등록된 게스트 버튼 목록 표시
+      var list=authCfg.guestAllowList||[];
+      if(_kd) _kd.style.display='none';
+      if(_ud) _ud.style.display='block';
+      window._guestList=list; // 전역 저장
+      if(list.length>0&&!document.getElementById('guest-known-btns')){
+        var _btnWrap=document.createElement('div');
+        _btnWrap.id='guest-known-btns';
+        _btnWrap.style.cssText='margin-bottom:14px;';
+        var _btnsHtml='<div style="font-size:11px;font-weight:600;color:#64748B;margin-bottom:8px;">등록된 사용자 선택</div>';
+        list.forEach(function(g,idx){
+          _btnsHtml+='<button data-gidx="'+idx+'" class="guest-known-btn" style="display:block;width:100%;text-align:left;padding:9px 12px;margin-bottom:6px;border:1.5px solid #E2E8F0;border-radius:9px;background:#F8FAFF;font-size:13px;font-weight:600;color:#0F172A;cursor:pointer;font-family:inherit;">'
+            +_esc(g.name)+(g.title?'<span style="font-size:11px;color:#64748B;font-weight:400;margin-left:6px;">'+_esc(g.title)+'</span>':'')
+            +'</button>';
+        });
+        _btnsHtml+='<div style="height:1px;background:#E2E8F0;margin:12px 0;"></div>'
+          +'<div style="font-size:11px;font-weight:600;color:#94A3B8;margin-bottom:8px;">목록에 없으면 직접 입력</div>';
+        _btnWrap.innerHTML=_btnsHtml;
+        // 버튼 이벤트 연결
+        _btnWrap.querySelectorAll('.guest-known-btn').forEach(function(btn){
+          btn.addEventListener('mouseover',function(){ btn.style.borderColor='#2563EB'; btn.style.background='#EFF6FF'; });
+          btn.addEventListener('mouseout',function(){ btn.style.borderColor='#E2E8F0'; btn.style.background='#F8FAFF'; });
+          btn.addEventListener('click',function(){
+            var idx=parseInt(btn.dataset.gidx);
+            var g=(window._guestList||[])[idx];
+            if(!g) return;
+            window._matchedGuest=g;
+            if(_kd){ _kd.style.display='block'; }
+            if(_ud){ _ud.style.display='none'; }
+            var _ne=document.getElementById('guest-known-name');
+            if(_ne) _ne.textContent=g.name+(g.title?' '+g.title:'');
+          });
+        });
+        var _ud2=document.getElementById('auth-s-guest-unknown');
+        if(_ud2) _ud2.insertBefore(_btnWrap, _ud2.firstChild);
+      }
+      window._matchedGuest=null;
+      var _gi=document.getElementById('guest-name-input');
+      var _gb=document.getElementById('guest-confirm-btn');
+      if(_gi) _gi.value='';
+      if(_gb){ _gb.disabled=true; _gb.style.opacity='0.5'; }
+    }
   }
+  if(!authCfg.guestAllowList||!authCfg.guestAllowList.length){
+    if(window._isSPReady&&!window._spSettingsLoaded){
+      _spLoadSettings().then(function(){ window._spSettingsLoaded=true; _doRender(); }).catch(function(){ _doRender(); });
+      return;
+    }
+  }
+  _doRender();
 }
 function doGuestWithName(name, skipPwCheck, guestTitle){
   if(!name||!name.trim()) return;
