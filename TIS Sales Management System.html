@@ -8137,19 +8137,57 @@ function closeAuth(){
 }
 function _showSPLoading(msg){
   var el=document.getElementById('sp-loading-overlay');
+  var conn=document.getElementById('sp-loading-connecting');
+  var err=document.getElementById('sp-loading-error');
   var msgEl=document.getElementById('sp-loading-msg');
-  if(el){ el.style.display='flex'; }
+  if(el) el.style.display='flex';
+  if(conn) conn.style.display='block';
+  if(err) err.style.display='none';
   if(msgEl) msgEl.textContent=msg||'SharePoint에 연결하는 중...';
   window._spLoadingCancel=function(){
-    _hideSPLoading();
-    // 세션 초기화 후 로그인창
-    session={};
+    _hideSPLoading(); session={};
     if(typeof openAuth==='function') openAuth();
   };
+  // 네트워크 복구 시 자동 재시도
+  if(window._spOnlineHandler) window.removeEventListener('online',window._spOnlineHandler);
+  window._spOnlineHandler=function(){
+    window.removeEventListener('online',window._spOnlineHandler);
+    var msgEl2=document.getElementById('sp-loading-msg');
+    if(msgEl2) msgEl2.textContent='네트워크 복구됨 - 재연결 중...';
+    var conn2=document.getElementById('sp-loading-connecting');
+    var err2=document.getElementById('sp-loading-error');
+    if(conn2) conn2.style.display='block';
+    if(err2) err2.style.display='none';
+    window._isSPReady=false;
+    if(typeof window._spRetry==='function') window._spRetry();
+  };
+  window.addEventListener('online',window._spOnlineHandler);
 }
 function _hideSPLoading(){
   var el=document.getElementById('sp-loading-overlay');
   if(el) el.style.display='none';
+  if(window._spOnlineHandler){
+    window.removeEventListener('online',window._spOnlineHandler);
+    window._spOnlineHandler=null;
+  }
+  window._spRetry=null;
+  window._spClose=null;
+}
+function _showSPError(msg){
+  var conn=document.getElementById('sp-loading-connecting');
+  var err=document.getElementById('sp-loading-error');
+  var errMsg=document.getElementById('sp-error-msg');
+  if(conn) conn.style.display='none';
+  if(err) err.style.display='block';
+  if(errMsg) errMsg.innerHTML=msg||'SharePoint에 연결할 수 없습니다.';
+  window._spClose=function(){ _hideSPLoading(); session={}; if(typeof openAuth==='function') openAuth(); };
+  // 네트워크 복구 시 자동 재시도
+  if(window._spOnlineHandler) window.removeEventListener('online',window._spOnlineHandler);
+  window._spOnlineHandler=function(){
+    window.removeEventListener('online',window._spOnlineHandler);
+    if(typeof window._spRetry==='function') window._spRetry();
+  };
+  window.addEventListener('online',window._spOnlineHandler);
 }
 function _applyGuestReadOnly(){
   // 입력 메뉴 숨기기
