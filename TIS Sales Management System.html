@@ -7972,7 +7972,6 @@ function goGuestStep(){
     var _ud=document.getElementById('auth-s-guest-unknown');
     var _old=document.getElementById('guest-known-btns');
     if(_old) _old.remove();
-
     var _gm=_msE&&typeof _getGuestAllowMatch==='function'?_getGuestAllowMatch(_msE):null;
     if(_gm){
       window._matchedGuest=_gm;
@@ -7991,43 +7990,69 @@ function goGuestStep(){
     }
   }
 
-  // guestAllowList 로드 보장 후 렌더
   function _ensureSettingsThenRender(){
-    // guestAllowList가 있으면 바로 렌더
-    if(authCfg.guestAllowList&&authCfg.guestAllowList.length){
-      _renderGuestUI();
-      return;
+    if(!authCfg.guestAllowList||!authCfg.guestAllowList.length){
+      if(window._isSPReady){
+        _spLoadSettings().then(function(){ _renderGuestUI(); }).catch(function(){ _renderGuestUI(); });
+        return;
+      }
     }
-    // SP 연결됐으면 settings 로드
-    if(window._isSPReady){
-      _spLoadSettings().then(function(){ _renderGuestUI(); }).catch(function(){ _renderGuestUI(); });
-      return;
-    }
-    // SP 미연결 - 일단 렌더 (미등록 화면)
     _renderGuestUI();
   }
 
-  // 1단계: _msalApp 초기화 확인
+  // MS 로그인 후 SP 연결 → guestAllowList 로드 → 이메일 매칭
+  function _doMSLogin(app){
+    // 계정 없으면 MS 로그인 팝업
+    var _ac=app.getActiveAccount()||app.getAllAccounts()[0];
+    if(_ac){
+      // 이미 로그인됨 → SP 연결
+      if(!window._isSPReady&&typeof _connectSP==='function'){
+        _connectSP(app,_ac).then(function(){ _ensureSettingsThenRender(); }).catch(function(){ _ensureSettingsThenRender(); });
+      } else {
+        _ensureSettingsThenRender();
+      }
+    } else {
+      // 최초 접속 → MS 로그인 팝업
+      var _msgEl=document.getElementById('sp-loading-msg');
+      var _loadEl=document.getElementById('sp-loading-overlay');
+      // 로딩 오버레이 대신 간단한 안내 메시지
+      var _infoEl=document.getElementById('auth-s-guest');
+      var _infoDiv=document.getElementById('guest-ms-login-msg');
+      if(!_infoDiv){
+        _infoDiv=document.createElement('div');
+        _infoDiv.id='guest-ms-login-msg';
+        _infoDiv.style.cssText='background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:#1D4ED8;text-align:center;';
+        _infoDiv.textContent='Microsoft 계정으로 로그인하는 중...';
+        if(_infoEl) _infoEl.insertBefore(_infoDiv, _infoEl.firstChild);
+      }
+      app.loginPopup({scopes:[SP_SCOPE]}).then(function(result){
+        var _infoDiv2=document.getElementById('guest-ms-login-msg');
+        if(_infoDiv2) _infoDiv2.remove();
+        window._msalApp=app;
+        var _ac2=result&&result.account?result.account:(app.getAllAccounts()[0]);
+        if(_ac2&&!window._isSPReady&&typeof _connectSP==='function'){
+          _connectSP(app,_ac2).then(function(){ _ensureSettingsThenRender(); }).catch(function(){ _ensureSettingsThenRender(); });
+        } else {
+          _ensureSettingsThenRender();
+        }
+      }).catch(function(e){
+        var _infoDiv2=document.getElementById('guest-ms-login-msg');
+        if(_infoDiv2) _infoDiv2.remove();
+        // 로그인 취소 or 실패 → 미등록 화면
+        _renderGuestUI();
+      });
+    }
+  }
+
   if(!window._msalApp){
     if(typeof _getMSAL!=='function'){ _renderGuestUI(); return; }
     _getMSAL().then(function(app){
       if(!app){ _renderGuestUI(); return; }
       window._msalApp=app;
-      var _ac2=app.getActiveAccount()||app.getAllAccounts()[0];
-      // 2단계: SP 미연결이면 연결 (settings 포함)
-      if(_ac2&&!window._isSPReady&&typeof _connectSP==='function'){
-        _connectSP(app,_ac2).then(function(){
-          // _connectSP 내부에서 _initSP → _spLoadSettings 완료됨
-          // guestAllowList가 채워졌는지 확인 후 렌더
-          _ensureSettingsThenRender();
-        }).catch(function(){ _ensureSettingsThenRender(); });
-      } else {
-        _ensureSettingsThenRender();
-      }
+      _doMSLogin(app);
     }).catch(function(){ _renderGuestUI(); });
   } else {
-    // _msalApp 이미 있음 - SP도 이미 연결됐을 가능성 높음
-    _ensureSettingsThenRender();
+    _doMSLogin(window._msalApp);
   }
 }
 function doGuestWithName(name, skipPwCheck, guestTitle){
