@@ -4836,33 +4836,33 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(_sv) {
     try{
       var _sess = JSON.parse(_sv);
-      session = _sess;
-      if(_sess.team && typeof applyCurrentTeam==='function'){
-        currentTeam = _sess.team;
-        applyCurrentTeam(_sess.team);
-        // 팀 기반 전체 UI 재구성 (setTimeout으로 DOM 렌더 후 실행)
-        setTimeout(function(){
-          if(typeof syncTeamData==='function') syncTeamData();
-          if(typeof buildRepTabs==='function') buildRepTabs();
-
-          // 입력 페이지 활성 상태일 때만 buildRepInputs 호출 (이중 빌드 방지)
-          var _ip=document.getElementById('page-input');
-          if(_ip&&_ip.classList.contains('active')&&typeof buildRepInputs==='function') buildRepInputs();
-          if(typeof renderInputTeamTabs==='function') renderInputTeamTabs();
-          if(typeof renderDashTeamTabs==='function') renderDashTeamTabs();
-          if(typeof extractIssues==='function') extractIssues();
-          if(typeof renderIssues==='function') renderIssues();
-          if(typeof renderPipeline==='function') renderPipeline();
-          if(typeof populateFilters==='function') populateFilters();
-          if(typeof renderDashboard==='function') renderDashboard();
-          // 내 탭 자동이동
-          if(_sess.rep && typeof switchTab==='function'){
-            setTimeout(function(){
-              const tab=document.querySelector('.tab[data-rep="'+_sess.rep+'"]');
-              if(tab) tab.click();
-            }, 200);
-          }
-        }, 150);
+      // _tisSavedSession은 MSAL 리다이렉트(code=) 시에만 자동 복원
+      // 일반 접속 시엔 무시하고 로그인창 표시
+      if(_hc){
+        session = _sess;
+        if(_sess.team && typeof applyCurrentTeam==='function'){
+          currentTeam = _sess.team;
+          applyCurrentTeam(_sess.team);
+          setTimeout(function(){
+            if(typeof syncTeamData==='function') syncTeamData();
+            if(typeof buildRepTabs==='function') buildRepTabs();
+            var _ip=document.getElementById('page-input');
+            if(_ip&&_ip.classList.contains('active')&&typeof buildRepInputs==='function') buildRepInputs();
+            if(typeof renderInputTeamTabs==='function') renderInputTeamTabs();
+            if(typeof renderDashTeamTabs==='function') renderDashTeamTabs();
+            if(typeof extractIssues==='function') extractIssues();
+            if(typeof renderIssues==='function') renderIssues();
+            if(typeof renderPipeline==='function') renderPipeline();
+            if(typeof populateFilters==='function') populateFilters();
+            if(typeof renderDashboard==='function') renderDashboard();
+            if(_sess.rep && typeof switchTab==='function'){
+              setTimeout(function(){
+                const tab=document.querySelector('.tab[data-rep="'+_sess.rep+'"]');
+                if(tab) tab.click();
+              }, 200);
+            }
+          }, 150);
+        }
       }
       localStorage.removeItem('_tisSavedSession');
     }catch(ex){ localStorage.removeItem('_tisSavedSession'); }
@@ -8296,7 +8296,7 @@ function doRepLogin(rep){
   // 담당자의 실제 소속팀 조회 (currentTeam 아닌 REP_TEAM_MAP 기준)
   var _repTeam = _getRepActualTeam(rep);
   session={role:'rep', rep:rep, team:_repTeam};
-  localStorage.setItem('_tisSavedSession', JSON.stringify({role:'rep',rep:rep,team:_repTeam}));
+  // _tisSavedSession 저장 제거 (MSAL 리다이렉트용으로만 사용)
   // 참가자 변경 시 탭/캐시 초기화 (이전 참가자 상태 완전 제거)
   window._intendedVTab=null;
   window._activeVTab=null;
@@ -8339,7 +8339,7 @@ function doRepLogin(rep){
 }function doRepLogin(rep){
   var _repTeam2 = _getRepActualTeam(rep);
   session={role:'rep', rep:rep, team:_repTeam2};
-  localStorage.setItem('_tisSavedSession', JSON.stringify({role:'rep',rep:rep,team:_repTeam2}));
+  // _tisSavedSession 저장 제거 (MSAL 리다이렉트용으로만 사용)
   _tabState.input=_repTeam2;
   _tabState.issues=_repTeam2;
   _tabState.pipeline=_repTeam2;
@@ -8387,7 +8387,7 @@ function tryAdmin(){
   if(!pw) return;
   if(pw.value===authCfg.adminPw){
     session={role:'admin', rep:null, team:null};
-    localStorage.setItem('_tisSavedSession', JSON.stringify({role:'admin',rep:null}));
+    // _tisSavedSession 저장 제거 (MSAL 리다이렉트용으로만 사용)
     closeAuth();
     _initApp();
     showToast('🛡️ 관리자 모드로 접속했습니다.');
