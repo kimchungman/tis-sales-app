@@ -4357,16 +4357,15 @@ window._updateSidebarByRole=function(){
       <div class="wk-cb"><div id="wk-rep-table"></div></div>
     </div>
     <!-- 진행현황 2x2 그리드 -->
-    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
-      <!-- 프로젝트 진행현황 -->
+    <!-- 프로젝트 진행현황 -->
       <div class="wk-card" style="margin:0;">
         <div class="wk-ch"><span class="wk-ch-t">프로젝트 진행현황</span><span class="wk-ch-s" id="wk-proj-cnt">이번주 업데이트</span></div>
-        <div class="wk-cb" id="wk-proj-list" style="overflow:hidden;"></div>
+        <div class="wk-cb" id="wk-proj-list" style="overflow-x:auto;"></div>
       </div>
       <!-- 이슈 현황 -->
       <div class="wk-card" style="margin:0;">
         <div class="wk-ch"><span class="wk-ch-t">이슈 현황</span><span class="wk-ch-s" id="wk-iss-cnt"></span></div>
-        <div class="wk-cb" id="wk-iss-list" style="overflow:hidden;"></div>
+        <div class="wk-cb" id="wk-iss-list" style="overflow-x:auto;"></div>
       </div>
       <!-- 고객 접점 현황 -->
       <div class="wk-card" style="margin:0;">
@@ -4378,7 +4377,6 @@ window._updateSidebarByRole=function(){
         <div class="wk-ch"><span class="wk-ch-t">계약 주요 현황</span><span class="wk-ch-s" id="wk-contract-cnt"></span></div>
         <div class="wk-cb" id="wk-contract-list" ></div>
       </div>
-    </div>
   </div>
   <!-- 회의록 뷰 -->
   <div id="wk-feed-view" class="wk-feed" style="display:none;">
@@ -20006,38 +20004,57 @@ function _wkRenderProjects(){
     var rd=store&&store.reps&&store.reps[rep];
     if(!rd) return;
     (rd.activities||[]).forEach(function(a){
-      if(!a.content||!a.client) return;
-      var _wk2=typeof _wkThisKey==='function'?((_wk&&_wk.weekMode==='last')?_wkLastKey():_wkThisKey()):'';
-      if(a.wk!==true) return;
+      if(!a.wk) return;
       var isNew=a.updatedAt&&new Date(a.updatedAt)>=weekStart;
-      items.push({rep:rep, client:a.client, project:a.project||'', content:a.content, date:a.updatedAt, isNew:isNew});
+      items.push({
+        rep:rep, client:a.client||'', project:a.project||'',
+        product:a.product||'', type:a.type||'',
+        progress:a.progress||a.prog||'', amount:a.amount||0,
+        content:a.content||a.note||'', date:a.updatedAt, isNew:isNew
+      });
     });
   });
   items.sort(function(a,b){ return (b.isNew?1:0)-(a.isNew?1:0); });
+  var cnt=document.getElementById('wk-proj-cnt');
+  if(cnt) cnt.textContent='이번주 '+items.length+'건';
   if(!items.length){
     el.innerHTML='<div style="padding:16px 18px;font-size:12px;color:#94A3B8;">이번 주 프로젝트 진행 항목이 없습니다.</div>';
-    el.style.maxHeight=''; el.style.overflowY=''; return;
+    return;
   }
-  var _hdr='<div class="wk-row" style="position:sticky;top:0;z-index:2;background:var(--bg);border-bottom:2px solid var(--border);font-size:10px;font-weight:600;color:var(--muted);">'
-    +'<span style="text-align:center;">담당자</span>'
-    +'<span style="text-align:center;">고객사</span>'
-    +'<span style="text-align:center;">프로젝트</span>'
-    +'<span style="text-align:center;">내용</span>'
-    +'<span></span>'
+  // 그리드: 담당자60 | 고객사120 | 구분68 | 프로젝트명140 | 제품68 | 진행68 | 금액72 | 내용1fr
+  var cols='60px 120px 68px 140px 68px 68px 72px 1fr';
+  var minW='760px';
+  var thS='padding:6px 8px;font-size:10px;font-weight:600;color:#94A3B8;text-align:center;background:#FAFBFF;border-bottom:1px solid #E2E8F0;';
+  var _hdr='<div style="display:grid;grid-template-columns:'+cols+';min-width:'+minW+';position:sticky;top:0;z-index:2;">'
+    +'<div style="'+thS+'">담당자</div>'
+    +'<div style="'+thS+'">고객사</div>'
+    +'<div style="'+thS+'">구분</div>'
+    +'<div style="'+thS+'">프로젝트명</div>'
+    +'<div style="'+thS+'">제품</div>'
+    +'<div style="'+thS+'">진행</div>'
+    +'<div style="'+thS+'">금액(천원)</div>'
+    +'<div style="'+thS+'text-align:left;">내용</div>'
     +'</div>';
+  var PROG_COLOR={'완료':'background:#D1FAE5;color:#065F46;','진행중':'background:#DBEAFE;color:#1E40AF;','대기':'background:#F1F5F9;color:#475569;','보류':'background:#FEF3C7;color:#92400E;'};
+  var TYPE_COLOR={'신규영업':'background:#EFF6FF;color:#2563EB;','유지보수':'background:#F0FDF4;color:#15803D;','재계약':'background:#FFF7ED;color:#C2410C;','기타':'background:#F8FAFC;color:#64748B;'};
   var _rows=items.map(function(it,_i){
-    var _bg=_i%2===1?'background:#FAFBFC;':'';
-    var newDot=it.isNew?'<span style="width:6px;height:6px;border-radius:50%;background:#10B981;flex-shrink:0;display:inline-block;"></span>':'<span style="width:6px;height:6px;flex-shrink:0;display:inline-block;"></span>';
-    return '<div class="wk-row" style="'+_bg+'">'
-      +_wkRepBadge(it.rep)
-      +'<span class="wk-cli" style="text-align:center;display:block;">'+_wkEsc(it.client)+'</span>'
-      +'<span class="wk-proj">'+_wkEsc(it.project)+'</span>'
-      +'<div class="wk-cont" style="display:block;white-space:pre-wrap;word-break:break-word;overflow:visible;line-height:1.6;grid-column:4/6;">'+(_renderRich(it.content||it.note||''))+'</div>'
-      +'<span></span>'
+    var _bg=_i%2===1?'background:#FAFBFF;':'';
+    var cs='padding:7px 8px;font-size:11px;text-align:center;align-self:center;border-bottom:1px solid #F8FAFC;'+_bg;
+    var progSt=PROG_COLOR[it.progress]||'background:#F1F5F9;color:#475569;';
+    var typeSt=TYPE_COLOR[it.type]||'background:#F8FAFC;color:#64748B;';
+    var amtStr=it.amount>0?parseFloat(it.amount).toLocaleString('ko-KR'):'—';
+    return '<div style="display:grid;grid-template-columns:'+cols+';min-width:'+minW+';align-items:center;">'
+      +'<div style="'+cs+'">'+_wkRepBadge(it.rep)+'</div>'
+      +'<div style="'+cs+'font-weight:600;color:#0F172A;">'+_wkEsc(it.client)+'</div>'
+      +'<div style="'+cs+'"><span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;'+typeSt+'">'+_wkEsc(it.type||'—')+'</span></div>'
+      +'<div style="'+cs+'color:#334155;">'+_wkEsc(it.project||'—')+'</div>'
+      +'<div style="'+cs+'color:#64748B;font-size:10px;">'+_wkEsc(it.product||'—')+'</div>'
+      +'<div style="'+cs+'"><span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;'+progSt+'">'+_wkEsc(it.progress||'—')+'</span></div>'
+      +'<div style="'+cs+'font-weight:600;color:#0F172A;">'+amtStr+'</div>'
+      +'<div style="padding:7px 8px;font-size:11px;align-self:center;border-bottom:1px solid #F8FAFC;'+_bg+'white-space:pre-wrap;word-break:break-word;line-height:1.6;">'+_renderRich(it.content)+'</div>'
       +'</div>';
   }).join('');
-  el.innerHTML=_hdr+'<div style="max-height:340px;overflow-y:auto;">'+_rows+'</div>';
-  el.style.maxHeight=''; el.style.overflowY='';
+  el.innerHTML=_hdr+'<div style="max-height:380px;overflow-y:auto;overflow-x:hidden;">'+_rows+'</div>';
 }
 
 function _wkRenderIssues(){
@@ -20055,40 +20072,51 @@ function _wkRenderIssues(){
       if(i.wk!==true) return;
       var due=i.dueDate?new Date(i.dueDate):null;
       var diff=due?Math.round((due-today)/86400000):999;
-      var _ic=i.content||i.note||i.issueContent||''; issues.push({rep:rep, client:i.client, project:i.project||'', content:_ic, diff:diff, sev:i.sev||'mid'});
+      var _ic=i.content||i.note||i.issueContent||'';
+      issues.push({rep:rep, client:i.client||'', project:i.project||'', content:_ic,
+        sev:i.sev||'mid', status:i.status||'Open', diff:diff, dueDate:i.dueDate||''});
     });
   });
   issues.sort(function(a,b){ return a.diff-b.diff; });
   if(cnt) cnt.textContent='오픈 '+issues.length+'건';
   if(!issues.length){
     el.innerHTML='<div style="padding:16px 18px;font-size:12px;color:#94A3B8;">오픈 이슈가 없습니다.</div>';
-    el.style.maxHeight=''; el.style.overflowY=''; return;
+    return;
   }
-  var _ihdr='<div class="wk-row" style="position:sticky;top:0;z-index:2;background:var(--bg);border-bottom:2px solid var(--border);font-size:10px;font-weight:600;color:var(--muted);">'
-    +'<span style="text-align:center;">담당자</span>'
-    +'<span style="text-align:center;">고객사</span>'
-    +'<span style="text-align:center;">프로젝트</span>'
-    +'<span style="text-align:center;">내용</span>'
-    +'<span style="text-align:center;">D-Day</span>'
+  // 그리드: 담당자60 | 고객사120 | 프로젝트명130 | 내용1fr | 중요도60 | 상태68 | DDAY62
+  var cols='60px 120px 130px 1fr 60px 68px 62px';
+  var minW='720px';
+  var thS='padding:6px 8px;font-size:10px;font-weight:600;color:#94A3B8;text-align:center;background:#FAFBFF;border-bottom:1px solid #E2E8F0;';
+  var _ihdr='<div style="display:grid;grid-template-columns:'+cols+';min-width:'+minW+';position:sticky;top:0;z-index:2;">'
+    +'<div style="'+thS+'">담당자</div>'
+    +'<div style="'+thS+'">고객사</div>'
+    +'<div style="'+thS+'">프로젝트명</div>'
+    +'<div style="'+thS+'text-align:left;">내용</div>'
+    +'<div style="'+thS+'">중요도</div>'
+    +'<div style="'+thS+'">상태</div>'
+    +'<div style="'+thS+'">D-DAY</div>'
     +'</div>';
+  var SEV={'hi':['#FEE2E2','#DC2626','높음'],'mid':['#FEF3C7','#D97706','중간'],'lo':['#DBEAFE','#2563EB','낮음'],'높음':['#FEE2E2','#DC2626','높음'],'중간':['#FEF3C7','#D97706','중간'],'낮음':['#DBEAFE','#2563EB','낮음']};
+  var ST_COL={'Open':'#EFF6FF|#2563EB','진행중':'#EFF6FF|#2563EB','완료':'#D1FAE5|#065F46','보류':'#FEF3C7|#92400E','Closed':'#F1F5F9|#475569'};
   var _irows=issues.map(function(iss,_i){
-    var _bg=_i%2===1?'background:#FAFBFC;':'';
+    var _bg=_i%2===1?'background:#FAFBFF;':'';
+    var cs='padding:7px 8px;font-size:11px;text-align:center;align-self:center;border-bottom:1px solid #F8FAFC;'+_bg;
     var diff=iss.diff;
     var diffStr=diff<0?'D+'+Math.abs(diff):(diff===999?'—':'D-'+diff);
     var diffColor=diff<0||diff<=7?'background:#FEE2E2;color:#DC2626;':diff<=30?'background:#FEF3C7;color:#D97706;':'background:#F1F5F9;color:#1E293B;';
-    var sevColors={'hi':'#EF4444','mid':'#F59E0B','lo':'#3B82F6'};
-    var dotCol=sevColors[iss.sev]||'#F59E0B';
-    return '<div class="wk-row" style="'+_bg+'">'
-      
-      +_wkRepBadge(iss.rep)
-      +'<span class="wk-cli" style="text-align:center;display:block;">'+_wkEsc(iss.client)+'</span>'
-      +'<span class="wk-proj">'+_wkEsc(iss.project)+'</span>'
-      +'<div class="wk-cont" style="display:block;white-space:pre-wrap;word-break:break-word;overflow:visible;line-height:1.6;">'+_renderRich(iss.content||iss.note||iss.issueContent||'')+'</div>'
-      +'<span class="wk-dchip" style="'+diffColor+'">'+diffStr+'</span>'
+    var sevArr=SEV[iss.sev]||['#FEF3C7','#D97706','중간'];
+    var stParts=(ST_COL[iss.status]||'#F1F5F9|#475569').split('|');
+    return '<div style="display:grid;grid-template-columns:'+cols+';min-width:'+minW+';align-items:center;">'
+      +'<div style="'+cs+'">'+_wkRepBadge(iss.rep)+'</div>'
+      +'<div style="'+cs+'font-weight:600;color:#0F172A;">'+_wkEsc(iss.client)+'</div>'
+      +'<div style="'+cs+'color:#334155;">'+_wkEsc(iss.project||'—')+'</div>'
+      +'<div style="padding:7px 8px;font-size:11px;align-self:center;border-bottom:1px solid #F8FAFC;'+_bg+'white-space:pre-wrap;word-break:break-word;line-height:1.6;">'+_renderRich(iss.content)+'</div>'
+      +'<div style="'+cs+'"><span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;background:'+sevArr[0]+';color:'+sevArr[1]+';">'+sevArr[2]+'</span></div>'
+      +'<div style="'+cs+'"><span style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;background:'+stParts[0]+';color:'+stParts[1]+';">'+_wkEsc(iss.status)+'</span></div>'
+      +'<div style="'+cs+'"><span style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;'+diffColor+'">'+diffStr+'</span></div>'
       +'</div>';
   }).join('');
-  el.innerHTML=_ihdr+'<div style="max-height:340px;overflow-y:auto;">'+_irows+'</div>';
-  el.style.maxHeight=''; el.style.overflowY='';
+  el.innerHTML=_ihdr+'<div style="max-height:380px;overflow-y:auto;overflow-x:hidden;">'+_irows+'</div>';
 }
 
 function _wkRenderVisitList(){
