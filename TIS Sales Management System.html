@@ -8394,14 +8394,31 @@ function tryAdmin(){
   var pw=document.getElementById('adm-pw');
   if(!pw) return;
   if(pw.value===authCfg.adminPw){
-    session={role:'admin', rep:null, team:null};
-    // _tisSavedSession 저장 제거 (MSAL 리다이렉트용으로만 사용)
+    session={role:'admin',rep:null,team:null};
     closeAuth();
     _showSPLoading('관리자 SP 연결 중...');
-    _hideSPLoading();
-    _initApp();
-    showToast('🛡️ 관리자 모드로 접속했습니다.');
-    // SP 연결은 _startSP가 담당
+    (async function _tryAdminConnect(){
+      try{
+        if(!window._isSPReady&&typeof _initSP==='function'){
+          await Promise.race([
+            _initSP(),
+            new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('연결 시간 초과 (30초)')); },30000); })
+          ]);
+        }
+        if(!window._isSPReady) throw new Error('SP 연결에 실패했습니다.');
+        _hideSPLoading();
+        _initApp();
+        showToast('🛡️ 관리자 모드로 접속했습니다.');
+      }catch(e){
+        var _em=typeof e==='string'?e:(e.message||'알 수 없는 오류');
+        _showSPError(_em);
+        window._spRetry=function(){
+          _showSPLoading('관리자 SP 재연결 중...');
+          window._isSPReady=false;
+          setTimeout(_tryAdminConnect,300);
+        };
+      }
+    })();
   } else {
     var err=document.getElementById('adm-err');
     if(err) err.textContent='❌ 비밀번호가 틀렸습니다.';
