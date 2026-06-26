@@ -2579,7 +2579,9 @@ window._sanitizeRich=function(h){
   if(!h)return'';
   // li/ul/ol: li 닫기 → <br>, 나머지 태그 제거
   h=h.replace(/<\/li>/gi,'<br>').replace(/<li[^>]*>/gi,'').replace(/<\/ul>/gi,'').replace(/<ul[^>]*>/gi,'').replace(/<\/ol>/gi,'').replace(/<ol[^>]*>/gi,'');
-  h=h.replace(/<\/div>/gi,'<br>').replace(/<\/p>/gi,'<br>').replace(/<div[^>]*>/gi,'').replace(/<p[^>]*>/gi,'');
+  h=h.replace(/<\/div>\s*<\/div>/gi,'<br>').replace(/<\/div>/gi,'<br>').replace(/<\/p>/gi,'<br>').replace(/<div[^>]*>/gi,'').replace(/<p[^>]*>/gi,'');
+  // 연속 <br> 3개 이상 → 1개로
+  h=h.replace(/(<br\s*\/?>[\s]*){2,}/gi,'<br>');
   // &amp; 이중인코딩 방지
   h=h.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ');
   var d=document.createElement('div');
@@ -7139,7 +7141,10 @@ async function manualRefresh(){
 
 function extractIssues(){
   store.issues=[];
-  getIssueReps().forEach((rep,ri)=>{
+  // 전체 담당자에서 이슈 수집 (팀 필터 제거)
+  var _allIssReps=[];
+  TEAMS.forEach(function(t){(TEAM_REPS[t]||[]).forEach(function(r){if(_allIssReps.indexOf(r)<0&&store.reps[r])_allIssReps.push(r);});});
+  _allIssReps.forEach((rep,ri)=>{
 
     // ── 고객사별 이슈 ──
     store.reps[rep].clients.forEach((c,ci)=>{
@@ -7168,7 +7173,7 @@ function extractIssues(){
   });
 
   // ── 이슈사항 탭 직접 등록 이슈 포함 ──
-  getIssueReps().forEach(function(rep){
+  _allIssReps.forEach(function(rep){
     (store.reps[rep].issuesList||[]).forEach(function(iss){
       if(!iss.sev||iss.sev==='none'||iss.sev==='') return;
       store.issues.push({
