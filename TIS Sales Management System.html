@@ -2554,11 +2554,24 @@ var NAV_MENUS=[
 var _menuOrder=null; // null이면 기본순서
 
 function _getMenuOrder(){
-  // authCfg에서 로드
+  var allIds=NAV_MENUS.map(function(m){return m.id;});
   if(typeof authCfg!=='undefined'&&authCfg.menuOrder&&authCfg.menuOrder.length){
-    return authCfg.menuOrder;
+    var saved=authCfg.menuOrder.filter(function(id){
+      // 저장된 순서에서 NAV_MENUS에 없는 id 제거
+      return allIds.indexOf(id)>=0;
+    });
+    // NAV_MENUS에 새로 추가된 메뉴 뒤에 붙이기
+    allIds.forEach(function(id){
+      if(saved.indexOf(id)<0) saved.push(id);
+    });
+    // 변경이 있으면 자동 저장
+    if(saved.length!==authCfg.menuOrder.length||saved.some(function(id,i){return authCfg.menuOrder[i]!==id;})){
+      authCfg.menuOrder=saved;
+      if(typeof saveAuthCfg==='function') saveAuthCfg();
+    }
+    return saved;
   }
-  return NAV_MENUS.map(function(m){return m.id;});
+  return allIds;
 }
 
 function _renderSidebar(){
@@ -2593,9 +2606,15 @@ window._sanitizeRich=function(h){
   if(!h)return'';
   // li/ul/ol: li 닫기 → <br>, 나머지 태그 제거
   h=h.replace(/<\/li>/gi,'<br>').replace(/<li[^>]*>/gi,'').replace(/<\/ul>/gi,'').replace(/<ul[^>]*>/gi,'').replace(/<\/ol>/gi,'').replace(/<ol[^>]*>/gi,'');
-  h=h.replace(/<\/div>\s*<\/div>/gi,'<br>').replace(/<\/div>/gi,'<br>').replace(/<\/p>/gi,'<br>').replace(/<div[^>]*>/gi,'').replace(/<p[^>]*>/gi,'');
+  h=h.replace(/<\/div>\s*<\/div>/gi,'<br>').replace(/<\/div>(?!\s*<)/gi,'<br>').replace(/<\/div>/gi,'<br>').replace(/<\/p>/gi,'<br>').replace(/<div[^>]*>/gi,'').replace(/<p[^>]*>/gi,'');
   // 연속 <br> 3개 이상만 2개로 (1->2는 정상 줄바꿈 유지)
   h=h.replace(/(<br\s*\/?>[\s]*){3,}/gi,'<br><br>');
+  // 텍스트 바로 뒤에 숫자+괄호 패턴 → <br> 삽입 (저장 데이터 보완)
+  h=h.replace(/([가-힣a-zA-Z0-9\.,\s])([0-9]+[)）])/g,function(m,p1,p2){
+    // 앞뒤가 공백/쉼표면 줄바꿈 아닐 수 있으므로 앞 글자가 특정 끝맺음 글자면 삽입
+    if(/[가-힣a-z]$/i.test(p1.trim())) return p1+'<br>'+p2;
+    return m;
+  });
   // &amp; 이중인코딩 방지
   h=h.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ');
   var d=document.createElement('div');
@@ -13443,20 +13462,20 @@ function _iRow(rep, idx, iss){
   // onchange 핸들러용 전역 라벨 변수 (따옴표 충돌 방지)
   window._ISSEV_LABELS = getSelectOpts('issueSev');
   window._ISST_LABELS  = getSelectOpts('issueStatus');
-  var sev = iss.sev||'';
-  var st  = iss.status||'';
+  var sev = (function(s){ return s==='high'?'높음':s==='mid'?'중간':s==='low'?'낮음':s; })(iss.sev||'');
+  var st  = (function(s){ return s==='진행중'||s==='보류'||s==='open'?'Open':s==='완료'||s==='closed'?'Closed':s; })(iss.status||'');
   var r   = rep.replace(/'/g,"\\'");
   var canEdit=((typeof session==='undefined')||(session&&session.role==='admin')||(session&&session.role==='rep'&&session.rep===rep));
 
   // 중요도 옵션
   var sevOpts='<option value="" disabled'+(sev===''?' selected':'')+'>선택</option>'
-    +[{v:'high',l:'↑ 높음'},{v:'mid',l:'● 중간'},{v:'low',l:'↓ 낮음'}]
+    +[{v:'높음',l:'높음'},{v:'중간',l:'중간'},{v:'낮음',l:'낮음'}]
     .map(function(o){return '<option value="'+o.v+'" style="text-align:center"'+(sev===o.v?' selected':'')+'>'+o.l+'</option>';}).join('');
 
 
   // 중요도 pill+hidden-select
-  var sevColor={'high':'#DC2626','mid':'#D97706','low':'#0EA5A0'}[sev]||'#CBD5E1';
-  var sevLabel=sev?({'high':'↑ 높음','mid':'● 중간','low':'↓ 낮음'}[sev]||sev):'선택';
+  var sevColor={'높음':'#DC2626','중간':'#D97706','낮음':'#0EA5A0'}[sev]||'#CBD5E1';
+  var sevLabel=sev?(sev):'선택';
   var sevTd='<td style="width:100px;vertical-align:middle;padding:2px 4px;text-align:center;">'
     +'<div style="position:relative;display:block;width:100%;height:28px;">'
     +'<span class="_bsl" style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:28px;box-sizing:border-box;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;pointer-events:none;background:white;color:'+sevColor+';border:1.5px solid '+sevColor+'60;">'+sevLabel+'</span>'
@@ -13464,10 +13483,10 @@ function _iRow(rep, idx, iss){
     +'</div></td>';
 
   // 처리상태 - 중요도와 동일한 pill+hidden-select 방식
-  var stColor={'open':'#DC2626','closed':'#0EA5A0'}[st]||'#CBD5E1';
-  var stLabel=st?({'open':'Open','closed':'Closed'}[st]||st):'선택';
+  var stColor={'Open':'#DC2626','Closed':'#0EA5A0'}[st]||'#CBD5E1';
+  var stLabel=st?(st||st):'선택';
   var stOpts2='<option value="" disabled'+(st===''?' selected':'')+'>선택</option>'
-    +[{v:'open',l:'Open'},{v:'closed',l:'Closed'}]
+    +[{v:'Open',l:'Open'},{v:'Closed',l:'Closed'}]
     .map(function(o){return '<option value="'+o.v+'" style="text-align:center"'+(st===o.v?' selected':'')+'>'+o.l+'</option>';}).join('');
   var stTd='<td style="width:100px;vertical-align:middle;padding:2px 4px;text-align:center;">'
     +'<div style="position:relative;display:block;width:100%;height:28px;">'
