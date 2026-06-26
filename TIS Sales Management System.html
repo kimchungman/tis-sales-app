@@ -20264,23 +20264,7 @@ function _wkRenderIssues(){
       +_wkRepBadge(iss.rep)
       +'<span style="text-align:center;display:block;font-weight:600;color:#0F172A;">'+_wkEsc(iss.client)+'</span>'
       +'<span style="color:#334155;text-align:center;display:block;">'+_wkEsc(iss.project||'—')+'</span>'
-      +(function(){
-        var h=iss.content||'';
-        // contenteditable 저장 형식 정규화
-        // 1. </div><div> → <br> (줄바꿈)
-        h=h.replace(/<\/div>\s*<div[^>]*>/gi,'<br>');
-        // 2. </div> → <br>
-        h=h.replace(/<\/div>/gi,'<br>');
-        // 3. <div> 열기태그 제거
-        h=h.replace(/<div[^>]*>/gi,'');
-        // 4. <br> 앞뒤 공백 정리
-        h=h.replace(/(<br\s*\/?>\s*){3,}/gi,'<br><br>');
-        // 5. &nbsp; → 공백
-        h=h.replace(/&nbsp;/g,' ');
-        // 6. b/strong/i/em/u 태그는 유지, 나머지 위험 태그 제거
-        h=h.replace(/<(?!\/?(?:b|strong|i|em|u|br|span))[^>]+>/gi,'');
-        return '<span class="wk-cont" style="font-size:11px;word-break:break-word;overflow:visible;line-height:1.6;">'+h+'</span>';
-      })()
+      +'<span class="wk-cont" style="font-size:11px;word-break:break-word;overflow:visible;line-height:1.6;">'+_renderRich(iss.content)+'</span>'
       +'<span style="text-align:center;"><span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;white-space:nowrap;background:'+sv[0]+';color:'+sv[1]+';">'+sv[2]+'</span></span>'
       +'<span style="text-align:center;"><span style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;background:'+stParts[0]+';color:'+stParts[1]+';">'+_wkEsc(iss.status)+'</span></span>'
       +'<span style="text-align:center;"><span style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;white-space:nowrap;'+diffColor+'">'+diffStr+'</span></span>'
