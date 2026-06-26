@@ -4874,9 +4874,13 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(saved){
     try{
       const data = JSON.parse(saved);
-      if(data.reps && !session.team){REPS.length=0;data.reps.forEach(r=>REPS.push(r));}
-      if(data.repColors){REP_COLORS.length=0;data.repColors.forEach(c=>REP_COLORS.push(c));}
-      if(data.store){
+      // 로그인된 세션이 있을 때만 데이터 복원 (미로그인 시 담당자 정보 노출 방지)
+      var _isLoggedIn = session && session.role;
+      if(_isLoggedIn){
+        if(data.reps && !session.team){REPS.length=0;data.reps.forEach(r=>REPS.push(r));}
+        if(data.repColors){REP_COLORS.length=0;data.repColors.forEach(c=>REP_COLORS.push(c));}
+      }
+      if(data.store && _isLoggedIn){
         // SP 로드 완료 전에만 localStorage 복원 (SP 최신 데이터 보호)
         if(!window._spDataLoaded){
           Object.keys(data.store.reps||{}).forEach(rep=>{
@@ -4895,10 +4899,10 @@ document.addEventListener('DOMContentLoaded',()=>{
         var _md=document.getElementById('mtg-date'); if(_md) _md.value=d.toISOString().split('T')[0];
         if(typeof updateSBWeek==='function') updateSBWeek(d);
       }
-      if(data.team){
+      if(data.team && _isLoggedIn){
         document.querySelector('.sidebar-logo .title').textContent=data.team;
       }
-      showToast('💾 저장된 데이터를 불러왔습니다.');
+      if(_isLoggedIn) showToast('💾 저장된 데이터를 불러왔습니다.');
     } catch(e){
       console.warn('복원 실패, 기본 데이터 사용');
       const d=new Date();
