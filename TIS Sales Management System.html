@@ -138,6 +138,20 @@ function refreshSelectOptions(){
   }
   if(typeof CONTACT_TYPES!=='undefined') CONTACT_TYPES.splice(0,CONTACT_TYPES.length,...getSelectOpts('contactType'));
   if(typeof CONTACT_PURPOSES!=='undefined') CONTACT_PURPOSES.splice(0,CONTACT_PURPOSES.length,...getSelectOpts('contactPurpose'));
+  // 현재 열린 팝업의 select도 즉시 갱신
+  var _selMap = {
+    'ip-at-prog':'activityProgress', 'ip-at-type':'activityType',
+    'ip-ct-prod':'clientProduct',    'ip-ct-type':'clientType'
+  };
+  Object.keys(_selMap).forEach(function(selId){
+    var sel=document.getElementById(selId);
+    if(!sel) return;
+    var cur=sel.value;
+    var opts=getSelectOpts(_selMap[selId]);
+    sel.innerHTML=[''].concat(opts).map(function(o){
+      return '<option'+(cur===o?' selected':'')+'>'+o+'</option>';
+    }).join('');
+  });
 }
 function renderSelectOptsSettings(){
   var el=document.getElementById('select-opts-container');
@@ -2580,8 +2594,8 @@ window._sanitizeRich=function(h){
   // li/ul/ol: li 닫기 → <br>, 나머지 태그 제거
   h=h.replace(/<\/li>/gi,'<br>').replace(/<li[^>]*>/gi,'').replace(/<\/ul>/gi,'').replace(/<ul[^>]*>/gi,'').replace(/<\/ol>/gi,'').replace(/<ol[^>]*>/gi,'');
   h=h.replace(/<\/div>\s*<\/div>/gi,'<br>').replace(/<\/div>/gi,'<br>').replace(/<\/p>/gi,'<br>').replace(/<div[^>]*>/gi,'').replace(/<p[^>]*>/gi,'');
-  // 연속 <br> 3개 이상 → 1개로
-  h=h.replace(/(<br\s*\/?>[\s]*){2,}/gi,'<br>');
+  // 연속 <br> 3개 이상만 2개로 (1->2는 정상 줄바꿈 유지)
+  h=h.replace(/(<br\s*\/?>[\s]*){3,}/gi,'<br><br>');
   // &amp; 이중인코딩 방지
   h=h.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ');
   var d=document.createElement('div');
@@ -9915,10 +9929,10 @@ function _ipOpenActivity(rep,ai,readOnly){
   var isEdit=ai>=0;
   var d=isEdit?(store.reps[rep].activities[ai]||{}):{};
   var wkChk=d.wk===true;
-  var typeOpts=['전략과제','신규영업','기존고객','신규고객'].map(function(t){
+  var typeOpts=getSelectOpts('activityType').map(function(t){
     return '<option'+((d.type||'신규영업')===t?' selected':'')+'>'+t+'</option>';
   }).join('');
-  var progOpts=['','제안','견적','입찰','수주','계약','보류','Drop'].map(function(p){
+  var progOpts=[''].concat(getSelectOpts('activityProgress')).map(function(p){
     return '<option'+((d.progress||'')===p?' selected':'')+'>'+p+'</option>';
   }).join('');
   var old=document.getElementById('ip-act-pop'); if(old) old.remove();
@@ -10047,11 +10061,11 @@ function _ipOpenIssue(rep,ii,readOnly){
   var isEdit=ii>=0;
   var d=isEdit?(store.reps[rep].issuesList[ii]||{}):{};
   var wkChk=d.wk===true;
-  var sevList=['높음','중간','낮음'];
+  var sevList=getSelectOpts('issueSev');
   var sevBtns=sevList.map(function(s){
     return '<button class="ip-seg-btn'+((d.sev||'중간')===s?' on':'')+'" onclick="window._ipSegSel(this,\'ip-is-sev\')" data-v="'+s+'">'+s+'</button>';
   }).join('');
-  var stList=['Open','진행중','보류','완료'];
+  var stList=getSelectOpts('issueStatus');
   var stBtns=stList.map(function(s){
     return '<button class="ip-seg-btn'+((d.status||'Open')===s?' on':'')+'" onclick="window._ipSegSel(this,\'ip-is-st\')" data-v="'+s+'">'+s+'</button>';
   }).join('');
@@ -12902,6 +12916,22 @@ function _repSep(label, color, colspan){
 }
 
 // ════ renderIssues 재구성 ════
+
+// 이슈 status 정규화 (구버전 한글 → Open/Closed)
+function _normalizeIssueStatus(status){
+  if(!status||status==='Open'||status==='open') return 'Open';
+  if(status==='Closed'||status==='closed'||status==='완료') return 'Closed';
+  // 진행중/보류는 Open으로 처리
+  return 'Open';
+}
+// 이슈 sev 정규화 (영문 → 한글)
+function _normalizeIssueSev(sev){
+  if(sev==='high'||sev==='hi') return '높음';
+  if(sev==='mid') return '중간';
+  if(sev==='low'||sev==='lo') return '낮음';
+  if(sev==='높음'||sev==='중간'||sev==='낮음') return sev;
+  return '중간';
+}
 window.renderIssues = function(){
   var list=document.getElementById('iss-list');
   var sumEl=document.getElementById('iss-summary');
@@ -13266,13 +13296,17 @@ window.renderIssues = function(){
 
   var sevF = (document.getElementById('iss-sev')||{}).value||'all';
   var stF  = (document.getElementById('iss-status')||{}).value||'all';
-  var selReps = window._issSelReps || getIssueReps();
-  window._issSelReps = selReps;
 
-  var allReps = getIssueReps();
+  // 전체 담당자 (팀 필터 무관)
+  var allReps=[];
+  if(typeof TEAMS!=='undefined'){
+    TEAMS.forEach(function(t){ (TEAM_REPS[t]||[]).forEach(function(r){ if(allReps.indexOf(r)<0&&store.reps[r]) allReps.push(r); }); });
+  }
+  if(!window._issSelReps||window._issSelReps.length===0) window._issSelReps=allReps.slice();
+  var selReps = window._issSelReps;
   _buildMultiFilter('iss-rep-filter', allReps, '_issSelReps', 'renderIssues();');
 
-  var COLSPAN = 9; // 팀|담당자|고객사|이슈내용|등록날짜|기한날짜|D-DAY|중요도|처리상태
+  var COLSPAN = 9;
   var repColorMap = {};
   var teamColorsMap = {};
   if(typeof TEAM_REPS!=='undefined'){
@@ -13285,14 +13319,15 @@ window.renderIssues = function(){
     });
   }
 
+  // sev 매핑 - 한글/영문 모두 지원
   var sevMeta = {
-    high:{label:'↑ 높음',color:'#DC2626',bg:'rgba(220,38,38,0.08)',bd:'rgba(220,38,38,0.3)'},
-    mid: {label:'● 중간',color:'#D97706',bg:'rgba(217,119,6,0.08)',  bd:'rgba(217,119,6,0.3)'},
-    low: {label:'↓ 낮음',color:'#0EA5A0',bg:'rgba(14,165,160,0.08)',bd:'rgba(14,165,160,0.3)'}
+    '높음':{label:'높음',color:'#DC2626',bg:'rgba(220,38,38,0.08)',bd:'rgba(220,38,38,0.3)'},
+    '중간':{label:'중간',color:'#D97706',bg:'rgba(217,119,6,0.08)',  bd:'rgba(217,119,6,0.3)'},
+    '낮음':{label:'낮음',color:'#0EA5A0',bg:'rgba(14,165,160,0.08)',bd:'rgba(14,165,160,0.3)'}
   };
   var stMeta = {
-    open:  {label:'Open',  color:'#DC2626',bg:'rgba(220,38,38,0.08)',bd:'rgba(220,38,38,0.3)'},
-    closed:{label:'Closed',color:'#0EA5A0',bg:'rgba(14,165,160,0.08)',bd:'rgba(14,165,160,0.3)'}
+    'Open':  {label:'Open',  color:'#DC2626',bg:'rgba(220,38,38,0.08)',bd:'rgba(220,38,38,0.3)'},
+    'Closed':{label:'Closed',color:'#0EA5A0',bg:'rgba(14,165,160,0.08)',bd:'rgba(14,165,160,0.3)'}
   };
 
   var counts = {high:0,mid:0,low:0,total:0,open:0,closed:0};
@@ -13312,8 +13347,14 @@ window.renderIssues = function(){
     reps.forEach(function(rep){
       var issues = (store.reps[rep]&&store.reps[rep].issuesList||[]).filter(function(iss){
         if(!iss.content&&!iss.client) return false;
-        if(sevF!=='all' && iss.sev!==sevF) return false;
-        if(stF!=='all' && (iss.status||'open')!==stF) return false;
+        // sev 정규화: 한글→영문
+        // sev/status 정규화 (한글 통일)
+        var sevNorm = _normalizeIssueSev(iss.sev);
+        var stNorm  = _normalizeIssueStatus(iss.status);
+        iss._sevNorm = sevNorm;
+        iss._stNorm  = stNorm;
+        if(sevF!=='all' && sevNorm!==sevF) return false;
+        if(stF!=='all'  && stNorm!==stF)  return false;
         return true;
       });
       if(!issues.length) return;
@@ -13323,15 +13364,19 @@ window.renderIssues = function(){
       teamHasData = true;
 
       issues.forEach(function(iss){
-        var sev = iss.sev||'mid';
-        var st  = iss.status||'open';
-        var sm  = sevMeta[sev]||sevMeta.mid;
-        var stm = stMeta[st]||stMeta.open;
-        counts[sev]=(counts[sev]||0)+1;
-        counts[st]=(counts[st]||0)+1;
+        var sevKey = iss._sevNorm||iss.sev||'중간';
+        var stKey  = iss._stNorm||iss.status||'Open';
+        var sm  = sevMeta[sevKey]||sevMeta['중간'];
+        var stm = stMeta[stKey]||stMeta['Open'];
+
+        // 카운트
+        if(sevKey==='높음') counts.high++;
+        else if(sevKey==='중간') counts.mid++;
+        else if(sevKey==='낮음') counts.low++;
+        if(stKey==='Open') counts.open++;
+        else if(stKey==='Closed') counts.closed++;
         counts.total++;
 
-        // D-DAY 계산
         var ddayHtml = '';
         if(iss.dueDate){
           var today=new Date();today.setHours(0,0,0,0);
@@ -13347,25 +13392,16 @@ window.renderIssues = function(){
         tr.onmouseover = function(){this.style.background='#F8FAFF';};
         tr.onmouseout  = function(){this.style.background='white';};
         tr.innerHTML =
-          // 팀 열 (빈칸 - 팀 구분은 separator row에서)
           '<td style="text-align:center;vertical-align:middle;padding:8px 4px;border-bottom:1px solid #F1F5F9;"></td>'
-          // 담당자
           +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;border-bottom:1px solid #F1F5F9;">'
             +'<span style="font-size:12px;font-weight:700;color:'+repColor+';">'+getRepDisplayName(rep)+'</span></td>'
-          // 고객사
-          +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;font-weight:500;font-size:12px;border-bottom:1px solid #F1F5F9;">'+( iss.client||'-')+'</td>'
-          // 이슈내용 - 좌측정렬 + pre-wrap
-          +'<td style="text-align:left;vertical-align:top;padding:8px 12px;font-size:12px;color:#374151;white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;line-height:1.6;border-bottom:1px solid #F1F5F9;">'+_renderRich(iss.content||'─')+'</td>'
-          // 등록날짜
+          +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;font-weight:500;font-size:12px;border-bottom:1px solid #F1F5F9;">'+(iss.client||'-')+'</td>'
+          +'<td style="text-align:left;vertical-align:middle;padding:8px 12px;font-size:12px;color:#374151;word-break:break-word;line-height:1.6;border-bottom:1px solid #F1F5F9;">'+_renderRich(iss.content||'─')+'</td>'
           +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;font-size:11px;color:#64748B;border-bottom:1px solid #F1F5F9;">'+(iss.regDate||'─')+'</td>'
-          // 기한날짜
           +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;font-size:11px;color:#64748B;border-bottom:1px solid #F1F5F9;">'+(iss.dueDate||'─')+'</td>'
-          // D-DAY
           +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;border-bottom:1px solid #F1F5F9;">'+ddayHtml+'</td>'
-          // 중요도
           +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;border-bottom:1px solid #F1F5F9;">'
             +'<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;color:'+sm.color+';background:'+sm.bg+';border:1px solid '+sm.bd+';">'+sm.label+'</span></td>'
-          // 처리상태
           +'<td style="text-align:center;vertical-align:middle;padding:8px 6px;border-bottom:1px solid #F1F5F9;">'
             +'<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;color:'+stm.color+';background:'+stm.bg+';border:1px solid '+stm.bd+';">'+stm.label+'</span></td>';
         teamRows.push(tr);
@@ -13398,7 +13434,7 @@ window.renderIssues = function(){
   if(!hasData){
     list.innerHTML='<tr><td colspan="'+COLSPAN+'" style="text-align:center;padding:40px;color:#94A3B8;font-size:13px;">조회된 이슈가 없습니다</td></tr>';
   }
-}
+};
 ;
 
 
