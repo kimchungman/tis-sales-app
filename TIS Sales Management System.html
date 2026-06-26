@@ -16385,6 +16385,18 @@ async function _spSyncOtherReps(){
       try{ setTimeout(function(){ _rebuildContractPanel(session.rep); },100); }catch(e){}
     }
   }
+  // 동기화 후 전체 담당자 actual/forecast 재계산
+  try{
+    Object.keys(store.reps||{}).forEach(function(rep){
+      if(typeof refreshActualForecast==='function') refreshActualForecast(rep);
+    });
+  }catch(e){}
+  // 동기화 후 전체 담당자 actual/forecast 재계산
+  try{
+    Object.keys(store.reps||{}).forEach(function(rep){
+      if(typeof refreshActualForecast==='function') refreshActualForecast(rep);
+    });
+  }catch(e){}
   return changed;
 }
 function doStatCustomQuery(){
