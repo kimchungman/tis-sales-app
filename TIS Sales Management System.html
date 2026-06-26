@@ -7207,7 +7207,7 @@ function renderIssues(){
   const closedCnt=_closedCnt;
   const statusBar=document.getElementById('iss-status-bar');
   if(statusBar) statusBar.innerHTML=
-    '<span class="iss-filter-chip iss-filter-chip--neutral" onclick="document.getElementById(\'iss-status\').value=\'all\';renderIssues()">전체 '+store.issues.length+'건</span>'
+    '<span class="iss-filter-chip iss-filter-chip--neutral" onclick="document.getElementById(\'iss-status\').value=\'all\';renderIssues()">전체 '+_openCnt+_closedCnt+'건</span>'
     +'<span class="iss-filter-chip iss-filter-chip--open" onclick="document.getElementById(\'iss-status\').value=\'open\';renderIssues()">Open '+openCnt+'</span>'
     +'<span class="iss-filter-chip iss-filter-chip--closed" onclick="document.getElementById(\'iss-status\').value=\'closed\';renderIssues()">Closed '+closedCnt+'</span>';
   var _issEl=document.getElementById('iss-list');
@@ -7233,7 +7233,7 @@ function renderIssues(){
       +'<td style="text-align:center;font-size:11px;color:#64748B;vertical-align:middle;">'+(i.team||'')+'</td>'
       +'<td style="text-align:center;font-size:12px;font-weight:600;vertical-align:middle;">'+(i.rep||'')+'</td>'
       +'<td style="text-align:center;font-size:12px;vertical-align:middle;">'+(i.client||'')+'</td>'
-      +'<td class="content-cell" style="text-align:left !important;white-space:pre-wrap;word-break:break-word;vertical-align:middle;padding:8px 12px;" style="padding:8px 14px;font-size:12px;color:#374151;text-align:left !important;white-space:pre-wrap !important;word-break:break-word !important;word-wrap:break-word !important;overflow-wrap:break-word !important;vertical-align:top !important;line-height:1.6;">'+_renderRich(i.content||'─')+'</td>'      +'<td style="text-align:center;font-size:11px;color:#374151;vertical-align:middle;">'+(i.regDate||'─')+'</td>'      +'<td style="text-align:center;font-size:11px;color:#374151;vertical-align:middle;">'+(i.dueDate||'─')+'</td>'      +ddayCell
+      +'<td class="content-cell" style="text-align:left;white-space:pre-wrap;word-break:break-word;vertical-align:middle;padding:8px 12px;font-size:12px;color:#374151;line-height:1.6;">'+_renderRich(i.content||'─')+'</td>'
       +'<td style="text-align:center;vertical-align:middle;"><span style="display:inline-flex;align-items:center;justify-content:center;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;color:'+sc+';border:1.5px solid '+sc+'60;">'+(sevLabel[i.sev]||i.sev||'')+'</span></td>'
       +'<td style="text-align:center;vertical-align:middle;"><span style="display:inline-flex;align-items:center;justify-content:center;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;color:'+tc+';border:1.5px solid '+tc+'60;">'+(isOpen?'Open':'Closed')+'</span></td>'
       +'</tr>';
@@ -20267,10 +20267,10 @@ function _wkRenderIssues(){
       +_wkRepBadge(iss.rep)
       +'<span style="text-align:center;display:block;font-weight:600;color:#0F172A;">'+_wkEsc(iss.client)+'</span>'
       +'<span style="color:#334155;text-align:left;display:block;">'+_wkEsc(iss.project||'—')+'</span>'
-      +'<span class="wk-cont" style="font-size:11px;word-break:break-word;overflow:visible;line-height:1.6;align-self:center;display:block;">'+_renderRich(iss.content)+'</span>'
-      +'<span style="text-align:center;"><span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;white-space:nowrap;background:'+sv[0]+';color:'+sv[1]+';">'+sv[2]+'</span></span>'
-      +'<span style="text-align:center;"><span style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;background:'+stParts[0]+';color:'+stParts[1]+';">'+_wkEsc(iss.status)+'</span></span>'
-      +'<span style="text-align:center;"><span style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;white-space:nowrap;'+diffColor+'">'+diffStr+'</span></span>'
+      +'<div class="wk-cont" style="font-size:11px;word-break:break-word;line-height:1.6;align-self:center;">'+_renderRich(iss.content)+'</div>'
+      +'<span style="display:flex;align-items:center;justify-content:center;"><span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;white-space:nowrap;background:'+sv[0]+';color:'+sv[1]+';">'+sv[2]+'</span></span>'
+      +'<span style="display:flex;align-items:center;justify-content:center;"><span style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;background:'+stParts[0]+';color:'+stParts[1]+';">'+_wkEsc(iss.status)+'</span></span>'
+      +'<span style="display:flex;align-items:center;justify-content:center;"><span style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;white-space:nowrap;'+diffColor+'">'+diffStr+'</span></span>'
       +'</div>';
   }).join('');
   el.innerHTML=_ihdr+'<div style="max-height:380px;overflow-y:auto;">'+_irows+'</div>';
