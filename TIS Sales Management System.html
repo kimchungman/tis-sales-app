@@ -8047,7 +8047,12 @@ function doGuestWithName(name, skipPwCheck, guestTitle){
   _showSPLoading((guestTitle||name)+' SP 연결 중...');
   (async function _tryGuestConnect(){
     try{
-      if(!window._isSPReady&&typeof _initSP==='function') await _initSP();
+      if(!window._isSPReady&&typeof _initSP==='function'){
+        await Promise.race([
+          _initSP(),
+          new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('연결 시간 초과. 네트워크를 확인해주세요.')); },10000); })
+        ]);
+      }
       if(!window._isSPReady) throw new Error('SP 연결에 실패했습니다.');
       _hideSPLoading();
       _initApp();
@@ -8349,7 +8354,7 @@ function doRepLogin(rep){
       if(!window._isSPReady&&typeof _initSP==='function'){
         await Promise.race([
           _initSP(),
-          new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('연결 시간 초과 (30초)')); },30000); })
+          new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('연결 시간 초과. 네트워크를 확인해주세요.')); },10000); })
         ]);
       }
       if(!window._isSPReady) throw new Error('SP 연결에 실패했습니다.');
@@ -8399,7 +8404,7 @@ function tryAdmin(){
         if(!window._isSPReady&&typeof _initSP==='function'){
           await Promise.race([
             _initSP(),
-            new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('연결 시간 초과 (30초)')); },30000); })
+            new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('연결 시간 초과. 네트워크를 확인해주세요.')); },10000); })
           ]);
         }
         if(!window._isSPReady) throw new Error('SP 연결에 실패했습니다.');
