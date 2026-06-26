@@ -4957,20 +4957,18 @@ document.addEventListener('DOMContentLoaded',()=>{
       localStorage.removeItem('_spPendingTs');
       localStorage.removeItem('_savedSession');
     }
-    if(_isRedirect ||
-       localStorage.getItem('_spPending')==='1' ||
-       localStorage.getItem('_savedSession')){
-      // 5초 내 처리 안 되면 강제 openAuth
+    // MSAL 리다이렉트(code=)인 경우에만 로그인창 스킵
+    // _savedSession/_spPending은 더 이상 로그인창 스킵 조건으로 사용 안 함
+    localStorage.removeItem('_savedSession');
+    localStorage.removeItem('_spPending');
+    localStorage.removeItem('_spPendingTs');
+    localStorage.removeItem('_tisSavedSession');
+    if(_isRedirect){
+      // MSAL 리다이렉트: SP 연결 완료 대기 후 로그인창
       setTimeout(function(){
-        if(!session||!session.role){
-          localStorage.removeItem('_spPending');
-          localStorage.removeItem('_spPendingTs');
-          localStorage.removeItem('_savedSession');
-          openAuth();
-        }
+        if(!session||!session.role) openAuth();
       }, 5000);
     } else {
-      localStorage.removeItem('_tisSavedSession');
       openAuth();
     }
   },300);
@@ -8047,6 +8045,8 @@ function doGuestWithName(name, skipPwCheck, guestTitle){
   }
   session={role:'guest',rep:null,team:null,guestName:name.trim()};
   closeAuth();
+  _showSPLoading((name||guestTitle||'게스트')+' SP 연결 중...');
+  _hideSPLoading();
   _initApp();
   setTimeout(function(){if(typeof window._updateSidebarByRole==='function')window._updateSidebarByRole();},300);
   applyPermissions();
@@ -8149,6 +8149,22 @@ function renderAuthTeamBtns(){
 function closeAuth(){
   var _am=document.getElementById('auth-modal');
   if(_am) _am.style.display='none';
+}
+function _showSPLoading(msg){
+  var el=document.getElementById('sp-loading-overlay');
+  var msgEl=document.getElementById('sp-loading-msg');
+  if(el){ el.style.display='flex'; }
+  if(msgEl) msgEl.textContent=msg||'SharePoint에 연결하는 중...';
+  window._spLoadingCancel=function(){
+    _hideSPLoading();
+    // 세션 초기화 후 로그인창
+    session={};
+    if(typeof openAuth==='function') openAuth();
+  };
+}
+function _hideSPLoading(){
+  var el=document.getElementById('sp-loading-overlay');
+  if(el) el.style.display='none';
 }
 function _applyGuestReadOnly(){
   // 입력 메뉴 숨기기
@@ -8314,13 +8330,19 @@ function doRepLogin(rep){
   _tabState.pipeline = _repTeam;
   _tabState.visits   = _repTeam;
   closeAuth();
-  _initApp();
-  showToast('👤 '+rep+'으로 접속했습니다.');
-  // 영업진행현황 진입 시 자동 선택 (showPage에서 처리)
-  if(typeof recordAccess==='function') recordAccess(rep);
-  setTimeout(async function(){
-    try{ if(!window._isSPReady&&typeof _initSP==='function') await _initSP(); }catch(e){}
-  }, 800);
+  _showSPLoading(rep+' SP 연결 중...');
+  _showSPLoading(rep+'님 SP 연결 중...');
+  // SP 연결 후 앱 진입
+  (async function(){
+    try{
+      if(!window._isSPReady&&typeof _initSP==='function') await _initSP();
+    }catch(e){ console.warn('[SP]',e); }
+    _hideSPLoading();
+    _hideSPLoading();
+    _initApp();
+    showToast('👤 '+rep+'으로 접속했습니다.');
+    if(typeof recordAccess==='function') recordAccess(rep);
+  })();
   // 로그인 후 알림 로드 (SP 연결 완료 대기)
   (function _pollNotif(n){
     var _nm=(session&&session.rep)||(session&&session.guestName)||'';
@@ -8345,6 +8367,7 @@ function doRepLogin(rep){
   _tabState.pipeline=_repTeam2;
   _tabState.visits=_repTeam2;
   closeAuth();
+  _showSPLoading(rep+' SP 연결 중...');
   // 대시보드 표시 + 전체 렌더
   if(typeof _initApp==='function') _initApp();
   showToast('👤 '+rep+'으로 접속했습니다.');
@@ -8389,6 +8412,8 @@ function tryAdmin(){
     session={role:'admin', rep:null, team:null};
     // _tisSavedSession 저장 제거 (MSAL 리다이렉트용으로만 사용)
     closeAuth();
+    _showSPLoading('관리자 SP 연결 중...');
+    _hideSPLoading();
     _initApp();
     showToast('🛡️ 관리자 모드로 접속했습니다.');
     // SP 연결은 _startSP가 담당
@@ -16702,7 +16727,7 @@ async function _startSP(){
     _setBar('connecting');
     await _connectSP(app,account);
   }else{
-    if(session && session.role) localStorage.setItem('_savedSession',JSON.stringify(session));
+    // MSAL 리다이렉트 후 복귀를 위한 pending 마킹
     localStorage.setItem('_spPending','1');
     localStorage.setItem('_spPendingTs', Date.now().toString());
     _setBar('connecting');
@@ -16734,7 +16759,7 @@ async function _startSP(){
     }
     // session에 team 저장
     session.team=team;
-    localStorage.setItem('_savedSession',JSON.stringify({role:'rep',rep:rep,team:team}));
+    // _savedSession 저장 제거
     _tabState.input=team; _tabState.issues=team;
     _tabState.pipeline=team; _tabState.visits=team;
     // 원본 실행 (doRepLogin: session설정, closeAuth, _initApp, showToast)
@@ -16786,6 +16811,17 @@ async function _startSP(){
   };
 })();
 </script>
+
+<!-- SP 연결 대기 오버레이 -->
+<div id="sp-loading-overlay" style="display:none;position:fixed;inset:0;background:rgba(10,22,40,0.82);z-index:9999;display:none;align-items:center;justify-content:center;flex-direction:column;gap:20px;">
+  <div style="background:#fff;border-radius:18px;padding:40px 48px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.25);min-width:280px;">
+    <div style="width:48px;height:48px;border:4px solid #E2E8F0;border-top-color:#2563EB;border-radius:50%;animation:sp-spin 0.8s linear infinite;margin:0 auto 20px;"></div>
+    <div style="font-size:16px;font-weight:700;color:#0F172A;margin-bottom:8px;">SharePoint 연결 중</div>
+    <div id="sp-loading-msg" style="font-size:13px;color:#64748B;">잠시만 기다려주세요...</div>
+    <button id="sp-loading-cancel" onclick="window._spLoadingCancel&&window._spLoadingCancel()" style="margin-top:20px;padding:8px 20px;border:1.5px solid #E2E8F0;border-radius:8px;background:#F8FAFF;color:#64748B;font-size:12px;cursor:pointer;font-family:inherit;">취소</button>
+  </div>
+</div>
+<style>@keyframes sp-spin{to{transform:rotate(360deg);}}</style>
 </body
 /* ═ _bsl 커스텀 선택박스 - 모든 상태에서 native UI 완전 숨김 ═ */
 ._bsl-sel,
