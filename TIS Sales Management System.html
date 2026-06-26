@@ -7195,13 +7195,16 @@ function renderIssues(){
   let iss=store.issues;
   if(rf!=='all')iss=iss.filter(i=>i.rep===rf);
   if(sf!=='all')iss=iss.filter(i=>i.sev===sf);
+  // status 필터 전 카운트 (담당자/중요도 필터 반영)
+  const _openCnt=iss.filter(i=>(i.status||'open').toLowerCase()==='open').length;
+  const _closedCnt=iss.filter(i=>(i.status||'').toLowerCase()==='closed').length;
   if(stf!=='all')iss=iss.filter(i=>(i.status||'open')===stf);
   const sevLabel={high:'🔴 높음',mid:'🟡 중간',low:'🟢 낮음'};
   const sevClass={high:'bg-red',mid:'bg-gold',low:'bg-green'};
   const srcLabel={client:'고객사 실적',activity:'영업활동'};
   // 상태별 카운트
-  const openCnt=store.issues.filter(i=>(i.status||'open')==='open').length;
-  const closedCnt=store.issues.filter(i=>i.status==='closed').length;
+  const openCnt=_openCnt;
+  const closedCnt=_closedCnt;
   const statusBar=document.getElementById('iss-status-bar');
   if(statusBar) statusBar.innerHTML=
     '<span class="iss-filter-chip iss-filter-chip--neutral" onclick="document.getElementById(\'iss-status\').value=\'all\';renderIssues()">전체 '+store.issues.length+'건</span>'
@@ -20199,7 +20202,7 @@ function _wkRenderProjects(){
       +_wkRepBadge(it.rep)
       +'<span style="text-align:center;display:block;font-weight:600;color:#0F172A;">'+_wkEsc(it.client)+'</span>'
       +'<span style="text-align:center;"><span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;background:'+tc[0]+';color:'+tc[1]+';">'+_wkEsc(it.type||'—')+'</span></span>'
-      +'<span style="color:#334155;text-align:center;display:block;">'+_wkEsc(it.project||'—')+'</span>'
+      +'<span style="color:#334155;text-align:left;display:block;">'+_wkEsc(it.project||'—')+'</span>'
       +'<span style="font-size:11px;color:#64748B;text-align:center;display:block;">'+_wkEsc(it.product||'—')+'</span>'
       +'<span style="text-align:center;"><span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;background:'+pc[0]+';color:'+pc[1]+';">'+_wkEsc(it.progress||'—')+'</span></span>'
       +'<span style="text-align:center;font-weight:600;color:#0F172A;">'+amt+'</span>'
@@ -20263,8 +20266,8 @@ function _wkRenderIssues(){
     return '<div class="wk-row-con" style="grid-template-columns:'+GTC+';'+_bg+'">'
       +_wkRepBadge(iss.rep)
       +'<span style="text-align:center;display:block;font-weight:600;color:#0F172A;">'+_wkEsc(iss.client)+'</span>'
-      +'<span style="color:#334155;text-align:center;display:block;">'+_wkEsc(iss.project||'—')+'</span>'
-      +'<span class="wk-cont" style="font-size:11px;word-break:break-word;overflow:visible;line-height:1.6;">'+_renderRich(iss.content)+'</span>'
+      +'<span style="color:#334155;text-align:left;display:block;">'+_wkEsc(iss.project||'—')+'</span>'
+      +'<span class="wk-cont" style="font-size:11px;word-break:break-word;overflow:visible;line-height:1.6;align-self:center;display:block;">'+_renderRich(iss.content)+'</span>'
       +'<span style="text-align:center;"><span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;white-space:nowrap;background:'+sv[0]+';color:'+sv[1]+';">'+sv[2]+'</span></span>'
       +'<span style="text-align:center;"><span style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;background:'+stParts[0]+';color:'+stParts[1]+';">'+_wkEsc(iss.status)+'</span></span>'
       +'<span style="text-align:center;"><span style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;white-space:nowrap;'+diffColor+'">'+diffStr+'</span></span>'
