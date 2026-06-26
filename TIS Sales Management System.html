@@ -8032,7 +8032,6 @@ function goGuestStep(){
 }
 function doGuestWithName(name, skipPwCheck, guestTitle){
   if(!name||!name.trim()) return;
-  // 비밀번호 검증 (등록된 사용자는 skip)
   if(!skipPwCheck){
     var pwInput=document.getElementById('guest-pw-input');
     var enteredPw=pwInput?pwInput.value:'';
@@ -8045,52 +8044,38 @@ function doGuestWithName(name, skipPwCheck, guestTitle){
   }
   session={role:'guest',rep:null,team:null,guestName:name.trim()};
   closeAuth();
-  _showSPLoading((name||guestTitle||'게스트')+' SP 연결 중...');
-  _hideSPLoading();
-  _initApp();
-  setTimeout(function(){if(typeof window._updateSidebarByRole==='function')window._updateSidebarByRole();},300);
-  applyPermissions();
-  showToast('👤 '+name.trim()+'님으로 접속했습니다.');
-  if(typeof recordAccess==='function') recordAccess(name.trim(), true);
-  setTimeout(function(){ if(!window._isSPReady) _startSP(); },200);
-  // SP 이미 연결됐으면 최신 데이터 로드 + 게스트 이름 접속기록
-  setTimeout(async function(){
+  _showSPLoading((guestTitle||name)+' SP 연결 중...');
+  (async function _tryGuestConnect(){
     try{
-      if(window._isSPReady){
+      if(!window._isSPReady&&typeof _initSP==='function') await _initSP();
+      if(!window._isSPReady) throw new Error('SP 연결에 실패했습니다.');
+      _hideSPLoading();
+      _initApp();
+      setTimeout(function(){if(typeof window._updateSidebarByRole==='function')window._updateSidebarByRole();},300);
+      applyPermissions();
+      showToast('👤 '+name.trim()+'님으로 접속했습니다.');
+      if(typeof recordAccess==='function') recordAccess(name.trim(), true);
+      // SP 최신 데이터 로드
+      try{
         await _spSyncOtherReps();
         await _spLoadAllVisitLogs();
         try{ if(typeof renderDashboard==='function') renderDashboard(); }catch(e){}
         try{ if(typeof renderIssues==='function') renderIssues(); }catch(e){}
         try{ if(typeof renderPipeline==='function') renderPipeline(); }catch(e){}
-    // SP 연결 완료 후 현재 열린 페이지 즉시 재로드
-    try{
-      var _ap=document.querySelector('.page.active');
-      var _aid=_ap?_ap.id:'';
-      if(_aid==='page-weekly'&&typeof window._wkLoad==='function'){
-        if(window._wk) window._wk.loading=false;
-        window._wkLoad();
-      }
-      if(_aid==='page-contract'&&typeof renderContractDashboard==='function') renderContractDashboard();
-    }catch(e){}
-        // 게스트 접속현황 즉시 반영 후 SP 저장
+        // 접속 기록
         var _msAcc2='';
-        if(window._msalApp){
-          var _accs=window._msalApp.getAllAccounts();
-          _msAcc2=_accs.length>0?_accs[0].username:'';
-        }
+        if(window._msalApp){var _accs=window._msalApp.getAllAccounts();_msAcc2=_accs.length>0?_accs[0].username:'';}
         var _gName=session.guestName||name.trim();
-        // 메모리에 먼저 추가 → 즉시 표시
         if(!window._accessLogData) window._accessLogData=[];
-        window._accessLogData.unshift({
-          msAccount:_msAcc2, selectedRep:_gName, title:guestTitle||'',
-          action:'접속', isGuest:true, timestamp:new Date().toISOString()
-        });
+        window._accessLogData.unshift({msAccount:_msAcc2,selectedRep:_gName,title:guestTitle||'',action:'접속',isGuest:true,timestamp:new Date().toISOString()});
         if(typeof updateAccessDisplay==='function') updateAccessDisplay();
-        // SP 저장 (_msalApp 여부 무관)
-        try{ await _recordAccessLog(_msAcc2, _gName, '접속', true, guestTitle||''); }catch(e){}
-      }
-    }catch(e){}
-  }, 800);
+        try{ await _recordAccessLog(_msAcc2,_gName,'접속',true,guestTitle||''); }catch(e){}
+      }catch(e){}
+    }catch(e){
+      _showSPError('SharePoint에 연결할 수 없습니다.<br><span style="font-size:11px;color:#94A3B8;">'+(e.message||'')+'</span>');
+      window._spRetry=function(){ _showSPLoading((guestTitle||name)+' SP 재연결 중...'); window._isSPReady=false; setTimeout(_tryGuestConnect,300); };
+    }
+  })();
 }
 function doGuest(){
   goGuestStep();
