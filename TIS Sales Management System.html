@@ -7970,22 +7970,19 @@ function goGuestStep(){
       var _ac=window._msalApp.getAllAccounts();
       if(_ac.length>0) _msE=(_ac[0].username||'').toLowerCase().trim();
     }
-    var _gm=_msE&&typeof _getGuestAllowMatch==='function'?_getGuestAllowMatch(_msE):null;
     var _kd=document.getElementById('auth-s-guest-known');
     var _ud=document.getElementById('auth-s-guest-unknown');
-    // 버튼 목록 제거 (혹시 남아있으면)
     var _old=document.getElementById('guest-known-btns');
     if(_old) _old.remove();
 
-    if(_gm&&!_gm.isRep){
-      // 등록된 게스트 - 이름 자동 표시
+    var _gm=_msE&&typeof _getGuestAllowMatch==='function'?_getGuestAllowMatch(_msE):null;
+    if(_gm){
       window._matchedGuest=_gm;
       if(_kd) _kd.style.display='block';
       if(_ud) _ud.style.display='none';
       var _ne=document.getElementById('guest-known-name');
       if(_ne) _ne.textContent=_gm.name+(_gm.title?' '+_gm.title:'');
     } else {
-      // 미등록 - 이름+비밀번호 입력창
       window._matchedGuest=null;
       if(_kd) _kd.style.display='none';
       if(_ud) _ud.style.display='block';
@@ -7996,31 +7993,43 @@ function goGuestStep(){
     }
   }
 
-  function _run(){
-    if((!authCfg.guestAllowList||!authCfg.guestAllowList.length)&&window._isSPReady){
-      _spLoadSettings().then(function(){ _renderGuestUI(); }).catch(function(){ _renderGuestUI(); });
-    } else {
+  // guestAllowList 로드 보장 후 렌더
+  function _ensureSettingsThenRender(){
+    // guestAllowList가 있으면 바로 렌더
+    if(authCfg.guestAllowList&&authCfg.guestAllowList.length){
       _renderGuestUI();
+      return;
     }
+    // SP 연결됐으면 settings 로드
+    if(window._isSPReady){
+      _spLoadSettings().then(function(){ _renderGuestUI(); }).catch(function(){ _renderGuestUI(); });
+      return;
+    }
+    // SP 미연결 - 일단 렌더 (미등록 화면)
+    _renderGuestUI();
   }
 
+  // 1단계: _msalApp 초기화 확인
   if(!window._msalApp){
-    if(typeof _getMSAL==='function'){
-      _getMSAL().then(function(app){
-        if(!app){ _renderGuestUI(); return; }
-        window._msalApp=app;
-        var _ac2=app.getActiveAccount()||app.getAllAccounts()[0];
-        if(_ac2&&!window._isSPReady&&typeof _connectSP==='function'){
-          _connectSP(app,_ac2).then(function(){ _run(); }).catch(function(){ _run(); });
-        } else {
-          _run();
-        }
-      }).catch(function(){ _renderGuestUI(); });
-    } else {
-      _renderGuestUI();
-    }
+    if(typeof _getMSAL!=='function'){ _renderGuestUI(); return; }
+    _getMSAL().then(function(app){
+      if(!app){ _renderGuestUI(); return; }
+      window._msalApp=app;
+      var _ac2=app.getActiveAccount()||app.getAllAccounts()[0];
+      // 2단계: SP 미연결이면 연결 (settings 포함)
+      if(_ac2&&!window._isSPReady&&typeof _connectSP==='function'){
+        _connectSP(app,_ac2).then(function(){
+          // _connectSP 내부에서 _initSP → _spLoadSettings 완료됨
+          // guestAllowList가 채워졌는지 확인 후 렌더
+          _ensureSettingsThenRender();
+        }).catch(function(){ _ensureSettingsThenRender(); });
+      } else {
+        _ensureSettingsThenRender();
+      }
+    }).catch(function(){ _renderGuestUI(); });
   } else {
-    _run();
+    // _msalApp 이미 있음 - SP도 이미 연결됐을 가능성 높음
+    _ensureSettingsThenRender();
   }
 }
 function doGuestWithName(name, skipPwCheck, guestTitle){
@@ -8224,7 +8233,19 @@ function goAdminStep(){
 }
 function selectRep(rep){
   pendingRep = rep;
-  if(authCfg.repPws[rep]){
+  // 현재 MS 로그인 이메일
+  var _curEmail='';
+  if(window._msalApp){var _ac=window._msalApp.getAllAccounts();if(_ac.length>0)_curEmail=(_ac[0].username||'').toLowerCase().trim();}
+
+  // repEmails에 등록된 담당자: 이메일 불일치 시 무조건 차단
+  var _regEmail=(authCfg.repEmails&&authCfg.repEmails[rep]||'').toLowerCase().trim();
+  if(_regEmail && _curEmail && _curEmail!==_regEmail){
+    _showAccessDenied(rep, _curEmail);
+    return;
+  }
+
+  // 비밀번호 있으면 비밀번호 입력창
+  if(authCfg.repPws&&authCfg.repPws[rep]){
     document.getElementById('auth-s1').style.display='none';
     document.getElementById('auth-s3').style.display='block';
     document.getElementById('rep-pw-title').textContent = rep + ' 비밀번호';
