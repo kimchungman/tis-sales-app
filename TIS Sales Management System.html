@@ -882,7 +882,8 @@ td.lbl-row-fore ~ td, td.lbl-row-rate ~ td {
   transition: background 0.15s;
 }
 #pipe-tbody tr:hover { background: var(--primary-s) !important; }
-#pipe-tbody td { border-bottom: 1px solid var(--border) !important; }
+#pipe-tbody td { border-bottom: 1px solid var(--border) !important; background: white !important; }
+#pipe-tbody tr:hover td { background: #F7F9FF !important; }
 
 /* ── 이슈현황 배지 세련화 ── */
 .badge.bg-red   { background: rgba(220,38,38,0.08) !important; color: #DC2626 !important; border: 1px solid rgba(220,38,38,0.2) !important; }
@@ -1777,9 +1778,9 @@ table.dt thead th { font-size: 13px !important; }
 
 /* 배지 white background 강제 */
 .iss-badge { background: white !important; background-color: white !important; }
-#pipe-tbody tr:hover td { background: #F7F9FF !important; }
 #iss-list tr:hover td { background: #F7F9FF !important; }
-#pipe-tbody td { border-bottom: 1px solid #F5F7FB !important; }
+#pipe-tbody td { border-bottom: 1px solid #F5F7FB !important; background: white !important; }
+#pipe-tbody tr:hover td { background: #F7F9FF !important; }
 
 /* 사이드바 이슈 카운트 완전 숨김 */
 #issue-count {
@@ -8348,7 +8349,7 @@ function buildRepBtns(){
       <div style="flex:1;text-align:left;">
         <div style="font-size:13px;font-weight:700;color:#1E293B;">${dispName}</div>
       </div>
-      <span style="font-size:10px;color:${hasPw?'#94A3B8':'#10B981'};font-weight:600;">${hasPw?'🔒':'자유접속'}</span>
+      ${hasPw?'<span style="font-size:10px;color:#94A3B8;font-weight:600;">🔒</span>':''}
     </button>`;
   }).join('');
 }
