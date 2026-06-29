@@ -1869,7 +1869,7 @@ textarea {
 /* 영업진행현황 - 내용 제외 모든 열 */
 #pipe-tbody td:not(.content-cell) { text-align:center !important; vertical-align:middle !important; }
 #pipe-tbody td.content-cell { text-align:left !important; white-space:pre-wrap !important; }
-#pipe-tbody td.pipe-stage-td { text-align:center !important; vertical-align:middle !important; background:transparent !important; }
+/* pipe-stage-td deprecated */
 
 /* 이슈현황 - 이슈내용 제외 모든 열 */
 #iss-list td:not(.content-cell) { text-align:center !important; vertical-align:middle !important; }
@@ -7375,10 +7375,9 @@ function renderPipeline(){
             +'<span style="font-size:13px;font-weight:700;color:'+g.rc+';">'+getRepDisplayName(g.rep)+'</span>'
             +'</td>';
         }
-        // 구분 (구분값별 고정색, 텍스트만)
-        var typeColorMap={'신규영업':'#1D4ED8','기존고객':'#059669','전략과제':'#7C3AED'};
-        var typeC=typeColorMap[a.type]||'#64748B';
-        html+='<td style="text-align:center;vertical-align:middle;padding:10px 8px;border-right:1px solid #F1F5F9;font-size:13px;font-weight:600;color:'+typeC+';">'+(a.type||'─')+'</td>';
+        // 구분 (값별 고정색, 텍스트만)
+        var _typeC={'신규영업':'#1D4ED8','기존고객':'#059669','전략과제':'#7C3AED'}[a.type]||'#64748B';
+        html+='<td style="text-align:center;vertical-align:middle;padding:10px 8px;border-right:1px solid #F1F5F9;font-size:13px;font-weight:700;color:'+_typeC+';">'+(a.type||'─')+'</td>';
         // 고객사
         html+='<td style="text-align:center;vertical-align:middle;padding:10px 12px;font-size:13px;font-weight:700;color:#374151;border-right:1px solid #F1F5F9;word-break:keep-all;">'+(a.client||'─')+'</td>';
         // 프로젝트
@@ -7393,13 +7392,20 @@ function renderPipeline(){
         html+='<td style="text-align:center;vertical-align:middle;padding:10px 8px;border-right:1px solid #F1F5F9;font-size:13px;font-weight:700;color:'+probC+';">'+(probV>0?Math.round(probV)+'%':'-')+'</td>';
         // 시기
         html+='<td style="text-align:center;vertical-align:middle;padding:10px 8px;font-size:12px;color:#64748B;white-space:nowrap;border-right:1px solid #F1F5F9;">'+(a.timing||'-')+'</td>';
-        // 내용 (plain text, pre-wrap으로 엔터/서식 그대로 표현)
-        var contentTxt=a.content?String(a.content).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'─';
-        html+='<td class="content-cell" style="text-align:left;vertical-align:top;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;border-right:1px solid #F1F5F9;">'+contentTxt+'</td>';
+        // 내용: HTML 태그 제거 후 plain text, pre-wrap으로 엔터 그대로 표현
+        var _rawContent=a.content||'';
+        // div/p/br → \n 변환 후 나머지 태그 완전 제거
+        var _plainContent=_rawContent
+          .replace(/<br\s*\/?>/gi,'\n')
+          .replace(/<\/div>/gi,'\n').replace(/<\/p>/gi,'\n')
+          .replace(/<[^>]+>/g,'')
+          .replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
+          .replace(/\n{3,}/g,'\n\n').replace(/^\n+|\n+$/g,'');
+        var _dispContent=_plainContent||'─';
+        html+='<td class="content-cell" style="text-align:left;vertical-align:top;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;border-right:1px solid #F1F5F9;">'+_dispContent.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</td>';
         // 단계 (텍스트+색상, 다른 열과 동일 스타일)
-        var progColorMap={'수주':'#059669','계약':'#059669','제안':'#D97706','견적':'#D97706','입찰':'#1D4ED8','보류':'#94A3B8','Drop':'#DC2626'};
-        var progC=a.progress?(progColorMap[a.progress]||'#64748B'):'#94A3B8';
-        html+='<td class="pipe-stage-td" style="padding:10px 8px;font-size:13px;font-weight:600;color:'+progC+';">'+(a.progress||'—')+'</td>';
+        var _stageC={'수주':'#059669','계약':'#059669','제안':'#D97706','견적':'#D97706','입찰':'#1D4ED8','보류':'#94A3B8','Drop':'#DC2626'}[a.progress]||'#94A3B8';
+        html+='<td style="text-align:center;vertical-align:middle;padding:10px 8px;border-left:1px solid #F1F5F9;font-size:13px;font-weight:700;color:'+_stageC+';background:white;">'+(a.progress||'—')+'</td>';
 
         tr.innerHTML=html;
         frag.appendChild(tr);
