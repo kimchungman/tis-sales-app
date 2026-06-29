@@ -7275,7 +7275,7 @@ function renderPipeline(){
   var pc=function(p){return p>=0.8?'bg-green':p>=0.5?'bg-gold':p>=0.2?'bg-blue':'bg-gray';};
 
   // 담당자 필터 뱃지 렌더
-  var legend=document.getElementById('pipe-legend');
+  var legend=document.getElementById('pipe-rep-pills');
   if(legend){
     legend.innerHTML='';
     var allSel=selReps.length===0;
@@ -9468,6 +9468,7 @@ function _ipSaveClient(){
   if(typeof _cdbSyncFromStore==='function') _cdbSyncFromStore();
   if(typeof extractIssues==='function') extractIssues();
   if(typeof renderIssues==='function') renderIssues();
+  if(typeof _sortByClient=='function') store.reps[rep]['clients']=_sortByClient(store.reps[rep]['clients']||[]);
   autoSave();
   if(window._isSPReady){
     if(typeof session!=='undefined'&&session&&session.role==='admin'){
@@ -10014,6 +10015,7 @@ function _ipSaveActivity(){
     store.reps[rep].activities.push(obj);
   }
   if(typeof _cdbSyncFromStore==='function') _cdbSyncFromStore();
+  if(typeof _sortByClient=='function') store.reps[rep]['activities']=_sortByClient(store.reps[rep]['activities']||[]);
   autoSave();
   if(window._isSPReady){
     if(typeof session!=='undefined'&&session&&session.role==='admin'){
@@ -10163,6 +10165,7 @@ function _ipSaveIssue(){
   if(typeof _cdbSyncFromStore==='function') _cdbSyncFromStore();
   if(typeof extractIssues==='function') extractIssues();
   if(typeof renderIssues==='function') renderIssues();
+  if(typeof _sortByClient=='function') store.reps[rep]['issuesList']=_sortByClient(store.reps[rep]['issuesList']||[]);
   autoSave();
   if(window._isSPReady){
     if(typeof session!=='undefined'&&session&&session.role==='admin'){
@@ -10242,44 +10245,48 @@ function _initDragSort(containerId, rep, dataKey, renderFn){
   if(!container) return;
   var rows=Array.from(container.querySelectorAll('.ip-row'));
   if(!rows.length) return;
-  // 각 행에 dataset으로 인덱스 저장
-  rows.forEach(function(row,i){ row.dataset.dsIdx=String(i); row.setAttribute('draggable','true'); });
+  rows.forEach(function(row,i){
+    row.setAttribute('draggable','true');
+    row.dataset.dsIdx=String(i);
+  });
+  if(container._dsInit) return;
+  container._dsInit=true;
+  var srcIdx=-1;
   container.addEventListener('dragstart',function(e){
     var row=e.target.closest('.ip-row'); if(!row) return;
-    container._dsSrc=row.dataset.dsIdx;
+    srcIdx=parseInt(row.dataset.dsIdx);
     e.dataTransfer.effectAllowed='move';
-    e.dataTransfer.setData('text/plain',row.dataset.dsIdx);
-    setTimeout(function(){ if(row) row.style.opacity='0.4'; },0);
-  },true);
+    e.dataTransfer.setData('text/plain',String(srcIdx));
+    setTimeout(function(){if(row)row.style.opacity='0.4';},0);
+  });
   container.addEventListener('dragend',function(e){
     var row=e.target.closest('.ip-row'); if(row) row.style.opacity='';
-    container.querySelectorAll('.ip-row').forEach(function(r){ r.style.borderTop=''; });
-  },true);
+    container.querySelectorAll('.ip-row').forEach(function(r){r.style.borderTop='';});
+  });
   container.addEventListener('dragover',function(e){
     e.preventDefault();
     var row=e.target.closest('.ip-row'); if(!row) return;
-    container.querySelectorAll('.ip-row').forEach(function(r){ r.style.borderTop=''; });
-    if(row.dataset.dsIdx!==container._dsSrc) row.style.borderTop='2px solid #4f7fff';
-  },true);
+    container.querySelectorAll('.ip-row').forEach(function(r){r.style.borderTop='';});
+    if(parseInt(row.dataset.dsIdx)!==srcIdx) row.style.borderTop='2px solid #4f7fff';
+  });
   container.addEventListener('dragleave',function(e){
-    var row=e.target.closest('.ip-row'); if(row&&!row.contains(e.relatedTarget)) row.style.borderTop='';
-  },true);
+    if(!container.contains(e.relatedTarget))
+      container.querySelectorAll('.ip-row').forEach(function(r){r.style.borderTop='';});
+  });
   container.addEventListener('drop',function(e){
     e.preventDefault();
     var row=e.target.closest('.ip-row'); if(!row) return;
-    row.style.borderTop='';
-    var fromIdx=parseInt(container._dsSrc);
+    container.querySelectorAll('.ip-row').forEach(function(r){r.style.borderTop='';});
     var toIdx=parseInt(row.dataset.dsIdx);
-    if(isNaN(fromIdx)||isNaN(toIdx)||fromIdx===toIdx) return;
+    if(isNaN(srcIdx)||isNaN(toIdx)||srcIdx===toIdx||srcIdx<0) return;
     var arr=store.reps[rep][dataKey]||[];
-    if(fromIdx>=arr.length||toIdx>=arr.length) return;
-    var moved=arr.splice(fromIdx,1)[0];
-    arr.splice(toIdx,0,moved);
+    if(srcIdx>=arr.length||toIdx>=arr.length) return;
+    var moved=arr.splice(srcIdx,1)[0]; arr.splice(toIdx,0,moved);
     store.reps[rep][dataKey]=arr;
-    container._dsSrc=null;
+    srcIdx=-1; container._dsInit=false;
     if(renderFn) renderFn(rep);
     if(typeof autoSave==='function') autoSave();
-  },true);
+  });
 }
 
 function autoSave(){
