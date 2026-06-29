@@ -6545,7 +6545,7 @@ function cRow(rep,ci,cl){
   var foreDisp=forecastSum>0?forecastSum.toLocaleString('ko-KR'):'<span style="color:#CBD5E1;">—</span>';
   var issueDisp=cl.issue?('<div class="ip-rich-view" style="font-size:12px;line-height:1.6;color:#0F172A;text-align:left;">'+cl.issue+'</div>'):'<span style="color:#CBD5E1;font-size:11px;">—</span>';
   var bgEven=ci%2===1?'background:#F8FBFF;':'';
-  return '<div class="lr g-ct ip-row" style="'+bgEven+'" data-action="openClient" data-rep="'+rep+'" data-ci="'+ci+'" title="클릭하여 수정">'
+  return '<div class="lr g-ct ip-row" draggable="true" style="'+bgEven+'" data-action="openClient" data-rep="'+rep+'" data-ci="'+ci+'" title="클릭하여 수정">'
     +'<div class="td-c"><span class="'+dotCls+'"></span></div>'
     +'<div class="td-c"><span class="nbadge">'+(ci+1)+'</span></div>'
     +'<div class="td-l" style="font-weight:600;color:#0F172A;">'+(cl.name||'')+'</div>'
@@ -6576,7 +6576,7 @@ function _iRow2(rep,ii,iss){
   var contentHtml=iss.content?('<div class="ip-rich-view" style="text-align:left;font-size:12px;line-height:1.6;color:#334155;">'+iss.content+'</div>'):'';
   var bgEven=ii%2===1?'background:#F8FBFF;':'';
   var div=document.createElement('div');
-  div.className='lr g-is ip-row ip-row-iss';
+  div.className='lr g-is ip-row ip-row-iss'; div.draggable=true;
   div.style.cssText=bgEven+'cursor:pointer;';
   div.setAttribute('data-rep',rep);
   div.setAttribute('data-ii',String(ii));
@@ -6604,7 +6604,7 @@ function aRow(rep,ai,a){
   var amt=a.amount&&parseFloat(a.amount)>0?parseFloat(a.amount).toLocaleString('ko-KR'):'<span style="color:#CBD5E1;">—</span>';
   var contentHtml=a.content?('<div class="ip-rich-view" style="text-align:left;font-size:12px;line-height:1.6;color:#334155;">'+a.content+'</div>'):'';
   var bgEven=ai%2===1?'background:#F8FBFF;':'';
-  return '<div class="lr g-at ip-row" style="'+bgEven+'" data-action="openActivity" data-rep="'+rep+'" data-ai="'+ai+'" title="클릭하여 수정">'
+  return '<div class="lr g-at ip-row" draggable="true" style="'+bgEven+'" data-action="openActivity" data-rep="'+rep+'" data-ai="'+ai+'" title="클릭하여 수정">'
     +'<div class="td-c"><span class="'+dotCls+'"></span></div>'
     +'<div class="td-c"><span class="nbadge">'+(ai+1)+'</span></div>'
     +'<div class="td-l" style="font-weight:600;color:#0F172A;">'+(a.client||'')+'</div>'
@@ -9879,9 +9879,10 @@ function _ipChipProgress(p){
 function _ipRenderClientList(rep){
   var el=document.getElementById('ct-ip-'+rep);
   if(!el) return;
-  var clients=store.reps[rep].clients||[];
+  var clients=_sortByClient(store.reps[rep].clients||[]);
   el.innerHTML=clients.map(function(cl,ci){return cRow(rep,ci,cl);}).join('');
   _adjustListHeight('ct-ip-'+rep);
+  _initDragSort('ct-ip-'+rep,rep,'clients');
 }
 function _ipRenderActivityList(rep){
   var el=document.getElementById('at-ip-'+rep);
@@ -9889,6 +9890,7 @@ function _ipRenderActivityList(rep){
   var acts=store.reps[rep].activities||[];
   el.innerHTML=acts.map(function(a,ai){return aRow(rep,ai,a);}).join('');
   _adjustListHeight('at-ip-'+rep);
+  _initDragSort('at-ip-'+rep,rep,'activities');
 }
 function _ipRenderIssueList(rep){
   var el=document.getElementById('is-ip-'+rep);
@@ -9900,6 +9902,7 @@ function _ipRenderIssueList(rep){
     el.appendChild(row);
   });
   _adjustListHeight('is-ip-'+rep);
+  _initDragSort('is-ip-'+rep,rep,'issuesList');
 }
 
 
