@@ -2606,6 +2606,8 @@ function _saveMenuOrder(order){
 /* ═══ Rich Editor 핵심 함수 ═══ */
 window._sanitizeRich=function(h){
   if(!h)return'';
+  // </div><div> → \n 한 번 (줄바꿈 정확히 처리)
+  h=h.replace(/<\/div>\s*<div[^>]*>/gi,'<br>');
   // li/ul/ol: li 닫기 → <br>, 나머지 태그 제거
   h=h.replace(/<\/li>/gi,'<br>').replace(/<li[^>]*>/gi,'').replace(/<\/ul>/gi,'').replace(/<ul[^>]*>/gi,'').replace(/<\/ol>/gi,'').replace(/<ol[^>]*>/gi,'');
   h=h.replace(/<\/div>\s*<\/div>/gi,'<br>').replace(/<\/div>(?!\s*<)/gi,'<br>').replace(/<\/div>/gi,'<br>').replace(/<\/p>/gi,'<br>').replace(/<div[^>]*>/gi,'').replace(/<p[^>]*>/gi,'');
@@ -7399,10 +7401,11 @@ function renderPipeline(){
         // 내용: HTML 태그 제거 후 plain text, pre-wrap으로 엔터 그대로 표현
         var _rawContent=a.content||'';
         // contenteditable HTML → plain text 변환
-        // <div>줄</div> 구조: 닫는div 앞에 \n 삽입, 여는div는 제거
+        // </div><div> → \n 한 번, <br> → \n, 나머지 태그 제거
         var _plainContent=_rawContent
+          .replace(/<\/div>\s*<div[^>]*>/gi,'\n')
           .replace(/<br\s*\/?>/gi,'\n')
-          .replace(/<div[^>]*>/gi,'\n')
+          .replace(/<div[^>]*>/gi,'')
           .replace(/<\/div>/gi,'')
           .replace(/<p[^>]*>/gi,'\n')
           .replace(/<\/p>/gi,'')
