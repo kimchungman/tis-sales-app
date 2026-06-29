@@ -15232,7 +15232,8 @@ function showContractModal(rep,cid){
 }
 function closeContractModal(){var el=document.getElementById('_cm');if(el)el.remove();}
 function saveContractFromModal(rep,cid){
-  var client=(document.getElementById('_cm-client')||{}).value||'';
+  var _cmcEl=document.getElementById('_cm-client');
+  var client=_cmcEl?(_cmcEl.tagName==='INPUT'?_cmcEl.value:(_cmcEl.innerText||_cmcEl.textContent||'')).trim():'';
   if(!client.trim()){alert('고객사를 입력해주세요.');return;}
   var data={
     client:client.trim(),
