@@ -1869,6 +1869,7 @@ textarea {
 /* 영업진행현황 - 내용 제외 모든 열 */
 #pipe-tbody td:not(.content-cell) { text-align:center !important; vertical-align:middle !important; }
 #pipe-tbody td.content-cell { text-align:left !important; white-space:pre-wrap !important; }
+#pipe-tbody td.pipe-stage-td { text-align:center !important; vertical-align:middle !important; background:transparent !important; }
 
 /* 이슈현황 - 이슈내용 제외 모든 열 */
 #iss-list td:not(.content-cell) { text-align:center !important; vertical-align:middle !important; }
@@ -3544,13 +3545,13 @@ window._updateSidebarByRole=function(){
       </div>
       <div class="sec-body" style="padding-top:4px;">
         <div class="tbl-scroll-wrap">
-          <table class="dt" style="min-width:1100px;width:100%;table-layout:fixed;">
+          <table class="dt" style="min-width:1200px;width:100%;table-layout:fixed;">
             <colgroup>
               <col style="width:60px;">
               <col style="width:88px;">
               <col style="width:76px;">
               <col style="width:160px;">
-              <col style="width:130px;">
+              <col style="width:220px;">
               <col style="width:100px;">
               <col style="width:95px;">
               <col style="width:60px;">
@@ -7392,12 +7393,13 @@ function renderPipeline(){
         html+='<td style="text-align:center;vertical-align:middle;padding:10px 8px;border-right:1px solid #F1F5F9;font-size:13px;font-weight:700;color:'+probC+';">'+(probV>0?Math.round(probV)+'%':'-')+'</td>';
         // 시기
         html+='<td style="text-align:center;vertical-align:middle;padding:10px 8px;font-size:12px;color:#64748B;white-space:nowrap;border-right:1px solid #F1F5F9;">'+(a.timing||'-')+'</td>';
-        // 내용 (content-cell, pre-wrap)
-        html+='<td class="content-cell" style="text-align:left !important;vertical-align:middle;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;white-space:pre-wrap !important;word-break:break-word !important;overflow-wrap:break-word !important;border-right:1px solid #F1F5F9;">'+_renderRich(a.content||'─')+'</td>';
-        // 단계 (텍스트+색상, 배경 없음)
+        // 내용 (plain text, pre-wrap으로 엔터/서식 그대로 표현)
+        var contentTxt=a.content?String(a.content).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'─';
+        html+='<td class="content-cell" style="text-align:left;vertical-align:top;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;border-right:1px solid #F1F5F9;">'+contentTxt+'</td>';
+        // 단계 (텍스트+색상, 다른 열과 동일 스타일)
         var progColorMap={'수주':'#059669','계약':'#059669','제안':'#D97706','견적':'#D97706','입찰':'#1D4ED8','보류':'#94A3B8','Drop':'#DC2626'};
         var progC=a.progress?(progColorMap[a.progress]||'#64748B'):'#94A3B8';
-        html+='<td style="text-align:center !important;vertical-align:middle !important;padding:10px 8px !important;font-size:13px !important;font-weight:600 !important;color:'+progC+' !important;background:transparent !important;">'          +'<span style="background:none !important;border:none !important;padding:0 !important;font-size:13px;font-weight:600;color:'+progC+';">'+(a.progress||'—')+'</span></td>';
+        html+='<td class="pipe-stage-td" style="padding:10px 8px;font-size:13px;font-weight:600;color:'+progC+';">'+(a.progress||'—')+'</td>';
 
         tr.innerHTML=html;
         frag.appendChild(tr);
