@@ -6433,6 +6433,8 @@ function buildRepInputs(){
       _adjustListHeight('ct-ip-'+r);
       _adjustListHeight('at-ip-'+r);
       _ipRenderIssueList(r);
+      _ipRenderClientList(r);
+      _ipRenderActivityList(r);
     });
   });
 // session.rep 섹션 즉시 표시 (rAF 대기 없이 바로 브라우저 페인트)
@@ -10240,12 +10242,13 @@ function _initDragSort(containerId, rep, dataKey, renderFn){
   if(!container) return;
   var rows=Array.from(container.querySelectorAll('.ip-row'));
   if(!rows.length) return;
-  var dragSrc=null, dragSrcIdx=-1;
-  rows.forEach(function(row, idx){
+  var dragSrc=null;
+  rows.forEach(function(row){
     row.setAttribute('draggable','true');
     row.addEventListener('dragstart',function(e){
-      dragSrc=this; dragSrcIdx=idx;
+      dragSrc=this;
       e.dataTransfer.effectAllowed='move';
+      e.stopPropagation();
       setTimeout(function(){ if(dragSrc) dragSrc.style.opacity='0.4'; },0);
     });
     row.addEventListener('dragend',function(){
@@ -10253,13 +10256,16 @@ function _initDragSort(containerId, rep, dataKey, renderFn){
       container.querySelectorAll('.ip-row').forEach(function(r){ r.style.borderTop=''; });
     });
     row.addEventListener('dragover',function(e){
-      e.preventDefault(); e.dataTransfer.dropEffect='move';
+      e.preventDefault(); e.stopPropagation();
       container.querySelectorAll('.ip-row').forEach(function(r){ r.style.borderTop=''; });
       if(this!==dragSrc) this.style.borderTop='2px solid #4f7fff';
     });
-    row.addEventListener('dragleave',function(){ this.style.borderTop=''; });
+    row.addEventListener('dragleave',function(e){
+      if(!this.contains(e.relatedTarget)) this.style.borderTop='';
+    });
     row.addEventListener('drop',function(e){
-      e.preventDefault(); this.style.borderTop='';
+      e.preventDefault(); e.stopPropagation();
+      this.style.borderTop='';
       if(!dragSrc||dragSrc===this) return;
       var toRows=Array.from(container.querySelectorAll('.ip-row'));
       var fromIdx=toRows.indexOf(dragSrc);
