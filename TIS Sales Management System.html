@@ -3568,7 +3568,7 @@ window._updateSidebarByRole=function(){
                 <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;text-align:center;">확도</th>
                 <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;text-align:center;">시기</th>
                 <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;text-align:left;padding-left:12px;">내용</th>
-                <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;text-align:center;">진행사항</th>
+                <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;text-align:center;">단계</th>
               </tr>
             </thead>
             <tbody id="pipe-tbody"></tbody>
@@ -7352,31 +7352,28 @@ function renderPipeline(){
             +'<span style="font-size:13px;font-weight:700;color:'+g.rc+';">'+getRepDisplayName(g.rep)+'</span>'
             +'</td>';
         }
-        // 구분 배지
-        var typeBg=g.rc+'20', typeBd=g.rc+'66';
-        html+='<td style="text-align:center;vertical-align:middle;padding:10px 8px;border-right:1px solid #F1F5F9;">'
-          +'<span style="display:inline-flex;align-items:center;justify-content:center;min-width:60px;height:24px;padding:0 8px;border-radius:12px;font-size:12px;font-weight:600;color:'+g.rc+';background:'+typeBg+';border:1px solid '+typeBd+';">'
-          +(a.type||'─')+'</span></td>';
+        // 구분 (구분값별 고정색, 텍스트만)
+        var typeColorMap={'신규영업':'#1D4ED8','기존고객':'#059669','전략과제':'#7C3AED'};
+        var typeC=typeColorMap[a.type]||'#64748B';
+        html+='<td style="text-align:center;vertical-align:middle;padding:10px 8px;border-right:1px solid #F1F5F9;font-size:13px;font-weight:600;color:'+typeC+';">'+(a.type||'─')+'</td>';
         // 고객사
         html+='<td style="text-align:center;vertical-align:middle;padding:10px 12px;font-size:13px;font-weight:700;color:#374151;border-right:1px solid #F1F5F9;">'+(a.client||'─')+'</td>';
         // 제품
         html+='<td style="text-align:center;vertical-align:middle;padding:10px 10px;font-size:12px;color:#64748B;border-right:1px solid #F1F5F9;">'+(a.product||'─')+'</td>';
         // 금액
         html+='<td style="text-align:right;vertical-align:middle;padding:10px 12px;font-size:13px;font-weight:600;color:#374151;border-right:1px solid #F1F5F9;white-space:nowrap;">'+(a.amount?a.amount.toLocaleString('ko-KR')+'천':'-')+'</td>';
-        // 확도 (입력값 그대로 표시, 0~100 기준)
+        // 확도 (텍스트만, 색상으로 표현)
         var probV=parseFloat(a.prob)||0;
-        var probC=probV>=80?'#059669':probV>=50?'#D97706':probV>=20?'#4f7fff':'#94A3B8';
-        var probTxt=probV>0?Math.round(probV)+'%':'-';
-        html+='<td style="text-align:center;vertical-align:middle;padding:8px 6px;border-right:1px solid #F1F5F9;">'
-          +(probV>0?'<span style="display:inline-flex;align-items:center;justify-content:center;min-width:48px;height:24px;padding:0 8px;border-radius:12px;font-size:12px;font-weight:700;color:'+probC+';background:'+probC+'18;border:1px solid '+probC+'40;">'+probTxt+'</span>':'<span style="color:#94A3B8;font-size:12px;">-</span>')
-          +'</td>';
+        var probC=probV>=80?'#059669':probV>=50?'#D97706':probV>=20?'#1D4ED8':'#94A3B8';
+        html+='<td style="text-align:center;vertical-align:middle;padding:10px 8px;border-right:1px solid #F1F5F9;font-size:13px;font-weight:700;color:'+probC+';">'+(probV>0?Math.round(probV)+'%':'-')+'</td>';
         // 시기
         html+='<td style="text-align:center;vertical-align:middle;padding:10px 8px;font-size:12px;color:#64748B;white-space:nowrap;border-right:1px solid #F1F5F9;">'+(a.timing||'-')+'</td>';
         // 내용 (content-cell, pre-wrap)
         html+='<td class="content-cell" style="text-align:left !important;vertical-align:middle;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;white-space:pre-wrap !important;word-break:break-word !important;overflow-wrap:break-word !important;border-right:1px solid #F1F5F9;">'+_renderRich(a.content||'─')+'</td>';
-        // 진행사항
-        var progChip=a.progress?_ipChipProgress(a.progress):'<span style="color:#94A3B8;font-size:11px;">—</span>';
-        html+='<td style="text-align:center;vertical-align:middle;padding:8px;">'+progChip+'</td>';
+        // 단계 (텍스트만, 색상으로 표현, 일반 셀 스타일)
+        var progColorMap={'수주':'#059669','계약':'#059669','제안':'#D97706','견적':'#D97706','입찰':'#1D4ED8','보류':'#94A3B8','Drop':'#DC2626'};
+        var progC=a.progress?(progColorMap[a.progress]||'#64748B'):'#94A3B8';
+        html+='<td style="text-align:center;vertical-align:middle;padding:10px 8px;font-size:13px;font-weight:600;color:'+progC+';">'+(a.progress||'—')+'</td>';
 
         tr.innerHTML=html;
         frag.appendChild(tr);
