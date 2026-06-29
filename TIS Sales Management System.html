@@ -7325,9 +7325,7 @@ function renderPipeline(){
     var repColor=REP_COLORS[ri]||'#1E5FBE';
     var repBg=repColor+'24';
     var repBorder=repColor+'66';
-    var stBg=(r.status||'open')==='open'?'#FEE8E8':'#E6F9F4';
-    var stCol=(r.status||'open')==='open'?'#C0392B':'#0A8F6C';
-    var stLbl=(r.status||'open')==='open'?'\uD83D\uDD34 Open':'\u2705 Closed';
+    var progChip=r.progress?_ipChipProgress(r.progress):'<span style="color:#94A3B8;font-size:11px;">—</span>';
     return '<tr style="border-left:4px solid '+repColor+';background:'+repBg+';">'
       +'<td style="text-align:center;vertical-align:middle;font-size:12px;font-weight:600;color:'+repColor+';white-space:nowrap;">'+(r.team||'')+'</td>'
       +'<td style="text-align:center;vertical-align:middle;"><div style="display:flex;align-items:center;justify-content:center;gap:6px;">'
@@ -7340,7 +7338,7 @@ function renderPipeline(){
       +'<td class="nt" style="text-align:center;vertical-align:middle;font-weight:600;">'+(r.amount?r.amount.toLocaleString('ko-KR'):'-')+'</td>'
       +'<td style="text-align:center;vertical-align:middle;"><span class="badge '+pc(r.prob)+'">'+(r.prob?(r.prob*100).toFixed(0)+'%':'-')+'</span></td>'
       +'<td style="text-align:center;vertical-align:middle;white-space:nowrap;color:var(--muted);">'+(r.timing||'-')+'</td>'
-      +'<td style="text-align:center;vertical-align:middle;"><span style="padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;background:'+stBg+';color:'+stCol+';">'+stLbl+'</span></td>'
+      +'<td style="text-align:center;vertical-align:middle;">'+progChip+'</td>'
       +'<td class="content-cell" style="font-size:12px;color:#374151;text-align:left !important;white-space:pre-wrap !important;word-break:break-word !important;word-wrap:break-word !important;overflow-wrap:break-word !important;vertical-align:top !important;line-height:1.6;padding:8px 12px;">'+_renderRich(r.content||'─')+'</td>'
       +'</tr>';
   }).join('');
