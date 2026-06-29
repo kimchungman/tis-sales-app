@@ -7305,7 +7305,7 @@ function renderPipeline(){
     pillEl.innerHTML=h;
   }
 
-  // 구분 필터 Pill
+  // 구분 필터 Pill (담당자 필터와 동일 스타일)
   var TYPE_LIST=['신규영업','기존고객','전략과제'];
   var TYPE_C={'신규영업':'#1D4ED8','기존고객':'#059669','전략과제':'#7C3AED'};
   if(!window._pipeSelTypes) window._pipeSelTypes=[];
@@ -7313,15 +7313,18 @@ function renderPipeline(){
   var typeEl=document.getElementById('pipe-type-pills');
   if(typeEl){
     var tAllSel=selTypes.length===0;
-    var tAllS=BTN+'min-width:56px;background:'+(tAllSel?'#64748B':'white')+';color:'+(tAllSel?'white':'#64748B')+';border-color:'+(tAllSel?'#64748B':'#E2E8F0')+';';
+    var tAllS=BTN+'min-width:70px;background:'+(tAllSel?'#4f7fff':'white')+';color:'+(tAllSel?'white':'#4f7fff')+';border-color:'+(tAllSel?'#4f7fff':'rgba(79,127,255,0.4)')+';';
     var th='<button onclick="window._pipeSelTypes=[];renderPipeline();" style="'+tAllS+'">전체</button>';
     TYPE_LIST.forEach(function(tp){
       var tc2=TYPE_C[tp]||'#64748B';
       var isTSel=selTypes.indexOf(tp)>=0;
-      var ts=BTN+'background:'+(isTSel?tc2:'white')+';color:'+(isTSel?'white':tc2)+';border-color:'+(isTSel?tc2:tc2+'66')+';';
-      th+='<button onclick="(function(){_togglePipeType('+JSON.stringify(tp)+');})()" style="'+ts+'">'+tp+'</button>';
+      var ts=BTN+'background:'+(isTSel?tc2:'white')+';color:'+(isTSel?'white':tc2)+';border-color:'+(isTSel?tc2:'#E2E8F0')+';';
+      th+='<button data-ptype="'+tp+'" style="'+ts+'">'+tp+'</button>';
     });
     typeEl.innerHTML=th;
+    typeEl.querySelectorAll('button[data-ptype]').forEach(function(btn){
+      btn.addEventListener('click',function(){ _togglePipeType(this.dataset.ptype); });
+    });
   }
 
   // 테이블 렌더 (rowspan 병합 - 이슈현황 구조)
@@ -7377,7 +7380,7 @@ function renderPipeline(){
         }
         // 구분 (값별 고정색, 텍스트만)
         var _typeC={'신규영업':'#1D4ED8','기존고객':'#059669','전략과제':'#7C3AED'}[a.type]||'#64748B';
-        html+='<td style="text-align:center;vertical-align:middle;padding:10px 8px;border-right:1px solid #F1F5F9;font-size:13px;font-weight:700;color:'+_typeC+';">'+(a.type||'─')+'</td>';
+        html+='<td style="text-align:center !important;vertical-align:middle !important;padding:10px 8px;border-right:1px solid #F1F5F9;font-size:13px !important;font-weight:700 !important;color:'+_typeC+' !important;background:transparent !important;">'+(a.type||'─')+'</td>';
         // 고객사
         html+='<td style="text-align:center;vertical-align:middle;padding:10px 12px;font-size:13px;font-weight:700;color:#374151;border-right:1px solid #F1F5F9;word-break:keep-all;">'+(a.client||'─')+'</td>';
         // 프로젝트
@@ -7394,10 +7397,14 @@ function renderPipeline(){
         html+='<td style="text-align:center;vertical-align:middle;padding:10px 8px;font-size:12px;color:#64748B;white-space:nowrap;border-right:1px solid #F1F5F9;">'+(a.timing||'-')+'</td>';
         // 내용: HTML 태그 제거 후 plain text, pre-wrap으로 엔터 그대로 표현
         var _rawContent=a.content||'';
-        // div/p/br → \n 변환 후 나머지 태그 완전 제거
+        // contenteditable HTML → plain text 변환
+        // <div>줄</div> 구조: 닫는div 앞에 \n 삽입, 여는div는 제거
         var _plainContent=_rawContent
           .replace(/<br\s*\/?>/gi,'\n')
-          .replace(/<\/div>/gi,'\n').replace(/<\/p>/gi,'\n')
+          .replace(/<div[^>]*>/gi,'\n')
+          .replace(/<\/div>/gi,'')
+          .replace(/<p[^>]*>/gi,'\n')
+          .replace(/<\/p>/gi,'')
           .replace(/<[^>]+>/g,'')
           .replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
           .replace(/\n{3,}/g,'\n\n').replace(/^\n+|\n+$/g,'');
@@ -7405,7 +7412,7 @@ function renderPipeline(){
         html+='<td class="content-cell" style="text-align:left;vertical-align:top;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;border-right:1px solid #F1F5F9;">'+_dispContent.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</td>';
         // 단계 (텍스트+색상, 다른 열과 동일 스타일)
         var _stageC={'수주':'#059669','계약':'#059669','제안':'#D97706','견적':'#D97706','입찰':'#1D4ED8','보류':'#94A3B8','Drop':'#DC2626'}[a.progress]||'#94A3B8';
-        html+='<td style="text-align:center;vertical-align:middle;padding:10px 8px;border-left:1px solid #F1F5F9;font-size:13px;font-weight:700;color:'+_stageC+';background:white;">'+(a.progress||'—')+'</td>';
+        html+='<td style="text-align:center !important;vertical-align:middle !important;padding:10px 8px;border-left:1px solid #F1F5F9;font-size:13px !important;font-weight:700 !important;color:'+_stageC+' !important;background:transparent !important;">'+(a.progress||'—')+'</td>';
 
         tr.innerHTML=html;
         frag.appendChild(tr);
