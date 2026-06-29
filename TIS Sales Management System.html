@@ -16528,47 +16528,55 @@ function _wkGenContractNotifs(){
   var rep=session.rep;
   var contracts=(typeof _getContracts==='function')?_getContracts(rep):[];
   var today=new Date(); today.setHours(0,0,0,0);
-  // 이번 주 월요일 계산
-  var dayOfWeek=today.getDay(); // 0=일,1=월,...
-  var daysToMon=dayOfWeek===0?1:(dayOfWeek===1?0:8-dayOfWeek);
+  var dayOfWeek=today.getDay();
   var thisMonday=new Date(today); thisMonday.setDate(today.getDate()-(dayOfWeek===0?6:dayOfWeek-1));
   var thisMondayStr=thisMonday.toISOString().slice(0,10);
+
   // 기존 계약 알림 읽음 상태 보존
   var _contractReadMap={};
   _wk.notifications.forEach(function(n){
     if(n.type==='contract') _contractReadMap[n.id]={read:n.read,dismissedAt:n.dismissedAt};
   });
-  // 기존 계약 알림 제거 (재생성)
   _wk.notifications=_wk.notifications.filter(function(n){return n.type!=='contract';});
-  contracts.forEach(function(con){
-    if(con.status==='종료') return;
-    if(con.managementType==='하자기간') return;
-    var endD=con.endDate?new Date(con.endDate):null;
-    if(!endD) return;
-    var diff=Math.round((endD-today)/86400000);
-    if(diff<0||diff>31) return; // 1개월 이내만
-    var notifId='contract_'+con.id;
+
+  var _deletedIds=typeof _wkGetDeletedNotifIds==='function'?_wkGetDeletedNotifIds():{};
+
+  function _addNotif(notifId, con, targetDate, label){
     var prev=_contractReadMap[notifId]||{};
-    // 세션 내 영구 보존된 읽음/삭제 상태 우선 적용
-    // 같은 주에 읽음 처리한 경우만 read:true 유지 (다음 주 월요일부터는 새 알림)
     var _readDate=(_wk.contractReadIds&&_wk.contractReadIds[notifId])||null;
     var _persistRead=_readDate&&_readDate>=thisMondayStr?true:false;
     var _persistDismissed=(_wk.contractDismissedAt&&_wk.contractDismissedAt[notifId])||null;
     var _dismissedAt=_persistDismissed||prev.dismissedAt||null;
-    // 삭제된 알림 ID 체크 (개별 삭제)
-    var _deletedIds=typeof _wkGetDeletedNotifIds==='function'?_wkGetDeletedNotifIds():{};
     if(_deletedIds[notifId]) return;
-    // 삭제(dismiss)된 알림: 같은 주 월요일이면 숨김, 다음 주부터 재생성
+    // 이번 주 월요일 이후 삭제/읽음 → 다음 주 재알림
     if(_dismissedAt&&_dismissedAt>=thisMondayStr) return;
+    var diff=Math.round((targetDate-today)/86400000);
+    if(diff<0||diff>31) return;
     var urgent=diff<=7;
     _wk.notifications.unshift({
       id:notifId, type:'contract',
       read:_persistRead||(prev.read||false),
       urgent:urgent,
-      title:urgent?'🔴 계약 만료 임박':'📋 계약 만료 예정',
-      msg:'<b>'+_wkEsc(con.client||'')+'</b> '+_wkEsc(con.projectName||con.client||'')+' 계약 만료 <b>D-'+diff+'일</b>'+(urgent?' ⚠️ 즉시 갱신 필요':''),
+      title:urgent?'🔴 '+label+' 만료 임박':'📋 '+label+' 만료 예정',
+      msg:'<b>'+_wkEsc(con.client||'')+'</b> '+_wkEsc(con.projectName||con.client||'')+' '+label+' 만료 <b>D-'+diff+'일</b>'+(urgent?' ⚠️ 즉시 갱신 필요':''),
       targetPage:'contract', time:_wkNowStr()
     });
+  }
+
+  contracts.forEach(function(con){
+    if(con.status==='종료') return;
+
+    // 1. 계약 종료일 알림 (유형 무관)
+    if(con.endDate){
+      var endD=new Date(con.endDate); endD.setHours(0,0,0,0);
+      _addNotif('contract_'+con.id, con, endD, '계약');
+    }
+
+    // 2. 유지보수/하자기간 관리 종료일 알림
+    if(con.managementEndDate && (con.managementType==='유지보수'||con.managementType==='하자기간')){
+      var mEndD=new Date(con.managementEndDate); mEndD.setHours(0,0,0,0);
+      _addNotif('mgt_'+con.id, con, mEndD, con.managementType);
+    }
   });
 }
 // ── 복원된 렌더링 함수들
