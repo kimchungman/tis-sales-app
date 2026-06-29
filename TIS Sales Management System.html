@@ -10242,44 +10242,44 @@ function _initDragSort(containerId, rep, dataKey, renderFn){
   if(!container) return;
   var rows=Array.from(container.querySelectorAll('.ip-row'));
   if(!rows.length) return;
-  var dragSrcIdx=-1;
-  rows.forEach(function(row, idx){
-    row.setAttribute('draggable','true');
-    row.addEventListener('dragstart',function(e){
-      dragSrcIdx=idx;
-      e.dataTransfer.setData('text/plain', String(idx));
-      e.dataTransfer.effectAllowed='move';
-      e.stopPropagation();
-      setTimeout(function(){ row.style.opacity='0.4'; },0);
-    });
-    row.addEventListener('dragend',function(){
-      this.style.opacity='';
-      container.querySelectorAll('.ip-row').forEach(function(r){ r.style.borderTop=''; });
-    });
-    row.addEventListener('dragover',function(e){
-      e.preventDefault(); e.stopPropagation();
-      container.querySelectorAll('.ip-row').forEach(function(r){ r.style.borderTop=''; });
-      if(idx!==dragSrcIdx) this.style.borderTop='2px solid #4f7fff';
-    });
-    row.addEventListener('dragleave',function(e){
-      if(!this.contains(e.relatedTarget)) this.style.borderTop='';
-    });
-    row.addEventListener('drop',function(e){
-      e.preventDefault(); e.stopPropagation();
-      this.style.borderTop='';
-      var fromIdx=dragSrcIdx;
-      var toIdx=idx;
-      if(fromIdx<0||fromIdx===toIdx) return;
-      var arr=store.reps[rep][dataKey]||[];
-      if(fromIdx>=arr.length||toIdx>=arr.length) return;
-      var moved=arr.splice(fromIdx,1)[0];
-      arr.splice(toIdx,0,moved);
-      store.reps[rep][dataKey]=arr;
-      dragSrcIdx=-1;
-      if(renderFn) renderFn(rep);
-      if(typeof autoSave==='function') autoSave();
-    });
-  });
+  // 각 행에 dataset으로 인덱스 저장
+  rows.forEach(function(row,i){ row.dataset.dsIdx=String(i); row.setAttribute('draggable','true'); });
+  container.addEventListener('dragstart',function(e){
+    var row=e.target.closest('.ip-row'); if(!row) return;
+    container._dsSrc=row.dataset.dsIdx;
+    e.dataTransfer.effectAllowed='move';
+    e.dataTransfer.setData('text/plain',row.dataset.dsIdx);
+    setTimeout(function(){ if(row) row.style.opacity='0.4'; },0);
+  },true);
+  container.addEventListener('dragend',function(e){
+    var row=e.target.closest('.ip-row'); if(row) row.style.opacity='';
+    container.querySelectorAll('.ip-row').forEach(function(r){ r.style.borderTop=''; });
+  },true);
+  container.addEventListener('dragover',function(e){
+    e.preventDefault();
+    var row=e.target.closest('.ip-row'); if(!row) return;
+    container.querySelectorAll('.ip-row').forEach(function(r){ r.style.borderTop=''; });
+    if(row.dataset.dsIdx!==container._dsSrc) row.style.borderTop='2px solid #4f7fff';
+  },true);
+  container.addEventListener('dragleave',function(e){
+    var row=e.target.closest('.ip-row'); if(row&&!row.contains(e.relatedTarget)) row.style.borderTop='';
+  },true);
+  container.addEventListener('drop',function(e){
+    e.preventDefault();
+    var row=e.target.closest('.ip-row'); if(!row) return;
+    row.style.borderTop='';
+    var fromIdx=parseInt(container._dsSrc);
+    var toIdx=parseInt(row.dataset.dsIdx);
+    if(isNaN(fromIdx)||isNaN(toIdx)||fromIdx===toIdx) return;
+    var arr=store.reps[rep][dataKey]||[];
+    if(fromIdx>=arr.length||toIdx>=arr.length) return;
+    var moved=arr.splice(fromIdx,1)[0];
+    arr.splice(toIdx,0,moved);
+    store.reps[rep][dataKey]=arr;
+    container._dsSrc=null;
+    if(renderFn) renderFn(rep);
+    if(typeof autoSave==='function') autoSave();
+  },true);
 }
 
 function autoSave(){
