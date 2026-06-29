@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260518-052306 -->
+<!-- TIS-VERSION: 20260629-003007 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -7261,7 +7261,8 @@ function renderPipeline(){
   var rows=[];
   getPipeReps().forEach(function(rep){
     (store.reps[rep]&&store.reps[rep].activities||[]).forEach(function(a){
-      if(a.client) rows.push(Object.assign({},a,{rep:rep,team:t}));
+      var _repTeam=(typeof _getRepActualTeam==='function'?_getRepActualTeam(rep):rep);
+      if(a.client) rows.push(Object.assign({},a,{rep:rep,team:_repTeam}));
     });
   });
   if(selReps.length>0) rows=rows.filter(function(r){return selReps.indexOf(r.rep)>=0;});
