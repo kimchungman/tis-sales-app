@@ -7260,89 +7260,125 @@ function populateFilters(){
 function renderPipeline(){
   if(!window._pipeSelReps) window._pipeSelReps=[];
   var selReps=window._pipeSelReps;
-  var psf=document.getElementById('pipe-status')?document.getElementById('pipe-status').value:'all';
 
-  var rows=[];
-  getPipeReps().forEach(function(rep){
-    (store.reps[rep]&&store.reps[rep].activities||[]).forEach(function(a){
-      var _repTeam=(typeof _getRepActualTeam==='function'?_getRepActualTeam(rep):rep);
-      if(a.client) rows.push(Object.assign({},a,{rep:rep,team:_repTeam}));
-    });
+  // 팀/담당자 색상 맵 (이슈현황과 동일)
+  var TC={'솔루션영업팀':'#4f7fff','그룹지원팀':'#0EA5A0'};
+  var RC={};
+  if(typeof TEAM_REPS!=='undefined') Object.keys(TEAM_REPS).forEach(function(t){
+    (TEAM_REPS[t]||[]).forEach(function(r,i){ RC[r]=(typeof TEAM_COLORS!=='undefined'&&TEAM_COLORS[t]&&TEAM_COLORS[t][i])||TC[t]||'#4f7fff'; });
   });
-  if(selReps.length>0) rows=rows.filter(function(r){return selReps.indexOf(r.rep)>=0;});
-  if(psf!=='all') rows=rows.filter(function(r){return(r.status||'open')===psf;});
 
-  var pc=function(p){return p>=0.8?'bg-green':p>=0.5?'bg-gold':p>=0.2?'bg-blue':'bg-gray';};
+  // 현재 팀 탭
+  var curTeam=(typeof _tabState!=='undefined'&&_tabState.pipeline)||'all';
+  var teams=(curTeam==='all')?(typeof TEAMS!=='undefined'?TEAMS:[]):[curTeam];
 
-  // 담당자 필터 뱃지 렌더
-  var legend=document.getElementById('pipe-rep-pills');
-  if(legend){
-    legend.innerHTML='';
+  // 담당자 필터 Pill (이슈현황 스타일)
+  var BTN='height:28px;padding:0 14px;border-radius:14px;font-size:13px;font-family:inherit;cursor:pointer;border:1.5px solid;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:5px;transition:all 0.15s;white-space:nowrap;';
+  var pillEl=document.getElementById('pipe-rep-pills');
+  if(pillEl){
     var allSel=selReps.length===0;
-
-    // [전체] 버튼
-    var allBtn=document.createElement('button');
-    allBtn.style.cssText='padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;'
-      +'background:'+(allSel?'#1E5FBE':'white')+';'
-      +'color:'+(allSel?'white':'#6B7FA3')+';'
-      +'border:1.5px solid '+(allSel?'#1E5FBE':'#CBD5E1')+';';
-    allBtn.textContent='전체';
-    allBtn.onclick=function(){window._pipeSelReps=[];renderPipeline();};
-    legend.appendChild(allBtn);
-
-    // 담당자 뱃지
-    REPS.forEach(function(rep,i){
-      var color=REP_COLORS[i]||'#1E5FBE';
+    var allS=BTN+'min-width:70px;background:'+(allSel?'#4f7fff':'white')+';color:'+(allSel?'white':'#4f7fff')+';border-color:'+(allSel?'#4f7fff':'rgba(79,127,255,0.4)')+';';
+    var h='<button onclick="window._pipeSelReps=[];renderPipeline();" style="'+allS+'">전체</button>';
+    var pipeReps=getPipeReps();
+    pipeReps.forEach(function(rep){
+      var rc=RC[rep]||'#4f7fff';
       var isSel=selReps.indexOf(rep)>=0;
-      var totalCnt=store.reps[rep].activities.filter(function(a){return a.client;}).length;
-      var filtCnt=rows.filter(function(r){return r.rep===rep;}).length;
-      var btn=document.createElement('button');
-      btn.dataset.rep=rep;
-      btn.style.cssText='display:inline-flex;align-items:center;gap:4px;padding:3px 11px;border-radius:20px;cursor:pointer;font-family:inherit;'
-        +'background:'+(isSel?color:color+'18')+';'
-        +'border:1.5px solid '+color+';'
-        +'color:'+(isSel?'white':color)+';';
-      btn.innerHTML='<span style="font-size:11px;font-weight:700;">'+getRepDisplayName(rep)+'</span>'
-        +'<span style="font-size:10px;opacity:0.75;margin-left:2px;">'+(selReps.length>0&&isSel?filtCnt:totalCnt)+'건</span>';
-      btn.addEventListener('click',function(){_togglePipeRep(this.dataset.rep);});
-      legend.appendChild(btn);
+      var cnt=(store.reps[rep]&&store.reps[rep].activities||[]).filter(function(a){return a.client;}).length;
+      var s=BTN+'background:'+(isSel?rc:'white')+';color:'+(isSel?'white':'#475569')+';border-color:'+(isSel?rc:'#E2E8F0')+';';
+      h+='<button onclick="_togglePipeRep(\''+rep+'\')" style="'+s+'">'+getRepDisplayName(rep)+' <strong style="font-size:12px;opacity:0.85;">'+cnt+'</strong></button>';
     });
+    pillEl.innerHTML=h;
   }
 
-  // 테이블 렌더
+  // 테이블 렌더 (rowspan 병합 - 이슈현황 구조)
   var tbody=document.getElementById('pipe-tbody');
   if(!tbody) return;
-  var _pipeScroll=tbody.closest('[style*="overflow"]')||tbody.closest('.tbl-scroll-wrap')||tbody.parentElement;
-  var _pipeSt=_pipeScroll?_pipeScroll.scrollTop:_savePageScroll();
-  if(!rows.length){
-    tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--muted);font-size:13px;">조건에 맞는 항목이 없습니다</td></tr>';
-    return;
+  var _pipeScrollEl=tbody.closest('.tbl-scroll-wrap')||tbody.parentElement;
+  var _pipeSt=_pipeScrollEl?_pipeScrollEl.scrollTop:0;
+
+  var frag=document.createDocumentFragment();
+  var hasData=false, isFirstTeamOverall=true;
+
+  teams.forEach(function(team){
+    var tc=TC[team]||'#4f7fff';
+    var repsInTeam=(typeof TEAM_REPS!=='undefined'?TEAM_REPS[team]||[]:[]).filter(function(r){
+      return store.reps[r]&&(selReps.length===0||selReps.indexOf(r)>=0);
+    });
+    var repGroups=[];
+    repsInTeam.forEach(function(rep){
+      var rc=RC[rep]||'#4f7fff';
+      var acts=(store.reps[rep]&&store.reps[rep].activities||[]).filter(function(a){return a.client;});
+      if(acts.length) repGroups.push({rep:rep,rc:rc,acts:acts});
+    });
+    if(!repGroups.length) return;
+    var totalRows=repGroups.reduce(function(s,g){return s+g.acts.length;},0);
+    var isFirstTeam=isFirstTeamOverall; isFirstTeamOverall=false; var teamFirst=true;
+
+    repGroups.forEach(function(g,gi){
+      g.acts.forEach(function(a,ai){
+        var isFirstRep=ai===0, isFirstRow=teamFirst&&ai===0;
+        var tr=document.createElement('tr');
+        var topBorder='';
+        if(isFirstRow&&!isFirstTeam) topBorder='border-top:6px solid '+tc+'40;';
+        else if(gi>0&&ai===0) topBorder='border-top:3px solid #DDE3EE;';
+        tr.style.cssText='background:white;transition:background 0.12s;'+topBorder;
+        tr.onmouseover=function(){this.style.background='#F7F9FF';};
+        tr.onmouseout=function(){this.style.background='white';};
+
+        var html='';
+        // 팀 셀 (팀 전체 rowspan)
+        if(isFirstRow){
+          teamFirst=false;
+          html+='<td rowspan="'+totalRows+'" style="text-align:center;vertical-align:middle;padding:0 4px;border-right:2px solid '+tc+'40;background:'+tc+'0D;width:62px;position:relative;">'
+            +'<span style="position:absolute;left:0;top:0;bottom:0;width:4px;background:'+tc+';border-radius:0 3px 3px 0;"></span>'
+            +'<span style="font-size:13px;font-weight:700;color:'+tc+';writing-mode:vertical-rl;letter-spacing:.1em;white-space:nowrap;">'+team+'</span>'
+            +'</td>';
+        }
+        // 담당자 셀 (담당자 rowspan)
+        if(isFirstRep){
+          html+='<td rowspan="'+g.acts.length+'" style="text-align:center;vertical-align:middle;padding:10px 8px;width:90px;border-right:1px solid #EEF2F9;">'
+            +'<span style="font-size:13px;font-weight:700;color:'+g.rc+';">'+getRepDisplayName(g.rep)+'</span>'
+            +'</td>';
+        }
+        // 구분 배지
+        var typeBg=g.rc+'20', typeBd=g.rc+'66';
+        html+='<td style="text-align:center;vertical-align:middle;padding:10px 8px;border-right:1px solid #F1F5F9;">'
+          +'<span style="display:inline-flex;align-items:center;justify-content:center;min-width:60px;height:24px;padding:0 8px;border-radius:12px;font-size:12px;font-weight:600;color:'+g.rc+';background:'+typeBg+';border:1px solid '+typeBd+';">'
+          +(a.type||'─')+'</span></td>';
+        // 고객사
+        html+='<td style="text-align:center;vertical-align:middle;padding:10px 12px;font-size:13px;font-weight:700;color:#374151;border-right:1px solid #F1F5F9;">'+(a.client||'─')+'</td>';
+        // 제품
+        html+='<td style="text-align:center;vertical-align:middle;padding:10px 10px;font-size:12px;color:#64748B;border-right:1px solid #F1F5F9;">'+(a.product||'─')+'</td>';
+        // 금액
+        html+='<td style="text-align:right;vertical-align:middle;padding:10px 12px;font-size:13px;font-weight:600;color:#374151;border-right:1px solid #F1F5F9;white-space:nowrap;">'+(a.amount?a.amount.toLocaleString('ko-KR')+'천':'-')+'</td>';
+        // 확도
+        var probV=a.prob||0;
+        var probC=probV>=0.8?'#059669':probV>=0.5?'#D97706':probV>=0.2?'#4f7fff':'#94A3B8';
+        html+='<td style="text-align:center;vertical-align:middle;padding:8px 6px;border-right:1px solid #F1F5F9;">'
+          +(a.prob?'<span style="display:inline-flex;align-items:center;justify-content:center;min-width:48px;height:24px;padding:0 8px;border-radius:12px;font-size:12px;font-weight:700;color:'+probC+';background:'+probC+'18;border:1px solid '+probC+'40;">'+Math.round(a.prob*100)+'%</span>':'<span style="color:#94A3B8;font-size:12px;">-</span>')
+          +'</td>';
+        // 시기
+        html+='<td style="text-align:center;vertical-align:middle;padding:10px 8px;font-size:12px;color:#64748B;white-space:nowrap;border-right:1px solid #F1F5F9;">'+(a.timing||'-')+'</td>';
+        // 내용 (content-cell, pre-wrap)
+        html+='<td class="content-cell" style="text-align:left !important;vertical-align:middle;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;white-space:pre-wrap !important;word-break:break-word !important;overflow-wrap:break-word !important;border-right:1px solid #F1F5F9;">'+_renderRich(a.content||'─')+'</td>';
+        // 진행사항
+        var progChip=a.progress?_ipChipProgress(a.progress):'<span style="color:#94A3B8;font-size:11px;">—</span>';
+        html+='<td style="text-align:center;vertical-align:middle;padding:8px;">'+progChip+'</td>';
+
+        tr.innerHTML=html;
+        frag.appendChild(tr);
+        hasData=true;
+      });
+    });
+  });
+
+  tbody.innerHTML='';
+  if(!hasData){
+    tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:56px;color:#94A3B8;font-size:13px;">조회된 영업 활동이 없습니다</td></tr>';
+  } else {
+    tbody.appendChild(frag);
   }
-  var _pipeScrollB=tbody.closest('[style*="overflow"]')||tbody.closest('.tbl-scroll-wrap')||tbody.parentElement;
-  var _pipeStB=_pipeScrollB?_pipeScrollB.scrollTop:_savePageScroll();
-  tbody.innerHTML=rows.map(function(r){
-    var ri=REPS.indexOf(r.rep);
-    var repColor=REP_COLORS[ri]||'#1E5FBE';
-    var repBg=repColor+'24';
-    var repBorder=repColor+'66';
-    var progChip=r.progress?_ipChipProgress(r.progress):'<span style="color:#94A3B8;font-size:11px;">—</span>';
-    return '<tr style="border-left:4px solid '+repColor+';background:'+repBg+';">'
-      +'<td style="text-align:center;vertical-align:middle;font-size:12px;font-weight:600;color:'+repColor+';white-space:nowrap;">'+(r.team||'')+'</td>'
-      +'<td style="text-align:center;vertical-align:middle;"><div style="display:flex;align-items:center;justify-content:center;gap:6px;">'
-      +'<div style="width:8px;height:8px;border-radius:50%;background:'+repColor+';flex-shrink:0;"></div>'
-      +'<span style="font-weight:700;font-size:12px;color:'+repColor+';">'+getRepDisplayName(r.rep)+'</span>'
-      +'</div></td>'
-      +'<td style="text-align:center;vertical-align:middle;"><span class="badge" style="background:'+repBg+';color:'+repColor+';border:1px solid '+repBorder+';">'+(r.type||'')+'</span></td>'
-      +'<td style="text-align:center;vertical-align:middle;font-weight:700;color:var(--text);">'+(r.client||'')+'</td>'
-      +'<td style="text-align:center;vertical-align:middle;color:var(--muted);">'+(r.product||'')+'</td>'
-      +'<td class="nt" style="text-align:center;vertical-align:middle;font-weight:600;">'+(r.amount?r.amount.toLocaleString('ko-KR'):'-')+'</td>'
-      +'<td style="text-align:center;vertical-align:middle;"><span class="badge '+pc(r.prob)+'">'+(r.prob?(r.prob*100).toFixed(0)+'%':'-')+'</span></td>'
-      +'<td style="text-align:center;vertical-align:middle;white-space:nowrap;color:var(--muted);">'+(r.timing||'-')+'</td>'
-      +'<td style="text-align:center;vertical-align:middle;">'+progChip+'</td>'
-      +'<td class="content-cell" style="font-size:12px;color:#374151;text-align:left !important;white-space:pre-wrap !important;word-break:break-word !important;word-wrap:break-word !important;overflow-wrap:break-word !important;vertical-align:top !important;line-height:1.6;padding:8px 12px;">'+_renderRich(r.content||'─')+'</td>'
-      +'</tr>';
-  }).join('');
-  if(typeof _restorePageScroll==='function') _restorePageScroll(_pipeStB);
+  requestAnimationFrame(function(){ if(_pipeScrollEl) _pipeScrollEl.scrollTop=_pipeSt; });
 }
 
 function _togglePipeRep(rep){
@@ -7352,7 +7388,6 @@ function _togglePipeRep(rep){
   else window._pipeSelReps.push(rep);
   renderPipeline();
 }
-
 
 // EXPORT
 function buildExpPreview(){
