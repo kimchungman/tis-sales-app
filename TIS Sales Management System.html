@@ -2220,7 +2220,7 @@ td.at-cell-timing input[type="text"]::placeholder {
 .cdb-cc-x{position:absolute;top:4px;right:4px;width:28px;height:28px;border-radius:6px;border:none;background:none;color:#CBD5E1;cursor:pointer;font-size:14px;line-height:28px;text-align:center;-webkit-tap-highlight-color:transparent;}
 .cdb-add-btn{display:flex;align-items:center;gap:5px;padding:10px 12px;border-radius:8px;border:1.5px dashed #CBD5E1;background:#fff;color:#94A3B8;font-size:12px;font-weight:500;cursor:pointer;width:100%;transition:all .15s;margin-top:4px;min-height:44px;-webkit-tap-highlight-color:transparent;}
 .cdb-add-btn:hover{border-color:#4f7fff;color:#4f7fff;background:#EFF6FF;}
-.cdb-note{width:100%;min-height:60px;padding:8px 10px;border:1px solid #E2E8F0;border-radius:8px;font-size:12px;color:#374151;resize:vertical;outline:none;background:#F8FAFC;line-height:1.5;font-family:inherit;}
+.cdb-note{width:100%;min-height:200px;height:calc(100vh - 520px);max-height:600px;padding:8px 10px;border:1px solid #E2E8F0;border-radius:8px;font-size:12px;color:#374151;resize:none;outline:none;background:#F8FAFC;line-height:1.5;font-family:inherit;overflow-y:auto;box-sizing:border-box;}
 .cdb-note:focus{border-color:#BFDBFE;background:#EFF6FF;}
 /* 히스토리 */
 .cdb-hist{flex:1;display:flex;flex-direction:column;overflow:hidden;}
@@ -2274,7 +2274,7 @@ td.at-cell-timing input[type="text"]::placeholder {
 .cdb-cc:hover{box-shadow:0 2px 8px rgba(79,127,255,.1);}
 .cdb-hist{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#fff;}
 .cdb-htabs{display:flex;border-bottom:1px solid #F1F5F9;padding:0 20px;flex-shrink:0;background:#fff;}
-.cdb-note{width:100%;min-height:60px;max-height:180px;padding:8px 10px;border:1px solid #E8EFFF;border-radius:8px;font-size:12px;color:#374151;resize:none;outline:none;background:#F8FAFF;line-height:1.6;font-family:inherit;overflow-y:auto;transition:border-color .15s;}
+.cdb-note{width:100%;min-height:200px;height:calc(100vh - 520px);max-height:600px;padding:8px 10px;border:1px solid #E8EFFF;border-radius:8px;font-size:12px;color:#374151;resize:none;outline:none;background:#F8FAFF;line-height:1.6;font-family:inherit;overflow-y:auto;transition:border-color .15s;box-sizing:border-box;}
 .cdb-note:focus{border-color:#BFDBFE;background:#EFF6FF;box-shadow:0 0 0 3px rgba(79,127,255,.08);}
 .cdb-right{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#fff;border-left:1px solid #F1F5F9;}
 .cdb-lh{padding:12px 14px;border-bottom:1px solid #F1F5F9;display:flex;align-items:center;gap:8px;flex-shrink:0;background:#fff;}
@@ -14358,7 +14358,7 @@ function _cdbRenderDetail(id){
       +'<div class="cdb-info">'
         +'<div class="cdb-st">담당자 (고객사 측)</div>'+ccHTML
         +'<div class="cdb-st" style="margin-top:14px;">비고</div>'
-        +'<textarea class="cdb-note" placeholder="고객사 관련 메모를 입력하세요..." oninput="_cdbNoteAutoHeight(this)" onchange="_cdbSaveNote(\''+id+'\',this.value)">'+_cdbEsc(item.note||'')+'</textarea>'
+        +'<textarea class="cdb-note" placeholder="고객사 관련 메모를 입력하세요..." onchange="_cdbSaveNote(\''+id+'\',this.value)">'+_cdbEsc(item.note||'')+'</textarea>'
       +'</div>'
       +'<div class="cdb-hist">'
         +'<div class="cdb-htabs">'
@@ -17163,7 +17163,17 @@ function _wkRenderProjects(){
         content:a.content||a.note||'',isNew:isNew});
     });
   });
-  items.sort(function(a,b){ return (b.isNew?1:0)-(a.isNew?1:0); });
+  // 담당자 순서(TEAM_REPS 기준) → 담당자 내 수정된 항목 우선
+  var _repOrder=[];
+  if(typeof TEAMS!=='undefined'){
+    TEAMS.forEach(function(t){ (TEAM_REPS[t]||[]).forEach(function(r){ if(_repOrder.indexOf(r)<0) _repOrder.push(r); }); });
+  }
+  items.sort(function(a,b){
+    var ai=_repOrder.indexOf(a.rep), bi=_repOrder.indexOf(b.rep);
+    if(ai<0) ai=999; if(bi<0) bi=999;
+    if(ai!==bi) return ai-bi; // 1순위: 담당자 순서
+    return (b.isNew?1:0)-(a.isNew?1:0); // 2순위: 수정된 항목 위로
+  });
   var cnt=document.getElementById('wk-proj-cnt');
   if(cnt) cnt.textContent='이번주 '+items.length+'건';
   if(!items.length){
