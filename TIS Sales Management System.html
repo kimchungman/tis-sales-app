@@ -3540,31 +3540,33 @@ window._updateSidebarByRole=function(){
           <h3 style="margin:0;">영업 진행 현황</h3>
         </div>
         <div id="pipe-rep-pills" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
-        <div id="pipe-progress-pills" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+        <div id="pipe-type-pills" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:2px;"></div>
       </div>
       <div class="sec-body" style="padding-top:4px;">
         <div class="tbl-scroll-wrap">
-          <table class="dt" style="min-width:1000px;width:100%;table-layout:fixed;">
+          <table class="dt" style="min-width:1100px;width:100%;table-layout:fixed;">
             <colgroup>
-              <col style="width:70px;">
+              <col style="width:60px;">
+              <col style="width:88px;">
+              <col style="width:76px;">
+              <col style="width:160px;">
+              <col style="width:130px;">
               <col style="width:100px;">
-              <col style="width:90px;">
-              <col style="width:140px;">
-              <col style="width:110px;">
+              <col style="width:95px;">
+              <col style="width:60px;">
               <col style="width:100px;">
-              <col style="width:70px;">
-              <col style="width:110px;">
-              <col style="min-width:220px;">
-              <col style="width:90px;">
+              <col style="min-width:200px;">
+              <col style="width:72px;">
             </colgroup>
             <thead>
               <tr>
                 <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;text-align:center;white-space:nowrap;">팀</th>
-                <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;text-align:center;">담당자</th>
-                <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;text-align:center;">구분</th>
+                <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;text-align:center;white-space:nowrap;">담당자</th>
+                <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;text-align:center;white-space:nowrap;">구분</th>
                 <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;text-align:center;">고객사</th>
+                <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;text-align:center;">프로젝트</th>
                 <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;text-align:center;">제품</th>
-                <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;text-align:right;padding-right:12px;">금액</th>
+                <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;text-align:right;padding-right:12px;">금액(천원)</th>
                 <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;text-align:center;">확도</th>
                 <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;text-align:center;">시기</th>
                 <th style="position:sticky;top:0;z-index:5;background:#F8FAFC;color:#64748B;text-align:left;padding-left:12px;">내용</th>
@@ -7302,6 +7304,25 @@ function renderPipeline(){
     pillEl.innerHTML=h;
   }
 
+  // 구분 필터 Pill
+  var TYPE_LIST=['신규영업','기존고객','전략과제'];
+  var TYPE_C={'신규영업':'#1D4ED8','기존고객':'#059669','전략과제':'#7C3AED'};
+  if(!window._pipeSelTypes) window._pipeSelTypes=[];
+  var selTypes=window._pipeSelTypes;
+  var typeEl=document.getElementById('pipe-type-pills');
+  if(typeEl){
+    var tAllSel=selTypes.length===0;
+    var tAllS=BTN+'min-width:56px;background:'+(tAllSel?'#64748B':'white')+';color:'+(tAllSel?'white':'#64748B')+';border-color:'+(tAllSel?'#64748B':'#E2E8F0')+';';
+    var th='<button onclick="window._pipeSelTypes=[];renderPipeline();" style="'+tAllS+'">전체</button>';
+    TYPE_LIST.forEach(function(tp){
+      var tc2=TYPE_C[tp]||'#64748B';
+      var isTSel=selTypes.indexOf(tp)>=0;
+      var ts=BTN+'background:'+(isTSel?tc2:'white')+';color:'+(isTSel?'white':tc2)+';border-color:'+(isTSel?tc2:tc2+'66')+';';
+      th+='<button onclick="(function(){_togglePipeType('+JSON.stringify(tp)+');})()" style="'+ts+'">'+tp+'</button>';
+    });
+    typeEl.innerHTML=th;
+  }
+
   // 테이블 렌더 (rowspan 병합 - 이슈현황 구조)
   var tbody=document.getElementById('pipe-tbody');
   if(!tbody) return;
@@ -7319,7 +7340,8 @@ function renderPipeline(){
     var repGroups=[];
     repsInTeam.forEach(function(rep){
       var rc=RC[rep]||'#4f7fff';
-      var acts=(store.reps[rep]&&store.reps[rep].activities||[]).filter(function(a){return a.client;});
+      var selTypesF=window._pipeSelTypes||[];
+      var acts=(store.reps[rep]&&store.reps[rep].activities||[]).filter(function(a){return a.client&&(selTypesF.length===0||selTypesF.indexOf(a.type)>=0);});
       if(acts.length) repGroups.push({rep:rep,rc:rc,acts:acts});
     });
     if(!repGroups.length) return;
@@ -7357,11 +7379,13 @@ function renderPipeline(){
         var typeC=typeColorMap[a.type]||'#64748B';
         html+='<td style="text-align:center;vertical-align:middle;padding:10px 8px;border-right:1px solid #F1F5F9;font-size:13px;font-weight:600;color:'+typeC+';">'+(a.type||'─')+'</td>';
         // 고객사
-        html+='<td style="text-align:center;vertical-align:middle;padding:10px 12px;font-size:13px;font-weight:700;color:#374151;border-right:1px solid #F1F5F9;">'+(a.client||'─')+'</td>';
+        html+='<td style="text-align:center;vertical-align:middle;padding:10px 12px;font-size:13px;font-weight:700;color:#374151;border-right:1px solid #F1F5F9;word-break:keep-all;">'+(a.client||'─')+'</td>';
+        // 프로젝트
+        html+='<td style="text-align:left;vertical-align:middle;padding:10px 10px;font-size:12px;color:#374151;border-right:1px solid #F1F5F9;word-break:break-word;">'+(a.project||'─')+'</td>';
         // 제품
         html+='<td style="text-align:center;vertical-align:middle;padding:10px 10px;font-size:12px;color:#64748B;border-right:1px solid #F1F5F9;">'+(a.product||'─')+'</td>';
         // 금액
-        html+='<td style="text-align:right;vertical-align:middle;padding:10px 12px;font-size:13px;font-weight:600;color:#374151;border-right:1px solid #F1F5F9;white-space:nowrap;">'+(a.amount?a.amount.toLocaleString('ko-KR')+'천':'-')+'</td>';
+        html+='<td style="text-align:right;vertical-align:middle;padding:10px 12px;font-size:13px;font-weight:600;color:#374151;border-right:1px solid #F1F5F9;white-space:nowrap;">'+(a.amount?a.amount.toLocaleString('ko-KR'):'-')+'</td>';
         // 확도 (텍스트만, 색상으로 표현)
         var probV=parseFloat(a.prob)||0;
         var probC=probV>=80?'#059669':probV>=50?'#D97706':probV>=20?'#1D4ED8':'#94A3B8';
@@ -7370,10 +7394,10 @@ function renderPipeline(){
         html+='<td style="text-align:center;vertical-align:middle;padding:10px 8px;font-size:12px;color:#64748B;white-space:nowrap;border-right:1px solid #F1F5F9;">'+(a.timing||'-')+'</td>';
         // 내용 (content-cell, pre-wrap)
         html+='<td class="content-cell" style="text-align:left !important;vertical-align:middle;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;white-space:pre-wrap !important;word-break:break-word !important;overflow-wrap:break-word !important;border-right:1px solid #F1F5F9;">'+_renderRich(a.content||'─')+'</td>';
-        // 단계 (텍스트만, 색상으로 표현, 일반 셀 스타일)
+        // 단계 (텍스트+색상, 배경 없음)
         var progColorMap={'수주':'#059669','계약':'#059669','제안':'#D97706','견적':'#D97706','입찰':'#1D4ED8','보류':'#94A3B8','Drop':'#DC2626'};
         var progC=a.progress?(progColorMap[a.progress]||'#64748B'):'#94A3B8';
-        html+='<td style="text-align:center;vertical-align:middle;padding:10px 8px;font-size:13px;font-weight:600;color:'+progC+';">'+(a.progress||'—')+'</td>';
+        html+='<td style="text-align:center !important;vertical-align:middle !important;padding:10px 8px !important;font-size:13px !important;font-weight:600 !important;color:'+progC+' !important;background:transparent !important;">'          +'<span style="background:none !important;border:none !important;padding:0 !important;font-size:13px;font-weight:600;color:'+progC+';">'+(a.progress||'—')+'</span></td>';
 
         tr.innerHTML=html;
         frag.appendChild(tr);
@@ -7384,7 +7408,7 @@ function renderPipeline(){
 
   tbody.innerHTML='';
   if(!hasData){
-    tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:56px;color:#94A3B8;font-size:13px;">조회된 영업 활동이 없습니다</td></tr>';
+    tbody.innerHTML='<tr><td colspan="11" style="text-align:center;padding:56px;color:#94A3B8;font-size:13px;">조회된 영업 활동이 없습니다</td></tr>';
   } else {
     tbody.appendChild(frag);
   }
@@ -7396,6 +7420,13 @@ function _togglePipeRep(rep){
   var idx=window._pipeSelReps.indexOf(rep);
   if(idx>=0) window._pipeSelReps.splice(idx,1);
   else window._pipeSelReps.push(rep);
+  renderPipeline();
+}
+function _togglePipeType(tp){
+  if(!window._pipeSelTypes) window._pipeSelTypes=[];
+  var idx=window._pipeSelTypes.indexOf(tp);
+  if(idx>=0) window._pipeSelTypes.splice(idx,1);
+  else window._pipeSelTypes.push(tp);
   renderPipeline();
 }
 
