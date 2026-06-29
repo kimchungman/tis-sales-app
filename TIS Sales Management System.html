@@ -6381,7 +6381,7 @@ function buildRepInputs(){
             <span>달성(천원)</span><span>예상(천원)</span><span>이슈사항</span>
           </div>
           <div id="ct-ip-${rep}" style="min-width:1000px;">
-            ${(store.reps[rep].clients||[]).map((cl,ci)=>cRow(rep,ci,cl)).join('')}
+            ${_sortByClient(store.reps[rep].clients||[]).map((cl,ci)=>cRow(rep,ci,cl)).join('')}
           </div>
         </div>
       </div>
@@ -6401,7 +6401,7 @@ function buildRepInputs(){
             <span>제품</span><span>진행</span><span>금액</span><span>활동 내용</span>
           </div>
           <div id="at-ip-${rep}" style="min-width:1050px;">
-            ${(store.reps[rep].activities||[]).map((a,ai)=>aRow(rep,ai,a)).join('')}
+            ${_sortByClient(store.reps[rep].activities||[]).map((a,ai)=>aRow(rep,ai,a)).join('')}
           </div>
         </div>
       </div>
@@ -6545,7 +6545,7 @@ function cRow(rep,ci,cl){
   var foreDisp=forecastSum>0?forecastSum.toLocaleString('ko-KR'):'<span style="color:#CBD5E1;">—</span>';
   var issueDisp=cl.issue?('<div class="ip-rich-view" style="font-size:12px;line-height:1.6;color:#0F172A;text-align:left;">'+cl.issue+'</div>'):'<span style="color:#CBD5E1;font-size:11px;">—</span>';
   var bgEven=ci%2===1?'background:#F8FBFF;':'';
-  return '<div class="lr g-ct ip-row" draggable="true" style="'+bgEven+'" data-action="openClient" data-rep="'+rep+'" data-ci="'+ci+'" title="클릭하여 수정">'
+  return '<div class="lr g-ct ip-row" style="'+bgEven+'" data-action="openClient" data-rep="'+rep+'" data-ci="'+ci+'" title="클릭하여 수정">'
     +'<div class="td-c"><span class="'+dotCls+'"></span></div>'
     +'<div class="td-c"><span class="nbadge">'+(ci+1)+'</span></div>'
     +'<div class="td-l" style="font-weight:600;color:#0F172A;">'+(cl.name||'')+'</div>'
@@ -6576,7 +6576,7 @@ function _iRow2(rep,ii,iss){
   var contentHtml=iss.content?('<div class="ip-rich-view" style="text-align:left;font-size:12px;line-height:1.6;color:#334155;">'+iss.content+'</div>'):'';
   var bgEven=ii%2===1?'background:#F8FBFF;':'';
   var div=document.createElement('div');
-  div.className='lr g-is ip-row ip-row-iss'; div.draggable=true;
+  div.className='lr g-is ip-row ip-row-iss';
   div.style.cssText=bgEven+'cursor:pointer;';
   div.setAttribute('data-rep',rep);
   div.setAttribute('data-ii',String(ii));
@@ -6604,7 +6604,7 @@ function aRow(rep,ai,a){
   var amt=a.amount&&parseFloat(a.amount)>0?parseFloat(a.amount).toLocaleString('ko-KR'):'<span style="color:#CBD5E1;">—</span>';
   var contentHtml=a.content?('<div class="ip-rich-view" style="text-align:left;font-size:12px;line-height:1.6;color:#334155;">'+a.content+'</div>'):'';
   var bgEven=ai%2===1?'background:#F8FBFF;':'';
-  return '<div class="lr g-at ip-row" draggable="true" style="'+bgEven+'" data-action="openActivity" data-rep="'+rep+'" data-ai="'+ai+'" title="클릭하여 수정">'
+  return '<div class="lr g-at ip-row" style="'+bgEven+'" data-action="openActivity" data-rep="'+rep+'" data-ai="'+ai+'" title="클릭하여 수정">'
     +'<div class="td-c"><span class="'+dotCls+'"></span></div>'
     +'<div class="td-c"><span class="nbadge">'+(ai+1)+'</span></div>'
     +'<div class="td-l" style="font-weight:600;color:#0F172A;">'+(a.client||'')+'</div>'
@@ -9880,29 +9880,33 @@ function _ipRenderClientList(rep){
   var el=document.getElementById('ct-ip-'+rep);
   if(!el) return;
   var clients=_sortByClient(store.reps[rep].clients||[]);
+  // 정렬된 순서로 원본 배열 재정렬
+  store.reps[rep].clients=clients;
   el.innerHTML=clients.map(function(cl,ci){return cRow(rep,ci,cl);}).join('');
   _adjustListHeight('ct-ip-'+rep);
-  _initDragSort('ct-ip-'+rep,rep,'clients');
+  _initDragSort('ct-ip-'+rep,rep,'clients',_ipRenderClientList);
 }
 function _ipRenderActivityList(rep){
   var el=document.getElementById('at-ip-'+rep);
   if(!el) return;
-  var acts=store.reps[rep].activities||[];
+  var acts=_sortByClient(store.reps[rep].activities||[]);
+  store.reps[rep].activities=acts;
   el.innerHTML=acts.map(function(a,ai){return aRow(rep,ai,a);}).join('');
   _adjustListHeight('at-ip-'+rep);
-  _initDragSort('at-ip-'+rep,rep,'activities');
+  _initDragSort('at-ip-'+rep,rep,'activities',_ipRenderActivityList);
 }
 function _ipRenderIssueList(rep){
   var el=document.getElementById('is-ip-'+rep);
   if(!el) return;
-  var issues=store.reps[rep].issuesList||[];
+  var issues=_sortByClient(store.reps[rep].issuesList||[]);
+  store.reps[rep].issuesList=issues;
   el.innerHTML='';
   issues.forEach(function(iss,ii){
     var row=_iRow2(rep,ii,iss);
     el.appendChild(row);
   });
   _adjustListHeight('is-ip-'+rep);
-  _initDragSort('is-ip-'+rep,rep,'issuesList');
+  _initDragSort('is-ip-'+rep,rep,'issuesList',_ipRenderIssueList);
 }
 
 
@@ -10214,6 +10218,61 @@ function _adjustListHeight(tbodyId){
     wrap.style.overflowY = 'visible';
     wrap.style.overflowX = 'auto';
   }
+}
+
+
+// ── 고객사명 정렬: 숫자→영어→한글 ──
+function _sortByClient(arr, keyFn){
+  if(!keyFn) keyFn=function(x){ return x.client||''; };
+  function _pri(s){ var ch=(s||'').trim()[0]; if(!ch) return 2; if(/[0-9]/.test(ch)) return 0; if(/[a-zA-Z]/.test(ch)) return 1; return 2; }
+  // 원본 배열에 _origIdx 부여 후 정렬된 복사본 반환
+  return arr.map(function(x,i){ return {item:x,origIdx:i}; }).sort(function(a,b){
+    var sa=keyFn(a.item)||'', sb=keyFn(b.item)||'';
+    var pa=_pri(sa), pb=_pri(sb);
+    if(pa!==pb) return pa-pb;
+    return sa.localeCompare(sb,'ko');
+  }).map(function(x){ return x.item; });
+}
+
+// ── 드래그 앤 드롭 순서 변경 ──
+function _initDragSort(containerId, rep, dataKey, renderFn){
+  var container=document.getElementById(containerId);
+  if(!container) return;
+  var rows=Array.from(container.querySelectorAll('.ip-row'));
+  if(!rows.length) return;
+  var dragSrc=null, dragSrcIdx=-1;
+  rows.forEach(function(row, idx){
+    row.setAttribute('draggable','true');
+    row.addEventListener('dragstart',function(e){
+      dragSrc=this; dragSrcIdx=idx;
+      e.dataTransfer.effectAllowed='move';
+      setTimeout(function(){ if(dragSrc) dragSrc.style.opacity='0.4'; },0);
+    });
+    row.addEventListener('dragend',function(){
+      this.style.opacity='';
+      container.querySelectorAll('.ip-row').forEach(function(r){ r.style.borderTop=''; });
+    });
+    row.addEventListener('dragover',function(e){
+      e.preventDefault(); e.dataTransfer.dropEffect='move';
+      container.querySelectorAll('.ip-row').forEach(function(r){ r.style.borderTop=''; });
+      if(this!==dragSrc) this.style.borderTop='2px solid #4f7fff';
+    });
+    row.addEventListener('dragleave',function(){ this.style.borderTop=''; });
+    row.addEventListener('drop',function(e){
+      e.preventDefault(); this.style.borderTop='';
+      if(!dragSrc||dragSrc===this) return;
+      var toRows=Array.from(container.querySelectorAll('.ip-row'));
+      var fromIdx=toRows.indexOf(dragSrc);
+      var toIdx=toRows.indexOf(this);
+      if(fromIdx<0||toIdx<0) return;
+      var arr=store.reps[rep][dataKey]||[];
+      var moved=arr.splice(fromIdx,1)[0];
+      arr.splice(toIdx,0,moved);
+      store.reps[rep][dataKey]=arr;
+      if(renderFn) renderFn(rep);
+      if(typeof autoSave==='function') autoSave();
+    });
+  });
 }
 
 function autoSave(){
