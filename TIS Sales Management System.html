@@ -7412,7 +7412,7 @@ function renderPipeline(){
         html+='<td class="content-cell" style="text-align:left;vertical-align:top;padding:10px 16px;font-size:13px;color:#374151;line-height:1.65;white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;border-right:1px solid #F1F5F9;">'+_dispContent.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</td>';
         // 단계 (텍스트+색상, 다른 열과 동일 스타일)
         var _stageC={'수주':'#059669','계약':'#059669','제안':'#D97706','견적':'#D97706','입찰':'#1D4ED8','보류':'#94A3B8','Drop':'#DC2626'}[a.progress]||'#94A3B8';
-        html+='<td style="text-align:center !important;vertical-align:middle !important;padding:10px 8px;border-left:1px solid #F1F5F9;font-size:13px !important;font-weight:700 !important;color:'+_stageC+' !important;background:transparent !important;">'+(a.progress||'—')+'</td>';
+        html+='<td style="text-align:center !important;vertical-align:middle !important;padding:10px 8px;border-left:1px solid #F1F5F9;font-size:13px !important;font-weight:700 !important;color:'+_stageC+' !important;">'+(a.progress||'—')+'</td>';
 
         tr.innerHTML=html;
         frag.appendChild(tr);
