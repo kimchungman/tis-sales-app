@@ -9558,7 +9558,7 @@ function _ipSaveClient(){
   if(typeof _cdbSyncFromStore==='function') _cdbSyncFromStore();
   if(typeof extractIssues==='function') extractIssues();
   if(typeof renderIssues==='function') renderIssues();
-  if(typeof _sortByClient=='function') store.reps[rep]['clients']=_sortByClient(store.reps[rep]['clients']||[]);
+  if(typeof _sortByClient=='function') store.reps[rep]['clients']=_sortByClient(store.reps[rep]['clients']||[], function(x){ return x.name||''; });
   autoSave();
   if(window._isSPReady){
     if(typeof session!=='undefined'&&session&&session.role==='admin'){
@@ -9972,8 +9972,8 @@ function _ipChipProgress(p){
 function _ipRenderClientList(rep){
   var el=document.getElementById('ct-ip-'+rep);
   if(!el) return;
-  var clients=_sortByClient(store.reps[rep].clients||[]);
-  // 정렬된 순서로 원본 배열 재정렬
+  // clients는 name 필드 기준 정렬
+  var clients=_sortByClient(store.reps[rep].clients||[], function(x){ return x.name||''; });
   store.reps[rep].clients=clients;
   el.innerHTML=clients.map(function(cl,ci){return cRow(rep,ci,cl);}).join('');
   _adjustListHeight('ct-ip-'+rep);
@@ -9982,8 +9982,7 @@ function _ipRenderClientList(rep){
 function _ipRenderActivityList(rep){
   var el=document.getElementById('at-ip-'+rep);
   if(!el) return;
-  var acts=_sortByClient(store.reps[rep].activities||[]);
-  store.reps[rep].activities=acts;
+  var acts=store.reps[rep].activities||[];
   el.innerHTML=acts.map(function(a,ai){return aRow(rep,ai,a);}).join('');
   _adjustListHeight('at-ip-'+rep);
   _initDragSort('at-ip-'+rep,rep,'activities',_ipRenderActivityList);
@@ -9991,8 +9990,7 @@ function _ipRenderActivityList(rep){
 function _ipRenderIssueList(rep){
   var el=document.getElementById('is-ip-'+rep);
   if(!el) return;
-  var issues=_sortByClient(store.reps[rep].issuesList||[]);
-  store.reps[rep].issuesList=issues;
+  var issues=store.reps[rep].issuesList||[];
   el.innerHTML='';
   issues.forEach(function(iss,ii){
     var row=_iRow2(rep,ii,iss);
@@ -10105,7 +10103,6 @@ function _ipSaveActivity(){
     store.reps[rep].activities.push(obj);
   }
   if(typeof _cdbSyncFromStore==='function') _cdbSyncFromStore();
-  if(typeof _sortByClient=='function') store.reps[rep]['activities']=_sortByClient(store.reps[rep]['activities']||[]);
   autoSave();
   if(window._isSPReady){
     if(typeof session!=='undefined'&&session&&session.role==='admin'){
@@ -10255,7 +10252,6 @@ function _ipSaveIssue(){
   if(typeof _cdbSyncFromStore==='function') _cdbSyncFromStore();
   if(typeof extractIssues==='function') extractIssues();
   if(typeof renderIssues==='function') renderIssues();
-  if(typeof _sortByClient=='function') store.reps[rep]['issuesList']=_sortByClient(store.reps[rep]['issuesList']||[]);
   autoSave();
   if(window._isSPReady){
     if(typeof session!=='undefined'&&session&&session.role==='admin'){
