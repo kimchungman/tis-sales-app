@@ -6647,77 +6647,7 @@ function aRow(rep,ai,a){
     +'<div class="td-l" style="align-self:start;padding-top:6px;">'+contentHtml+'</div>'
     +'</div>';
 }
-// ── 영업활동 드래그 앤 드롭 ──────────
-var _aDragSrc = null;
-
-function _aOnDragStart(e) {
-  var row = e.currentTarget;
-  _aDragSrc = { rep: row.dataset.rep, ai: parseInt(row.dataset.ai) };
-  e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/plain', row.dataset.ai);
-  setTimeout(function(){ row.style.opacity = '0.4'; }, 0);
-}
-
-function _aOnDragEnd(e) {
-  e.currentTarget.style.opacity = '';
-  document.querySelectorAll('.act-drag-row').forEach(function(r){
-    r.style.borderTop = '';
-    r.style.borderBottom = '';
-  });
-  _aDragSrc = null;
-}
-
-function _aOnDragOver(e) {
-  e.preventDefault();
-  if(!_aDragSrc) return;
-  var row = e.currentTarget;
-  if(row.dataset.rep !== _aDragSrc.rep) return;
-  document.querySelectorAll('.act-drag-row').forEach(function(r){
-    r.style.borderTop = '';
-    r.style.borderBottom = '';
-  });
-  var rect = row.getBoundingClientRect();
-  if(e.clientY < rect.top + rect.height / 2) row.style.borderTop = '2px solid #4f7fff';
-  else row.style.borderBottom = '2px solid #4f7fff';
-}
-
-function _aOnDrop(e) {
-  e.preventDefault();
-  if(!_aDragSrc) return;
-  var row = e.currentTarget;
-  row.style.borderTop = '';
-  row.style.borderBottom = '';
-  if(row.dataset.rep !== _aDragSrc.rep) return;
-  var toAi = parseInt(row.dataset.ai);
-  if(toAi === _aDragSrc.ai) { _aDragSrc = null; return; }
-  var rep  = _aDragSrc.rep;
-  var acts = store.reps[rep].activities;
-  var moved = acts.splice(_aDragSrc.ai, 1)[0];
-  var rect  = row.getBoundingClientRect();
-  var insertBefore = e.clientY < rect.top + rect.height / 2;
-  var target = toAi > _aDragSrc.ai ? (insertBefore ? toAi - 1 : toAi) : (insertBefore ? toAi : toAi + 1);
-  target = Math.max(0, Math.min(target, acts.length));
-  acts.splice(target, 0, moved);
-  acts.forEach(function(a, i){ a.no = i + 1; });
-  var tbody = document.getElementById('at-' + rep);
-  if(tbody) tbody.innerHTML = acts.map(function(a, i){ return aRow(rep, i, a); }).join('');
-  // 드래그 후 이벤트 재바인딩
-  _aBindDragRows(rep);
-  autoSave();
-  if(window._isSPReady && typeof _spSaveMyRep === 'function') _spSaveMyRep();
-  _aDragSrc = null;
-}
-
-function _aBindDragRows(rep) {
-  var tbody = document.getElementById('at-' + rep);
-  if(!tbody) return;
-  tbody.querySelectorAll('.act-drag-row').forEach(function(row){
-    row.addEventListener('dragstart', _aOnDragStart);
-    row.addEventListener('dragend',   _aOnDragEnd);
-    row.addEventListener('dragover',  _aOnDragOver);
-    row.addEventListener('drop',      _aOnDrop);
-  });
-}
+// ── 영업활동 드래그 제거 (정렬 방식으로 대체) ──
 
 
 // ── 고객사별 실적 드래그 ──
@@ -9986,32 +9916,31 @@ function _ipChipProgress(p){
 function _ipRenderClientList(rep){
   var el=document.getElementById('ct-ip-'+rep);
   if(!el) return;
-  // clients는 name 필드 기준 정렬
   var clients=_sortByClient(store.reps[rep].clients||[], function(x){ return x.name||''; });
   store.reps[rep].clients=clients;
   el.innerHTML=clients.map(function(cl,ci){return cRow(rep,ci,cl);}).join('');
   _adjustListHeight('ct-ip-'+rep);
-  _initDragSort('ct-ip-'+rep,rep,'clients',_ipRenderClientList);
 }
 function _ipRenderActivityList(rep){
   var el=document.getElementById('at-ip-'+rep);
   if(!el) return;
-  var acts=store.reps[rep].activities||[];
+  var acts=_sortByClient(store.reps[rep].activities||[]);
+  store.reps[rep].activities=acts;
+  console.log('[DEBUG] _ipRenderActivityList', rep, acts.map(function(a){return a.client;}));
   el.innerHTML=acts.map(function(a,ai){return aRow(rep,ai,a);}).join('');
   _adjustListHeight('at-ip-'+rep);
-  _initDragSort('at-ip-'+rep,rep,'activities',_ipRenderActivityList);
 }
 function _ipRenderIssueList(rep){
   var el=document.getElementById('is-ip-'+rep);
   if(!el) return;
-  var issues=store.reps[rep].issuesList||[];
+  var issues=_sortByClient(store.reps[rep].issuesList||[]);
+  store.reps[rep].issuesList=issues;
   el.innerHTML='';
   issues.forEach(function(iss,ii){
     var row=_iRow2(rep,ii,iss);
     el.appendChild(row);
   });
   _adjustListHeight('is-ip-'+rep);
-  _initDragSort('is-ip-'+rep,rep,'issuesList',_ipRenderIssueList);
 }
 
 
@@ -10117,6 +10046,7 @@ function _ipSaveActivity(){
     store.reps[rep].activities.push(obj);
   }
   if(typeof _cdbSyncFromStore==='function') _cdbSyncFromStore();
+  if(typeof _sortByClient==='function') store.reps[rep]['activities']=_sortByClient(store.reps[rep]['activities']||[]);
   autoSave();
   if(window._isSPReady){
     if(typeof session!=='undefined'&&session&&session.role==='admin'){
@@ -10266,6 +10196,7 @@ function _ipSaveIssue(){
   if(typeof _cdbSyncFromStore==='function') _cdbSyncFromStore();
   if(typeof extractIssues==='function') extractIssues();
   if(typeof renderIssues==='function') renderIssues();
+  if(typeof _sortByClient==='function') store.reps[rep]['issuesList']=_sortByClient(store.reps[rep]['issuesList']||[]);
   autoSave();
   if(window._isSPReady){
     if(typeof session!=='undefined'&&session&&session.role==='admin'){
