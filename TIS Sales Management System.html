@@ -2604,73 +2604,23 @@ function _saveMenuOrder(order){
 }
 
 /* ═══ Rich Editor 핵심 함수 ═══ */
-window._sanitizeRich=function(h){
-  if(!h)return'';
-  // </div><div> → \n 한 번 (줄바꿈 정확히 처리)
-  h=h.replace(/<\/div>\s*<div[^>]*>/gi,'<br>');
-  // li/ul/ol: li 닫기 → <br>, 나머지 태그 제거
-  h=h.replace(/<\/li>/gi,'<br>').replace(/<li[^>]*>/gi,'').replace(/<\/ul>/gi,'').replace(/<ul[^>]*>/gi,'').replace(/<\/ol>/gi,'').replace(/<ol[^>]*>/gi,'');
-  h=h.replace(/<\/div>\s*<\/div>/gi,'<br>').replace(/<\/div>(?!\s*<)/gi,'<br>').replace(/<\/div>/gi,'<br>').replace(/<\/p>/gi,'<br>').replace(/<div[^>]*>/gi,'').replace(/<p[^>]*>/gi,'');
-  // 연속 <br> 3개 이상만 2개로 (1->2는 정상 줄바꿈 유지)
-  h=h.replace(/(<br\s*\/?>[\s]*){3,}/gi,'<br><br>');
-  // 텍스트 바로 뒤에 숫자+괄호 패턴 → <br> 삽입 (저장 데이터 보완)
-  h=h.replace(/([가-힣a-zA-Z0-9\.,\s])([0-9]+[)）])/g,function(m,p1,p2){
-    // 앞뒤가 공백/쉼표면 줄바꿈 아닐 수 있으므로 앞 글자가 특정 끝맺음 글자면 삽입
-    if(/[가-힣a-z]$/i.test(p1.trim())) return p1+'<br>'+p2;
-    return m;
-  });
-  // &amp; 이중인코딩 방지
-  h=h.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ');
-  var d=document.createElement('div');
-  d.innerHTML=h;
-  function clean(node){
-    var kids=Array.prototype.slice.call(node.childNodes);
-    kids.forEach(function(c){
-      if(c.nodeType===3)return;
-      var t=(c.tagName||'').toLowerCase();
-      if(t==='b'||t==='strong'||t==='br'){clean(c);}
-      else if(t==='span'){
-        var s=c.getAttribute('style')||'';
-        if(/color\s*:/i.test(s)){
-          var cm=s.match(/color\s*:\s*([^;]+)/i);
-          if(cm) c.setAttribute('style','color:'+cm[1].trim());
-          clean(c);
-        } else {
-          while(c.firstChild)node.insertBefore(c.firstChild,c);
-          node.removeChild(c);
-        }
-      } else if(t==='font'){
-        var col=c.getAttribute('color')||'';
-        var sp=document.createElement('span');
-        if(col) sp.setAttribute('style','color:'+col);
-        while(c.firstChild)sp.appendChild(c.firstChild);
-        node.replaceChild(sp,c);
-        if(col) clean(sp);
-        else {while(sp.firstChild)node.insertBefore(sp.firstChild,sp);node.removeChild(sp);}
-      } else if(t==='div'||t==='p'){
-        node.insertBefore(document.createElement('br'),c);
-        while(c.firstChild)node.insertBefore(c.firstChild,c);
-        node.removeChild(c);
-      } else {
-        node.replaceChild(document.createTextNode(c.textContent||''),c);
-      }
-    });
-  }
-  clean(d);
-  return d.innerHTML;
-};
+// HTML→plain text 변환 공통 함수
+function _htmlToPlain(s){
+  if(!s) return '';
+  s=String(s);
+  s=s.replace(/<\/div>\s*<div[^>]*>/gi,'\n');
+  s=s.replace(/<br\s*\/?>/gi,'\n');
+  s=s.replace(/<\/(p|div|li|tr)>/gi,'\n');
+  s=s.replace(/<[^>]+>/g,'');
+  s=s.replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"');
+  s=s.replace(/\r/g,'').replace(/\n{3,}/g,'\n\n').replace(/^\n+|\n+$/g,'');
+  return s;
+}
+window._sanitizeRich=function(h){ if(!h)return''; return _htmlToPlain(h); };
 window._renderRich=function(text){
-  if(!text&&text!==0)return'<span style="color:#CBD5E1;">—</span>';
-  var s=String(text);
-  if(/<[a-zA-Z]/.test(s)){
-    s=s.replace(/<\/div>\s*<div[^>]*>/gi,'\n');
-    s=s.replace(/<br\s*\/?>/gi,'\n');
-    s=s.replace(/<\/(p|div|li|tr)>/gi,'\n');
-    s=s.replace(/<[^>]+>/g,'');
-    s=s.replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"');
-    s=s.replace(/\r/g,'').replace(/\n{3,}/g,'\n\n').replace(/^\n+|\n+$/g,'');
-  }
-  if(!s)return'<span style="color:#CBD5E1;">—</span>';
+  if(!text&&text!==0)return'<span style="color:#CBD5E1;">\u2014</span>';
+  var s=_htmlToPlain(String(text));
+  if(!s)return'<span style="color:#CBD5E1;">\u2014</span>';
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
 };
 function _ctrlB(e){if((e.ctrlKey||e.metaKey)&&(e.key==='b'||e.key==='B')){e.preventDefault();document.execCommand('bold');}}
