@@ -2619,9 +2619,14 @@ function _htmlToPlain(s){
   s=s.replace(/\r/g,'').replace(/\n{3,}/g,'\n\n').replace(/^\n+|\n+$/g,'');
   return s;
 }
-// 저장용 (store에 plain text로 정규화)
-window._sanitizeRich=function(h){ if(!h)return''; return _htmlToPlain(h); };
-// 표시용 (plain text → <br> 변환)
+// 저장용: contenteditable innerHTML → plain text (store에 저장)
+window._sanitizeRich=function(h){
+  if(!h)return'';
+  // 이미 plain text면 그대로 반환
+  if(!/<[a-zA-Z]/.test(h)) return h;
+  return _htmlToPlain(h);
+};
+// 표시용: store의 값(plain text 또는 레거시 HTML) → <br> 변환
 window._renderRich=function(text){
   if(!text&&text!==0)return'<span style="color:#CBD5E1;">—</span>';
   var s=_htmlToPlain(String(text));
