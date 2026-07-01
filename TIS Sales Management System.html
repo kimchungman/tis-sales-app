@@ -2902,6 +2902,44 @@ window.addEventListener('error',function(e){
 // 별칭
 function _renderRich(text){ return window._renderRich(text); }
 
+// 기존 데이터 content 필드 정리 (HTML태그 → plain text 마이그레이션)
+function _migrateContentFields(){
+  if(!store||!store.reps) return;
+  var changed=false;
+  Object.keys(store.reps).forEach(function(rep){
+    var rd=store.reps[rep];
+    // activities
+    (rd.activities||[]).forEach(function(a){
+      if(a.content && /<[a-zA-Z]/.test(a.content)){
+        a.content=_htmlToPlain(a.content);
+        changed=true;
+      }
+    });
+    // issuesList
+    (rd.issuesList||[]).forEach(function(iss){
+      if(iss.content && /<[a-zA-Z]/.test(iss.content)){
+        iss.content=_htmlToPlain(iss.content);
+        changed=true;
+      }
+      if(iss.note && /<[a-zA-Z]/.test(iss.note)){
+        iss.note=_htmlToPlain(iss.note);
+        changed=true;
+      }
+    });
+    // visitLog
+    (rd.visitLog||[]).forEach(function(v){
+      if(v.content && /<[a-zA-Z]/.test(v.content)){
+        v.content=_htmlToPlain(v.content);
+        changed=true;
+      }
+    });
+  });
+  if(changed){
+    console.log('[migrate] content 필드 정리 완료');
+    if(typeof autoSave==='function') autoSave();
+  }
+}
+
 
 // ── 작성자/관리자 체크
 function _wkIsAuthor(entry){
@@ -8061,6 +8099,8 @@ function doGuestWithName(name, skipPwCheck, guestTitle){
       if(!window._isSPReady) throw new Error('SP 연결에 실패했습니다.');
       _hideSPLoading();
       _initApp();
+      if(typeof _migrateContentFields==='function') _migrateContentFields();
+      if(typeof _migrateContentFields==='function') _migrateContentFields();
       setTimeout(function(){if(typeof window._updateSidebarByRole==='function')window._updateSidebarByRole();},300);
       applyPermissions();
       showToast('👤 '+name.trim()+'님으로 접속했습니다.');
@@ -8400,6 +8440,7 @@ function doRepLogin(rep){
       if(!window._isSPReady) throw new Error('SP 연결에 실패했습니다.');
       _hideSPLoading();
       _initApp();
+      if(typeof _migrateContentFields==='function') _migrateContentFields();
       showToast('👤 '+rep+'으로 접속했습니다.');
       if(typeof applyPermissions==='function') setTimeout(applyPermissions,50);
       setTimeout(async function(){
