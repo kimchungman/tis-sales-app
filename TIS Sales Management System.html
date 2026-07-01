@@ -17385,7 +17385,7 @@ function _wkRenderIssues(){
       +_wkRepBadge(iss.rep)
       +'<span style="text-align:center;display:block;font-weight:600;color:#0F172A;">'+_wkEsc(iss.client)+'</span>'
       +'<span style="color:#334155;text-align:left;display:block;">'+_wkEsc(iss.project||'—')+'</span>'
-      +'<div class="wk-cont" style="font-size:11px;word-break:break-word;line-height:1.6;align-self:center;">'+_renderRich(iss.content)+'</div>'
+      +'<div class="wk-cont" style="font-size:11px;white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;line-height:1.6;align-self:center;">'+_renderRich(iss.content)+'</div>'
       +'<span style="display:flex;align-items:center;justify-content:center;"><span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;white-space:nowrap;background:'+sv[0]+';color:'+sv[1]+';">'+sv[2]+'</span></span>'
       +'<span style="display:flex;align-items:center;justify-content:center;"><span style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;background:'+stParts[0]+';color:'+stParts[1]+';">'+_wkEsc(iss.status)+'</span></span>'
       +'<span style="display:flex;align-items:center;justify-content:center;"><span style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;white-space:nowrap;'+diffColor+'">'+diffStr+'</span></span>'
