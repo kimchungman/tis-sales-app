@@ -2608,14 +2608,19 @@ function _saveMenuOrder(order){
 function _htmlToPlain(s){
   if(!s) return '';
   s=String(s);
+  // </div><div> → \n 1개
   s=s.replace(/<\/div>\s*<div[^>]*>/gi,'\n');
+  // <br> → \n
   s=s.replace(/<br\s*\/?>/gi,'\n');
-  s=s.replace(/<div[^>]*>/gi,'');
-  s=s.replace(/<\/div>/gi,'');
-  s=s.replace(/<p[^>]*>/gi,'\n');
-  s=s.replace(/<\/p>/gi,'');
+  // 여는 블록태그 → \n (중첩 <div><div> 처리)
+  s=s.replace(/<(div|p)[^>]*>/gi,'\n');
+  // 닫는 블록태그 → \n
+  s=s.replace(/<\/(div|p)>/gi,'\n');
+  // 나머지 태그 전부 제거
   s=s.replace(/<[^>]+>/g,'');
+  // 엔티티 디코딩
   s=s.replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"');
+  // 연속 빈줄 최대 2개, 앞뒤 줄바꿈 제거
   s=s.replace(/\r/g,'').replace(/\n{3,}/g,'\n\n').replace(/^\n+|\n+$/g,'');
   return s;
 }
@@ -2631,7 +2636,10 @@ window._renderRich=function(text){
   if(!text&&text!==0)return'<span style="color:#CBD5E1;">—</span>';
   var s=_htmlToPlain(String(text));
   if(!s)return'<span style="color:#CBD5E1;">—</span>';
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+  // 이스케이프 먼저, 그 다음 \n → <br> (순서 중요: <br>이 이스케이프되면 안됨)
+  s=s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  s=s.replace(/\n/g,'<br>');
+  return s;
 };
 function _ctrlB(e){if((e.ctrlKey||e.metaKey)&&(e.key==='b'||e.key==='B')){e.preventDefault();document.execCommand('bold');}}
 function _showRTB(el){
