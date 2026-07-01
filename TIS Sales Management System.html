@@ -2604,23 +2604,28 @@ function _saveMenuOrder(order){
 }
 
 /* ═══ Rich Editor 핵심 함수 ═══ */
-// HTML→plain text 변환 공통 함수
+// HTML → plain text 변환 (영업진행현황 내용열과 동일한 로직)
 function _htmlToPlain(s){
   if(!s) return '';
   s=String(s);
   s=s.replace(/<\/div>\s*<div[^>]*>/gi,'\n');
   s=s.replace(/<br\s*\/?>/gi,'\n');
-  s=s.replace(/<\/(p|div|li|tr)>/gi,'\n');
+  s=s.replace(/<div[^>]*>/gi,'');
+  s=s.replace(/<\/div>/gi,'');
+  s=s.replace(/<p[^>]*>/gi,'\n');
+  s=s.replace(/<\/p>/gi,'');
   s=s.replace(/<[^>]+>/g,'');
   s=s.replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"');
   s=s.replace(/\r/g,'').replace(/\n{3,}/g,'\n\n').replace(/^\n+|\n+$/g,'');
   return s;
 }
+// 저장용 (store에 plain text로 정규화)
 window._sanitizeRich=function(h){ if(!h)return''; return _htmlToPlain(h); };
+// 표시용 (plain text → <br> 변환)
 window._renderRich=function(text){
-  if(!text&&text!==0)return'<span style="color:#CBD5E1;">\u2014</span>';
+  if(!text&&text!==0)return'<span style="color:#CBD5E1;">—</span>';
   var s=_htmlToPlain(String(text));
-  if(!s)return'<span style="color:#CBD5E1;">\u2014</span>';
+  if(!s)return'<span style="color:#CBD5E1;">—</span>';
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
 };
 function _ctrlB(e){if((e.ctrlKey||e.metaKey)&&(e.key==='b'||e.key==='B')){e.preventDefault();document.execCommand('bold');}}
@@ -9862,7 +9867,6 @@ function _ipRenderActivityList(rep){
   if(!el) return;
   var acts=_sortByClient(store.reps[rep].activities||[]);
   store.reps[rep].activities=acts;
-  console.log('[DEBUG] _ipRenderActivityList', rep, acts.map(function(a){return a.client;}));
   el.innerHTML=acts.map(function(a,ai){return aRow(rep,ai,a);}).join('');
   _adjustListHeight('at-ip-'+rep);
 }
