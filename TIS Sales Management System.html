@@ -9392,7 +9392,7 @@ function _ipOpenClient(rep,ci,readOnly){
   }
   document.body.appendChild(div);
   var ed=document.getElementById('ip-ct-issue');
-  if(ed){ ed.innerHTML=(d.issue||''); ed.addEventListener('input',function(){_ipRichResize(this);}); ed.addEventListener('blur',_ipSaveRange); }
+  if(ed){ ed.innerHTML=(d.issue||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); ed.addEventListener('input',function(){_ipRichResize(this);}); ed.addEventListener('blur',_ipSaveRange); }
   window._ipCurClientTab='actual';
   window._ipCalcMonTotal();
   _bindClientDrop('ip-ct-name','ip-ct-cdb-drop');
@@ -9480,7 +9480,7 @@ function _ipSaveClient(){
     forecast.push(eF?parseFloat(eF.value.replace(/,/g,''))||0:0);
   }
   var issueEl=document.getElementById('ip-ct-issue');
-  var issue=issueEl?issueEl.innerHTML:'';
+  var issue=issueEl?_htmlToPlain(issueEl.innerHTML):'';
   var wk=(document.getElementById('ip-ct-wk')||{}).checked===true;
   var obj={name:name,project:proj,product:prod,type:type,actual:actual,forecast:forecast,issue:issue,wk:wk,sev:'none',_migrated:true};
   if(isEdit){
@@ -9992,7 +9992,7 @@ function _ipOpenActivity(rep,ai,readOnly){
   }
   document.body.appendChild(div);
   var ed=document.getElementById('ip-at-content');
-  if(ed){ ed.innerHTML=(d.content||''); ed.addEventListener('input',function(){_ipRichResize(this);}); ed.addEventListener('blur',_ipSaveRange); }
+  if(ed){ ed.innerHTML=(d.content||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); ed.addEventListener('input',function(){_ipRichResize(this);}); ed.addEventListener('blur',_ipSaveRange); }
 
   // 고객사 자동완성 - 이벤트 위임 (팝업 컨테이너에 연결)
 
@@ -10012,7 +10012,7 @@ function _ipSaveActivity(){
   if(!client.trim()){alert('고객사명을 입력하세요.');return;}
   var wkChk=(document.getElementById('ip-at-wk')||{}).checked||false;
   var contentEl=document.getElementById('ip-at-content');
-  var content=contentEl?contentEl.innerHTML:'';
+  var content=contentEl?_htmlToPlain(contentEl.innerHTML):'';
   var existing=isEdit?(store.reps[rep].activities[ai]||{}):{};
   var obj={
     no:isEdit?existing.no:(store.reps[rep].activities.length+1),
@@ -10126,7 +10126,7 @@ function _ipOpenIssue(rep,ii,readOnly){
   }
   document.body.appendChild(div);
   var ed=document.getElementById('ip-is-content');
-  if(ed){ ed.innerHTML=(d.content||''); ed.addEventListener('input',function(){_ipRichResize(this);}); ed.addEventListener('blur',_ipSaveRange); }
+  if(ed){ ed.innerHTML=(d.content||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); ed.addEventListener('input',function(){_ipRichResize(this);}); ed.addEventListener('blur',_ipSaveRange); }
   // 체크박스 초기값 + change 이벤트 등록
   window._ipIssWkChecked = !!wkChk;
   var _wkCb=document.getElementById('ip-is-wk');
@@ -10152,7 +10152,7 @@ function _ipSaveIssue(){
   var client=(document.getElementById('ip-is-client')||{}).value||'';
   if(!client.trim()){alert('고객사명을 입력하세요.');return;}
   var contentEl=document.getElementById('ip-is-content');
-  var content=contentEl?contentEl.innerHTML:'';
+  var content=contentEl?_htmlToPlain(contentEl.innerHTML):'';
   if(!content.trim()){alert('이슈 내용을 입력하세요.');return;}
   // 주차 키: _wkThisKey 또는 직접 계산
   var _wk2=(typeof _wkThisKey==='function')?_wkThisKey():'';
