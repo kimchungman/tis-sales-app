@@ -2912,7 +2912,7 @@ window.addEventListener('error',function(e){
 function _renderRich(text){ return window._renderRich(text); }
 
 // 기존 데이터 content 필드 정리 (HTML태그 → plain text 마이그레이션)
-function _migrateContentFields(){
+window._migrateContentFields = function _migrateContentFields(){
   if(!store||!store.reps) return;
   var changed=false;
   Object.keys(store.reps).forEach(function(rep){
