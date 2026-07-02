@@ -5437,10 +5437,10 @@ document.addEventListener('DOMContentLoaded',()=>{
       if(window.history&&window.history.replaceState){
         window.history.replaceState({},'',location.pathname);
       }
-      // 3초 내 session 미설정 시 로그인창
+      // 1초 내 session 미설정 시 로그인창
       setTimeout(function(){
-        if(!session||!session.role) openAuth();
-      }, 3000);
+        if(!session||!session.role||session.role==='locked') openAuth();
+      }, 1000);
     } else {
       openAuth();
     }
@@ -8851,7 +8851,6 @@ function doRepLogin(rep){
   if(_rArea) _rArea.innerHTML='';
   _tabState.input=_repTeam; _tabState.issues=_repTeam;
   _tabState.pipeline=_repTeam; _tabState.visits=_repTeam;
-  closeAuth();
   _showSPLoading(rep+' SP 연결 중...');
   (async function _tryRepConnect(){
     window._spConnectFn=_tryRepConnect;
@@ -8863,6 +8862,7 @@ function doRepLogin(rep){
         ]);
       }
       if(!window._isSPReady) throw new Error('SP 연결에 실패했습니다.');
+      closeAuth();
       _hideSPLoading();
       _initApp();
       if(typeof _migrateContentFields==='function') _migrateContentFields();
@@ -8903,7 +8903,6 @@ function tryAdmin(){
   if(!pw) return;
   if(pw.value===authCfg.adminPw){
     session={role:'admin',rep:null,team:null};
-    closeAuth();
     _showSPLoading('관리자 SP 연결 중...');
     (async function _tryAdminConnect(){
       window._spConnectFn=_tryAdminConnect;
@@ -8915,6 +8914,7 @@ function tryAdmin(){
           ]);
         }
         if(!window._isSPReady) throw new Error('SP 연결에 실패했습니다.');
+        closeAuth();
         _hideSPLoading();
         _initApp();
         showToast('🛡️ 관리자 모드로 접속했습니다.');
@@ -11410,6 +11410,13 @@ async function _initSP() {
       }
       try{
         if(typeof window._syncWeeklyFeed==='function') await window._syncWeeklyFeed();
+      }catch(e){}
+      // 견적서 목록 동기화 (견적 페이지가 열려있을 때만)
+      try{
+        var _qPage=document.getElementById('page-quotation');
+        if(_qPage&&_qPage.style.display!=='none'&&typeof _spFetchQuotes==='function'){
+          await _spFetchQuotes();
+        }
       }catch(e){}
     }, 10000); // 10초마다 동기화
 
@@ -19839,9 +19846,23 @@ var QT_GRADES = {
 var QT_SETTINGS = {};
 
 // ── SP 연동 ──────────────────────────────────────────
-async function _spFetchQuotes(){
+function _qtCacheQuotes(){
+  try{ localStorage.setItem('_qtQuotes',JSON.stringify(QUOTES)); }catch(e){}
+}
+function _qtLoadCachedQuotes(){
   try{
-    if(!window._isSPReady||typeof _spFetch!=='function') return;
+    var ls=localStorage.getItem('_qtQuotes');
+    if(ls){ QUOTES=JSON.parse(ls); return true; }
+  }catch(e){}
+  return false;
+}
+async function _spFetchQuotes(){
+  // SP 미연결 시 localStorage 캐시 사용
+  if(!window._isSPReady||typeof _spFetch!=='function'){
+    if(_qtLoadCachedQuotes()) qtRenderList();
+    return;
+  }
+  try{
     var site='https://tis21.sharepoint.com/sites/essales.tis.tm';
     var all=[],skip=0;
     while(true){
@@ -19853,7 +19874,7 @@ async function _spFetchQuotes(){
       if(items.length<200) break;
       skip+=200;
     }
-    QUOTES=all.map(function(it){
+    var spQuotes=all.map(function(it){
       var items={};
       try{ items=JSON.parse(it.ItemsJson||'{}'); }catch(e){}
       return {
@@ -19870,8 +19891,26 @@ async function _spFetchQuotes(){
         createdAt:it.Created||'', modifiedAt:it.Modified||''
       };
     });
+    // SP 미연결 중 로컬에만 저장된 견적 병합 (SP에 없는 것만)
+    var spIds=new Set(spQuotes.map(function(q){return q.id;}));
+    var localOnly=(QUOTES||[]).filter(function(q){
+      return !q._spId && !spIds.has(q.id); // SP ID 없고 SP에도 없는 것
+    });
+    if(localOnly.length>0){
+      // 로컬에만 있는 견적을 SP에 업로드
+      localOnly.forEach(function(q){
+        console.log('[견적서] 로컬 미업로드 견적 SP 저장:', q.id);
+        _spSaveQuote(q);
+      });
+    }
+    QUOTES=spQuotes;
+    _qtCacheQuotes(); // localStorage 캐시 갱신
     qtRenderList();
-  }catch(e){ console.warn('[견적서] SP 로드 실패',e); }
+  }catch(e){
+    console.warn('[견적서] SP 로드 실패',e);
+    // SP 실패 시 캐시 사용
+    if(_qtLoadCachedQuotes()) qtRenderList();
+  }
 }
 
 async function _spSaveQuote(quoteData){
@@ -19902,8 +19941,7 @@ async function _spSaveQuote(quoteData){
       ChangeSum:quoteData.changeSum||'',
       ItemsJson:JSON.stringify(quoteData.items||{})
     };
-    var res=await fetch(url,{
-      method:'POST',
+    var res=await _spFetch(url,{
       method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
     });
     if(res){
@@ -19939,8 +19977,7 @@ async function _spUpdateQuote(spId,quoteData){
       ChangeSum:quoteData.changeSum||'',
       ItemsJson:JSON.stringify(quoteData.items||{})
     };
-    await fetch(url,{
-      method:'PATCH',
+    await _spFetch(url,{
       method:'PATCH', headers:{'Content-Type':'application/json','IF-MATCH':'*'}, body:JSON.stringify(payload)
     });
     await _spFetchQuotes();
@@ -20482,26 +20519,30 @@ function qtSaveQuote(){
     quoteData.round=(parent?parent.round:1)+1;
   }
 
+  quoteData.modifiedAt=new Date().toISOString();
   if(QT_MODE==='edit'&&QT_EDIT_ID){
     var existing=QUOTES.find(function(q){return q.id===QT_EDIT_ID;});
-    if(existing&&existing._spId){
+    if(existing&&existing._spId&&window._isSPReady){
       _spUpdateQuote(existing._spId,quoteData);
       showToast('견적서가 수정되었습니다.');
     } else {
-      QUOTES=QUOTES.map(function(q){return q.id===QT_EDIT_ID?Object.assign(q,quoteData):q;});
-      showToast('견적서가 수정되었습니다. (SP 미연결)');
+      QUOTES=QUOTES.map(function(q){return q.id===QT_EDIT_ID?Object.assign({},q,quoteData):q;});
+      _qtCacheQuotes();
+      if(!window._isSPReady) showToast('견적서가 수정되었습니다. (로컬 저장)');
+      else showToast('견적서가 수정되었습니다.');
+      qtRenderList();
     }
   } else {
+    quoteData.createdAt=new Date().toISOString();
+    QUOTES.unshift(quoteData);
+    _qtCacheQuotes(); // localStorage 즉시 저장
     if(window._isSPReady){
-      _spSaveQuote(quoteData);
+      _spSaveQuote(quoteData); // SP에도 저장 (비동기)
       showToast('견적서가 저장되었습니다.');
     } else {
-      quoteData.createdAt=new Date().toISOString();
-      quoteData.modifiedAt=new Date().toISOString();
-      QUOTES.unshift(quoteData);
-      showToast('견적서가 저장되었습니다. (SP 미연결)');
+      showToast('견적서가 저장되었습니다. (로컬 저장 - SP 연결 시 자동 동기화)');
+      qtRenderList();
     }
-    qtRenderList();
   }
   qtCloseModal();
 }
@@ -20518,10 +20559,11 @@ function qtCloseDeleteModal(){
 function qtDoDelete(){
   if(!QT_EDIT_ID){qtCloseDeleteModal();return;}
   var existing=QUOTES.find(function(q){return q.id===QT_EDIT_ID;});
-  if(existing&&existing._spId){
+  if(existing&&existing._spId&&window._isSPReady){
     _spDeleteQuote(existing._spId);
   } else {
     QUOTES=QUOTES.filter(function(q){return q.id!==QT_EDIT_ID;});
+    _qtCacheQuotes();
     qtRenderList();
   }
   qtCloseDeleteModal();
@@ -20533,10 +20575,31 @@ function qtDoDelete(){
 function qtOpenSetting(){
   var sm=document.getElementById('qt-setting-modal');
   if(sm) sm.style.display='flex';
-  // 현재 설정값 로드
-  if(QT_SETTINGS.phone) document.getElementById('qt-my-phone').value=QT_SETTINGS.phone;
-  if(QT_SETTINGS.email) document.getElementById('qt-my-email').value=QT_SETTINGS.email;
-  if(QT_SETTINGS.defaultCond) document.getElementById('qt-default-cond').value=QT_SETTINGS.defaultCond;
+  if(QT_SETTINGS.phone){ var pe=document.getElementById('qt-my-phone'); if(pe) pe.value=QT_SETTINGS.phone; }
+  if(QT_SETTINGS.email){ var ee=document.getElementById('qt-my-email'); if(ee) ee.value=QT_SETTINGS.email; }
+  if(QT_SETTINGS.defaultCond){ var de=document.getElementById('qt-default-cond'); if(de) de.value=QT_SETTINGS.defaultCond; }
+  // 등급별 단가 UI 채우기
+  var gMap={tak:'tak',rel:'rel',ext:'ext'};
+  Object.keys(gMap).forEach(function(k){
+    var t=gMap[k];
+    if(!QT_GRADES[t]) return;
+    function _fill(id,v){ var el=document.getElementById(id); if(el) el.value=v?v.toLocaleString():''; }
+    _fill('qt-'+k+'-sp-c',QT_GRADES[t].sp&&QT_GRADES[t].sp.c);
+    _fill('qt-'+k+'-sp-p',QT_GRADES[t].sp&&QT_GRADES[t].sp.p);
+    _fill('qt-'+k+'-sr-c',QT_GRADES[t].sr&&QT_GRADES[t].sr.c);
+    _fill('qt-'+k+'-sr-p',QT_GRADES[t].sr&&QT_GRADES[t].sr.p);
+    _fill('qt-'+k+'-mi-c',QT_GRADES[t].mi&&QT_GRADES[t].mi.c);
+    _fill('qt-'+k+'-mi-p',QT_GRADES[t].mi&&QT_GRADES[t].mi.p);
+    _fill('qt-'+k+'-jr-c',QT_GRADES[t].jr&&QT_GRADES[t].jr.c);
+    _fill('qt-'+k+'-jr-p',QT_GRADES[t].jr&&QT_GRADES[t].jr.p);
+  });
+  // 로고 미리보기
+  if(QT_LOGO_SRC){
+    var prev=document.getElementById('qt-logo-preview');
+    var txt=document.getElementById('qt-logo-txt');
+    if(prev){ prev.src=QT_LOGO_SRC; prev.style.display='block'; }
+    if(txt) txt.style.display='none';
+  }
 }
 function qtCloseSetting(){
   var sm=document.getElementById('qt-setting-modal');
@@ -20546,12 +20609,48 @@ function qtSaveSetting(){
   QT_SETTINGS.phone=(document.getElementById('qt-my-phone')||{}).value||'';
   QT_SETTINGS.email=(document.getElementById('qt-my-email')||{}).value||'';
   QT_SETTINGS.defaultCond=(document.getElementById('qt-default-cond')||{}).value||'';
-  // SP 설정에 저장
+  // 등급별 단가 UI에서 읽어서 저장
+  var tabs={tak:'tak',rel:'rel',ext:'ext'};
+  var grades2={};
+  Object.keys(tabs).forEach(function(k){
+    var t=tabs[k];
+    grades2[t]={
+      sp:{c:_qtReadPrice('qt-'+k+'-sp-c'),p:_qtReadPrice('qt-'+k+'-sp-p')},
+      sr:{c:_qtReadPrice('qt-'+k+'-sr-c'),p:_qtReadPrice('qt-'+k+'-sr-p')},
+      mi:{c:_qtReadPrice('qt-'+k+'-mi-c'),p:_qtReadPrice('qt-'+k+'-mi-p')},
+      jr:{c:_qtReadPrice('qt-'+k+'-jr-c'),p:_qtReadPrice('qt-'+k+'-jr-p')}
+    };
+  });
+  QT_GRADES=grades2;
+  // SP 저장 - 이중직렬화 제거 (_spSaveItem이 내부에서 JSON.stringify)
+  var payload={grades:QT_GRADES,settings:QT_SETTINGS,logo:QT_LOGO_SRC||null};
   if(window._isSPReady&&typeof _spSaveItem==='function'){
-    _spSaveItem('weeklyAuth','gradePrice_qt',JSON.stringify({grades:QT_GRADES,settings:QT_SETTINGS}));
+    _spSaveItem('qtConfig','qtSettings',payload);
   }
+  // localStorage 백업
+  try{ localStorage.setItem('_qtSettings',JSON.stringify(payload)); }catch(e){}
   qtCloseSetting();
   showToast('설정이 저장되었습니다.');
+}
+function _qtReadPrice(id){
+  var el=document.getElementById(id);
+  return el?parseInt((el.value||'0').replace(/,/g,''))||0:0;
+}
+// 설정 로드 함수
+async function qtLoadSettings(){
+  var loaded=null;
+  // SP에서 로드
+  if(window._isSPReady&&typeof _spLoadItem==='function'){
+    try{ loaded=await _spLoadItem('qtConfig','qtSettings'); }catch(e){}
+  }
+  // SP 실패 시 localStorage 백업에서 로드
+  if(!loaded){
+    try{ var ls=localStorage.getItem('_qtSettings'); if(ls) loaded=JSON.parse(ls); }catch(e){}
+  }
+  if(!loaded) return;
+  if(loaded.grades) QT_GRADES=loaded.grades;
+  if(loaded.settings) QT_SETTINGS=loaded.settings;
+  if(loaded.logo) QT_LOGO_SRC=loaded.logo;
 }
 function qtSwitchGradeTab(el,panelId){
   document.querySelectorAll('.qt-grade-tab').forEach(function(t){t.classList.remove('qt-grade-tab-on');});
@@ -20779,8 +20878,21 @@ function qtRenderPreview(){
 
 // ── showPage 연동 ──
 window._qtShowPage=function(){
-  if(QUOTES.length===0) _spFetchQuotes();
-  else qtRenderList();
+  // 설정 로드 (최초 1회)
+  if(!window._qtSettingsLoaded){
+    window._qtSettingsLoaded=true;
+    qtLoadSettings();
+  }
+  // 캐시 있으면 즉시 표시 후 SP 동기화
+  if(QUOTES.length===0&&_qtLoadCachedQuotes()){
+    qtRenderList(); // 캐시 즉시 표시
+    _spFetchQuotes(); // 백그라운드 SP 동기화
+  } else if(QUOTES.length===0){
+    _spFetchQuotes();
+  } else {
+    qtRenderList();
+    _spFetchQuotes(); // 항상 SP와 동기화
+  }
 };
 
 </script>
