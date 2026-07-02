@@ -20720,14 +20720,26 @@ function qtSaveSetting(){
     };
   });
   QT_GRADES=grades2;
-  var payload={grades:QT_GRADES,settings:QT_SETTINGS,logo:QT_LOGO_SRC||null};
-  // 1. localStorage 즉시 저장 (autoSave 패턴과 동일)
-  try{ localStorage.setItem('_qtSettings',JSON.stringify(payload)); }catch(e){}
-  // 2. SP 저장 (연결된 경우)
+  var savedAt=new Date().toISOString();
+  var payload={grades:QT_GRADES,settings:QT_SETTINGS,savedAt:savedAt};
+  // 로고는 크기가 크므로 별도 키로 저장
+  var logoPayload={logo:QT_LOGO_SRC||null,savedAt:savedAt};
+  // 1. localStorage 즉시 저장
+  try{
+    localStorage.setItem('_qtSettings',JSON.stringify(payload));
+    if(QT_LOGO_SRC) localStorage.setItem('_qtLogo',QT_LOGO_SRC);
+    else localStorage.removeItem('_qtLogo');
+  }catch(e){}
+  // 2. SP 저장 (연결된 경우) - 로고 별도 저장
   if(window._isSPReady&&typeof _spSaveItem==='function'){
     _spSaveItem('qtConfig','qtSettings',payload).catch(function(){
       console.warn('[견적설정] SP 저장 실패 - localStorage에 보존됨');
     });
+    if(QT_LOGO_SRC){
+      _spSaveItem('qtConfig','qtLogo',logoPayload).catch(function(){
+        console.warn('[견적설정] 로고 SP 저장 실패 - localStorage에 보존됨');
+      });
+    }
   }
   qtCloseSetting();
   showToast('설정이 저장되었습니다.');
@@ -20736,33 +20748,44 @@ function _qtReadPrice(id){
   var el=document.getElementById(id);
   return el?parseInt((el.value||'0').replace(/,/g,''))||0:0;
 }
-// 설정 로드 함수 (localStorage 우선 → SP와 비교해 더 최신 사용)
+// 설정 로드 함수 (localStorage 즉시 표시 → SP 동기화)
 async function qtLoadSettings(){
-  // 1. localStorage 즉시 로드
+  // 1. localStorage 즉시 로드 (재접속 시 바로 표시)
   var localLoaded=null;
   try{ var ls=localStorage.getItem('_qtSettings'); if(ls) localLoaded=JSON.parse(ls); }catch(e){}
   if(localLoaded){
     if(localLoaded.grades) QT_GRADES=localLoaded.grades;
     if(localLoaded.settings) QT_SETTINGS=localLoaded.settings;
-    if(localLoaded.logo) QT_LOGO_SRC=localLoaded.logo;
   }
-  // 2. SP에서 로드해서 더 최신이면 교체
+  // 로고 별도 로드 (localStorage)
+  try{
+    var logoSrc=localStorage.getItem('_qtLogo');
+    if(logoSrc) QT_LOGO_SRC=logoSrc;
+  }catch(e){}
+
+  // 2. SP에서 로드 (savedAt 비교해서 더 최신이면 교체)
   if(window._isSPReady&&typeof _spLoadItem==='function'){
     try{
       var spLoaded=await _spLoadItem('qtConfig','qtSettings');
       if(spLoaded){
-        // savedAt 비교 (없으면 SP 우선)
         var localTs=localLoaded&&localLoaded.savedAt?new Date(localLoaded.savedAt).getTime():0;
-        var spTs=spLoaded.savedAt?new Date(spLoaded.savedAt).getTime():Date.now();
-        if(spTs>=localTs){
+        var spTs=spLoaded.savedAt?new Date(spLoaded.savedAt).getTime():0;
+        if(spTs>localTs){
+          // SP가 더 최신 → 로컬 갱신
           if(spLoaded.grades) QT_GRADES=spLoaded.grades;
           if(spLoaded.settings) QT_SETTINGS=spLoaded.settings;
-          if(spLoaded.logo) QT_LOGO_SRC=spLoaded.logo;
-          // SP가 더 최신이면 localStorage도 갱신
           try{ localStorage.setItem('_qtSettings',JSON.stringify(spLoaded)); }catch(e){}
         }
       }
     }catch(e){ console.warn('[견적설정] SP 로드 실패 - localStorage 사용'); }
+    // 로고 SP 로드
+    try{
+      var spLogo=await _spLoadItem('qtConfig','qtLogo');
+      if(spLogo&&spLogo.logo){
+        QT_LOGO_SRC=spLogo.logo;
+        try{ localStorage.setItem('_qtLogo',spLogo.logo); }catch(e){}
+      }
+    }catch(e){}
   }
 }
 function qtSwitchGradeTab(el,panelId){
