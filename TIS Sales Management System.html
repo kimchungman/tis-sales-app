@@ -20721,25 +20721,31 @@ function qtSaveSetting(){
   });
   QT_GRADES=grades2;
   var savedAt=new Date().toISOString();
+  // 개인 설정 (grades, 담당자 연락처, 기본조건)
   var payload={grades:QT_GRADES,settings:QT_SETTINGS,savedAt:savedAt};
-  // 로고는 크기가 크므로 별도 키로 저장
+  // 로고는 팀 공유 설정 - 한 명이 올리면 전원 적용
   var logoPayload={logo:QT_LOGO_SRC||null,savedAt:savedAt};
-  // 1. localStorage 즉시 저장
+
+  // 1. localStorage 즉시 저장 (개인 캐시)
   try{
     localStorage.setItem('_qtSettings',JSON.stringify(payload));
     if(QT_LOGO_SRC) localStorage.setItem('_qtLogo',QT_LOGO_SRC);
     else localStorage.removeItem('_qtLogo');
   }catch(e){}
-  // 2. SP 저장 (연결된 경우) - 로고 별도 저장
+
+  // 2. SP 저장
   if(window._isSPReady&&typeof _spSaveItem==='function'){
+    // 개인 설정 저장
     _spSaveItem('qtConfig','qtSettings',payload).catch(function(){
       console.warn('[견적설정] SP 저장 실패 - localStorage에 보존됨');
     });
-    if(QT_LOGO_SRC){
-      _spSaveItem('qtConfig','qtLogo',logoPayload).catch(function(){
-        console.warn('[견적설정] 로고 SP 저장 실패 - localStorage에 보존됨');
-      });
-    }
+    // 로고: 팀 공유 키로 저장 (qtShared dtype으로 한 번만 저장, 전원 공유)
+    _spSaveItem('qtShared','companyLogo',logoPayload).catch(function(){
+      console.warn('[견적설정] 로고 SP 저장 실패 - localStorage에 보존됨');
+    });
+  } else {
+    // SP 미연결 시 localStorage에만 저장 (SP 연결 시 자동 업로드는 복잡하므로 안내)
+    showToast('⚠ SP 미연결 - 로고는 현재 기기에만 저장됩니다');
   }
   qtCloseSetting();
   showToast('설정이 저장되었습니다.');
@@ -20778,11 +20784,12 @@ async function qtLoadSettings(){
         }
       }
     }catch(e){ console.warn('[견적설정] SP 로드 실패 - localStorage 사용'); }
-    // 로고 SP 로드
+    // 로고 SP 로드 (팀 공유 키에서 로드)
     try{
-      var spLogo=await _spLoadItem('qtConfig','qtLogo');
+      var spLogo=await _spLoadItem('qtShared','companyLogo');
       if(spLogo&&spLogo.logo){
         QT_LOGO_SRC=spLogo.logo;
+        // localStorage 캐시 갱신 (다음 접속 시 즉시 표시)
         try{ localStorage.setItem('_qtLogo',spLogo.logo); }catch(e){}
       }
     }catch(e){}
