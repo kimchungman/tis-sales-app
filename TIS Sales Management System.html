@@ -14374,6 +14374,36 @@ async function _connectSP(app, account){
     }
   }catch(e){
     console.warn('[SP]',e.message);
+    // 세션 만료/SSO 실패 → 대화형 로그인으로 폴백 (interaction_required, AADSTS160021 등)
+    var _needsInteraction = (e && (e.errorCode==='interaction_required'
+      || e.errorCode==='login_required' || e.errorCode==='consent_required'
+      || (e.name==='InteractionRequiredAuthError')
+      || (e.message||'').indexOf('interaction_required')>=0
+      || (e.message||'').indexOf('AADSTS160021')>=0
+      || (e.message||'').indexOf('AADSTS50058')>=0));
+    if(_needsInteraction){
+      // 무한 리다이렉트 루프 방지: 2분 내 재시도 1회만
+      var _lastTry=parseInt(localStorage.getItem('_spInterTs')||'0',10);
+      if(Date.now()-_lastTry < 120000){
+        console.warn('[SP] 재로그인 최근 시도됨 - 수동 로그인 필요');
+        _setBar('error','MS 재로그인 필요');
+        if(typeof showToast==='function') showToast('⚠ Microsoft 세션이 만료되었습니다. 브라우저에서 office.com 로그인 후 새로고침하거나, 담당자 선택 시 재인증됩니다.','warn');
+        return;
+      }
+      try{
+        localStorage.setItem('_spInterTs', Date.now().toString());
+        _setBar('connecting','재로그인');
+        localStorage.setItem('_spPending','1');
+        localStorage.setItem('_spPendingTs', Date.now().toString());
+        await app.acquireTokenRedirect({scopes:[SP_SCOPE], account:account});
+        return; // redirect로 페이지 이탈
+      }catch(e2){
+        localStorage.removeItem('_spPending');
+        console.warn('[SP] redirect 폴백 실패:', e2.message);
+        _setBar('error', e2.message);
+        return;
+      }
+    }
     _setBar('error',e.message);
   }
 }
