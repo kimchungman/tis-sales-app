@@ -11379,9 +11379,27 @@ async function _initSP() {
   try {
     _setSPStatus('connecting');
 
-    // 토큰 획득
+    // 토큰 획득 (백그라운드 MSAL 토큰이 아직 도착 전이면 최대 8초 대기)
     window._spToken = await _getToken();
-    if(!window._spToken){ _setSPStatus&&_setSPStatus('offline'); return; }
+    if(!window._spToken){
+      for(var _w=0; _w<80 && !window._spToken; _w++){
+        await new Promise(function(r){ setTimeout(r,100); });
+      }
+      // 그래도 없으면 MSAL로 직접 silent 시도
+      if(!window._spToken && window._msalApp){
+        try{
+          var _acc=window._msalApp.getAllAccounts()[0];
+          if(_acc){
+            var _tr=await window._msalApp.acquireTokenSilent({scopes:['https://tis21.sharepoint.com/.default'],account:_acc});
+            window._spToken=_tr.accessToken;
+          }
+        }catch(e){ console.warn('[SP] 직접 토큰 시도 실패:', e.message); }
+      }
+      if(!window._spToken){
+        _setSPStatus&&_setSPStatus('offline');
+        throw new Error('MS 인증 토큰을 가져오지 못했습니다. 새로고침 후 다시 시도해주세요.');
+      }
+    }
 
     // 리스트 ID 조회
     const listsUrl = _SP_CONFIG.siteUrl + '/_api/web/lists?$select=Id,Title';
