@@ -2241,7 +2241,7 @@ body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;ba
 .th{font-size:10px;font-weight:600;color:var(--sub);letter-spacing:.03em;white-space:nowrap;text-align:center;padding:0 4px;}
 .th.L{text-align:left;}
 .proj-group{border-bottom:1px solid var(--border2);}.proj-group:last-child{border-bottom:none;}
-.tbl-hd,.proj-row,.hist-item{grid-template-columns:36px 68px 108px minmax(0,1fr) 124px 70px 82px 136px 96px 32px;}
+.tbl-hd,.proj-row,.hist-item{grid-template-columns:36px 68px 108px minmax(0,1fr) 124px 70px 82px 136px 96px 64px;}
 .proj-row{display:grid;padding:11px 14px;align-items:center;gap:0;cursor:pointer;transition:background .1s;}
 .proj-row:hover{background:#FAFBFF;}
 .proj-hist{display:none!important;background:#F0F4FA;border-top:2px solid #E2E8F0;border-bottom:3px solid #CBD5E1;}
@@ -2435,13 +2435,13 @@ body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;ba
 .rate-tbl{width:100%;border-collapse:collapse;font-size:11px;}
 .rate-tbl th{font-size:9px;font-weight:600;color:var(--sub);padding:3px 4px;text-align:left;border-bottom:1px solid var(--border);}
 .rate-tbl td{padding:4px 4px;}
-.ri{width:100%;padding:4px 6px;border:1px solid var(--border);border-radius:5px;font-size:11px;text-align:right;outline:none;font-family:inherit;}
+.ri{width:100%;padding:4px 6px;border:1px solid var(--border);border-radius:5px;font-size:11px;text-align:center;outline:none;font-family:inherit;}
 .ri:focus{border-color:var(--blue);}
 
 
 .td-acts{border-left:1px solid var(--border2);padding-left:8px!important;}
 .row-acts{display:flex;flex-direction:column;gap:3px;align-items:stretch;}
-.act-btn{padding:3px 0;border-radius:5px;font-size:10px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--muted);white-space:nowrap;transition:all .15s;font-family:inherit;width:100%;text-align:center;}
+.act-btn{padding:4px 0;border-radius:5px;font-size:10.5px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--muted);white-space:nowrap;transition:all .15s;font-family:inherit;width:100%;height:22px;line-height:1;display:flex;align-items:center;justify-content:center;box-sizing:border-box;}
 .act-btn:hover{background:var(--bg);}
 .act-btn.re{color:var(--blue);border-color:var(--blue-m);background:var(--blue-s);}
 .act-btn.re:hover{background:var(--blue-m);}
@@ -2464,7 +2464,7 @@ body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;ba
 .rate-tbl tr:last-child td{border-bottom:none;}
 .rate-tbl td:first-child{font-weight:600;color:var(--navy);width:36px;}
 .rate-tbl tr:hover td{background:#FAFBFF;}
-.ri{width:100%;padding:4px 6px;border:1px solid var(--border);border-radius:5px;font-size:11px;text-align:right;outline:none;font-family:inherit;background:#fff;transition:border .15s;}
+.ri{width:100%;padding:4px 6px;border:1px solid var(--border);border-radius:5px;font-size:11px;text-align:center;outline:none;font-family:inherit;background:#fff;transition:border .15s;}
 .ri:focus{border-color:var(--blue);}
 /* 삭제버튼 */
 .btn-danger{background:var(--red)!important;color:#fff!important;border:none!important;}
@@ -2478,8 +2478,7 @@ body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;ba
 .pdf-body-wrap{flex:1;overflow-y:auto;padding:20px;display:flex;justify-content:center;background:#525659;}
 
 /* PDF 문서 */
-.pdf-page{background:#fff;width:794px;min-height:1123px;box-shadow:0 2px 20px rgba(0,0,0,.2);font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;box-sizing:border-box;position:relative;}
-.pdf-page::after{content:'';position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(to bottom,transparent 0,transparent 1122px,rgba(37,99,235,.35) 1122px,rgba(37,99,235,.35) 1123px);}
+.pdf-page{background:#fff;width:794px;min-height:1123px;box-shadow:0 2px 20px rgba(0,0,0,.2);font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;box-sizing:border-box;}
 .q-bar1{background:#2563EB;height:4px;}
 .q-bar2{display:none;}
 .q-wrap{padding:26px 36px 22px;}
@@ -4907,22 +4906,7 @@ window._updateSidebarByRole=function(){
 <!-- 견적서 관리 페이지 -->
 <!-- ═══════════════════════════════════════════════════════ -->
 <div class="page" id="page-quotation" style="display:none;">
-  <div style="display:flex;justify-content:space-between;align-items:flex-end;padding:10px 22px 12px;flex-shrink:0;gap:14px;flex-wrap:wrap;">
-    <div style="display:flex;gap:10px;" id="qt-kpi-row">
-      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:10px 18px;min-width:130px;">
-        <div style="font-size:10px;font-weight:600;color:var(--sub);letter-spacing:.03em;">총 견적</div>
-        <div style="font-size:19px;font-weight:800;color:var(--navy);margin-top:2px;"><span id="qt-kpi-total">0</span><span style="font-size:11px;font-weight:600;color:var(--sub);margin-left:2px;">건</span></div>
-      </div>
-      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:10px 18px;min-width:130px;">
-        <div style="font-size:10px;font-weight:600;color:var(--sub);letter-spacing:.03em;">이번 달 발행</div>
-        <div style="font-size:19px;font-weight:800;color:#2563EB;margin-top:2px;"><span id="qt-kpi-month">0</span><span style="font-size:11px;font-weight:600;color:var(--sub);margin-left:2px;">건</span></div>
-      </div>
-      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:10px 18px;min-width:170px;">
-        <div style="font-size:10px;font-weight:600;color:var(--sub);letter-spacing:.03em;">총 제안금액 (최신차수)</div>
-        <div style="font-size:19px;font-weight:800;color:var(--navy);margin-top:2px;" id="qt-kpi-amt">₩0</div>
-      </div>
-    </div>
-    <div style="display:flex;gap:7px;align-items:center;">
+  <div style="display:flex;justify-content:flex-end;align-items:center;padding:10px 22px 12px;flex-shrink:0;gap:7px;">
       <button class="btn btn-sec" onclick="qt_openSetting()">⚙ 단가·기본값 설정</button>
       <button class="btn btn-pri" id="qt-write-btn" onclick="qt_openModal('new')">＋ 견적서 작성</button>
     </div>
@@ -11682,6 +11666,15 @@ async function _spSaveItemDirect(dtype, dkey, payload, _retry){
 }
 
 async function _spSaveItem(dtype, dkey, payload, _retry) {
+  // 리스트 GUID 미조회 상태 가드 (로그인 직후 타이밍)
+  if(!window._spListId && window._spToken){
+    try{
+      var _lr = await _spFetch(_SP_CONFIG.siteUrl + '/_api/web/lists?$select=Id,Title');
+      var _lf = (_lr.value||[]).find(function(l){ return l.Title===_SP_CONFIG.listName; });
+      window._spListId = _lf ? _lf.Id : null;
+    }catch(e){ console.warn('[SP] 리스트 조회 실패:', e.message); }
+  }
+  if(!window._spListId){ console.warn('[SP] 리스트 미준비 - 저장 스킵'); return null; }
   if(!window._isSPReady) return;
 
   var _dkey  = _sanitizeDKey(dkey);
@@ -14368,7 +14361,8 @@ async function _connectSP(app, account){
       } else {
         // session 없음 = 아직 로그인창에서 담당자 선택 전
         // 토큰만 갱신하고 앱 초기화는 하지 않음 → 로그인창 유지
-        window._isSPReady = true; // 토큰은 준비됨 (담당자 선택 시 빠른 연결용)
+        // 주의: _isSPReady는 리스트 GUID까지 조회된 _initSP에서만 true (guid null 저장 방지)
+        window._spTokenReady = true;
         console.log('[SP] 토큰 준비됨 - 담당자 선택 대기 중');
       }
     }
@@ -21079,7 +21073,7 @@ window._qtShowPage=function(){
             <th style="padding:7px 8px;text-align:center;font-size:10px;font-weight:600;color:var(--sub);border-bottom:1px solid var(--border);">소비자단가</th>
             <th style="padding:7px 8px;text-align:center;font-size:10px;font-weight:600;color:var(--sub);border-bottom:1px solid var(--border);border-right:2px solid var(--border);">제안단가</th>
             <th style="padding:7px 8px;text-align:center;font-size:10px;font-weight:600;color:var(--sub);border-bottom:1px solid var(--border);">소비자단가</th>
-            <th style="padding:7px 8px;text-align:center;font-size:10px;font-weight:600;color:var(--sub);border-bottom:1px solid var(--border);">제안단가</th>
+            <th style="padding:7px 8px;text-align:center;font-size:10px;font-weight:600;color:var(--sub);border-bottom:1px solid var(--border);border-right:2px solid var(--border);">제안단가</th>
           </tr>
         </thead>
         <tbody>
@@ -21211,8 +21205,8 @@ window._qtShowPage=function(){
     <div class="fs">
       <div class="fs-t">수발신 정보</div>
       <div class="g2">
-        <div class="fg"><label class="flbl">수신 (고객사명 귀중)</label><input class="fi" id="toName" placeholder="예: 필라넷 귀중"></div>
-        <div class="fg"><label class="flbl">참조</label><input class="fi" id="ccName" placeholder="예: 정일권 차장 귀하"></div>
+        <div class="fg"><label class="flbl">수신 (고객사명 귀중)</label><input class="fi" id="toName"></div>
+        <div class="fg"><label class="flbl">참조</label><input class="fi" id="ccName"></div>
         <div class="fg"><label class="flbl">발신</label><input class="fi" id="fromName" value="티에이케이정보시스템(주)"></div>
         <div class="fg"><label class="flbl">담당자 (자동입력)</label><input class="fi fi-ro" id="repNameField" value="" readonly></div>
       </div>
@@ -21220,8 +21214,8 @@ window._qtShowPage=function(){
     <div class="fs">
       <div class="fs-t">견적 정보</div>
       <div class="g2">
-        <div class="fg" style="grid-column:1/-1"><label class="flbl">프로젝트명</label><input class="fi" placeholder="예: KB손해보험 웹메일 시스템 구축" id="projectName"></div>
-        <div class="fg"><label class="flbl">고객사</label><input class="fi" placeholder="예: KB손해보험" id="clientName"></div>
+        <div class="fg" style="grid-column:1/-1"><label class="flbl">프로젝트명</label><input class="fi" id="projectName"></div>
+        <div class="fg"><label class="flbl">고객사</label><input class="fi" id="clientName"></div>
         <div class="fg"><label class="flbl">견적 No. (자동생성)</label><input class="fi fi-ro" id="quoteNo" value="" readonly></div>
         <div class="fg"><label class="flbl">견적 일자</label><input class="fi" type="date" id="quoteDate" style="width:100%;" onclick="try{this.showPicker();}catch(e){}"></div>
         <div class="fg"><label class="flbl">유효기간</label><select class="fsel" id="validSel" onchange="qt_toggleValidInput(this)" style="width:100%;"><option value="30">견적 제출일로부터 30일 이내</option><option value="60">견적 제출일로부터 60일 이내</option><option value="direct">직접 입력...</option></select><div id="validDirectWrap" style="display:none;"><div style="display:flex;gap:6px;align-items:center;"><input class="fi" id="validInput" placeholder="유효기간을 직접 입력하세요" style="flex:1;border-color:var(--blue);background:#FAFEFF;"><button type="button" onclick="qt_resetValidSel()" style="height:34px;padding:0 10px;border:1px solid var(--border);border-radius:var(--rs);background:#fff;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap;font-family:inherit;flex-shrink:0;">↩ 목록</button></div></div></div>
@@ -21839,7 +21833,7 @@ document.addEventListener('DOMContentLoaded', function(){
   });
   // 블록 입력 이벤트 - 합계 자동계산
   document.getElementById('blockArea').addEventListener('input', function(){
-    setTimeout(calcTotal, 100);
+    setTimeout(qt_calcTotal, 100);
   });
 });
 
@@ -22833,6 +22827,16 @@ function qt_openSetting(){
   var ed=document.getElementById('repEmailDisp'); if(ed) ed.value=re;
   var ph=document.getElementById('myPhone');      if(ph) ph.value=(QT_SETTINGS.phones&&QT_SETTINGS.phones[rn])||QT_SETTINGS.phone||'';
   qt_fillSettingUI();
+  // 단가 입력 천단위 콤마 자동 포맷 (1회 바인딩)
+  if(!window._riFmtBound){
+    window._riFmtBound=true;
+    document.querySelectorAll('#settingModal .ri').forEach(function(inp){
+      inp.addEventListener('input', function(){
+        var v=(this.value||'').replace(/[^0-9]/g,'');
+        this.value=v?parseInt(v,10).toLocaleString():'';
+      });
+    });
+  }
 }
 
 
@@ -23108,24 +23112,6 @@ function qtRenderQtList(){
   var _st=_sc?_sc.scrollTop:0;
   list.innerHTML=html;
   if(_sc) requestAnimationFrame(function(){ _sc.scrollTop=_st; });
-  // KPI 갱신
-  try{
-    var kt=document.getElementById('qt-kpi-total');
-    var km=document.getElementById('qt-kpi-month');
-    var ka=document.getElementById('qt-kpi-amt');
-    if(kt) kt.textContent=QUOTES.length;
-    if(km){
-      var now=new Date(), ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-      km.textContent=QUOTES.filter(function(q){return (q.date||'').indexOf(ym)===0;}).length;
-    }
-    if(ka){
-      // 최신차수만 합산
-      var latest={};
-      QUOTES.forEach(function(q){var root=q.parentId||q.id;if(!latest[root]||(q.round||1)>(latest[root].round||1))latest[root]=q;});
-      var sum=0;Object.keys(latest).forEach(function(k){sum+=latest[k].amount||0;});
-      ka.textContent='₩'+sum.toLocaleString();
-    }
-  }catch(e){}
 }
 function qt_toggleHist(grpId){
   var h=document.getElementById(grpId+'-hist');
