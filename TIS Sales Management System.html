@@ -17866,10 +17866,10 @@ async function _wkLoad(){
     }catch(e){ console.warn('[wk load]',e); }finally{
       _wk.loading=false;
       var _wkLEl=document.getElementById('wk-week-label');
+      var _lk=_wk.weekMode==='period'?_wk.selectedWeekKey:(_wk.weekMode==='last'?_wkLastKey():_wkThisKey());
       (function(){
         var _wEl=document.getElementById('wk-vt-week');
         if(!_wEl) return;
-        var _lk=_wk.weekMode==='period'?_wk.selectedWeekKey:(_wk.weekMode==='last'?_wkLastKey():_wkThisKey());
         if(_lk){var _lp=_lk.split('-W');_wEl.textContent=_lp[0]+'년 '+parseInt(_lp[1])+'주차';}
       })();
       if(_wkLEl){
@@ -18225,6 +18225,9 @@ function _wkLogTab(tab){
   });
   var input = document.getElementById('wk-log-input');
   if(input) input.style.display = (tab==='this') ? '' : 'none';
+  // 금주/지난주 탭 클릭 시 상단 주차 필터도 함께 이동 (조회 탭의 주차 선택과 동일한 동작)
+  if(tab==='this' && typeof window._wkSetWeek==='function') window._wkSetWeek('this');
+  if(tab==='prev' && typeof window._wkSetWeek==='function') window._wkSetWeek('last');
   // 지난주 탭: 즉시 로드
   if(tab==='prev' && window._isSPReady){
     var prevKey = _wkLastKey();
