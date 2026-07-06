@@ -21137,10 +21137,10 @@ window._qtShowPage=function(){
       </div>
       <div class="sg">
         <div class="sg-t"><span class="sg-t-icon" style="background:#F0FDF4;"><svg width="10" height="10" fill="none" stroke="#059669" stroke-width="2" viewBox="0 0 24 24"><path d="M3 21h18M3 7l9-4 9 4M4 7v14M20 7v14M9 21V11h6v10"/></svg></span>회사 정보 <span style="font-size:9px;font-weight:400;color:var(--sub);text-transform:none;letter-spacing:0;">PDF 출력용</span></div>
-        <div class="fg" style="margin-bottom:6px;"><label class="flbl">회사명</label><input class="fi" value="티에이케이정보시스템 주식회사" style="font-size:11px;padding:5px 8px;"></div>
+        <div class="fg" style="margin-bottom:6px;"><label class="flbl">회사명</label><input class="fi" id="coName" value="티에이케이정보시스템 주식회사" style="font-size:11px;padding:5px 8px;"></div>
         <div style="display:grid;grid-template-columns:1fr 2fr;gap:6px;">
-          <div class="fg"><label class="flbl">대표이사</label><input class="fi" value="강 기 원" style="font-size:11px;padding:5px 8px;"></div>
-          <div class="fg"><label class="flbl">주소</label><input class="fi" value="강서구 마곡동로10길 7" style="font-size:11px;padding:5px 8px;"></div>
+          <div class="fg"><label class="flbl">대표이사</label><input class="fi" id="coCeo" value="강 기 원" style="font-size:11px;padding:5px 8px;"></div>
+          <div class="fg"><label class="flbl">주소</label><input class="fi" id="coAddr" value="서울특별시 강서구 마곡동로10길 7" style="font-size:11px;padding:5px 8px;"></div>
         </div>
       </div>
     </div>
@@ -21319,90 +21319,12 @@ window._qtShowPage=function(){
       </div>
     </div>
       <div style="background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:var(--r);padding:12px 14px;margin-top:10px;"><div style="font-size:12px;font-weight:700;color:#92400E;margin-bottom:7px;">차수 변경 요약 <span style="font-size:10px;font-weight:400;color:#B45309;">내부 기록용 · PDF 미출력</span></div><input class="fi" id="changeSummary" style="background:#fff;border-color:#FDE68A;width:100%;" placeholder="예: 라이선스 수량 변경, 개발공수 조정 (2차 수정)"></div>
-      <div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:var(--r);padding:11px 14px;margin-top:10px;display:flex;align-items:center;gap:9px;">
-        <input type="checkbox" id="qtRegPipeline" checked style="width:15px;height:15px;accent-color:#2563EB;cursor:pointer;flex-shrink:0;">
-        <label for="qtRegPipeline" style="cursor:pointer;font-size:12px;font-weight:700;color:#1D4ED8;">영업 진행 현황에 등록 <span style="font-size:10px;font-weight:400;color:#3B82F6;">저장 시 진행 건 자동 생성 · 재견적은 금액만 갱신 · 주간회의 요약에도 표시</span></label>
-      </div>
+      
     </div>
     <div id="t2" style="padding:16px 20px;display:none;">
 
     <div class="block-area" id="blockArea">
-      <!-- 블록1: 라이선스 -->
-      <div class="ib" id="blk1" draggable="true">
-        <div class="ib-hd">
-          <span class="drag-handle" title="드래그하여 이동">⠿</span>
-          <span class="ib-badge" style="background:#FFF7ED;color:#C2410C;">라이선스(상품)</span>
-          <span class="ib-title">소계 ①</span>
-          <span style="flex:1;"></span>
-          <div style="display:flex;gap:6px;"><button class="btn btn-xs" style="background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;" onclick="qt_rmBlk('blk1')">삭제</button></div>
-        </div>
-        <div class="ib-body">
-          <div class="it-wrap"><table class="it" style="table-layout:fixed;width:100%;">
-            <colgroup><col style="width:68px"><col><col style="width:44px"><col style="width:36px"><col style="width:75px"><col style="width:75px"><col style="width:75px"><col style="width:75px"><col style="width:28px"></colgroup>
-            <thead><tr>
-              <th class="L">구분</th><th class="L">품목</th>
-              <th style="text-align:center;">수량</th><th style="text-align:center;">단위</th>
-              <th style="text-align:center;">소비자단가</th><th style="text-align:center;">소비자가</th>
-              <th style="text-align:center;">제안단가</th><th style="text-align:center;">제안금액</th>
-              <th></th>
-            </tr></thead>
-            <tbody id="lb1">
-              <tr>
-                <td class="L"><textarea class="ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="구분" oninput="qt_autoH(this)" style="text-align:center;resize:none;overflow:hidden;width:100%;"></textarea></td>
-                <td class="L"><textarea class="ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="품목명 입력" oninput="qt_autoH(this)"></textarea></td>
-                <td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="0" oninput="qt_calcLic(this)"></td>
-                <td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="식"></td>
-                <td style="text-align:right;"><input class="ii" style="text-align:right;" placeholder="0" oninput="qt_calcLic(this)"></td>
-                <td style="text-align:right;" class="lic-consumer">—</td>
-                <td style="text-align:right;"><input class="ii" style="text-align:right;" placeholder="0" oninput="qt_calcLic(this)"></td>
-                <td style="text-align:right;" class="lic-propose">—</td>
-                <td><button class="del-btn" onclick="qt_delRow(this)" title="행 삭제">×</button></td>
-              </tr>
-            </tbody>
-          </table></div>
-          <span class="add-r" onclick="qt_addLicRow('lb1')">＋ 행 추가</span>
-        </div>
-      </div>
-
-      <!-- 블록2: 인건비 -->
-      <div class="ib" id="blk2" draggable="true">
-        <div class="ib-hd">
-          <span class="drag-handle" title="드래그하여 이동">⠿</span>
-          <span class="ib-badge" style="background:#EDE9FE;color:#5B21B6;">인건비</span>
-          <span class="ib-title">소계 ②</span>
-          <span style="flex:1;"></span>
-          <div style="display:flex;gap:6px;"><button class="btn btn-xs" style="background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;" onclick="qt_rmBlk('blk2')">삭제</button></div>
-        </div>
-        <div class="ib-body">
-          <div class="it-wrap"><table class="it" style="table-layout:fixed;width:100%;">
-            <colgroup><col style="width:56px"><col style="min-width:120px"><col style="width:38px"><col style="width:38px"><col style="width:78px"><col style="width:72px"><col style="width:86px"><col style="width:86px"><col style="width:86px"><col style="width:86px"><col style="width:26px"></colgroup>
-            <thead><tr>
-              <th class="L">구분</th><th class="L">투입 인력 역할</th>
-              <th style="text-align:center;">수량</th><th style="text-align:center;">단위</th>
-              <th style="text-align:center;">등급</th><th style="text-align:center;">단가기준</th>
-              <th style="text-align:center;">소비자단가</th><th style="text-align:center;">소비자가</th>
-              <th style="text-align:center;">제안단가</th><th style="text-align:center;">제안금액</th>
-              <th></th>
-            </tr></thead>
-            <tbody id="mb1">
-              <tr>
-                <td class="L"><textarea class="ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="구분" oninput="qt_autoH(this)" style="text-align:center;resize:none;overflow:hidden;width:100%;"></textarea></td>
-                <td class="L"><textarea class="ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="역할 및 업무 범위" oninput="qt_autoH(this)"></textarea></td>
-                <td style="text-align:center;"><input class="ii" style="text-align:center;" value="1.0" oninput="qt_calcMM(this)"></td>
-                <td style="text-align:center;"><input class="ii" style="text-align:center;" value="MM"></td>
-                <td style="text-align:center;"><select class="isel" style="width:100%;" onchange="qt_calcMM(this)"><option>특급</option><option>고급</option><option selected>중급</option><option>초급</option></select></td>
-                <td style="text-align:center;"><select class="isel src-sel" style="width:100%;font-size:10px;" onchange="qt_calcMM(this)"><option value="tak">TAK</option><option value="rel">관계사</option><option value="ext">대외</option></select></td>
-                <td class="gc" style="text-align:right;">25,019,615</td>
-                <td class="gca" style="text-align:right;">25,019,615</td>
-                <td class="gp" style="text-align:right;">15,600,000</td>
-                <td class="gpa" style="text-align:right;">15,600,000</td>
-                <td><button class="del-btn" onclick="qt_delRow(this)" title="행 삭제">×</button></td>
-              </tr>
-            </tbody>
-          </table></div>
-          <span class="add-r" onclick="qt_addMMRow('mb1')">＋ 행 추가</span>
-        </div>
-      </div>
+      <!-- 유형 선택 전 빈 상태: 아래 '항목 블록 추가'에서 유형을 선택하세요 -->
     </div>
 
     <!-- 블록 추가 -->
@@ -21928,7 +21850,23 @@ document.addEventListener('DOMContentLoaded', function(){
     qt_showMergeMenu(td,tr,ib,e.clientX,e.clientY);
   });
   // 블록 입력 이벤트 - 합계 자동계산
-  document.getElementById('blockArea').addEventListener('input', function(){
+  // ── ESC 키로 견적서 팝업 닫기 (최상위 우선) ──
+document.addEventListener('keydown', function(ev){
+  if(ev.key!=='Escape') return;
+  function vis(id){
+    var el=document.getElementById(id);
+    if(!el) return false;
+    if(el.classList&&el.classList.contains('hidden')) return false;
+    var cs=window.getComputedStyle(el);
+    return cs.display!=='none'&&cs.visibility!=='hidden';
+  }
+  if(vis('deleteModal')){ if(typeof qt_closeDeleteModal==='function') qt_closeDeleteModal(); ev.stopPropagation(); return; }
+  if(vis('pdfOv')){ if(typeof qt_closePdf==='function') qt_closePdf(); ev.stopPropagation(); return; }
+  if(vis('settingModal')){ if(typeof qt_closeSetting==='function') qt_closeSetting(); ev.stopPropagation(); return; }
+  if(vis('writeModal')){ if(typeof qt_closeModal==='function') qt_closeModal(); ev.stopPropagation(); return; }
+});
+
+document.getElementById('blockArea').addEventListener('input', function(){
     setTimeout(qt_calcTotal, 100);
   });
 });
@@ -22451,9 +22389,12 @@ function qt_buildDevPdf(){
   h+='</table>';
   // 우: 회사정보
   h+='<div style="text-align:right;font-size:8.5px;color:#374151;line-height:2.0;">';
-  h+='<div>서울특별시 강서구 마곡동로10길 7</div>';
-  h+='<div>티에이케이정보시스템 주식회사</div>';
-  h+='<div>대표이사 강 기 원 &nbsp;(직인생략)</div>';
+  var _coA=QT_SETTINGS.coAddr||'서울특별시 강서구 마곡동로10길 7';
+  var _coN=QT_SETTINGS.coName||'티에이케이정보시스템 주식회사';
+  var _coC=QT_SETTINGS.coCeo||'강 기 원';
+  h+='<div>'+_coA+'</div>';
+  h+='<div>'+_coN+'</div>';
+  h+='<div>대표이사 '+_coC+' &nbsp;(직인생략)</div>';
   h+='</div></div>';
 
   // ── 아래와 같이 견적합니다 ──
@@ -22497,7 +22438,7 @@ function qt_buildMaPdf(){
 <div class="q-wrap">
 <div class="q-top">
   <div>${qt_getLogoHtml()}</div>
-  <div class="q-co"><div class="q-co-name">티에이케이정보시스템 주식회사</div>서울특별시 강서구 마곡동로10길 7<br>대표이사 강 기 원 (직인생략)</div>
+  <div class="q-co"><div class="q-co-name">${QT_SETTINGS.coName||'티에이케이정보시스템 주식회사'}</div>${QT_SETTINGS.coAddr||'서울특별시 강서구 마곡동로10길 7'}<br>대표이사 ${QT_SETTINGS.coCeo||'강 기 원'} (직인생략)</div>
 </div>
 <div class="q-ttl-sec"><div class="q-ttl-main">견 적 서</div><div class="q-ttl-en">Q U O T A T I O N</div></div>
 <div class="q-info">
@@ -22551,7 +22492,7 @@ function qt_buildMaPdf(){
   </div>
 </div>
 <div class="q-foot">
-  <div class="q-foot-l">티에이케이정보시스템㈜ &nbsp;|&nbsp; 서울특별시 강서구 마곡동로10길 7 &nbsp;|&nbsp; ${SESSION_REP.name} ${SESSION_REP.title} (${phone} / ${SESSION_REP.email})</div>
+  <div class="q-foot-l">${QT_SETTINGS.coName||'티에이케이정보시스템㈜'} &nbsp;|&nbsp; ${QT_SETTINGS.coAddr||'서울특별시 강서구 마곡동로10길 7'} &nbsp;|&nbsp; ${SESSION_REP.name} ${SESSION_REP.title} (${phone} / ${SESSION_REP.email})</div>
   <div class="q-foot-r">SQ-CM260130-01</div>
 </div>
 </div>`;}
@@ -22612,6 +22553,17 @@ function qt_openModal(mode,quoteId){
     var _q=QUOTES.find(function(q){return q.id===quoteId;});
     if(_q) _qt_fillModalFromData(_q,mode);
   } else if(!quoteId) {
+    // 새 견적: 폼 초기화 (이전 입력/블록 잔재 제거)
+    ['toName','ccName','projectName','clientName','changeSummary','internalMemo'].forEach(function(id){
+      var el=document.getElementById(id); if(el) el.value='';
+    });
+    var _fr=document.getElementById('fromName'); if(_fr) _fr.value=(QT_SETTINGS.sender||'티에이케이정보시스템(주)');
+    var _pc=document.getElementById('paymentCond'); if(_pc) _pc.value='추후 별도 협의';
+    var _oc=document.getElementById('otherCond'); if(_oc) _oc.value='1. 추가 요구사항의 경우 세부 협의 후 추가 공수 산정 필요';
+    var _gc=document.getElementById('generalCond'); if(_gc) _gc.value=QT_SETTINGS.generalCond||_gc.value||'';
+    var _ba=document.querySelector('.block-area');
+    if(_ba){ _ba.innerHTML=''; QT_BC=0; }
+    var _tv=document.querySelector('.total-val'); if(_tv) _tv.textContent='₩ 0';
     // 새 견적: 자동생성 번호 + 오늘 날짜
     var _noEl=document.getElementById('quoteNo');
     if(_noEl) _noEl.value=qt_genQuoteNo();
@@ -22637,6 +22589,23 @@ function _qt_fillModalFromData(q,mode){
   Object.keys(fields).forEach(function(k){
     var el=document.getElementById(fields[k]);if(el) el.value=q[k]||'';
   });
+  // 유효기간 복원 (30/60 = select, 그 외 = 직접입력)
+  (function(){
+    var v=q.validity||'30';
+    var sel=document.getElementById('validSel');
+    var wrap=document.getElementById('validDirectWrap');
+    var inp=document.getElementById('validInput');
+    if(!sel) return;
+    if(v==='30'||v==='60'){
+      sel.value=v; sel.style.display='';
+      if(wrap) wrap.style.display='none';
+      if(inp) inp.value='';
+    } else {
+      sel.value='direct';
+      if(typeof qt_toggleValidInput==='function') qt_toggleValidInput(sel);
+      if(inp) inp.value=v;
+    }
+  })();
   if(isEdit){
     var no=document.getElementById('quoteNo');if(no)no.value=q.id||'';
     var dt=document.getElementById('quoteDate');if(dt)dt.value=q.date||'';
@@ -22871,6 +22840,9 @@ function qt_saveSetting(){
   var _curRep=SESSION_REP.name;
   if(_curRep) QT_SETTINGS.phones[_curRep]=(document.getElementById('myPhone')||{}).value||'';
   QT_SETTINGS.phone = (document.getElementById('myPhone')||{}).value||''; // 하위호환
+  QT_SETTINGS.coName=(document.getElementById('coName')||{}).value||'';
+  QT_SETTINGS.coCeo=(document.getElementById('coCeo')||{}).value||'';
+  QT_SETTINGS.coAddr=(document.getElementById('coAddr')||{}).value||'';
   QT_SETTINGS.email = (document.getElementById('myEmail')||{}).value||'';
   QT_SETTINGS.defaultPayment = (document.getElementById('defaultPayment')||{}).value||'';
   QT_SETTINGS.defaultGeneral = (document.getElementById('defaultGeneral')||{}).value||'';
@@ -22948,6 +22920,9 @@ function qt_fillSettingUI(){
   var payEl=document.getElementById('defaultPayment');
   var genEl=document.getElementById('defaultGeneral');
   if(phoneEl) phoneEl.value=(QT_SETTINGS.phones&&QT_SETTINGS.phones[SESSION_REP.name])||QT_SETTINGS.phone||'';
+  var _cn=document.getElementById('coName'); if(_cn&&QT_SETTINGS.coName) _cn.value=QT_SETTINGS.coName;
+  var _cc=document.getElementById('coCeo'); if(_cc&&QT_SETTINGS.coCeo) _cc.value=QT_SETTINGS.coCeo;
+  var _ca=document.getElementById('coAddr'); if(_ca&&QT_SETTINGS.coAddr) _ca.value=QT_SETTINGS.coAddr;
   if(emailEl) emailEl.value=QT_SETTINGS.email||'';
   if(payEl) payEl.value=QT_SETTINGS.defaultPayment||'';
   if(genEl) genEl.value=QT_SETTINGS.defaultGeneral||'';
