@@ -5848,6 +5848,12 @@ function initAllTabs() {
 
 // ════ 공통 초기 렌더 (관리자/일반 동일하게 실행) ════
 function _initApp(){
+  // 세션 없이 앱 초기화 금지 (유령 접속 방지)
+  if(!(typeof session!=='undefined' && session && session.role && session.role!=='locked')){
+    console.warn('[initApp] 유효 세션 없음 - 로그인창 유지');
+    if(typeof openAuth==='function') try{ openAuth(); }catch(e){}
+    return;
+  }
   setTimeout(function(){
     if(typeof window._updateSidebarProfile==='function') window._updateSidebarProfile();
     if(typeof window._updateSidebarByRole==='function') window._updateSidebarByRole();
@@ -14455,6 +14461,14 @@ document.addEventListener('DOMContentLoaded', function(){
       if(sv){
         try{
           var sess=JSON.parse(sv);
+          // 유효성 검증: role과 rep(또는 admin/guest)이 없으면 깨진 세션 → 복원하지 않고 폐기
+          var _validSess = sess && sess.role && sess.role!=='locked' &&
+            (sess.role==='admin' || sess.role==='guest' || (sess.rep && String(sess.rep).trim()));
+          if(!_validSess){
+            console.warn('[세션복원] 무효 세션 폐기:', sv.slice(0,80));
+            localStorage.removeItem('_savedSession');
+            throw new Error('invalid saved session');
+          }
           // session + team 복원
           session=sess;
           if(sess.team){
