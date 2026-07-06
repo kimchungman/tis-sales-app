@@ -8973,6 +8973,19 @@ function doRepLogin(rep){
         ]);
       }
       if(!window._isSPReady) throw new Error('SP 연결에 실패했습니다.');
+      // 프리워밍이 세션 없이 완료된 경우: 세션 의존 데이터 보충 로드
+      if(window._spPrewarmNoSession){
+        window._spPrewarmNoSession=false;
+        try{
+          if(session && session.role==='admin'){
+            if(typeof _spLoadToday==='function') await _spLoadToday();
+            if(typeof _spSyncOtherReps==='function') await _spSyncOtherReps();
+            if(typeof _spLoadAllVisitLogs==='function') await _spLoadAllVisitLogs();
+          }
+        }catch(e){ console.warn('[SP] 관리자 보충 로드:', e.message); }
+        // 계약/주간/알림 등 담당자 의존 로드
+        try{ if(typeof window._spPostLoginLoads==='function') window._spPostLoginLoads(); }catch(e){}
+      }
       closeAuth();
       _hideSPLoading();
       _initApp();
@@ -11375,6 +11388,13 @@ function _lUrl() {
 }
 
 async function _initSP() {
+  // 싱글플라이트: 진행 중이면 그 작업을 이어받음 (프리워밍-클릭 중복 방지)
+  if(window._spInitPromise) return window._spInitPromise;
+  window._spInitPromise = _initSPCore().catch(function(e){ window._spInitPromise=null; throw e; });
+  return window._spInitPromise;
+}
+async function _initSPCore() {
+  if(!(typeof session!=='undefined' && session && session.role)) window._spPrewarmNoSession=true;
   try {
     _setSPStatus('connecting');
 
@@ -14381,6 +14401,9 @@ async function _connectSP(app, account){
         // 주의: _isSPReady는 리스트 GUID까지 조회된 _initSP에서만 true (guid null 저장 방지)
         window._spTokenReady = true;
         console.log('[SP] 토큰 준비됨 - 담당자 선택 대기 중');
+        // 사전 예열: 로그인창은 유지한 채 GUID 조회 + SP 데이터를 백그라운드 프리페치
+        // (_initApp/closeAuth를 호출하지 않으므로 로그인창 자동 닫힘·guid null 재발 없음)
+        try{ _initSP(); }catch(e){ console.warn('[SP] 프리워밍 실패:', e.message); }
       }
     }
   }catch(e){
