@@ -22134,6 +22134,13 @@ function qt_openPdf(type,quoteId){
       if(q2.date) d.date=new Date(q2.date).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
     }
   }
+  // 담당자 정보: 저장된 견적의 담당자(q.rep) 기준 — 열람자 세션이 아님 (타인 견적 열람 시 정보 오염 방지)
+  var _pdfRep=SESSION_REP.name, _q3=null;
+  if(quoteId){ _q3=QUOTES.find(function(x){return x.id===quoteId;}); if(_q3&&_q3.rep) _pdfRep=_q3.rep; }
+  d.repName=_pdfRep;
+  d.repTitle=(typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[_pdfRep])||(_pdfRep===SESSION_REP.name?SESSION_REP.title:'');
+  d.repEmail=(typeof authCfg!=='undefined'&&authCfg.repEmails&&authCfg.repEmails[_pdfRep])||(_pdfRep===SESSION_REP.name?SESSION_REP.email:'');
+  d.repPhone=(QT_SETTINGS.phones&&QT_SETTINGS.phones[_pdfRep])||(_pdfRep===SESSION_REP.name?SESSION_REP.phone:'');
   window.PDF_DATA=d;
   window.PDF_DISC_AMT=d.discAmt;
   window._qt_pdf_q={client:d.client,id:d.no};
@@ -22191,7 +22198,8 @@ function qt_numToKor(n){
 
 function qt_buildDevPdf(){
   var D=window.PDF_DATA||{};
-  var phone=D.phone||SESSION_REP.phone||'';
+  var phone=D.repPhone||D.phone||SESSION_REP.phone||'';
+  var _rNm=D.repName||SESSION_REP.name, _rTt=D.repTitle||SESSION_REP.title, _rEm=D.repEmail||SESSION_REP.email;
   var discAmt=D.discAmt||0; // forEach에서 DOM 실시간 값으로 덮어씌워짐
   var finalAmt=D.finalAmt||0;
   var totalPropose=(D.totalPropose||finalAmt+discAmt);
@@ -22400,7 +22408,7 @@ function qt_buildDevPdf(){
   h+='<table style="border-collapse:collapse;font-size:9px;line-height:2.0;">';
   h+='<tr><td style="width:36px;font-weight:600;color:#374151;vertical-align:top;">수 신</td><td style="font-weight:700;color:#0F172A;padding-left:12px;">'+recvVal+'</td></tr>';
   if(refVal) h+='<tr><td style="font-weight:600;color:#374151;vertical-align:top;">참 조</td><td style="font-weight:700;color:#0F172A;padding-left:12px;">'+refVal+'</td></tr>';
-  h+='<tr><td style="font-weight:600;color:#374151;vertical-align:top;">발 신</td><td style="font-weight:700;color:#0F172A;padding-left:12px;">'+SESSION_REP.name+' '+SESSION_REP.title+'</td></tr>';
+  h+='<tr><td style="font-weight:600;color:#374151;vertical-align:top;">발 신</td><td style="font-weight:700;color:#0F172A;padding-left:12px;">'+_rNm+' '+_rTt+'</td></tr>';
   h+='</table>';
   // 우: 회사정보
   h+='<div style="text-align:right;font-size:8.5px;color:#374151;line-height:2.0;">';
@@ -22441,14 +22449,14 @@ function qt_buildDevPdf(){
 
   // ── 푸터 ──
   h+='<div style="margin-top:14px;padding-top:8px;border-top:1.5px solid #1E293B;text-align:center;font-size:8.5px;color:#374151;">';
-  h+='티에이케이정보시스템㈜ 솔루션영업팀 &nbsp;'+SESSION_REP.name+' '+SESSION_REP.title+' &nbsp;(Mobile : '+phone+' / E-mail : '+SESSION_REP.email+')';
+  h+='티에이케이정보시스템㈜ 솔루션영업팀 &nbsp;'+_rNm+' '+_rTt+' &nbsp;(Mobile : '+phone+' / E-mail : '+_rEm+')';
   h+='</div>';
   h+='</div>';
   return h;
 }
 
 function qt_buildMaPdf(){
-  var phone=document.getElementById('myPhone')?document.getElementById('myPhone').value||'010-2363-2296':'010-2363-2296';
+  var phone=D.repPhone||D.phone||SESSION_REP.phone||''; var _rNm=D.repName||SESSION_REP.name, _rTt=D.repTitle||SESSION_REP.title, _rEm=D.repEmail||SESSION_REP.email;
   return `<div class="q-bar1"></div><div class="q-bar2"></div>
 <div class="q-wrap">
 <div class="q-top">
@@ -22500,14 +22508,14 @@ function qt_buildMaPdf(){
 <div class="q-sign">
   <div class="q-sign-box">
     <div class="q-sign-ttl">담당자 확인</div>
-    <div class="q-sign-row"><span>담당자</span><span class="q-sign-val">${SESSION_REP.name} ${SESSION_REP.title}</span></div>
+    <div class="q-sign-row"><span>담당자</span><span class="q-sign-val">${_rNm} ${_rTt}</span></div>
     <div class="q-sign-row"><span>연락처</span><span class="q-sign-val">${phone}</span></div>
-    <div class="q-sign-row"><span>이메일</span><span class="q-sign-val">${SESSION_REP.email}</span></div>
+    <div class="q-sign-row"><span>이메일</span><span class="q-sign-val">${_rEm}</span></div>
     <div class="q-stamp">직인<br>생략</div>
   </div>
 </div>
 <div class="q-foot">
-  <div class="q-foot-l">${QT_SETTINGS.coName||'티에이케이정보시스템㈜'} &nbsp;|&nbsp; ${QT_SETTINGS.coAddr||'서울특별시 강서구 마곡동로10길 7'} &nbsp;|&nbsp; ${SESSION_REP.name} ${SESSION_REP.title} (${phone} / ${SESSION_REP.email})</div>
+  <div class="q-foot-l">${QT_SETTINGS.coName||'티에이케이정보시스템㈜'} &nbsp;|&nbsp; ${QT_SETTINGS.coAddr||'서울특별시 강서구 마곡동로10길 7'} &nbsp;|&nbsp; ${_rNm} ${_rTt} (${phone} / ${_rEm})</div>
   <div class="q-foot-r">SQ-CM260130-01</div>
 </div>
 </div>`;}
