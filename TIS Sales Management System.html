@@ -20804,8 +20804,7 @@ function qtCloseSetting(){
   if(sm) sm.style.display='none';
 }
 function qtSaveSetting(){
-  QT_SETTINGS.phone=(document.getElementById('qt-my-phone')||{}).value||'';
-  QT_SETTINGS.email=(document.getElementById('qt-my-email')||{}).value||'';
+  // (구버전 공유 phone/email 기록 제거)
   QT_SETTINGS.defaultCond=(document.getElementById('qt-default-cond')||{}).value||'';
   // 등급별 단가 UI에서 읽어서 저장
   var kMap={tak:'tak',rel:'rel',ext:'ext'};
@@ -21404,8 +21403,8 @@ var window_qt_editing_id = null;
 var SESSION_REP = {
   get name(){ return (typeof session!=='undefined'&&session&&session.rep)?session.rep.replace(/[（(【].*$/,'').trim():''; },
   get title(){ var n=this.name; return (typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[n])||''; },
-  get email(){ var n=this.name; return (typeof authCfg!=='undefined'&&authCfg.repEmails&&authCfg.repEmails[n])||QT_SETTINGS.email||''; },
-  get phone(){ var n=this.name; return (QT_SETTINGS.phones&&QT_SETTINGS.phones[n])||QT_SETTINGS.phone||''; }
+  get email(){ var n=this.name; return (typeof authCfg!=='undefined'&&authCfg.repEmails&&authCfg.repEmails[n])||''; }, // 공유 email 폴백 제거 (타인 정보 노출 방지)
+  get phone(){ var n=this.name; return (QT_SETTINGS.phones&&QT_SETTINGS.phones[n])||''; } // 공유 phone 폴백 제거 (타인 정보 노출 방지)
 };
 
 
@@ -21790,7 +21789,7 @@ function qt_getPdfData(){
   var validSel=document.getElementById('validSel');
   var validInp=document.getElementById('validInput');
   var validity=(validInp&&validInp.style.display!=='none'&&validInp.value)?validInp.value:(validSel?({'30':'견적 제출일로부터 30일 이내','60':'견적 제출일로부터 60일 이내','90':'견적 제출일로부터 90일 이내'}[validSel.value]||validSel.value):'견적 제출일로부터 30일 이내');
-  var phone=QT_SETTINGS.phone||SESSION_REP.phone||'';
+  var phone=SESSION_REP.phone||'';
   var condEl=document.getElementById('generalCond');
   var payEl=document.getElementById('paymentCond');
   var otherEl=document.getElementById('otherCond');
@@ -22862,11 +22861,11 @@ function qt_saveSetting(){
   if(!QT_SETTINGS.phones) QT_SETTINGS.phones={};
   var _curRep=SESSION_REP.name;
   if(_curRep) QT_SETTINGS.phones[_curRep]=(document.getElementById('myPhone')||{}).value||'';
-  QT_SETTINGS.phone = (document.getElementById('myPhone')||{}).value||''; // 하위호환
+  // (공유 QT_SETTINGS.phone 기록 중단 — 담당자별 phones 맵만 사용)
   QT_SETTINGS.coName=(document.getElementById('coName')||{}).value||'';
   QT_SETTINGS.coCeo=(document.getElementById('coCeo')||{}).value||'';
   QT_SETTINGS.coAddr=(document.getElementById('coAddr')||{}).value||'';
-  QT_SETTINGS.email = (document.getElementById('myEmail')||{}).value||'';
+  // (공유 QT_SETTINGS.email 기록 중단 — authCfg.repEmails 사용)
   QT_SETTINGS.defaultPayment = (document.getElementById('defaultPayment')||{}).value||'';
   QT_SETTINGS.defaultGeneral = (document.getElementById('defaultGeneral')||{}).value||'';
 
@@ -22942,7 +22941,7 @@ function qt_fillSettingUI(){
   var emailEl=document.getElementById('myEmail');
   var payEl=document.getElementById('defaultPayment');
   var genEl=document.getElementById('defaultGeneral');
-  if(phoneEl) phoneEl.value=(QT_SETTINGS.phones&&QT_SETTINGS.phones[SESSION_REP.name])||QT_SETTINGS.phone||'';
+  if(phoneEl) phoneEl.value=(QT_SETTINGS.phones&&QT_SETTINGS.phones[SESSION_REP.name])||'';
   var _cn=document.getElementById('coName'); if(_cn&&QT_SETTINGS.coName) _cn.value=QT_SETTINGS.coName;
   var _cc=document.getElementById('coCeo'); if(_cc&&QT_SETTINGS.coCeo) _cc.value=QT_SETTINGS.coCeo;
   var _ca=document.getElementById('coAddr'); if(_ca&&QT_SETTINGS.coAddr) _ca.value=QT_SETTINGS.coAddr;
@@ -22970,7 +22969,7 @@ function qt_openSetting(){
   var nd=document.getElementById('repNameDisp');  if(nd) nd.value=rn;
   var td=document.getElementById('repTitleDisp'); if(td) td.value=rt;
   var ed=document.getElementById('repEmailDisp'); if(ed) ed.value=re;
-  var ph=document.getElementById('myPhone');      if(ph) ph.value=(QT_SETTINGS.phones&&QT_SETTINGS.phones[rn])||QT_SETTINGS.phone||'';
+  var ph=document.getElementById('myPhone');      if(ph) ph.value=(QT_SETTINGS.phones&&QT_SETTINGS.phones[rn])||'';
   qt_fillSettingUI();
   // 단가 입력 천단위 콤마 자동 포맷 (1회 바인딩)
   if(!window._riFmtBound){
