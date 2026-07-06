@@ -5854,6 +5854,7 @@ function _initApp(){
     if(typeof openAuth==='function') try{ openAuth(); }catch(e){}
     return;
   }
+  window._appInitialized=true;
   setTimeout(function(){
     if(typeof window._updateSidebarProfile==='function') window._updateSidebarProfile();
     if(typeof window._updateSidebarByRole==='function') window._updateSidebarByRole();
@@ -8995,6 +8996,15 @@ function doRepLogin(rep){
       closeAuth();
       _hideSPLoading();
       _initApp();
+      // 워치독: 어떤 경합/예외로 화면이 비면 3초 후 1회 자동 복구
+      setTimeout(function(){
+        try{
+          if(session&&session.role&&!window._appInitialized){
+            console.warn('[워치독] 앱 미초기화 감지 - _initApp 재시도');
+            _initApp();
+          }
+        }catch(e){}
+      },3000);
       if(typeof _migrateContentFields==='function') _migrateContentFields();
       showToast('👤 '+rep+'으로 접속했습니다.');
       if(typeof applyPermissions==='function') setTimeout(applyPermissions,50);
@@ -14398,9 +14408,14 @@ async function _connectSP(app, account){
       _setBar('connected');
       // session이 이미 설정된 경우(담당자 선택 후)에만 SP 데이터 로드 + 앱 초기화
       if(session && session.role && session.role !== 'locked'){
+        // 데이터 준비만 담당 (싱글플라이트로 _tryRepConnect와 합류)
+        // UI 초기화/렌더는 담당자 선택 경로(_tryRepConnect→_initApp)가 전담 — 경합 시 화면 파손 방지
         if(typeof _initSP==='function') await _initSP();
-        try{ if(typeof renderDashboard==='function') renderDashboard(); }catch(e){}
-        try{ if(typeof renderRepSummary==='function') renderRepSummary(); }catch(e){}
+        // 이미 앱이 초기화된 상태(새로고침 복원 등)에서만 갱신 렌더
+        if(window._appInitialized){
+          try{ if(typeof renderDashboard==='function') renderDashboard(); }catch(e){}
+          try{ if(typeof renderRepSummary==='function') renderRepSummary(); }catch(e){}
+        }
       } else {
         // session 없음 = 아직 로그인창에서 담당자 선택 전
         // 토큰만 갱신하고 앱 초기화는 하지 않음 → 로그인창 유지
