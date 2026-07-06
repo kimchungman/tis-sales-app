@@ -4811,7 +4811,7 @@ window._updateSidebarByRole=function(){
         </div>
         <!-- 탭: 금주/지난주/회의록조회 -->
         <div style="flex-shrink:0;display:flex;border-bottom:1px solid var(--border);">
-          <div id="wk-log-tab-this" onclick="_wkLogTab('this')" style="padding:8px 13px;font-size:12px;font-weight:500;cursor:pointer;border-bottom:2px solid #378ADD;margin-bottom:-1px;color:#185FA5;white-space:nowrap;">금주<span id="wk-log-cnt-this" style="display:none;margin-left:3px;font-size:10px;padding:1px 5px;border-radius:10px;background:#E6F1FB;color:#0C447C;font-weight:700;"></span></div>
+          <div id="wk-log-tab-this" onclick="_wkLogTab('this')" style="padding:8px 13px;font-size:12px;font-weight:500;cursor:pointer;border-bottom:2px solid #378ADD;margin-bottom:-1px;color:#185FA5;white-space:nowrap;">이번주<span id="wk-log-cnt-this" style="display:none;margin-left:3px;font-size:10px;padding:1px 5px;border-radius:10px;background:#E6F1FB;color:#0C447C;font-weight:700;"></span></div>
           <div id="wk-log-tab-prev" onclick="_wkLogTab('prev')" style="padding:8px 13px;font-size:12px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;color:var(--muted);white-space:nowrap;">지난주<span id="wk-log-cnt-prev" style="display:none;margin-left:3px;font-size:10px;padding:1px 5px;border-radius:10px;background:#FCEBEB;color:#791F1F;font-weight:700;"></span></div>
           <div id="wk-log-tab-search" onclick="_wkLogTab('search')" style="padding:8px 13px;font-size:12px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;color:var(--muted);white-space:nowrap;">회의록 조회</div>
         </div>
@@ -17495,9 +17495,10 @@ window._wkFillWeeks=function(year){
     var mStr=(mon.getMonth()+1)+'.'+(mon.getDate()<10?'0':'')+mon.getDate()+'.';
     var fStr=(fri.getMonth()+1)+'.'+(fri.getDate()<10?'0':'')+fri.getDate()+'.';
     var hasData=!!existingWeeks[wKey];
+    var isSel=(_wk.weekMode==='period'&&_wk.selectedWeekKey===wKey);
     var item=document.createElement('div');
-    // 카드형 행 스타일
-    item.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:10px;cursor:pointer;border:1.5px solid '+(hasData?'#DBEAFE':'#F1F5F9')+';background:'+(hasData?'#F0F7FF':'#fff')+';margin-bottom:4px;';
+    // 카드형 행 스타일 (현재 선택 주차는 파란 강조)
+    item.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:10px;cursor:pointer;border:'+(isSel?'2px solid #2563EB':'1.5px solid '+(hasData?'#DBEAFE':'#F1F5F9'))+';background:'+(isSel?'#EFF6FF':(hasData?'#F0F7FF':'#fff'))+';margin-bottom:4px;'+(isSel?'box-shadow:0 0 0 3px rgba(37,99,235,.12);':'');
     item.dataset.wkey=wKey;
     item.dataset.hasdata=hasData?'1':'0';
     item.innerHTML=
@@ -17508,7 +17509,8 @@ window._wkFillWeeks=function(year){
           +'<div style="font-size:11px;color:#94A3B8;margin-top:1px;">'+mStr+' ~ '+fStr+'</div>'
         +'</div>'
       +'</div>'
-      +(hasData?'<span style="font-size:10px;font-weight:600;color:#4f7fff;background:#EFF6FF;border-radius:20px;padding:2px 8px;white-space:nowrap;">데이터 있음</span>':'');
+      +(hasData?'<span style="font-size:10px;font-weight:600;color:#4f7fff;background:#EFF6FF;border-radius:20px;padding:2px 8px;white-space:nowrap;">데이터 있음</span>':'')
+      +(isSel?'<span style="font-size:10px;font-weight:700;color:#2563EB;background:#DBEAFE;border-radius:20px;padding:2px 9px;margin-left:6px;">✓ 선택됨</span>':'');
     item.onclick=function(){
       // 선택 표시
       wEl.querySelectorAll('div[data-wkey]').forEach(function(el){
@@ -18226,8 +18228,10 @@ function _wkLogTab(tab){
   var input = document.getElementById('wk-log-input');
   if(input) input.style.display = (tab==='this') ? '' : 'none';
   // 금주/지난주 탭 클릭 시 상단 주차 필터도 함께 이동 (조회 탭의 주차 선택과 동일한 동작)
-  if(tab==='this' && typeof window._wkSetWeek==='function') window._wkSetWeek('this');
-  if(tab==='prev' && typeof window._wkSetWeek==='function') window._wkSetWeek('last');
+  if((tab==='this'||tab==='prev') && typeof window._wkSetWeek==='function'){
+    _wk.selectedWeekKey=null; // period 잔재 정리 (하이라이트/모드 일관성)
+    window._wkSetWeek(tab==='this'?'this':'last');
+  }
   // 지난주 탭: 즉시 로드
   if(tab==='prev' && window._isSPReady){
     var prevKey = _wkLastKey();
