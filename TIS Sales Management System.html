@@ -5849,12 +5849,18 @@ function initAllTabs() {
 // ════ 공통 초기 렌더 (관리자/일반 동일하게 실행) ════
 function _initApp(){
   // 세션 없이 앱 초기화 금지 (유령 접속 방지)
-  if(!(typeof session!=='undefined' && session && session.role && session.role!=='locked')){
-    console.warn('[initApp] 유효 세션 없음 - 로그인창 유지');
+  var _sv = (typeof session!=='undefined' && session && session.role && session.role!=='locked' &&
+    (session.role==='admin' || session.role==='guest' || (session.role==='rep' && session.rep && String(session.rep).trim())));
+  if(!_sv){
+    console.warn('[initApp] 유효 세션 없음(role/rep 누락) - 로그인창 유지');
+    window._appInitialized=false;
+    if(typeof closeAuth==='function'){} // 닫지 않음
     if(typeof openAuth==='function') try{ openAuth(); }catch(e){}
     return;
   }
   window._appInitialized=true;
+  // 사이드바 프로필 즉시 반영 (지연 없이 - 담당자 '-' 표시 방지)
+  if(typeof window._updateSidebarProfile==='function') try{ window._updateSidebarProfile(); }catch(e){}
   setTimeout(function(){
     if(typeof window._updateSidebarProfile==='function') window._updateSidebarProfile();
     if(typeof window._updateSidebarByRole==='function') window._updateSidebarByRole();
@@ -8687,6 +8693,10 @@ function renderAuthTeamBtns(){
 }
 
 function closeAuth(){
+  // 안전장치: 유효 세션 없이 닫히려 하면 무시 (로그인창 자동 닫힘·담당자 미지정 방지)
+  var _ok=(typeof session!=='undefined'&&session&&session.role&&session.role!=='locked'&&
+    (session.role==='admin'||session.role==='guest'||(session.role==='rep'&&session.rep&&String(session.rep).trim())));
+  if(!_ok){ console.warn('[closeAuth] 유효 세션 없음 - 닫기 취소'); return; }
   var _am=document.getElementById('auth-modal');
   if(_am) _am.style.display='none';
 }
