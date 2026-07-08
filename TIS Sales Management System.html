@@ -15634,6 +15634,8 @@ function _cdbDoAdd(name){
   var item={id:_cdbNewId(),name:n,contacts:[],note:'',autoAdded:false,createdAt:new Date().toISOString()};
   _cdbAll().push(item);
   if(typeof autoSave==='function') autoSave();
+  // SP 즉시 저장 (10초 동기화가 옛 목록으로 덮어써 신규 고객사가 사라지는 문제 방지)
+  if(window._isSPReady&&typeof _spSaveClientDB==='function') try{ _spSaveClientDB(); }catch(e){}
   var pop=document.getElementById('_cdb_add_pop'); if(pop) pop.remove();
   _cdbRenderList();
   _cdbSelectId(item.id);
@@ -15698,7 +15700,11 @@ function _cdbSyncFromStore(){
       changed=true;
     }
   });
-  if(changed&&typeof autoSave==='function') autoSave();
+  if(changed){
+    if(typeof autoSave==='function') autoSave();
+    // SP 즉시 저장 (10초 동기화가 옛 목록으로 덮어써 자동등록 고객사가 사라지는 문제 방지)
+    if(window._isSPReady&&typeof _spSaveClientDB==='function') try{ _spSaveClientDB(); }catch(e){}
+  }
 }
 
 // ── 페이지 초기화 ──
