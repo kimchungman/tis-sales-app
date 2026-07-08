@@ -4966,6 +4966,7 @@ window._updateSidebarByRole=function(){
           <input id="cdb-search" placeholder="고객사 검색..." oninput="_cdbRenderList(this.value)">
         </div>
         <button class="cdb-fab" onclick="_cdbShowAddPopup()" title="신규 고객사 추가">＋</button>
+        <button class="cdb-fab" onclick="_cdbShowHiddenPopup()" title="숨긴 고객사 관리" style="background:#fff;color:#64748B;border:1px solid #E2E8F0;font-size:13px;">⧉</button>
       </div>
       <div class="cdb-list" id="cdb-list">
         <div style="padding:30px;text-align:center;color:#94A3B8;font-size:12px;">로딩 중...</div>
@@ -14876,6 +14877,14 @@ function _cdbDeleteItem(id){
 }
 
 // 자동 등록 (이름이 없으면 추가)
+function _cdbUndelete(name){
+  var n=(name||'').trim(); if(!n) return;
+  var arr=store.clientDB_deletedNames;
+  if(arr&&arr.length){
+    var i=arr.indexOf(n);
+    if(i>=0){ arr.splice(i,1); if(window._isSPReady&&typeof _spSaveClientDB==='function') try{_spSaveClientDB();}catch(e){} }
+  }
+}
 function _cdbAutoRegister(name){
   if(!name||!name.trim()) return;
   var n=name.trim();
@@ -15594,6 +15603,47 @@ function _cdbToggleManualRep(id,rep,popEl){
   _cdbShowRepPopup(id);
 }
 
+// 숨긴 고객사(삭제목록) 관리 팝업
+function _cdbShowHiddenPopup(){
+  var hidden=(store.clientDB_deletedNames||[]).slice();
+  var old=document.getElementById('_cdb_hidden_pop'); if(old) old.remove();
+  var wrap=document.createElement('div');
+  wrap.id='_cdb_hidden_pop';
+  wrap.style.cssText='position:fixed;inset:0;z-index:10001;background:rgba(15,23,42,.4);display:flex;align-items:center;justify-content:center;padding:20px;';
+  var rows=hidden.length? hidden.map(function(n){
+    var nEsc=_cdbEsc(n), nAttr=n.replace(/'/g,"\\'");
+    return '<div style="display:flex;align-items:center;gap:10px;padding:9px 20px;border-bottom:1px solid #F8FAFC;">'
+      +'<div style="flex:1;min-width:0;font-size:12px;color:#0D1B2E;word-break:break-all;">'+nEsc+'</div>'
+      +'<button onclick="_cdbRestoreHidden(\''+nAttr+'\')" style="padding:4px 12px;border-radius:7px;border:1.5px solid #BFDBFE;background:#EFF6FF;color:#2563EB;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">복구</button>'
+    +'</div>';
+  }).join('') : '<div style="padding:30px 20px;text-align:center;color:#94A3B8;font-size:12px;">숨긴 고객사가 없습니다</div>';
+  wrap.innerHTML='<div style="background:#fff;border-radius:16px;width:100%;max-width:420px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.16);border:1px solid #E2E8F0;">'
+    +'<div style="padding:18px 20px 14px;border-bottom:1px solid #F1F5F9;display:flex;align-items:flex-start;justify-content:space-between;">'
+      +'<div><div style="font-size:15px;font-weight:700;color:#0D1B2E;">숨긴 고객사 관리</div><div style="font-size:11px;color:#94A3B8;margin-top:2px;">삭제된 고객사입니다. 복구하면 목록에 다시 나타납니다.</div></div>'
+      +'<button onclick="document.getElementById(\'_cdb_hidden_pop\').remove()" style="width:27px;height:27px;border-radius:7px;border:1px solid #E2E8F0;background:#F8FAFC;color:#64748B;cursor:pointer;font-size:15px;">✕</button>'
+    +'</div>'
+    +'<div style="overflow-y:auto;flex:1;">'+rows+'</div>'
+    +(hidden.length?'<div style="padding:12px 20px;border-top:1px solid #F1F5F9;"><button onclick="_cdbRestoreAllHidden()" style="width:100%;padding:10px;border-radius:9px;border:none;background:#4f7fff;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">전체 복구 ('+hidden.length+'개)</button></div>':'')
+  +'</div>';
+  document.body.appendChild(wrap);
+  wrap.addEventListener('click',function(e){if(e.target===wrap)wrap.remove();});
+}
+function _cdbRestoreHidden(name){
+  _cdbUndelete(name);
+  if(typeof _cdbSyncFromStore==='function') _cdbSyncFromStore();
+  _cdbRenderList((document.getElementById('cdb-search')||{}).value||'');
+  _cdbShowHiddenPopup(); // 팝업 갱신
+  if(typeof showToast==='function') showToast('✅ "'+name+'" 복구됨');
+}
+function _cdbRestoreAllHidden(){
+  store.clientDB_deletedNames=[];
+  if(window._isSPReady&&typeof _spSaveClientDB==='function') try{_spSaveClientDB();}catch(e){}
+  if(typeof _cdbSyncFromStore==='function') _cdbSyncFromStore();
+  _cdbRenderList((document.getElementById('cdb-search')||{}).value||'');
+  var pop=document.getElementById('_cdb_hidden_pop'); if(pop) pop.remove();
+  if(typeof showToast==='function') showToast('✅ 숨긴 고객사를 모두 복구했습니다.');
+}
+
 // 신규 추가 팝업
 function _cdbShowAddPopup(){
   var old=document.getElementById('_cdb_add_pop'); if(old) old.remove();
@@ -15644,11 +15694,14 @@ function _cdbDoAdd(name){
   if(!n){if(inp)inp.focus();return;}
   var dup=_cdbByName(n);
   if(dup){
+    _cdbUndelete(n); // 숨김 상태였으면 해제
     var pop=document.getElementById('_cdb_add_pop'); if(pop) pop.remove();
+    _cdbRenderList();
     _cdbSelectId(dup.id);
     if(typeof showToast==='function') showToast('"'+n+'"은 이미 등록된 고객사입니다.');
     return;
   }
+  _cdbUndelete(n); // 삭제목록에 있으면 해제 (삭제 후 재등록 정상화)
   var item={id:_cdbNewId(),name:n,contacts:[],note:'',autoAdded:false,createdAt:new Date().toISOString()};
   _cdbAll().push(item);
   if(typeof autoSave==='function') autoSave();
