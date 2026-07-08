@@ -5036,6 +5036,42 @@ let currentTeam = '솔루션영업팀'; // 현재 선택된 팀
 // AUTH SESSION
 // ══════════════════════════════════════════
 let session = { role: 'locked', rep: null, team: null };
+
+// ── 세션 무결성 감시자 (담당자 '-' / 유령접속 근본 차단) ──
+// 어떤 경로로든 (1) 로그인창이 닫혔는데 세션이 무효면 → 로그인창 복귀
+//                (2) 세션은 유효한데 사이드바가 '-'면 → 프로필 재렌더
+// 300ms 주기로 감시하여 원인 경로와 무관하게 상태를 자가 치유
+window._sessionValid = function(){
+  return session && session.role && session.role!=='locked' &&
+    (session.role==='admin' || session.role==='guest' ||
+     (session.role==='rep' && session.rep && String(session.rep).trim()));
+};
+window._startSessionWatchdog = function(){
+  if(window._sessionWatchdogId) return;
+  window._sessionWatchdogId = setInterval(function(){
+    try{
+      var authModal = document.getElementById('auth-modal');
+      var authOpen = authModal && getComputedStyle(authModal).display!=='none';
+      var valid = window._sessionValid();
+      if(valid){
+        // 세션 유효 → 사이드바가 '-'로 남아있으면 강제로 다시 그림
+        var nm = document.getElementById('sb-pname');
+        if(nm && (nm.textContent==='-' || nm.textContent==='')){
+          if(typeof window._updateSidebarProfile==='function') window._updateSidebarProfile();
+        }
+        // 유효 세션인데 앱이 초기화 안 됐으면 초기화
+        if(!window._appInitialized && typeof _initApp==='function'){ _initApp(); }
+      } else {
+        // 세션 무효인데 로그인창이 닫혀있으면(=유령접속) 즉시 로그인창 복귀
+        if(!authOpen && window._appInitialized){
+          console.warn('[세션감시] 유령접속 감지 - 로그인창 복귀');
+          window._appInitialized=false;
+          if(typeof openAuth==='function') openAuth();
+        }
+      }
+    }catch(e){}
+  }, 300);
+};
 let authCfg = { adminPw: '13579',
   chartType: 'combo', guestPw: '', repPws: {}, repPerms: {}, repEmails: {}, repTitles: {}, hiddenReps: [], cdbHiddenReps: [], teamReps: {'솔루션영업팀':['전성현','허인수','김충만','최원진'],'그룹지원팀':[]}, teamColors: {'솔루션영업팀':['#1E5FBE','#00A882','#C05000','#7B2FBE'],'그룹지원팀':[]} };
 
@@ -5488,6 +5524,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   try{ renderPipeline(); }catch(e){ console.warn('renderPipeline',e); }
   try{ applyLabels(); }catch(e){ console.warn('applyLabels',e); }
   setTimeout(()=>{
+    if(typeof window._startSessionWatchdog==='function') window._startSessionWatchdog();
     attachAllNumFormats();
     extractIssues();
     renderIssues();
