@@ -14067,8 +14067,29 @@ async function _spSyncOtherReps(){
         if(p.clientDB&&Array.isArray(p.clientDB)){
           var spAt = new Date(p.savedAt||0).getTime();
           var localAt = new Date(store._clientDBSavedAt||0).getTime();
-          // 로컬이 더 최신이면 SP 덮어쓰기 방지 (삭제/수정 보호)
-          // 최근 30초 내 로컬 저장이 있으면 로컬 우선
+          // 삭제목록은 clientDB 본문 병합 여부와 무관하게 "항상 합집합" 병합
+          // → 누가 어디서 삭제하든 삭제는 절대 유실되지 않고 팀 전체로 전파됨
+          if(p.deletedNames&&Array.isArray(p.deletedNames)){
+            if(!store.clientDB_deletedNames) store.clientDB_deletedNames=[];
+            if(!store.clientDB_deletedMeta) store.clientDB_deletedMeta={};
+            var _spMeta=p.deletedMeta||{};
+            var _restoreAll=Math.max(store.clientDB_restoreAllAt||0, p.restoreAllAt||0);
+            var _restMeta=store.clientDB_restoredMeta||{};
+            p.deletedNames.forEach(function(n){
+              var _delAt=_spMeta[n]||store.clientDB_deletedMeta[n]||1; // 시각 불명이면 1(과거)
+              // 복구가 더 최신이면 삭제 무효
+              if(_delAt < _restoreAll) return;
+              if(_restMeta[n] && _restMeta[n] > _delAt) return;
+              if(store.clientDB_deletedNames.indexOf(n)<0) store.clientDB_deletedNames.push(n);
+              if(!store.clientDB_deletedMeta[n]) store.clientDB_deletedMeta[n]=_delAt;
+            });
+            // 로컬 restoreAllAt도 SP와 합침
+            if(p.restoreAllAt&&p.restoreAllAt>(store.clientDB_restoreAllAt||0)) store.clientDB_restoreAllAt=p.restoreAllAt;
+            store.clientDB=(store.clientDB||[]).filter(function(c){
+              return store.clientDB_deletedNames.indexOf((c.name||'').trim())<0;
+            });
+          }
+          // 로컬이 더 최신이면 clientDB 본문은 로컬 우선 (삭제목록은 위에서 이미 병합됨)
           var recentlySaved = (Date.now() - (window._lastCdbSaveTs||0)) < 30000;
           if(recentlySaved || localAt > spAt) return;
           // SP가 더 최신이면 SP를 정답으로 (이름 기준 중복 제거)
@@ -14086,16 +14107,7 @@ async function _spSyncOtherReps(){
             return _delNames.indexOf((item.name||'').trim()) < 0;
           });
           store.clientDB = _filtered;
-          // 삭제목록: 타임스탬프 기준 - SP가 로컬보다 최신이면 SP 것으로 "교체"(합치기 아님)
-          // → 누군가 전체복구/정리하면 그게 최신 기준으로 모두에게 반영됨 (되살아나지 않음)
-          var _spTs=p.savedAt||'', _localTs=store._clientDBSavedAt||'';
-          if(p.deletedNames&&Array.isArray(p.deletedNames)){
-            if(!_localTs || _spTs>=_localTs){
-              store.clientDB_deletedNames=p.deletedNames.slice(); // SP가 최신 → 교체
-            }
-            // 로컬이 더 최신이면 로컬 유지 (내 변경 보호), 다음 저장 때 SP로 올라감
-          }
-          store._clientDBSavedAt = _spTs>_localTs ? _spTs : _localTs;
+          store._clientDBSavedAt = (p.savedAt||'') > (store._clientDBSavedAt||'') ? p.savedAt : store._clientDBSavedAt;
         }
       }catch(e){}
     });
@@ -14908,6 +14920,9 @@ function _cdbDeleteItem(id){
   if(item&&item.name){
     if(!store.clientDB_deletedNames) store.clientDB_deletedNames=[];
     if(store.clientDB_deletedNames.indexOf(item.name)<0) store.clientDB_deletedNames.push(item.name);
+    // 삭제 시각 기록 (복구 마커보다 이후면 유효 삭제)
+    if(!store.clientDB_deletedMeta) store.clientDB_deletedMeta={};
+    store.clientDB_deletedMeta[item.name]=Date.now();
   }
   store.clientDB=(store.clientDB||[]).filter(function(c){return c.id!==id;});
   if(typeof autoSave==='function') autoSave();
@@ -15673,6 +15688,9 @@ function _cdbShowHiddenPopup(){
 }
 function _cdbRestoreHidden(name){
   _cdbUndelete(name);
+  if(store.clientDB_deletedMeta) delete store.clientDB_deletedMeta[name];
+  if(!store.clientDB_restoredMeta) store.clientDB_restoredMeta={};
+  store.clientDB_restoredMeta[name]=Date.now();
   if(typeof _cdbSyncFromStore==='function') _cdbSyncFromStore();
   _cdbRenderList((document.getElementById('cdb-search')||{}).value||'');
   _cdbShowHiddenPopup(); // 팝업 갱신
@@ -15680,7 +15698,9 @@ function _cdbRestoreHidden(name){
 }
 function _cdbRestoreAllHidden(){
   store.clientDB_deletedNames=[];
-  store._clientDBSavedAt=new Date().toISOString(); // 최신 타임스탬프 → 팀 전체 반영
+  store.clientDB_deletedMeta={};
+  store.clientDB_restoreAllAt=Date.now(); // 이 시각 이전 삭제는 모두 무효 (팀 전체 전파)
+  store._clientDBSavedAt=new Date().toISOString();
   if(window._isSPReady&&typeof _spSaveClientDB==='function') try{_spSaveClientDB();}catch(e){}
   if(typeof _cdbSyncFromStore==='function') _cdbSyncFromStore();
   _cdbRenderList((document.getElementById('cdb-search')||{}).value||'');
@@ -16479,7 +16499,7 @@ async function _spSaveClientDB(){
   if(!window._isSPReady) return;
   try{
     var _now = new Date().toISOString();
-    var payload={clientDB:_cdbAll(),deletedNames:store.clientDB_deletedNames||[],savedAt:_now};
+    var payload={clientDB:_cdbAll(),deletedNames:store.clientDB_deletedNames||[],deletedMeta:store.clientDB_deletedMeta||{},restoreAllAt:store.clientDB_restoreAllAt||0,restoredMeta:store.clientDB_restoredMeta||{},savedAt:_now};
     await _spSaveItem('client_db','clientDB',payload);
     // 저장 시각 기록 (sync 덮어쓰기 방지)
     store._clientDBSavedAt = _now;
