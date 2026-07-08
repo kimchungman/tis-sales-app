@@ -5999,6 +5999,11 @@ function showPage(id,navEl){
       if(typeof _currentVisitsTeam !== 'undefined') _currentVisitsTeam = session.team;
     }
     if(typeof renderVisits==='function') renderVisits();
+  } else if(id==='clients'){
+    // 고객사관리 진입: 전 담당자 데이터(활동/계약/이슈/접점)에서 고객사 자동 수집 후 목록 렌더
+    if(typeof _cdbSyncFromStore==='function') try{ _cdbSyncFromStore(); }catch(e){}
+    if(typeof _cdbRenderList==='function') try{ _cdbRenderList(); }catch(e){}
+    if(typeof _cdbSelectedId!=='undefined' && _cdbSelectedId && typeof _cdbRenderDetail==='function') try{ _cdbRenderDetail(_cdbSelectedId); }catch(e){}
   } else if(id==='dashboard'){
     try{ initDashTabs(); }catch(e){}
     try{ if(typeof renderDashboard==='function') renderDashboard(); }catch(e){}
