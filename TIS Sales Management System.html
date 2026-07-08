@@ -11579,7 +11579,11 @@ async function _initSPCore() {
       // 견적서 목록 동기화 (견적 페이지가 열려있을 때만)
       try{
         var _qPage=document.getElementById('page-quotation');
-        if(_qPage&&_qPage.style.display!=='none'&&typeof qt_spFetchQuotes==='function'){
+        var _wmOpen=(function(){var m=document.getElementById('writeModal');return m&&getComputedStyle(m).display!=='none';})();
+        var _pdfOpen=(function(){var o=document.getElementById('pdfOv');return o&&getComputedStyle(o).display!=='none';})();
+        var _setOpen=(function(){var s=document.getElementById('settingModal');return s&&!s.classList.contains('hidden')&&getComputedStyle(s).display!=='none';})();
+        // 작성/미리보기/설정 모달이 열려있으면 동기화 보류 (편집 중 덮어쓰기·재렌더 방지)
+        if(_qPage&&_qPage.style.display!=='none'&&!_wmOpen&&!_pdfOpen&&!_setOpen&&typeof qt_spFetchQuotes==='function'){
           await qt_spFetchQuotes();
         }
       }catch(e){}
@@ -20105,9 +20109,10 @@ var QT_MODE = 'new';   // new / edit / copy / ver
 var QT_LOGO_SRC = null;
 var QT_CHIP_FILTER = '';
 var QT_GRADES = {
-  tak:  {sp:{c:28035714,p:18000000},sr:{c:25019615,p:15600000},mi:{c:20516667,p:12500000},jr:{c:16960526,p:11400000}},
-  rel:  {sp:{c:28035714,p:16000000},sr:{c:25019615,p:14000000},mi:{c:20516667,p:11000000},jr:{c:16960526,p:10000000}},
-  ext:  {sp:{c:28035714,p:20000000},sr:{c:25019615,p:18000000},mi:{c:20516667,p:15000000},jr:{c:16960526,p:13000000}}
+  '특급':{tak:{c:28035714,p:18000000},rel:{c:28035714,p:16000000},ext:{c:28035714,p:20000000}},
+  '고급':{tak:{c:25019615,p:15600000},rel:{c:25019615,p:14000000},ext:{c:25019615,p:18000000}},
+  '중급':{tak:{c:20516667,p:12500000},rel:{c:20516667,p:11000000},ext:{c:20516667,p:15000000}},
+  '초급':{tak:{c:16960526,p:11400000},rel:{c:16960526,p:10000000},ext:{c:16960526,p:13000000}}
 };
 var QT_SETTINGS = {};
 
@@ -20690,9 +20695,7 @@ function qtAddCustRow(bodyId,hdId){
 function qtGetGrade(gradeName,src){
   var srcMap={tak:'tak',rel:'rel',ext:'ext','관계사':'rel','대외':'ext','TAK':'tak'};
   var s=srcMap[src]||'tak';
-  var gradeMap={'특급':'sp','고급':'sr','중급':'mi','초급':'jr'};
-  var g=gradeMap[gradeName]||'mi';
-  return QT_GRADES[s]&&QT_GRADES[s][g]?QT_GRADES[s][g]:{c:20516667,p:12500000};
+  return (QT_GRADES[gradeName]&&QT_GRADES[gradeName][s])||{c:20516667,p:12500000};
 }
 function qtFmtN(v){return Math.round(v).toLocaleString();}
 function qtParseN(s){return parseFloat((s||'').replace(/,/g,'').replace(/[^0-9.]/g,''))||0;}
@@ -21246,6 +21249,23 @@ window._qtShowPage=function(){
           <div class="fg"><label class="flbl">유효기간 기본값</label><input class="fi" id="defValidity" value="견적 제출일로부터 30일 이내" style="font-size:11px;padding:5px 8px;"></div>
         </div>
       </div>
+      <!-- 유형별 기본 조건 -->
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-top:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;flex-wrap:wrap;gap:8px;">
+          <div style="font-size:12.5px;font-weight:800;color:var(--navy);">유형별 기본 조건 <span style="font-size:10px;font-weight:500;color:var(--sub);">견적 작성 시 선택한 유형의 조건이 자동 적용됩니다 · 작성 중 자유 수정 가능</span></div>
+          <div style="display:flex;gap:4px;" id="condTypeTabs">
+            <div class="chip on" data-ct="dev" onclick="qt_condTab(this)" style="cursor:pointer;">개발 구축</div>
+            <div class="chip" data-ct="ma" onclick="qt_condTab(this)" style="cursor:pointer;">유지보수</div>
+            <div class="chip" data-ct="lic" onclick="qt_condTab(this)" style="cursor:pointer;">라이선스·상품</div>
+            <div class="chip" data-ct="etc" onclick="qt_condTab(this)" style="cursor:pointer;">기타</div>
+          </div>
+        </div>
+        <div class="g2" style="grid-template-columns:1fr;gap:9px;">
+          <div class="fg"><label class="flbl">대금지급조건</label><input class="fi" id="ct-payment" style="font-size:11px;padding:6px 9px;"></div>
+          <div class="fg"><label class="flbl">일반조건</label><textarea class="fi" id="ct-general" rows="3" style="font-size:11px;padding:6px 9px;resize:vertical;line-height:1.6;"></textarea></div>
+          <div class="fg"><label class="flbl">기타조건</label><textarea class="fi" id="ct-other" rows="2" style="font-size:11px;padding:6px 9px;resize:vertical;line-height:1.6;"></textarea></div>
+        </div>
+      </div>
     </div>
   </div>
   <div class="modal-ft"><div></div><div style="display:flex;gap:7px;"><button class="btn btn-sec" onclick="qt_closeSetting()">취소</button><button class="btn btn-pri" onclick="qt_saveSetting()">저장</button></div></div>
@@ -21326,9 +21346,19 @@ window._qtShowPage=function(){
       <div class="g2">
         <div class="fg" style="grid-column:1/-1"><label class="flbl">프로젝트명</label><input class="fi" id="projectName"></div>
         <div class="fg"><label class="flbl">고객사</label><input class="fi" id="clientName"></div>
+        <div class="fg"><label class="flbl">견적 유형</label><select class="fsel" id="quoteType" onchange="qt_onTypeChange(this.value)" style="width:100%;"><option value="dev">개발 구축</option><option value="ma">유지보수 (MA)</option><option value="lic">라이선스·상품</option><option value="etc">기타</option></select></div>
         <div class="fg"><label class="flbl">견적 No. (자동생성)</label><input class="fi fi-ro" id="quoteNo" value="" readonly></div>
         <div class="fg"><label class="flbl">견적 일자</label><input class="fi" type="date" id="quoteDate" style="width:100%;" onclick="try{this.showPicker();}catch(e){}"></div>
         <div class="fg"><label class="flbl">유효기간</label><select class="fsel" id="validSel" onchange="qt_toggleValidInput(this)" style="width:100%;"><option value="30">견적 제출일로부터 30일 이내</option><option value="60">견적 제출일로부터 60일 이내</option><option value="direct">직접 입력...</option></select><div id="validDirectWrap" style="display:none;"><div style="display:flex;gap:6px;align-items:center;"><input class="fi" id="validInput" placeholder="유효기간을 직접 입력하세요" style="flex:1;border-color:var(--blue);background:#FAFEFF;"><button type="button" onclick="qt_resetValidSel()" style="height:34px;padding:0 10px;border:1px solid var(--border);border-radius:var(--rs);background:#fff;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap;font-family:inherit;flex-shrink:0;">↩ 목록</button></div></div></div>
+        <div class="fg" id="maPeriodWrap" style="grid-column:1/-1;display:none;">
+          <label class="flbl">계약기간 <span style="font-weight:400;color:var(--sub);">(유지보수)</span></label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input class="fi" type="date" id="maStart" style="flex:1;" onclick="try{this.showPicker();}catch(e){}" onchange="qt_calcMaMonths()">
+            <span style="color:var(--sub);font-size:12px;flex-shrink:0;">~</span>
+            <input class="fi" type="date" id="maEnd" style="flex:1;" onclick="try{this.showPicker();}catch(e){}" onchange="qt_calcMaMonths()">
+            <span id="maMonthsBadge" style="flex-shrink:0;font-size:11px;font-weight:700;color:#1D4ED8;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:5px 10px;white-space:nowrap;">— 개월</span>
+          </div>
+        </div>
         
       </div>
     </div>
@@ -21818,7 +21848,7 @@ function qt_getPdfData(){
   return {
     proj:proj, client:client, recv:recv, ref:ref, sender:sender,
     date:dateEl&&dateEl.value?new Date(dateEl.value).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'}):'',
-    validity:validity,
+    validity:validity, maStart:(document.getElementById('maStart')||{}).value||'', maEnd:(document.getElementById('maEnd')||{}).value||'', maMonths:(typeof qt_calcMaMonths==='function'?qt_calcMaMonths():0),
     no:noEl?noEl.value:'',
     phone:phone,
     discAmt:discAmt, totalPropose:totalPropose, finalAmt:finalAmt,
@@ -21906,17 +21936,117 @@ function qt_closeSetting(){document.getElementById('settingModal').classList.add
 function qt_delRow(btn){btn.closest('tr').remove();}
 function qt_rmBlk(id){var b=document.getElementById(id);if(b)b.remove();}
 
-// MM 단가
-QT_GRADES={'특급':{c:28035714,p:18000000},'고급':{c:25019615,p:15600000},'중급':{c:20516667,p:12500000},'초급':{c:16960526,p:11400000}};
+// MM 단가 (기본값은 상단 QT_GRADES 등급우선 스키마 단일 정의 사용 — 평면 재대입 제거)
+// ── 유형별 기본 조건 (QT_SETTINGS.condByType — SP qtSettings payload에 포함되어 팀 공유·동기화) ──
+var QT_COND_DEFAULTS={
+  dev:{payment:'추후 별도 협의',
+       general:'1. 본 견적은 프로젝트를 기반으로 산정한 견적입니다.',
+       other:'1. 추가 요구사항의 경우 세부 협의 후 추가 공수 산정 필요'},
+  ma: {payment:'계약 후 분기별 균등 청구',
+       general:'1. 본 견적은 연간 유지보수 기준으로 산정한 견적입니다.\n2. 유지보수 범위는 계약서에 명시된 시스템에 한합니다.',
+       other:'1. 장애 대응 및 SLA 기준은 유지보수 계약서를 따릅니다.'},
+  lic:{payment:'납품 완료 후 일괄 청구',
+       general:'1. 본 견적은 라이선스/상품 공급 기준으로 산정한 견적입니다.\n2. 제조사 정책에 따라 공급 단가가 변동될 수 있습니다.',
+       other:'1. 납기는 발주 후 제조사 일정에 따라 확정됩니다.'},
+  etc:{payment:'추후 별도 협의',
+       general:'1. 본 견적은 협의된 범위를 기준으로 산정한 견적입니다.',
+       other:'1. 세부 조건은 상호 협의 후 확정합니다.'}
+};
+function qt_getCondByType(t){
+  var saved=(QT_SETTINGS.condByType&&QT_SETTINGS.condByType[t])||{};
+  var def=QT_COND_DEFAULTS[t]||QT_COND_DEFAULTS.dev;
+  return {payment:saved.payment!==undefined&&saved.payment!==''?saved.payment:def.payment,
+          general:saved.general!==undefined&&saved.general!==''?saved.general:def.general,
+          other:saved.other!==undefined&&saved.other!==''?saved.other:def.other};
+}
+// 설정 모달: 유형 탭 전환 (현재 탭 값 임시 보관 후 전환)
+window._qtCondTabCur='dev';
+window._qtCondDraft=null; // 설정 열려있는 동안의 편집본
+function qt_condTab(el){
+  qt_condStash(); // 현재 탭 입력값 보관
+  document.querySelectorAll('#condTypeTabs .chip').forEach(function(c){c.classList.remove('on');});
+  el.classList.add('on');
+  window._qtCondTabCur=el.dataset.ct;
+  qt_condFill();
+}
+function qt_condStash(){
+  if(!window._qtCondDraft) return;
+  var t=window._qtCondTabCur;
+  window._qtCondDraft[t]={
+    payment:(document.getElementById('ct-payment')||{}).value||'',
+    general:(document.getElementById('ct-general')||{}).value||'',
+    other:(document.getElementById('ct-other')||{}).value||''
+  };
+}
+function qt_condFill(){
+  var t=window._qtCondTabCur;
+  var v=(window._qtCondDraft&&window._qtCondDraft[t])||qt_getCondByType(t);
+  var p=document.getElementById('ct-payment'); if(p) p.value=v.payment||'';
+  var g=document.getElementById('ct-general'); if(g) g.value=v.general||'';
+  var o=document.getElementById('ct-other'); if(o) o.value=v.other||'';
+}
+// 설정 열 때 draft 초기화 (저장본+기본값 병합 상태로 시작)
+function qt_condInitDraft(){
+  window._qtCondDraft={};
+  ['dev','ma','lic','etc'].forEach(function(t){ window._qtCondDraft[t]=qt_getCondByType(t); });
+  window._qtCondTabCur='dev';
+  document.querySelectorAll('#condTypeTabs .chip').forEach(function(c){c.classList.toggle('on',c.dataset.ct==='dev');});
+  qt_condFill();
+}
+// ── 작성 모달: 유형 변경 시 조건 자동 적용 + MA 계약기간 토글 ──
+window._qtCondDirty=false; // 사용자가 조건을 손댔는지
+function qt_onTypeChange(t){
+  // MA 계약기간 표시 토글
+  var w=document.getElementById('maPeriodWrap');
+  if(w) w.style.display=(t==='ma')?'':'none';
+  // 조건 적용: 손대지 않았으면 자동, 손댔으면 확인
+  var apply=true;
+  if(window._qtCondDirty){
+    apply=confirm('조건 내용을 선택한 유형('+({dev:'개발 구축',ma:'유지보수',lic:'라이선스·상품',etc:'기타'}[t]||t)+')의 기본값으로 교체할까요?\n(직접 수정한 내용은 사라집니다)');
+  }
+  if(apply){
+    var v=qt_getCondByType(t);
+    var p=document.getElementById('paymentCond'); if(p) p.value=v.payment;
+    var g=document.getElementById('generalCond'); if(g) g.value=v.general;
+    var o=document.getElementById('otherCond'); if(o) o.value=v.other;
+    window._qtCondDirty=false;
+  }
+}
+// 조건 필드 수동 편집 감지 (1회 바인딩은 DOMContentLoaded에서)
+function qt_bindCondDirty(){
+  ['paymentCond','generalCond','otherCond'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el&&!el._qtDirtyBound){ el._qtDirtyBound=true; el.addEventListener('input',function(){ window._qtCondDirty=true; }); }
+  });
+}
+// MA 계약기간 개월 계산
+function qt_calcMaMonths(){
+  var s=(document.getElementById('maStart')||{}).value, e=(document.getElementById('maEnd')||{}).value;
+  var b=document.getElementById('maMonthsBadge');
+  if(!s||!e){ if(b) b.textContent='— 개월'; return 0; }
+  var sd=new Date(s), ed=new Date(e);
+  var m=(ed.getFullYear()-sd.getFullYear())*12+(ed.getMonth()-sd.getMonth());
+  if(ed.getDate()>=sd.getDate()-1) m+=1; // 말일 보정 포함 개월수
+  if(m<1) m=1;
+  if(b) b.textContent=m+'개월';
+  return m;
+}
+
 function qt_getGradeRates(gradeName, src){
+  // 단일 소스: 저장된 QT_GRADES 사용 (설정 저장 → SP → 재접속 로드까지 일관)
+  // src는 select value 기준: 'tak' | 'rel' | 'ext' (한글 표기도 허용)
+  var s=(src==='관계사'||src==='rel')?'rel':(src==='대외'||src==='ext')?'ext':'tak';
+  var g=(typeof QT_GRADES!=='undefined'&&QT_GRADES[gradeName]&&QT_GRADES[gradeName][s])||null;
+  if(g&&(g.c||g.p)) return {c:g.c||0,p:g.p||0};
+  // 폴백: 설정 모달 input (설정 화면에서 저장 전 미리계산용)
   var gradeIdx={'특급':0,'고급':1,'중급':2,'초급':3};
-  var idx=gradeIdx[gradeName]||1;
-  var prefix=(src==='관계사')?'rel':(src==='대외')?'ext':'tak';
-  var sEl=document.getElementById(prefix+'-s-'+idx);
-  var pEl=document.getElementById(prefix+'-p-'+idx);
-  var sc=sEl?parseFloat(sEl.value.replace(/,/g,''))||QT_GRADES[gradeName].c:QT_GRADES[gradeName].c;
-  var pc=pEl?parseFloat(pEl.value.replace(/,/g,''))||QT_GRADES[gradeName].p:QT_GRADES[gradeName].p;
-  return {c:sc,p:pc};
+  var idx=gradeIdx[gradeName]!==undefined?gradeIdx[gradeName]:1;
+  var sEl=document.getElementById(s+'-s-'+idx);
+  var pEl=document.getElementById(s+'-p-'+idx);
+  return {
+    c:sEl?parseFloat((sEl.value||'0').replace(/,/g,''))||0:0,
+    p:pEl?parseFloat((pEl.value||'0').replace(/,/g,''))||0:0
+  };
 }
 // 자동높이
 function qt_autoH(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}
@@ -22130,6 +22260,7 @@ function qt_openPdf(type,quoteId){
     var q2=QUOTES.find(function(x){return x.id===quoteId;});
     if(q2){
       d.no=q2.id; d.client=q2.client||d.client; d.proj=q2.proj||d.proj;
+      d.maStart=q2.maStart||''; d.maEnd=q2.maEnd||''; d.maMonths=q2.maMonths||0;
       if(q2.date) d.date=new Date(q2.date).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
     }
   }
@@ -22145,7 +22276,8 @@ function qt_openPdf(type,quoteId){
   window._qt_pdf_q={client:d.client,id:d.no};
   var fname='(TIS) '+(d.client||'').replace(/\s/g,'')+'_'+(d.proj||'').replace(/\s/g,'')+'_견적서_'+(d.no||'');
   document.getElementById('pdfFname').textContent=fname;
-  var _pdfHtml=(type==='ma')?qt_buildMaPdf():qt_buildDevPdf();
+  // MA 전용 레이아웃은 새 디자인 시안 확정 시 적용 예정 — 현재는 전 유형 동적 빌더 사용 (계약기간 줄 포함)
+  var _pdfHtml=qt_buildDevPdf();
   document.getElementById('pdfContent').innerHTML=_pdfHtml; // 저장용 원본 보관(숨김)
   // 원본 시안 CSS로 완전 격리 렌더 (앱 CSS 간섭 차단)
   var _fr=document.getElementById('qtPdfFrame');
@@ -22428,7 +22560,11 @@ function qt_buildDevPdf(){
   h+='<tr><td style="color:#374151;white-space:nowrap;">2. 견적 No.</td><td style="font-weight:600;color:#0F172A;padding-left:12px;">'+noVal+'</td></tr>';
   h+='<tr><td style="color:#374151;white-space:nowrap;">3. 견적 일자</td><td style="font-weight:600;color:#0F172A;padding-left:12px;">'+dateVal+'</td></tr>';
   h+='<tr><td style="color:#374151;white-space:nowrap;">4. 견적 유효기간</td><td style="font-weight:600;color:#0F172A;padding-left:12px;">'+validVal+'</td></tr>';
-  h+='<tr><td style="color:#374151;white-space:nowrap;">5. 견적 금액&nbsp;(VAT 별도)</td><td style="font-weight:600;color:#0F172A;padding-left:12px;">일금 '+amtKor+' 원정 &nbsp;(₩ '+finalAmt.toLocaleString()+')</td></tr>';
+  var _hasMa=(window.PDF_DATA&&window.PDF_DATA.maStart&&window.PDF_DATA.maEnd);
+  if(_hasMa){
+    h+='<tr><td style="color:#374151;white-space:nowrap;">5. 계약 기간</td><td style="font-weight:600;color:#0F172A;padding-left:12px;">'+window.PDF_DATA.maStart.replace(/-/g,'.')+' ~ '+window.PDF_DATA.maEnd.replace(/-/g,'.')+' ('+(window.PDF_DATA.maMonths||'')+'개월)</td></tr>';
+  }
+  h+='<tr><td style="color:#374151;white-space:nowrap;">'+(_hasMa?'6':'5')+'. 견적 금액&nbsp;(VAT 별도)</td><td style="font-weight:600;color:#0F172A;padding-left:12px;">일금 '+amtKor+' 원정 &nbsp;(₩ '+finalAmt.toLocaleString()+')</td></tr>';
   h+='</table></div>';
 
   // ── 견적 항목 ──
@@ -22455,6 +22591,7 @@ function qt_buildDevPdf(){
 }
 
 function qt_buildMaPdf(){
+  var D=window.PDF_DATA||{};
   var phone=D.repPhone||D.phone||SESSION_REP.phone||''; var _rNm=D.repName||SESSION_REP.name, _rTt=D.repTitle||SESSION_REP.title, _rEm=D.repEmail||SESSION_REP.email;
   return `<div class="q-bar1"></div><div class="q-bar2"></div>
 <div class="q-wrap">
@@ -22464,12 +22601,13 @@ function qt_buildMaPdf(){
 </div>
 <div class="q-ttl-sec"><div class="q-ttl-main">견 적 서</div><div class="q-ttl-en">Q U O T A T I O N</div></div>
 <div class="q-info">
-  <div class="q-ic"><div class="q-ic-lbl">수 신</div><div class="q-ic-val">스템코 귀중</div></div>
-  <div class="q-ic"><div class="q-ic-lbl">견적 No.</div><div class="q-ic-val">SQ-CM260130-01</div></div>
-  <div class="q-ic"><div class="q-ic-lbl">참 조</div><div class="q-ic-val">박상열 프로 귀하</div></div>
-  <div class="q-ic"><div class="q-ic-lbl">견적 일자</div><div class="q-ic-val">2026년 1월 30일</div></div>
-  <div class="q-ic"><div class="q-ic-lbl">발 신</div><div class="q-ic-val">티에이케이정보시스템(주)</div></div>
-  <div class="q-ic"><div class="q-ic-lbl">유효기간</div><div class="q-ic-val">견적 제출일로부터 30일 이내</div></div>
+  <div class="q-ic"><div class="q-ic-lbl">수 신</div><div class="q-ic-val">${D.recv||''}</div></div>
+  <div class="q-ic"><div class="q-ic-lbl">견적 No.</div><div class="q-ic-val">${D.no||''}</div></div>
+  <div class="q-ic"><div class="q-ic-lbl">참 조</div><div class="q-ic-val">${D.ref||''}</div></div>
+  <div class="q-ic"><div class="q-ic-lbl">견적 일자</div><div class="q-ic-val">${D.date||''}</div></div>
+  <div class="q-ic"><div class="q-ic-lbl">발 신</div><div class="q-ic-val">${D.sender||''}</div></div>
+  <div class="q-ic"><div class="q-ic-lbl">유효기간</div><div class="q-ic-val">${D.validity||''}</div></div>
+  ${(D.maStart&&D.maEnd)?('<div class="q-ic"><div class="q-ic-lbl">계약 기간</div><div class="q-ic-val"><b>'+D.maStart.replace(/-/g,'.')+' ~ '+D.maEnd.replace(/-/g,'.')+' ('+(D.maMonths||'')+'개월)</b></div></div>'):''}
 </div>
 <div class="q-amt-hero">
   <div><div class="q-amt-lbl">견적 금액 (VAT 별도)</div><div class="q-amt-kr">일금 삼천팔백육십오만원정</div></div>
@@ -22580,9 +22718,17 @@ function qt_openModal(mode,quoteId){
       var el=document.getElementById(id); if(el) el.value='';
     });
     var _fr=document.getElementById('fromName'); if(_fr) _fr.value=(QT_SETTINGS.sender||'티에이케이정보시스템(주)');
-    var _pc=document.getElementById('paymentCond'); if(_pc) _pc.value='추후 별도 협의';
-    var _oc=document.getElementById('otherCond'); if(_oc) _oc.value='1. 추가 요구사항의 경우 세부 협의 후 추가 공수 산정 필요';
-    var _gc=document.getElementById('generalCond'); if(_gc) _gc.value=QT_SETTINGS.generalCond||_gc.value||'';
+    var _ts=document.getElementById('quoteType'); if(_ts) _ts.value='dev';
+    var _ms=document.getElementById('maStart'); if(_ms) _ms.value='';
+    var _me=document.getElementById('maEnd'); if(_me) _me.value='';
+    var _mw=document.getElementById('maPeriodWrap'); if(_mw) _mw.style.display='none';
+    var _mb=document.getElementById('maMonthsBadge'); if(_mb) _mb.textContent='— 개월';
+    window._qtCondDirty=false;
+    var _cv=qt_getCondByType('dev');
+    var _pc=document.getElementById('paymentCond'); if(_pc) _pc.value=_cv.payment;
+    var _oc=document.getElementById('otherCond'); if(_oc) _oc.value=_cv.other;
+    var _gc=document.getElementById('generalCond'); if(_gc) _gc.value=_cv.general;
+    qt_bindCondDirty();
     var _ba=document.querySelector('.block-area');
     if(_ba){ _ba.innerHTML=''; QT_BC=0; }
     var _tv=document.querySelector('.total-val'); if(_tv) _tv.textContent='₩ 0';
@@ -22611,6 +22757,27 @@ function _qt_fillModalFromData(q,mode){
   Object.keys(fields).forEach(function(k){
     var el=document.getElementById(fields[k]);if(el) el.value=q[k]||'';
   });
+  // 유형/계약기간 복원
+  (function(){
+    var ts=document.getElementById('quoteType'); if(ts) ts.value=q.type||'dev';
+    var mw=document.getElementById('maPeriodWrap'); if(mw) mw.style.display=(q.type==='ma')?'':'none';
+    var ms=document.getElementById('maStart'); if(ms) ms.value=q.maStart||'';
+    var me=document.getElementById('maEnd'); if(me) me.value=q.maEnd||'';
+    qt_calcMaMonths();
+    window._qtCondDirty=true; // 저장된 조건 보호 (유형 재변경 시 confirm)
+    qt_bindCondDirty();
+  })();
+  // 담당자칸: edit=견적의 원 담당자 / copy·ver=접속자 본인 (새 명의)
+  (function(){
+    var rf=document.getElementById('repNameField');
+    if(!rf) return;
+    if(isEdit && q.rep){
+      var _t=(typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[q.rep])||'';
+      rf.value=q.rep+(_t?' '+_t:'');
+    } else {
+      rf.value=SESSION_REP.name+(SESSION_REP.title?' '+SESSION_REP.title:'');
+    }
+  })();
   // 유효기간 복원 (30/60 = select, 그 외 = 직접입력)
   (function(){
     var v=q.validity||'30';
@@ -22865,6 +23032,9 @@ function qt_saveSetting(){
   QT_SETTINGS.coName=(document.getElementById('coName')||{}).value||'';
   QT_SETTINGS.coCeo=(document.getElementById('coCeo')||{}).value||'';
   QT_SETTINGS.coAddr=(document.getElementById('coAddr')||{}).value||'';
+  // 유형별 기본 조건 저장 (현재 탭 값 보관 후 draft 전체 저장 → SP payload에 포함되어 팀 동기화)
+  qt_condStash();
+  if(window._qtCondDraft) QT_SETTINGS.condByType=JSON.parse(JSON.stringify(window._qtCondDraft));
   // (공유 QT_SETTINGS.email 기록 중단 — authCfg.repEmails 사용)
   QT_SETTINGS.defaultPayment = (document.getElementById('defaultPayment')||{}).value||'';
   QT_SETTINGS.defaultGeneral = (document.getElementById('defaultGeneral')||{}).value||'';
@@ -22971,6 +23141,7 @@ function qt_openSetting(){
   var ed=document.getElementById('repEmailDisp'); if(ed) ed.value=re;
   var ph=document.getElementById('myPhone');      if(ph) ph.value=(QT_SETTINGS.phones&&QT_SETTINGS.phones[rn])||'';
   qt_fillSettingUI();
+  qt_condInitDraft();
   // 단가 입력 천단위 콤마 자동 포맷 (1회 바인딩)
   if(!window._riFmtBound){
     window._riFmtBound=true;
@@ -23002,9 +23173,8 @@ function qt_saveCurrentQuote(){
     return;
   }
 
-  // 유형
-  var typeCard=document.querySelector('.tsc.sel-dev,.tsc.sel-ma,.tsc.sel-lic,.tsc.sel-mix');
-  var type=(typeCard&&typeCard.dataset.type)||'dev';
+  // 유형 (t1 select 기준)
+  var type=(document.getElementById('quoteType')||{}).value||'dev';
 
   // 유효기간 (실제 ID: validSel / validInput)
   var validSel=document.getElementById('validSel');
@@ -23048,6 +23218,9 @@ function qt_saveCurrentQuote(){
     otherCond:(document.getElementById('otherCond')||{}).value||'',
     internalMemo:(document.getElementById('internalMemo')||{}).value||'',
     changeSum:(document.getElementById('changeSummary')||{}).value||'',
+    maStart:(document.getElementById('maStart')||{}).value||'',
+    maEnd:(document.getElementById('maEnd')||{}).value||'',
+    maMonths:(type==='ma')?qt_calcMaMonths():0,
     status:'draft', round:1, parentId:null,
     items:{blocks:blocks},
     modifiedAt:now
@@ -23151,7 +23324,9 @@ async function qt_spFetchQuotes(){
       QUOTES=data.quotes;
       _qtCacheQuotes();
     }
+    var _sc=(function(){var el=document.getElementById('qt-content')||document.getElementById('qt-list-body');return el?el.scrollTop:0;})();
     qtRenderQtList();
+    requestAnimationFrame(function(){var el=document.getElementById('qt-content')||document.getElementById('qt-list-body');if(el)el.scrollTop=_sc;});
   }catch(e){
     console.warn('[견적서] SP 로드 실패',e);
     _qtLoadCachedQuotes(); qtRenderQtList();
