@@ -3593,6 +3593,9 @@ window._updateSidebarActive=function(pageId){
 // 역할별 사이드바 메뉴 표시 제어
 window._updateSidebarByRole=function(){
   var role=session&&session.role;
+  // 숨긴 고객사 관리 버튼: 관리자만
+  var _hb=document.getElementById('cdb-hidden-btn');
+  if(_hb) _hb.style.display=(role==='admin')?'flex':'none';
   // 관리자 전용 항목
   var adminItems=['snav-settings','snav-accesslog'];
   adminItems.forEach(function(id){
@@ -4966,7 +4969,7 @@ window._updateSidebarByRole=function(){
           <input id="cdb-search" placeholder="고객사 검색..." oninput="_cdbRenderList(this.value)">
         </div>
         <button class="cdb-fab" onclick="_cdbShowAddPopup()" title="신규 고객사 추가">＋</button>
-        <button class="cdb-fab" onclick="_cdbShowHiddenPopup()" title="숨긴 고객사 관리" style="background:#fff;color:#64748B;border:1px solid #E2E8F0;font-size:13px;">⧉</button>
+        <button class="cdb-fab" id="cdb-hidden-btn" onclick="_cdbShowHiddenPopup()" title="숨긴 고객사 관리 (관리자)" style="background:#fff;color:#64748B;border:1px solid #E2E8F0;font-size:13px;display:none;">⧉</button>
       </div>
       <div class="cdb-list" id="cdb-list">
         <div style="padding:30px;text-align:center;color:#94A3B8;font-size:12px;">로딩 중...</div>
@@ -15659,6 +15662,7 @@ function _cdbToggleManualRep(id,rep,popEl){
 
 // 숨긴 고객사(삭제목록) 관리 팝업
 function _cdbShowHiddenPopup(){
+  if(!(session&&session.role==='admin')){ if(typeof showToast==='function') showToast('관리자만 사용할 수 있습니다.','warn'); return; }
   var hidden=(store.clientDB_deletedNames||[]).slice();
   var old=document.getElementById('_cdb_hidden_pop'); if(old) old.remove();
   var wrap=document.createElement('div');
