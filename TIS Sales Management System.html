@@ -13162,7 +13162,14 @@ function _rebuildVisitTable(rep){
   var tbody=document.getElementById('vt-'+rep);
   if(!tbody) return;
   var _vl=(store.reps[rep].visitLog||[]).filter(function(v){return v&&typeof v==='object';});
-  tbody.innerHTML=_vl.map(function(v,i){ return _vRow(rep,i,v); }).join('');
+  // 최신 등록순 정렬 (날짜 desc, 동일 날짜는 id desc) — 원본 배열 순서 보존 위해 인덱스 매핑
+  var _vlIdx=_vl.map(function(v,i){return {v:v,i:i};});
+  _vlIdx.sort(function(a,b){
+    var da=(a.v.date||''), db=(b.v.date||'');
+    if(da!==db) return db.localeCompare(da);
+    return (Number(b.v.id)||0)-(Number(a.v.id)||0);
+  });
+  tbody.innerHTML=_vlIdx.map(function(o){ return _vRow(rep,o.i,o.v); }).join('');
   // company textarea 자동완성 바인딩
   tbody.querySelectorAll('div[id^="vco_"]').forEach(function(ta){
     ta.setAttribute('autocomplete','new-password');
@@ -13210,7 +13217,7 @@ function _vRow(rep,idx,v){
   function inpCenter(field,val,acKey){
     if(!canEdit) return '<span style="font-size:12px;color:#374151;padding:2px 4px;display:block;text-align:center;">'+( val||'─')+'</span>';
     // contenteditable div - 브라우저 자동완성 완전 차단
-    return '<div '+(acKey?'id="'+acKey+'" ':'')+'contenteditable="true" data-field="'+field+'" data-rep="'+r+'" data-idx="'+idx+'" style="width:100%;min-height:30px;box-sizing:border-box;font-size:12px;font-family:inherit;border:1px solid #E2E8F0;border-radius:6px;padding:4px 8px;outline:none;text-align:center;line-height:1.8;transition:border-color 0.15s;word-break:break-all;white-space:pre-wrap;" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\';var _f=this.dataset.field,_r=this.dataset.rep,_i=parseInt(this.dataset.idx);if(store.reps[_r]&&store.reps[_r].visitLog[_i])store.reps[_r].visitLog[_i][_f]=this.innerText.trim();autoSave&&autoSave();_markVisitLogDirty(_r);">'+_escHtml(val||'')+'</div>';
+    return '<div '+(acKey?'id="'+acKey+'" ':'')+'contenteditable="true" data-field="'+field+'" data-rep="'+r+'" data-idx="'+idx+'" style="width:100%;min-height:30px;box-sizing:border-box;font-size:12px;font-family:inherit;border:1px solid #E2E8F0;border-radius:6px;padding:4px 8px;outline:none;text-align:center;line-height:1.8;transition:border-color 0.15s;word-break:break-all;white-space:pre-wrap;" onfocus="this.style.borderColor=\'#4f7fff\'" onblur="this.style.borderColor=\'#E2E8F0\';var _f=this.dataset.field,_r=this.dataset.rep,_i=parseInt(this.dataset.idx);var _nv=this.innerText.trim();if(store.reps[_r]&&store.reps[_r].visitLog[_i])store.reps[_r].visitLog[_i][_f]=_nv;autoSave&&autoSave();_markVisitLogDirty(_r);if(_f===\'company\'&&_nv&&typeof _cdbAutoRegister===\'function\')_cdbAutoRegister(_nv);">'+_escHtml(val||'')+'</div>';
   }
   function dateInp(field,val){
     var style='width:100%;height:30px;box-sizing:border-box;font-size:12px;font-family:inherit;border:1px solid #E2E8F0;border-radius:6px;padding:0 6px;outline:none;transition:border-color 0.15s;';
