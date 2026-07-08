@@ -14049,14 +14049,16 @@ async function _spSyncOtherReps(){
             return _delNames.indexOf((item.name||'').trim()) < 0;
           });
           store.clientDB = _filtered;
-          store._clientDBSavedAt = p.savedAt||'';
-          // SP의 deletedNames도 병합 (다른 기기에서 삭제한 것 반영)
+          // 삭제목록: 타임스탬프 기준 - SP가 로컬보다 최신이면 SP 것으로 "교체"(합치기 아님)
+          // → 누군가 전체복구/정리하면 그게 최신 기준으로 모두에게 반영됨 (되살아나지 않음)
+          var _spTs=p.savedAt||'', _localTs=store._clientDBSavedAt||'';
           if(p.deletedNames&&Array.isArray(p.deletedNames)){
-            if(!store.clientDB_deletedNames) store.clientDB_deletedNames=[];
-            p.deletedNames.forEach(function(n){
-              if(store.clientDB_deletedNames.indexOf(n)<0) store.clientDB_deletedNames.push(n);
-            });
+            if(!_localTs || _spTs>=_localTs){
+              store.clientDB_deletedNames=p.deletedNames.slice(); // SP가 최신 → 교체
+            }
+            // 로컬이 더 최신이면 로컬 유지 (내 변경 보호), 다음 저장 때 SP로 올라감
           }
+          store._clientDBSavedAt = _spTs>_localTs ? _spTs : _localTs;
         }
       }catch(e){}
     });
@@ -15612,9 +15614,10 @@ function _cdbShowHiddenPopup(){
   wrap.style.cssText='position:fixed;inset:0;z-index:10001;background:rgba(15,23,42,.4);display:flex;align-items:center;justify-content:center;padding:20px;';
   var rows=hidden.length? hidden.map(function(n){
     var nEsc=_cdbEsc(n), nAttr=n.replace(/'/g,"\\'");
-    return '<div style="display:flex;align-items:center;gap:10px;padding:9px 20px;border-bottom:1px solid #F8FAFC;">'
+    return '<div style="display:flex;align-items:center;gap:8px;padding:9px 20px;border-bottom:1px solid #F8FAFC;">'
       +'<div style="flex:1;min-width:0;font-size:12px;color:#0D1B2E;word-break:break-all;">'+nEsc+'</div>'
-      +'<button onclick="_cdbRestoreHidden(\''+nAttr+'\')" style="padding:4px 12px;border-radius:7px;border:1.5px solid #BFDBFE;background:#EFF6FF;color:#2563EB;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">복구</button>'
+      +'<button onclick="_cdbRestoreHidden(\''+nAttr+'\')" style="padding:4px 11px;border-radius:7px;border:1.5px solid #BFDBFE;background:#EFF6FF;color:#2563EB;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">복구</button>'
+      +'<button onclick="_cdbPurgeHidden(\''+nAttr+'\')" title="완전 삭제" style="padding:4px 11px;border-radius:7px;border:1.5px solid #FECACA;background:#FEF2F2;color:#DC2626;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">삭제</button>'
     +'</div>';
   }).join('') : '<div style="padding:30px 20px;text-align:center;color:#94A3B8;font-size:12px;">숨긴 고객사가 없습니다</div>';
   wrap.innerHTML='<div style="background:#fff;border-radius:16px;width:100%;max-width:420px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.16);border:1px solid #E2E8F0;">'
@@ -15623,7 +15626,10 @@ function _cdbShowHiddenPopup(){
       +'<button onclick="document.getElementById(\'_cdb_hidden_pop\').remove()" style="width:27px;height:27px;border-radius:7px;border:1px solid #E2E8F0;background:#F8FAFC;color:#64748B;cursor:pointer;font-size:15px;">✕</button>'
     +'</div>'
     +'<div style="overflow-y:auto;flex:1;">'+rows+'</div>'
-    +(hidden.length?'<div style="padding:12px 20px;border-top:1px solid #F1F5F9;"><button onclick="_cdbRestoreAllHidden()" style="width:100%;padding:10px;border-radius:9px;border:none;background:#4f7fff;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">전체 복구 ('+hidden.length+'개)</button></div>':'')
+    +(hidden.length?'<div style="padding:12px 20px;border-top:1px solid #F1F5F9;display:flex;gap:8px;">'
+      +'<button onclick="_cdbRestoreAllHidden()" style="flex:1;padding:10px;border-radius:9px;border:none;background:#4f7fff;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">전체 복구 ('+hidden.length+')</button>'
+      +'<button onclick="_cdbPurgeAllHidden()" style="flex:1;padding:10px;border-radius:9px;border:1.5px solid #FECACA;background:#FEF2F2;color:#DC2626;font-size:13px;font-weight:600;cursor:pointer;">전체 삭제 ('+hidden.length+')</button>'
+    +'</div>':'')
   +'</div>';
   document.body.appendChild(wrap);
   wrap.addEventListener('click',function(e){if(e.target===wrap)wrap.remove();});
@@ -15637,11 +15643,32 @@ function _cdbRestoreHidden(name){
 }
 function _cdbRestoreAllHidden(){
   store.clientDB_deletedNames=[];
+  store._clientDBSavedAt=new Date().toISOString(); // 최신 타임스탬프 → 팀 전체 반영
   if(window._isSPReady&&typeof _spSaveClientDB==='function') try{_spSaveClientDB();}catch(e){}
   if(typeof _cdbSyncFromStore==='function') _cdbSyncFromStore();
   _cdbRenderList((document.getElementById('cdb-search')||{}).value||'');
   var pop=document.getElementById('_cdb_hidden_pop'); if(pop) pop.remove();
   if(typeof showToast==='function') showToast('✅ 숨긴 고객사를 모두 복구했습니다.');
+}
+// 완전 삭제: 삭제목록에서 이름 제거 + 해당 데이터가 다시 수집되지 않도록 유지(재수집 차단은 삭제목록이 담당하므로, 완전삭제=목록에서만 제거하여 다시는 "숨긴 목록"에도 안 뜸)
+// 단, 실데이터(접점/활동)에 이름이 남아있으면 sync가 재등록하므로, 완전삭제는 "삭제목록에서 빼되 clientDB에도 추가하지 않음"이 아니라 "숨긴목록에서 영구 제거" 의미
+function _cdbPurgeHidden(name){
+  var n=(name||'').trim();
+  var arr=store.clientDB_deletedNames||[];
+  var i=arr.indexOf(n);
+  if(i>=0) arr.splice(i,1);
+  store._clientDBSavedAt=new Date().toISOString();
+  if(window._isSPReady&&typeof _spSaveClientDB==='function') try{_spSaveClientDB();}catch(e){}
+  _cdbShowHiddenPopup();
+  if(typeof showToast==='function') showToast('🗑 "'+n+'" 숨긴 목록에서 제거');
+}
+function _cdbPurgeAllHidden(){
+  if(typeof confirm==='function' && !confirm('숨긴 고객사 목록을 전체 비웁니다.\n(고객사 데이터가 아니라 "숨김 표시"만 제거됩니다)')) return;
+  store.clientDB_deletedNames=[];
+  store._clientDBSavedAt=new Date().toISOString();
+  if(window._isSPReady&&typeof _spSaveClientDB==='function') try{_spSaveClientDB();}catch(e){}
+  var pop=document.getElementById('_cdb_hidden_pop'); if(pop) pop.remove();
+  if(typeof showToast==='function') showToast('🗑 숨긴 목록을 전체 비웠습니다.');
 }
 
 // 신규 추가 팝업
