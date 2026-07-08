@@ -13851,13 +13851,19 @@ async function _spLoadAllVisitLogs(){
         if(!rep) rep=_rawKey;
         var d=JSON.parse(item.Payload||'{}');
         console.log('[visitLog]', rep, ':', (d.visitLog||[]).length, '건');
-        if(d&&Array.isArray(d.visitLog)&&d.visitLog.length>0&&store.reps[rep]){
+        if(d&&Array.isArray(d.visitLog)&&d.visitLog.length>0){
+          // store.reps[rep]이 없어도 최소 구조로 생성해 visitLog 보존 (누락 방지)
+          if(!store.reps[rep]) store.reps[rep]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[],contracts:[]};
           store.reps[rep].visitLog=d.visitLog;
         }
       }catch(e){}
     });
-    // 로드 완료 후 화면 갱신
+    // 로드 완료 후: 접점 회사 → 고객사 자동 수집 + 화면 갱신
+    if(typeof _cdbSyncFromStore==='function') try{ _cdbSyncFromStore(); }catch(e){}
     if(typeof renderVisits==='function') try{ renderVisits(); }catch(e){}
+    // 고객사관리 페이지가 열려있으면 목록 갱신
+    var _cp=document.getElementById('page-clients');
+    if(_cp&&_cp.style.display!=='none'&&typeof _cdbRenderList==='function') try{ _cdbRenderList(); }catch(e){}
   }catch(e){ console.error('[visitLog load]',e); }
 }
 
@@ -15716,6 +15722,12 @@ function _cdbSyncFromStore(){
     if(typeof autoSave==='function') autoSave();
     // SP 즉시 저장 (10초 동기화가 옛 목록으로 덮어써 자동등록 고객사가 사라지는 문제 방지)
     if(window._isSPReady&&typeof _spSaveClientDB==='function') try{ _spSaveClientDB(); }catch(e){}
+  }
+  // 고객사관리 페이지가 열려있으면 목록 즉시 갱신 (수집 후 화면 미반영 방지)
+  var _cp=document.getElementById('page-clients');
+  if(_cp&&_cp.style.display!=='none'&&typeof _cdbRenderList==='function'){
+    var _q=(document.getElementById('cdb-search')||{}).value||'';
+    try{ _cdbRenderList(_q); }catch(e){}
   }
 }
 
