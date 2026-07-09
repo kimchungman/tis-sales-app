@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260629-003007 -->
+<!-- TIS-VERSION: 20260709-001 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -12189,128 +12189,6 @@ async function _spRecoverArchiveActivities(){
     showToast('🔄 복구 중... 잠시 기다려주세요','info');
     var res = await _spFetchAll(_lUrl()+'?$select=Id,DataType,DataKey,Payload&$top=500');
     var items = (res&&res.value)||[];
-
-    // 담당자별로 모든 키의 데이터 수집
-    var byRep = {}; // repBase → [{acts,clients,isss,plan,actual,forecast,savedAt}]
-
-    items.forEach(function(item){
-      if(item.DataType!=='rep_data') return;
-      var dk = item.DataKey||'';
-      try{
-        var pl = JSON.parse(item.Payload||'{}');
-        // rep 이름 추출 (날짜, 직책, 언더스코어 모두 제거)
-        var repBase = dk
-          .replace(/_\d{4}-\d{2}-\d{2}$/, '')   // _YYYY-MM-DD
-          .replace(/:\d{4}-\d{2}-\d{2}$/, '')    // :YYYY-MM-DD
-          .replace(/_act_(old|\d{4})$/, '')       // _act_old, _act_2025
-          .replace(/_iss_\d{4}$/, '')             // _iss_2025
-          .replace(/_vl_\d{4}$/, '')              // _vl_2025
-          .replace(/_/g,' ').trim();
-        if(!repBase||/^\d+$/.test(repBase)) return;
-        // TEAM_REPS 매칭
-        var repKey = (typeof _findRepByKey==='function')?_findRepByKey(repBase):repBase;
-        if(!repKey||/^\d+$/.test(repKey)) return;
-        if(!byRep[repKey]) byRep[repKey]=[];
-        byRep[repKey].push({
-          acts: pl.activities||[],
-          clients: pl.clients||[],
-          isss: pl.issuesList||[],
-          plan: pl.plan||[],
-          actual: pl.actual||[],
-          forecast: pl.forecast||[],
-          savedAt: pl.savedAt||''
-        });
-      }catch(e){}
-    });
-
-    var total=0;
-    var saved=[];
-
-    Object.keys(byRep).forEach(function(repKey){
-      var all = byRep[repKey];
-      if(!all.length) return;
-
-      // clients: 가장 많은 것
-      var bestClients = all.reduce(function(b,d){ return d.clients.length>b.clients.length?d:b; }, all[0]);
-      // activities: 모든 키에서 합산 후 중복 제거
-      var allActs = [];
-      all.forEach(function(d){ allActs=allActs.concat(d.acts); });
-      var seenAct={};
-      var mergedActs=[];
-      allActs.forEach(function(a){
-        var k=(a.client||'')+'|'+(a.timing||'')+'|'+(a.product||'')+'|'+(a.amount||0);
-        if(!seenAct[k]){seenAct[k]=true;mergedActs.push(a);}
-      });
-      mergedActs.forEach(function(a,i){a.no=i+1;});
-      // issuesList: 합산 후 중복 제거
-      var allIsss=[];
-      all.forEach(function(d){ allIsss=allIsss.concat(d.isss); });
-      var seenIss={};
-      var mergedIsss=[];
-      allIsss.forEach(function(i){
-        var k=(i.content||'')+'|'+(i.client||'');
-        if(!seenIss[k]){seenIss[k]=true;mergedIsss.push(i);}
-      });
-      // plan: 합이 가장 큰 것
-      var bestPlan = all.reduce(function(b,d){
-        var bs=(b.plan||[]).reduce(function(s,v){return s+(v||0);},0);
-        var ds=(d.plan||[]).reduce(function(s,v){return s+(v||0);},0);
-        return ds>bs?d:b;
-      }, all[0]);
-
-      // 현재 store와 비교해서 더 많으면 교체
-      var cur = store.reps[repKey];
-      if(!cur) cur=store.reps[repKey]={plan:new Array(12).fill(0),actual:new Array(12).fill(0),forecast:new Array(12).fill(0),clients:[],activities:[],issuesList:[],visitLog:[],contracts:[]};
-
-      var changed=false;
-      if(mergedActs.length>(cur.activities||[]).length){
-        cur.activities=mergedActs; changed=true; total+=mergedActs.length;
-      }
-      if(bestClients.clients.length>(cur.clients||[]).length){
-        cur.clients=bestClients.clients; changed=true; total+=bestClients.clients.length;
-      }
-      if(mergedIsss.length>(cur.issuesList||[]).length){
-        cur.issuesList=mergedIsss; changed=true; total+=mergedIsss.length;
-      }
-      var bestPlanSum=(bestPlan.plan||[]).reduce(function(s,v){return s+(v||0);},0);
-      var curPlanSum=(cur.plan||[]).reduce(function(s,v){return s+(v||0);},0);
-      if(bestPlanSum>curPlanSum){
-        cur.plan=bestPlan.plan; cur.actual=bestPlan.actual; cur.forecast=bestPlan.forecast; changed=true;
-      }
-
-      if(changed){
-        // 직책 포함 키도 동기화
-        Object.keys(store.reps||{}).forEach(function(k){
-          if(k===repKey) return;
-          var ks=_sanitizeDKey(k), rs=_sanitizeDKey(repKey);
-          if(ks.indexOf(rs)===0||rs.indexOf(ks)===0)
-            store.reps[k]=JSON.parse(JSON.stringify(cur));
-        });
-        saved.push(repKey);
-        _spSaveRepByName(repKey);
-      }
-    });
-
-    // SP 저장 완료 후 보호
-    window._lastAutoSaveTs=Date.now();
-    buildRepInputs();
-    // 매출 재계산
-    (typeof REPS!=='undefined'?REPS:[]).forEach(function(r){ if(store.reps[r]&&typeof refreshActualForecast==='function') refreshActualForecast(r); });
-    if(typeof renderDashboard==='function') renderDashboard();
-
-    if(total>0) showToast('✅ 복구 완료: '+saved.join(', ')+' — '+total+'개 항목 복원','info');
-    else showToast('현재 데이터가 이미 최신입니다.','info');
-  }catch(e){
-    console.error('[recover]',e);
-    showToast('❌ 복구 실패: '+e.message,'error');
-  }
-}
-async function _spRecoverArchiveActivities(){
-  if(!window._isSPReady||!session||session.role!=='admin') return;
-  try{
-    showToast('🔄 복구 중... 잠시 기다려주세요','info');
-    var res = await _spFetchAll(_lUrl()+'?$select=Id,DataType,DataKey,Payload&$top=500');
-    var items = (res&&res.value)||[];
     var recovered = {}; // repName → {acts[], isss[]}
 
     items.forEach(function(item){
@@ -15498,18 +15376,6 @@ function _cdbStrip(s){
 }
 
 
-function _cdbToggleAutoRep(id, repName){
-  var item=_cdbById(id); if(!item) return;
-  if(!item.disabledAutoReps) item.disabledAutoReps=[];
-  var idx=item.disabledAutoReps.indexOf(repName);
-  if(idx>=0){
-    item.disabledAutoReps.splice(idx,1); // 다시 활성화
-  } else {
-    item.disabledAutoReps.push(repName); // 비활성화
-  }
-  _cdbSaveItem(item);
-  _cdbRenderDetail(id);
-}
 
 function _cdbSaveNote(id,val){
   var item=_cdbById(id); if(!item) return;
@@ -17726,10 +17592,6 @@ window._wkFillWeeks=function(year){
     added++;
   }
 };
-window._wkClosePeriod=function(){
-  var m=document.getElementById('wk-period-modal');
-  if(m) m.style.display='none';
-};
 
 // ── 이전 회차 불러오기 ──────
 window._wkOpenLoadWeek=function(){
@@ -18003,28 +17865,6 @@ window._wkGoReply=function(entryId){
       if(typeof _wkToggleReply==='function') _wkToggleReply(entryId);
     }
   }, 300);
-};
-window._wkSetView=function(view){
-  _wk.view=view;
-  var rp=document.getElementById('wk-report-view');
-  var fp=document.getElementById('wk-feed-view');
-  var vtr=document.getElementById('wk-vt-report');
-  var vtf=document.getElementById('wk-vt-feed');
-  if(rp) rp.style.display=(view==='report')?'flex':'none';
-  if(fp) fp.style.display=(view==='feed')?'flex':'none';
-  if(vtr) vtr.classList.toggle('on', view==='report');
-  if(vtf) vtf.classList.toggle('on', view==='feed');
-  // 뷰 전환 시 해당 뷰 즉시 렌더
-  if(view==='feed') _wkRenderFeed();
-  if(view==='report') _wkRenderReport();
-  // \uc2a4\ud06c\ub864 \ubcf5\uc6d0
-  if(view==='report'){
-    var rv=document.getElementById('wk-report-view');
-    if(rv&&_wk.scrollReport>0) requestAnimationFrame(function(){ rv.scrollTop=_wk.scrollReport; });
-  } else {
-    var fl=document.getElementById('wk-feed-list');
-    if(fl&&_wk.scrollFeed>0) requestAnimationFrame(function(){ fl.scrollTop=_wk.scrollFeed; });
-  }
 };
 
 // \u2500\u2500 \ub370\uc774\ud130 \ub85c\ub4dc \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -20298,16 +20138,6 @@ var QT_GRADES = {
 var QT_SETTINGS = {};
 
 // ── SP 연동 ──────────────────────────────────────────
-function _qtCacheQuotes(){
-  try{ localStorage.setItem('_qtQuotes',JSON.stringify(QUOTES)); }catch(e){}
-}
-function _qtLoadCachedQuotes(){
-  try{
-    var ls=localStorage.getItem('_qtQuotes');
-    if(ls){ QUOTES=JSON.parse(ls); return true; }
-  }catch(e){}
-  return false;
-}
 async function _spFetchQuotes(){
   // SP 미연결 시 localStorage 캐시 사용
   if(!window._isSPReady||typeof _spFetch!=='function'){
@@ -20550,12 +20380,6 @@ function qtToggleHist(grpId){
 }
 
 function qtFilter(){ qtRenderList(); }
-function qtSetChip(el,type){
-  document.querySelectorAll('.qt-chip').forEach(function(c){c.classList.remove('qt-chip-on');});
-  el.classList.add('qt-chip-on');
-  QT_CHIP_FILTER=type;
-  qtRenderList();
-}
 
 // ── 모달 열기 ──
 function qtOpenModal(mode,quoteId){
@@ -21038,46 +20862,6 @@ function _qtReadPrice(id){
   return el?parseInt((el.value||'0').replace(/,/g,''))||0:0;
 }
 // 설정 로드 함수 (localStorage 즉시 표시 → SP 동기화)
-async function qtLoadSettings(){
-  // 1. localStorage 즉시 로드 (재접속 시 바로 표시)
-  var localLoaded=null;
-  try{ var ls=localStorage.getItem('_qtSettings'); if(ls) localLoaded=JSON.parse(ls); }catch(e){}
-  if(localLoaded){
-    if(localLoaded.grades) QT_GRADES=localLoaded.grades;
-    if(localLoaded.settings) QT_SETTINGS=localLoaded.settings;
-  }
-  // 로고 별도 로드 (localStorage)
-  try{
-    var logoSrc=localStorage.getItem('_qtLogo');
-    if(logoSrc) QT_LOGO_SRC=logoSrc;
-  }catch(e){}
-
-  // 2. SP에서 로드 (savedAt 비교해서 더 최신이면 교체)
-  if(window._isSPReady&&typeof _spLoadItem==='function'){
-    try{
-      var spLoaded=await _spLoadItem('qtConfig','qtSettings');
-      if(spLoaded){
-        var localTs=localLoaded&&localLoaded.savedAt?new Date(localLoaded.savedAt).getTime():0;
-        var spTs=spLoaded.savedAt?new Date(spLoaded.savedAt).getTime():0;
-        if(spTs>localTs){
-          // SP가 더 최신 → 로컬 갱신
-          if(spLoaded.grades) QT_GRADES=spLoaded.grades;
-          if(spLoaded.settings) QT_SETTINGS=spLoaded.settings;
-          try{ localStorage.setItem('_qtSettings',JSON.stringify(spLoaded)); }catch(e){}
-        }
-      }
-    }catch(e){ console.warn('[견적설정] SP 로드 실패 - localStorage 사용'); }
-    // 로고 SP 로드 (팀 공유 키에서 로드)
-    try{
-      var spLogo=await _spLoadItem('qtShared','companyLogo');
-      if(spLogo&&spLogo.logo){
-        QT_LOGO_SRC=spLogo.logo;
-        // localStorage 캐시 갱신 (다음 접속 시 즉시 표시)
-        try{ localStorage.setItem('_qtLogo',spLogo.logo); }catch(e){}
-      }
-    }catch(e){}
-  }
-}
 function qtSwitchGradeTab(el,panelId){
   document.querySelectorAll('.qt-grade-tab').forEach(function(t){t.classList.remove('qt-grade-tab-on');});
   el.classList.add('qt-grade-tab-on');
@@ -21279,23 +21063,6 @@ function qtRenderPreview(){
 }
 
 // ── showPage 연동 ──
-window._qtShowPage=function(){
-  // 설정 로드 (최초 1회)
-  if(!window._qtSettingsLoaded){
-    window._qtSettingsLoaded=true;
-    qtLoadSettings();
-  }
-  // 캐시 있으면 즉시 표시 후 SP 동기화
-  if(QUOTES.length===0&&_qtLoadCachedQuotes()){
-    qtRenderList(); // 캐시 즉시 표시
-    _spFetchQuotes(); // 백그라운드 SP 동기화
-  } else if(QUOTES.length===0){
-    _spFetchQuotes();
-  } else {
-    qtRenderList();
-    _spFetchQuotes(); // 항상 SP와 동기화
-  }
-};
 
 </script>
 
@@ -22111,9 +21878,6 @@ function qt_setChip(el){document.querySelectorAll('.chips .chip').forEach(c=>c.c
 function qt_selType(el,t){document.querySelectorAll('.tsc').forEach(c=>{c.classList.remove('sel-dev','sel-ma','sel-lic','sel-mix');});el.classList.add('sel-'+t);}
 // 모달
 
-function qt_closeModal(){document.getElementById('writeModal').classList.add('hidden');}
-function qt_openSetting(){document.getElementById('settingModal').classList.remove('hidden');}
-function qt_closeSetting(){document.getElementById('settingModal').classList.add('hidden');}
 function qt_delRow(btn){btn.closest('tr').remove();}
 function qt_rmBlk(id){var b=document.getElementById(id);if(b)b.remove();}
 
@@ -23014,18 +22778,8 @@ function qt_switchTab(el,id){
 function qt_closeModal(){
   document.getElementById('writeModal').style.display='none';
 }
-function qt_openSetting(){
-  document.getElementById('settingModal').classList.remove('hidden');
-}
 function qt_closeSetting(){
   document.getElementById('settingModal').classList.add('hidden');
-}
-function qt_toggleHist(grpId,btnId){
-  var hist=document.getElementById('hist_'+grpId);
-  var btn=document.getElementById(btnId);
-  if(!hist)return;
-  if(hist.classList.contains('open')){hist.classList.remove('open');if(btn)btn.classList.remove('open');}
-  else{hist.classList.add('open');if(btn)btn.classList.add('open');}
 }
 function qt_toggleValidInput(sel){
   if(sel.value==='direct'){
