@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260709-002 -->
+<!-- TIS-VERSION: 20260709-003 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -2241,7 +2241,7 @@ body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;ba
 .th{font-size:10px;font-weight:600;color:var(--sub);letter-spacing:.03em;white-space:nowrap;text-align:center;padding:0 4px;}
 .th.L{text-align:left;}
 .proj-group{border-bottom:1px solid var(--border2);}.proj-group:last-child{border-bottom:none;}
-.tbl-hd,.proj-row,.hist-item{grid-template-columns:36px 68px 108px minmax(0,1fr) 124px 70px 82px 136px 96px 64px;}
+.tbl-hd,.proj-row,.hist-item{grid-template-columns:28px 36px 68px 108px minmax(0,1fr) 124px 70px 82px 136px 96px 64px;}
 .proj-row{display:grid;padding:11px 14px;align-items:center;gap:0;cursor:pointer;transition:background .1s;}
 .proj-row:hover{background:#FAFBFF;}
 .proj-hist{display:none!important;background:#F0F4FA;border-top:2px solid #E2E8F0;border-bottom:3px solid #CBD5E1;}
@@ -2255,9 +2255,9 @@ body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;ba
 .hist-item:last-child{border-bottom:none;}
 .td{font-size:12px;color:var(--text);text-align:center;padding:0 4px;}
 .td.L{text-align:left;}
-.td-num{font-size:11px;font-weight:600;color:var(--sub);}
-.td-rep{font-size:11px;font-weight:600;color:var(--navy);}
-.td-client{font-size:12px;font-weight:600;color:var(--navy);}
+.td-num{font-size:11px;font-weight:600;color:var(--sub);text-align:center;}
+.td-rep{font-size:11px;font-weight:600;color:var(--navy);text-align:center;}
+.td-client{font-size:12px;font-weight:600;color:var(--navy);text-align:left;}
 .td-proj{font-size:12px;font-weight:500;color:var(--text);}
 .td-change{font-size:9px;color:var(--orange);margin-top:1px;}
 .td-no{font-size:10px;font-weight:600;color:var(--navy);}
@@ -4941,10 +4941,11 @@ window._updateSidebarByRole=function(){
       <!-- 목록 -->
       <div class="tbl-card">
         <div class="tbl-hd">
+          <div class="th"></div>
           <div class="th">#</div>
           <div class="th">담당자</div>
-          <div class="th L">고객사</div>
-          <div class="th L">프로젝트명</div>
+          <div class="th">고객사</div>
+          <div class="th">프로젝트명</div>
           <div class="th">견적번호</div>
           <div class="th">유형</div>
           <div class="th">견적일</div>
@@ -23356,15 +23357,22 @@ function qtRenderQtList(){
   roots.forEach(function(root,idx){
     var grp=groups[root].sort(function(a,b){return (b.round||1)-(a.round||1);});
     var latest=grp[0];
-    var grpId='qtg-'+idx;
+    // 그룹 ID를 루트 견적번호 기반으로 (재렌더링/필터 변경에도 안정적 → 펼침 상태 유지)
+    var grpId='qtg-'+String(root).replace(/[^A-Za-z0-9_-]/g,'_');
     var hasPrev=grp.length>1;
+    var isOpen=hasPrev&&window._qtOpenHist&&window._qtOpenHist[grpId];
     var createdStr=latest.createdAt?new Date(latest.createdAt).toLocaleDateString('ko-KR',{month:'2-digit',day:'2-digit'}):'—';
     var modStr=latest.modifiedAt?new Date(latest.modifiedAt).toLocaleDateString('ko-KR',{month:'2-digit',day:'2-digit'}):'—';
     html+='<div class="proj-group" id="'+grpId+'">';
-    var _rowHtml='<div class="proj-row" onclick="qt_openModal(\'edit\',\''+latest.id+'\')">'+
+    html+='<div class="proj-row" onclick="qt_openModal(\'edit\',\''+latest.id+'\')">'+
+      // 1열: 이력 토글 (순번 왼쪽) — stopPropagation으로 행 클릭(수정 팝업) 차단
+      '<div onclick="event.stopPropagation()" style="display:flex;align-items:center;justify-content:center;">'+
+      (hasPrev?'<button class="hist-toggle'+(isOpen?' open':'')+'" id="'+grpId+'-btn" onclick="event.stopPropagation();qt_toggleHist(\''+grpId+'\')" title="이전 차수 이력">'+
+        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button>':'')+
+      '</div>'+
       '<div class="td-num">'+(idx+1)+'</div>'+
       '<div class="td-rep">'+(latest.rep||'—')+'</div>'+
-      '<div class="td-client L">'+(latest.client||'—')+'</div>'+
+      '<div class="td-client">'+(latest.client||'—')+'</div>'+
       '<div class="td L"><div class="td-proj">'+(latest.proj||'—')+'</div>'+(latest.changeSum?'<div class="td-change">↑ '+latest.changeSum+'</div>':'')+'</div>'+
       '<div class="td"><span class="td-no">'+(latest.id||'—')+'</span></div>'+
       '<div class="td"><span class="type-chip '+typeCls[latest.type]+'">'+(typeMap[latest.type]||latest.type)+'</span></div>'+
@@ -23373,28 +23381,28 @@ function qtRenderQtList(){
       '<div class="td" style="text-align:center;font-size:10px;color:#94A3B8;"><div>등록 '+createdStr+'</div><div>수정 '+modStr+'</div></div>'+
       '<div class="td" onclick="event.stopPropagation()">'+
       (isGuest?'':'<div class="row-acts"><button class="act-btn re" onclick="qt_openModal(\'ver\',\''+latest.id+'\')" title="차수 올려 재견적">재견적</button><button class="act-btn copy" onclick="qt_openModal(\'copy\',\''+latest.id+'\')" title="복사해 새 견적">복사</button></div>')+
-      '</div>';
-    html+=_rowHtml;
-    if(hasPrev) html+='<button class="hist-toggle" id="'+grpId+'-btn" onclick="qt_toggleHist(\''+grpId+'\')">'+'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button>';
-    html+='</div></div>';
-    // 이전 차수
+      '</div>'+
+    '</div>'; // .proj-row 닫기
+    // 이전 차수 이력 (본 행과 동일 11컬럼 그리드 → 내용열 위치 일치)
     if(hasPrev){
-      html+='<div class="proj-hist" id="'+grpId+'-hist"><div class="hist-header"><span class="hist-header-dot"></span><span class="hist-lbl">이전 차수 이력</span></div>';
+      html+='<div class="proj-hist'+(isOpen?' open':'')+'" id="'+grpId+'-hist"><div class="hist-header"><span class="hist-header-dot"></span><span class="hist-lbl">이전 차수 이력</span></div>';
       grp.slice(1).forEach(function(prev){
-        var _histHtml='<div class="hist-item" onclick="qt_openModal(\'edit\',\''+prev.id+'\')">'+
-          '<div></div><div class="td-rep" style="color:#94A3B8;">'+(prev.rep||'')+'</div>'+
-          '<div style="font-size:12px;font-weight:600;color:#94A3B8;text-align:left;">'+(prev.client||'')+'</div>'+
-          '<div style="text-align:left;font-size:12px;color:#94A3B8;">'+(prev.proj||'')+'</div>'+
-          '<div><span class="td-no">'+(prev.id||'')+'</span></div>'+
-          '<div><span class="type-chip '+typeCls[prev.type]+'" style="font-size:9px;">'+(typeMap[prev.type]||prev.type)+'</span></div>'+
-          '<div style="font-size:11px;color:#94A3B8;">'+(prev.date||'')+'</div>'+
-          '<div class="amt" style="text-align:right;font-size:12px;color:#94A3B8;">'+(prev.amount?'₩'+prev.amount.toLocaleString():'—')+'</div>'+
-          '<div></div><div></div></div>';
-        html+=_histHtml;
+        html+='<div class="hist-item" onclick="qt_openModal(\'edit\',\''+prev.id+'\')">'+
+          '<div></div>'+  // 토글 열
+          '<div></div>'+  // 순번 열
+          '<div class="td-rep" style="color:#94A3B8;">'+(prev.rep||'')+'</div>'+
+          '<div class="td-client" style="color:#94A3B8;">'+(prev.client||'')+'</div>'+
+          '<div class="td L" style="font-size:12px;color:#94A3B8;">'+(prev.proj||'')+'</div>'+
+          '<div class="td"><span class="td-no">'+(prev.id||'')+'</span></div>'+
+          '<div class="td"><span class="type-chip '+typeCls[prev.type]+'" style="font-size:9px;">'+(typeMap[prev.type]||prev.type)+'</span></div>'+
+          '<div class="td" style="font-size:11px;color:#94A3B8;">'+(prev.date||'')+'</div>'+
+          '<div class="td amt" style="text-align:right;font-size:12px;color:#94A3B8;">'+(prev.amount?'₩'+prev.amount.toLocaleString():'—')+'</div>'+
+          '<div></div><div></div>'+
+        '</div>';
       });
-      html+='</div>';
+      html+='</div>'; // .proj-hist 닫기
     }
-    html+='</div>';
+    html+='</div>'; // .proj-group 닫기
   });
   // 스크롤 위치 보존 (필수 규칙)
   var _sc=document.getElementById('qt-content');
@@ -23406,8 +23414,14 @@ function qt_toggleHist(grpId){
   var h=document.getElementById(grpId+'-hist');
   var b=document.getElementById(grpId+'-btn');
   if(!h)return;
-  if(h.classList.contains('open')){h.classList.remove('open');if(b)b.classList.remove('open');}
-  else{h.classList.add('open');if(b)b.classList.add('open');}
+  if(!window._qtOpenHist) window._qtOpenHist={};
+  if(h.classList.contains('open')){
+    h.classList.remove('open');if(b)b.classList.remove('open');
+    delete window._qtOpenHist[grpId];   // 접힘 상태 기록
+  } else {
+    h.classList.add('open');if(b)b.classList.add('open');
+    window._qtOpenHist[grpId]=true;     // 펼침 상태 기록 → 재렌더링 시 복원
+  }
 }
 function qtFilterRows(v){ qtRenderQtList(); }
 function qtSetChip(el,type){
