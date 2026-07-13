@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260709-003 -->
+<!-- TIS-VERSION: 20260713-001 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -21310,10 +21310,10 @@ function qtRenderPreview(){
     <div class="fs">
       <div class="fs-t">견적 유형</div>
       <div class="type-sel">
-        <div class="tsc sel-dev" onclick="qt_selType(this,'dev')"><div class="tsc-name">개발</div><div class="tsc-desc">인건비 · 라이선스<br>복합 개발 프로젝트</div></div>
-        <div class="tsc" onclick="qt_selType(this,'ma')"><div class="tsc-name">유지보수 (MA)</div><div class="tsc-desc">유지보수 · 운영<br>MA 계약 견적</div></div>
-        <div class="tsc" onclick="qt_selType(this,'lic')"><div class="tsc-name">라이선스(상품)</div><div class="tsc-desc">SW · 상품 · 라이선스<br>수량×단가</div></div>
-        <div class="tsc" onclick="qt_selType(this,'etc')"><div class="tsc-name">기타</div><div class="tsc-desc">기타 항목<br>자유 구성</div></div>
+        <div class="tsc sel-dev" data-type="dev" onclick="qt_selType(this,'dev')"><div class="tsc-name">개발</div><div class="tsc-desc">인건비 · 라이선스<br>복합 개발 프로젝트</div></div>
+        <div class="tsc" data-type="ma" onclick="qt_selType(this,'ma')"><div class="tsc-name">유지보수 (MA)</div><div class="tsc-desc">유지보수 · 운영<br>MA 계약 견적</div></div>
+        <div class="tsc" data-type="lic" onclick="qt_selType(this,'lic')"><div class="tsc-name">라이선스(상품)</div><div class="tsc-desc">SW · 상품 · 라이선스<br>수량×단가</div></div>
+        <div class="tsc" data-type="etc" onclick="qt_selType(this,'etc')"><div class="tsc-name">기타</div><div class="tsc-desc">기타 항목<br>자유 구성</div></div>
       </div>
     </div>
     <div class="fs">
@@ -21330,7 +21330,8 @@ function qtRenderPreview(){
       <div class="g2">
         <div class="fg" style="grid-column:1/-1"><label class="flbl">프로젝트명</label><input class="fi" id="projectName"></div>
         <div class="fg"><label class="flbl">고객사</label><input class="fi" id="clientName"></div>
-        <div class="fg"><label class="flbl">견적 유형</label><select class="fsel" id="quoteType" onchange="qt_onTypeChange(this.value)" style="width:100%;"><option value="dev">개발 구축</option><option value="ma">유지보수 (MA)</option><option value="lic">라이선스·상품</option><option value="etc">기타</option></select></div>
+        <!-- 견적 유형은 상단 카드에서 선택 (중복 UI 제거) — 상태값 보관용 숨김 select -->
+        <select id="quoteType" onchange="qt_onTypeChange(this.value)" style="display:none;"><option value="dev">개발 구축</option><option value="ma">유지보수 (MA)</option><option value="lic">라이선스·상품</option><option value="etc">기타</option></select>
         <div class="fg"><label class="flbl">견적 No. (자동생성)</label><input class="fi fi-ro" id="quoteNo" value="" readonly></div>
         <div class="fg"><label class="flbl">견적 일자</label><input class="fi" type="date" id="quoteDate" style="width:100%;" onclick="try{this.showPicker();}catch(e){}"></div>
         <div class="fg"><label class="flbl">유효기간</label><select class="fsel" id="validSel" onchange="qt_toggleValidInput(this)" style="width:100%;"><option value="30">견적 제출일로부터 30일 이내</option><option value="60">견적 제출일로부터 60일 이내</option><option value="direct">직접 입력...</option></select><div id="validDirectWrap" style="display:none;"><div style="display:flex;gap:6px;align-items:center;"><input class="fi" id="validInput" placeholder="유효기간을 직접 입력하세요" style="flex:1;border-color:var(--blue);background:#FAFEFF;"><button type="button" onclick="qt_resetValidSel()" style="height:34px;padding:0 10px;border:1px solid var(--border);border-radius:var(--rs);background:#fff;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap;font-family:inherit;flex-shrink:0;">↩ 목록</button></div></div></div>
@@ -21362,7 +21363,6 @@ function qtRenderPreview(){
         <button class="add-blk-btn" onclick="qt_addBlock('mm')">＋ 인건비</button>
         <button class="add-blk-btn" onclick="qt_addBlock('lic')">＋ 라이선스(상품)</button>
         <button class="add-blk-btn" onclick="qt_addBlock('ma')">＋ 유지보수(MA)</button>
-        <button class="add-blk-btn" onclick="qt_addBlock('product')">＋ 상품</button>
         <button class="add-blk-btn" onclick="qt_addBlock('custom')">＋ 기타</button>
         <button class="add-blk-btn disc-btn" onclick="qt_addBlock('discount')">특별 할인</button>
       </div>
@@ -21792,6 +21792,16 @@ function qt_calcTotal(){
 
 // ── PDF 입력값 동적 반영 ──
 function qt_getPdfData(){
+  // 안전망: 계산이 아직 안 된 인건비 행이 있으면 설정 단가표 기준으로 채운 뒤 추출
+  try{
+    document.querySelectorAll('#blockArea .ib').forEach(function(blk){
+      var b=blk.querySelector('.ib-badge'); if(!b||b.textContent.trim()!=='인건비') return;
+      blk.querySelectorAll('tbody tr').forEach(function(tr){
+        var gpa=tr.querySelector('.gpa'); var sel=tr.querySelector('select.isel');
+        if(sel&&gpa&&!gpa.textContent.trim()) qt_calcMM(sel);
+      });
+    });
+  }catch(e){}
   // 기본정보 읽기 (실제 모달 ID 기준)
   var proj=(document.getElementById('projectName')||{}).value||'(프로젝트명 미입력)';
   var client=(document.getElementById('clientName')||{}).value||'(고객사 미입력)';
@@ -21911,7 +21921,13 @@ function qt_switchGradeTab(el,panel){
 // 칩
 function qt_setChip(el){document.querySelectorAll('.chips .chip').forEach(c=>c.classList.remove('on'));el.classList.add('on');}
 // 유형
-function qt_selType(el,t){document.querySelectorAll('.tsc').forEach(c=>{c.classList.remove('sel-dev','sel-ma','sel-lic','sel-mix');});el.classList.add('sel-'+t);}
+function qt_selType(el,t){
+  document.querySelectorAll('.tsc').forEach(c=>{c.classList.remove('sel-dev','sel-ma','sel-lic','sel-mix');});
+  el.classList.add('sel-'+(t==='etc'?'mix':t));
+  // 카드 선택 = 유형 확정: 숨김 상태값 동기화 + 유형별 기본조건/MA기간 토글 적용
+  var ts=document.getElementById('quoteType');
+  if(ts&&ts.value!==t){ ts.value=t; if(typeof qt_onTypeChange==='function') qt_onTypeChange(t); }
+}
 // 모달
 
 function qt_delRow(btn){btn.closest('tr').remove();}
@@ -22157,6 +22173,10 @@ function qt_addCommonRow(tbid){
   var tr=document.createElement('tr');
   tr.innerHTML=tpl;
   t.appendChild(tr);
+  // 인건비 새 행: 기본 선택(중급/TAK) 기준 금액 즉시 계산
+  if(t.id.indexOf('tbmm')===0){
+    var _s=tr.querySelector('select'); if(_s&&typeof qt_calcMM==='function') qt_calcMM(_s);
+  }
 }
 
 function qt_addMMRow(tbid){
@@ -22176,7 +22196,7 @@ function qt_addBlock(type){
 
   var cfgs={
     mm:{badge:'인건비',bc:'#EDE9FE',tc:'#5B21B6',
-      body:'<div class="it-wrap" style="overflow-x:auto;"><table class="it" style="table-layout:fixed;min-width:760px;width:100%;"><colgroup><col style="width:68px"><col style="min-width:120px"><col style="width:44px"><col style="width:36px"><col style="width:78px"><col style="width:72px"><col style="width:90px"><col style="width:90px"><col style="width:90px"><col style="width:90px"><col style="width:28px"></colgroup><thead><tr><th class="L">구분</th><th class="L">투입 인력 역할</th><th>수량</th><th>단위</th><th>등급</th><th>단가기준</th><th>소비자단가</th><th>소비자가</th><th>제안단가</th><th>제안금액</th><th></th></tr></thead><tbody id="tbmmBC"><tr><td class="L"><input class="ii" style="text-align:center;" placeholder="구분"></td><td class="L"><textarea class="ii L" placeholder="역할 및 업무 범위" rows="1" style="resize:none;overflow:hidden;width:100%;"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" value="1.0" oninput="qt_calcMM(this)"></td><td style="text-align:center;"><input class="ii" style="text-align:center;" value="MM"></td><td style="text-align:center;"><select class="isel" style="width:100%;" onchange="qt_calcMM(this)"><option>특급</option><option>고급</option><option selected>중급</option><option>초급</option></select></td><td style="text-align:center;"><select class="isel src-sel" style="width:100%;font-size:10px;" onchange="qt_calcMM(this)"><option value="tak">TAK</option><option value="rel">관계사</option><option value="ext">대외</option></select></td><td class="gc" style="text-align:right;">25,019,615</td><td class="gca" style="text-align:right;">25,019,615</td><td class="gp" style="text-align:right;">15,600,000</td><td class="gpa" style="text-align:right;">15,600,000</td><td style="width:32px;text-align:center;padding:2px;"><button class="del-btn" onclick="qt_delRow(this)">×</button></td></tr></tbody></table></div><span class="add-r" onclick="qt_addMMRow(\'tbmmBC\')">＋ 행 추가</span>'},
+      body:'<div class="it-wrap" style="overflow-x:auto;"><table class="it" style="table-layout:fixed;min-width:760px;width:100%;"><colgroup><col style="width:68px"><col style="min-width:120px"><col style="width:44px"><col style="width:36px"><col style="width:78px"><col style="width:72px"><col style="width:90px"><col style="width:90px"><col style="width:90px"><col style="width:90px"><col style="width:28px"></colgroup><thead><tr><th class="L">구분</th><th class="L">투입 인력 역할</th><th>수량</th><th>단위</th><th>등급</th><th>단가기준</th><th>소비자단가</th><th>소비자가</th><th>제안단가</th><th>제안금액</th><th></th></tr></thead><tbody id="tbmmBC"><tr><td class="L"><input class="ii" style="text-align:center;" placeholder="구분"></td><td class="L"><textarea class="ii L" placeholder="역할 및 업무 범위" rows="1" style="resize:none;overflow:hidden;width:100%;"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" value="1.0" oninput="qt_calcMM(this)"></td><td style="text-align:center;"><input class="ii" style="text-align:center;" value="MM"></td><td style="text-align:center;"><select class="isel" style="width:100%;" onchange="qt_calcMM(this)"><option>특급</option><option>고급</option><option selected>중급</option><option>초급</option></select></td><td style="text-align:center;"><select class="isel src-sel" style="width:100%;font-size:10px;" onchange="qt_calcMM(this)"><option value="tak">TAK</option><option value="rel">관계사</option><option value="ext">대외</option></select></td><td class="gc" style="text-align:right;"></td><td class="gca" style="text-align:right;"></td><td class="gp" style="text-align:right;"></td><td class="gpa" style="text-align:right;"></td><td style="width:32px;text-align:center;padding:2px;"><button class="del-btn" onclick="qt_delRow(this)">×</button></td></tr></tbody></table></div><span class="add-r" onclick="qt_addMMRow(\'tbmmBC\')">＋ 행 추가</span>'},
     lic:{badge:'라이선스(상품)',bc:'#FFF7ED',tc:'#C2410C',
       body:'<div class="it-wrap"><table class="it" style="table-layout:fixed;width:100%;"><colgroup><col style="width:68px"><col><col style="width:44px"><col style="width:36px"><col style="width:90px"><col style="width:90px"><col style="width:90px"><col style="width:90px"><col style="width:28px"></colgroup><thead><tr><th class="L">구분</th><th class="L">품목</th><th>수량</th><th>단위</th><th>소비자단가</th><th>소비자가</th><th>제안단가</th><th>제안금액</th><th></th></tr></thead><tbody id="tblicBC"><tr><td class="L"><input class="ii" style="text-align:center;" placeholder="구분"></td><td class="L"><textarea class="ii L" placeholder="품목명 입력" rows="1" style="resize:none;overflow:hidden;width:100%;"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="1" oninput="qt_calcLic(this)"></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="식"></td><td style="text-align:right;"><input class="ii" style="text-align:right;" placeholder="0" oninput="qt_calcLic(this)"></td><td class="lic-consumer" style="text-align:right;">—</td><td style="text-align:right;"><input class="ii" style="text-align:right;" placeholder="0" oninput="qt_calcLic(this)"></td><td class="lic-propose" style="text-align:right;">—</td><td style="width:32px;text-align:center;padding:2px;"><button class="del-btn" onclick="qt_delRow(this)">×</button></td></tr></tbody></table></div><span class="add-r" onclick="qt_addCommonRow(\'tblicBC\')">＋ 행 추가</span>'},
     ma:{badge:'유지보수(MA)',bc:'#ECFDF5',tc:'#065F46',
@@ -22370,6 +22390,8 @@ function qt_buildDevPdf(){
     var visibleThs=ths.filter(function(th){
       return HIDE.indexOf(th.textContent.trim())===-1;
     });
+    // 데이터 열이 하나도 없는 블록(열 추가 전 기타 블록 등)은 PDF에서 생략
+    if(!visibleThs.length){ blockIdx++; return; }
     lastColCount=visibleThs.length;
 
     var isMM=(badgeTxt==='인건비');
@@ -22720,9 +22742,10 @@ function qt_openModal(mode,quoteId){
     if(_repF) _repF.value=SESSION_REP.name+(SESSION_REP.title?' '+SESSION_REP.title:'');
     var _dtEl=document.getElementById('quoteDate');
     if(_dtEl) _dtEl.value=new Date().toISOString().slice(0,10);
-    // 기본 조건 자동 입력
-    if(QT_SETTINGS.defaultPayment){var _pe=document.getElementById('paymentCond');if(_pe)_pe.value=QT_SETTINGS.defaultPayment;}
-    if(QT_SETTINGS.defaultGeneral){var _ge=document.getElementById('generalCond');if(_ge)_ge.value=QT_SETTINGS.defaultGeneral;}
+    // 유형 카드 하이라이트 초기화 (개발 선택 상태로)
+    document.querySelectorAll('.tsc').forEach(function(c){c.classList.remove('sel-dev','sel-ma','sel-lic','sel-mix');});
+    var _c0=document.querySelector('.tsc[data-type="dev"]'); if(_c0) _c0.classList.add('sel-dev');
+    // (레거시 defaultPayment/defaultGeneral 덮어쓰기 제거 — 유형별 기본 조건이 유일한 소스)
     // 담당자 정보 자동 입력
     var _rn=document.getElementById('repName');if(_rn) _rn.textContent=SESSION_REP.name+' '+SESSION_REP.title;
     var _re=document.getElementById('repEmail');if(_re) _re.textContent=SESSION_REP.email;
@@ -23007,8 +23030,9 @@ function qt_saveSetting(){
   qt_condStash();
   if(window._qtCondDraft) QT_SETTINGS.condByType=JSON.parse(JSON.stringify(window._qtCondDraft));
   // (공유 QT_SETTINGS.email 기록 중단 — authCfg.repEmails 사용)
-  QT_SETTINGS.defaultPayment = (document.getElementById('defaultPayment')||{}).value||'';
-  QT_SETTINGS.defaultGeneral = (document.getElementById('defaultGeneral')||{}).value||'';
+  // 레거시 공통 기본조건 폐기: 유형별 조건(condByType)이 유일한 소스 (SP에 남은 옛 값 재유입 차단)
+  delete QT_SETTINGS.defaultPayment;
+  delete QT_SETTINGS.defaultGeneral;
 
   var payload = {grades:QT_GRADES, settings:QT_SETTINGS, savedAt:savedAt};
   var logoPayload = {logo:QT_LOGO_SRC||null, savedAt:savedAt};
@@ -23080,15 +23104,11 @@ function qt_fillSettingUI(){
   });
   var phoneEl=document.getElementById('myPhone');
   var emailEl=document.getElementById('myEmail');
-  var payEl=document.getElementById('defaultPayment');
-  var genEl=document.getElementById('defaultGeneral');
   if(phoneEl) phoneEl.value=(QT_SETTINGS.phones&&QT_SETTINGS.phones[SESSION_REP.name])||'';
   var _cn=document.getElementById('coName'); if(_cn&&QT_SETTINGS.coName) _cn.value=QT_SETTINGS.coName;
   var _cc=document.getElementById('coCeo'); if(_cc&&QT_SETTINGS.coCeo) _cc.value=QT_SETTINGS.coCeo;
   var _ca=document.getElementById('coAddr'); if(_ca&&QT_SETTINGS.coAddr) _ca.value=QT_SETTINGS.coAddr;
   if(emailEl) emailEl.value=QT_SETTINGS.email||'';
-  if(payEl) payEl.value=QT_SETTINGS.defaultPayment||'';
-  if(genEl) genEl.value=QT_SETTINGS.defaultGeneral||'';
   // 로고 미리보기
   if(QT_LOGO_SRC){
     var prev=document.getElementById('logoPreviewWrap');
@@ -23127,6 +23147,23 @@ function qt_openSetting(){
 
 
 // ── 현재 모달 데이터 저장 ──
+// ── 저장 직전: 입력값을 HTML 속성으로 굽기 ──
+// innerHTML 직렬화는 input.value(프로퍼티)·select 선택·textarea 입력을 포함하지 않아
+// 저장→재열람 시 입력 데이터가 유실됨. 직렬화 전 속성으로 동기화해 그대로 보존.
+function qt_bakeValues(root){
+  if(!root) return;
+  root.querySelectorAll('input').forEach(function(el){
+    if(el.type==='checkbox'||el.type==='radio'){ if(el.checked) el.setAttribute('checked','checked'); else el.removeAttribute('checked'); return; }
+    el.setAttribute('value', el.value);
+  });
+  root.querySelectorAll('textarea').forEach(function(el){ el.textContent=el.value; });
+  root.querySelectorAll('select').forEach(function(el){
+    Array.prototype.forEach.call(el.options,function(o,i){
+      if(i===el.selectedIndex) o.setAttribute('selected','selected');
+      else o.removeAttribute('selected');
+    });
+  });
+}
 function qt_saveCurrentQuote(){
   var mode=window._qt_current_mode||'new';
   var qid=window._qt_editing_id||null;
@@ -23160,7 +23197,8 @@ function qt_saveCurrentQuote(){
   var discEl=document.querySelector('.disc-fi');
   var disc=discEl?qt_parseN(discEl.value):0;
 
-  // 블록 직렬화
+  // 블록 직렬화 (직전에 입력값을 속성으로 구워 innerHTML에 그대로 보존)
+  qt_bakeValues(document.getElementById('blockArea'));
   var blocks=[];
   document.querySelectorAll('.block-area .ib').forEach(function(blk){
     var badge=blk.querySelector('.ib-badge');
