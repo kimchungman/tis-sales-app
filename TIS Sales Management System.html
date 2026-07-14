@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260713-001 -->
+<!-- TIS-VERSION: 20260713-002 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -2320,6 +2320,14 @@ body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;ba
 .tsc-icon{font-size:19px;margin-bottom:4px;}
 .tsc-name{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:4px;}
 .tsc-desc{font-size:10px;color:var(--sub);margin-top:2px;line-height:1.4;}
+/* 견적항목 블록 퀵 네비게이션 */
+.blk-nav{position:sticky;top:-16px;z-index:20;display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:#fff;border:1px solid var(--border);border-radius:10px;padding:8px 12px;margin-bottom:12px;box-shadow:0 2px 8px rgba(10,20,40,.05);}
+.blk-nav-lbl{font-size:10px;font-weight:700;color:var(--sub);margin-right:2px;flex-shrink:0;}
+.blk-nav-chip{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 11px;border-radius:99px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid transparent;transition:all .15s;white-space:nowrap;}
+.blk-nav-chip:hover{filter:brightness(.95);transform:translateY(-1px);}
+.blk-nav-num{font-size:10px;font-weight:800;opacity:.75;}
+@keyframes ibFlash{0%{box-shadow:0 0 0 3px rgba(37,99,235,.45);}100%{box-shadow:0 0 0 3px rgba(37,99,235,0);}}
+.ib-flash{animation:ibFlash 1.1s ease-out 1;}
 
 /* 항목 블록 */
 .block-area{display:flex;flex-direction:column;gap:11px;}
@@ -21233,10 +21241,13 @@ function qtRenderPreview(){
           <div class="fg"><label class="flbl">유효기간 기본값</label><input class="fi" id="defValidity" value="견적 제출일로부터 30일 이내" style="font-size:11px;padding:5px 8px;"></div>
         </div>
       </div>
-      <!-- 유형별 기본 조건 -->
-      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-top:12px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;flex-wrap:wrap;gap:8px;">
-          <div style="font-size:12.5px;font-weight:800;color:var(--navy);">유형별 기본 조건 <span style="font-size:10px;font-weight:500;color:var(--sub);">견적 작성 시 선택한 유형의 조건이 자동 적용됩니다 · 작성 중 자유 수정 가능</span></div>
+      <!-- 유형별 기본 조건 (전체폭) -->
+      <div style="grid-column:1/-1;background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-top:2px;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
+          <div>
+            <div style="font-size:13px;font-weight:800;color:var(--navy);">유형별 기본 조건</div>
+            <div style="font-size:10.5px;color:var(--sub);margin-top:3px;line-height:1.5;">견적 작성 시 선택한 유형의 조건이 자동 적용됩니다 · 작성 중 자유 수정 가능</div>
+          </div>
           <div style="display:flex;gap:4px;" id="condTypeTabs">
             <div class="chip on" data-ct="dev" onclick="qt_condTab(this)" style="cursor:pointer;">개발 구축</div>
             <div class="chip" data-ct="ma" onclick="qt_condTab(this)" style="cursor:pointer;">유지보수</div>
@@ -21244,10 +21255,10 @@ function qtRenderPreview(){
             <div class="chip" data-ct="etc" onclick="qt_condTab(this)" style="cursor:pointer;">기타</div>
           </div>
         </div>
-        <div class="g2" style="grid-template-columns:1fr;gap:9px;">
-          <div class="fg"><label class="flbl">대금지급조건</label><input class="fi" id="ct-payment" style="font-size:11px;padding:6px 9px;"></div>
-          <div class="fg"><label class="flbl">일반조건</label><textarea class="fi" id="ct-general" rows="3" style="font-size:11px;padding:6px 9px;resize:vertical;line-height:1.6;"></textarea></div>
-          <div class="fg"><label class="flbl">기타조건</label><textarea class="fi" id="ct-other" rows="2" style="font-size:11px;padding:6px 9px;resize:vertical;line-height:1.6;"></textarea></div>
+        <div style="display:flex;flex-direction:column;gap:11px;">
+          <div class="fg"><label class="flbl">대금지급조건</label><textarea class="fi" id="ct-payment" rows="2" oninput="qt_autoH(this)" style="font-size:11.5px;padding:8px 10px;resize:vertical;line-height:1.7;min-height:52px;overflow:hidden;white-space:pre-wrap;"></textarea></div>
+          <div class="fg"><label class="flbl">일반조건</label><textarea class="fi" id="ct-general" rows="6" oninput="qt_autoH(this)" style="font-size:11.5px;padding:8px 10px;resize:vertical;line-height:1.7;min-height:120px;overflow:hidden;white-space:pre-wrap;"></textarea></div>
+          <div class="fg"><label class="flbl">기타조건</label><textarea class="fi" id="ct-other" rows="3" oninput="qt_autoH(this)" style="font-size:11.5px;padding:8px 10px;resize:vertical;line-height:1.7;min-height:70px;overflow:hidden;white-space:pre-wrap;"></textarea></div>
         </div>
       </div>
     </div>
@@ -21336,12 +21347,18 @@ function qtRenderPreview(){
         <div class="fg"><label class="flbl">견적 일자</label><input class="fi" type="date" id="quoteDate" style="width:100%;" onclick="try{this.showPicker();}catch(e){}"></div>
         <div class="fg"><label class="flbl">유효기간</label><select class="fsel" id="validSel" onchange="qt_toggleValidInput(this)" style="width:100%;"><option value="30">견적 제출일로부터 30일 이내</option><option value="60">견적 제출일로부터 60일 이내</option><option value="direct">직접 입력...</option></select><div id="validDirectWrap" style="display:none;"><div style="display:flex;gap:6px;align-items:center;"><input class="fi" id="validInput" placeholder="유효기간을 직접 입력하세요" style="flex:1;border-color:var(--blue);background:#FAFEFF;"><button type="button" onclick="qt_resetValidSel()" style="height:34px;padding:0 10px;border:1px solid var(--border);border-radius:var(--rs);background:#fff;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap;font-family:inherit;flex-shrink:0;">↩ 목록</button></div></div></div>
         <div class="fg" id="maPeriodWrap" style="grid-column:1/-1;display:none;">
-          <label class="flbl">계약기간 <span style="font-weight:400;color:var(--sub);">(유지보수)</span></label>
-          <div style="display:flex;gap:8px;align-items:center;">
-            <input class="fi" type="date" id="maStart" style="flex:1;" onclick="try{this.showPicker();}catch(e){}" onchange="qt_calcMaMonths()">
-            <span style="color:var(--sub);font-size:12px;flex-shrink:0;">~</span>
-            <input class="fi" type="date" id="maEnd" style="flex:1;" onclick="try{this.showPicker();}catch(e){}" onchange="qt_calcMaMonths()">
-            <span id="maMonthsBadge" style="flex-shrink:0;font-size:11px;font-weight:700;color:#1D4ED8;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:5px 10px;white-space:nowrap;">— 개월</span>
+          <div style="background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:10px;padding:12px 14px;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:9px;">
+              <span style="width:20px;height:20px;border-radius:6px;background:#D1FAE5;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="11" height="11" fill="none" stroke="#059669" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+              <span style="font-size:12px;font-weight:700;color:#065F46;">유지보수 계약기간</span>
+              <span style="font-size:10px;color:#059669;">시작일과 종료일을 선택하면 개월 수가 자동 계산됩니다</span>
+            </div>
+            <div style="display:flex;gap:8px;align-items:stretch;">
+              <input class="fi" type="date" id="maStart" style="flex:1;height:36px;box-sizing:border-box;background:#fff;border-color:#BBF7D0;" onclick="try{this.showPicker();}catch(e){}" onchange="qt_calcMaMonths()">
+              <span style="display:inline-flex;align-items:center;color:#059669;font-size:13px;font-weight:600;flex-shrink:0;">~</span>
+              <input class="fi" type="date" id="maEnd" style="flex:1;height:36px;box-sizing:border-box;background:#fff;border-color:#BBF7D0;" onclick="try{this.showPicker();}catch(e){}" onchange="qt_calcMaMonths()">
+              <span id="maMonthsBadge" style="display:inline-flex;align-items:center;justify-content:center;height:36px;box-sizing:border-box;min-width:76px;padding:0 14px;font-size:12.5px;font-weight:800;color:#fff;background:#059669;border-radius:8px;white-space:nowrap;flex-shrink:0;">— 개월</span>
+            </div>
           </div>
         </div>
         
@@ -21351,6 +21368,9 @@ function qtRenderPreview(){
       
     </div>
     <div id="t2" style="padding:16px 20px;display:none;">
+
+    <!-- 블록 퀵 네비게이션: 추가된 유형 블록으로 바로 이동 -->
+    <div id="blkNav" class="blk-nav" style="display:none;"></div>
 
     <div class="block-area" id="blockArea">
       <!-- 유형 선택 전 빈 상태: 아래 '항목 블록 추가'에서 유형을 선택하세요 -->
@@ -21708,6 +21728,37 @@ function qt_initDragDrop(){
     });
   });
 }
+// ── 견적항목 블록 퀵 네비게이션 ──
+function qt_renderBlkNav(){
+  var nav=document.getElementById('blkNav');
+  if(!nav) return;
+  var ibs=Array.from(document.querySelectorAll('#blockArea .ib'));
+  if(!ibs.length){ nav.style.display='none'; nav.innerHTML=''; return; }
+  var nums=['①','②','③','④','⑤','⑥','⑦','⑧'];
+  var html='<span class="blk-nav-lbl">바로가기</span>';
+  var di=0;
+  ibs.forEach(function(ib){
+    var badge=ib.querySelector('.ib-badge');
+    var name=badge?badge.textContent.trim():'블록';
+    var bc=badge?badge.style.background:'#F1F5F9';
+    var tc=badge?badge.style.color:'#475569';
+    var isDisc=(name==='특별 할인');
+    var numTxt=isDisc?'':(nums[di]||''); if(!isDisc) di++;
+    html+='<span class="blk-nav-chip" style="background:'+bc+';color:'+tc+';" onclick="qt_jumpToBlk(\''+ib.id+'\')">'
+      +(numTxt?'<span class="blk-nav-num">'+numTxt+'</span>':'')+name+'</span>';
+  });
+  nav.innerHTML=html;
+  nav.style.display='flex';
+}
+function qt_jumpToBlk(id){
+  var b=document.getElementById(id);
+  if(!b) return;
+  b.scrollIntoView({behavior:'smooth',block:'start'});
+  b.classList.remove('ib-flash');
+  void b.offsetWidth; // reflow로 애니메이션 재시작
+  b.classList.add('ib-flash');
+  setTimeout(function(){ b.classList.remove('ib-flash'); },1200);
+}
 function qt_updateBlockNumbers(){
   var nums=['①','②','③','④','⑤','⑥','⑦','⑧'];
   var i=0;
@@ -21718,6 +21769,7 @@ function qt_updateBlockNumbers(){
     if(title)title.textContent='소계 '+(nums[i]||'');
     i++;
   });
+  if(typeof qt_renderBlkNav==='function') qt_renderBlkNav();
 }
 // ── 자동 높이 ──
 document.addEventListener('input',function(e){
@@ -21931,7 +21983,7 @@ function qt_selType(el,t){
 // 모달
 
 function qt_delRow(btn){btn.closest('tr').remove();}
-function qt_rmBlk(id){var b=document.getElementById(id);if(b)b.remove();}
+function qt_rmBlk(id){var b=document.getElementById(id);if(b)b.remove();qt_updateBlockNumbers();if(typeof qt_calcTotal==='function')qt_calcTotal();}
 
 // MM 단가 (기본값은 상단 QT_GRADES 등급우선 스키마 단일 정의 사용 — 평면 재대입 제거)
 // ── 유형별 기본 조건 (QT_SETTINGS.condByType — SP qtSettings payload에 포함되어 팀 공유·동기화) ──
@@ -21981,6 +22033,8 @@ function qt_condFill(){
   var p=document.getElementById('ct-payment'); if(p) p.value=v.payment||'';
   var g=document.getElementById('ct-general'); if(g) g.value=v.general||'';
   var o=document.getElementById('ct-other'); if(o) o.value=v.other||'';
+  // 입력 내용 길이에 맞게 높이 자동 조정 (엔터 포함 전체 내용이 보이도록)
+  [p,g,o].forEach(function(el){ if(el&&el.tagName==='TEXTAREA'&&typeof qt_autoH==='function') qt_autoH(el); });
 }
 // 설정 열 때 draft 초기화 (저장본+기본값 병합 상태로 시작)
 function qt_condInitDraft(){
@@ -22225,6 +22279,7 @@ function qt_addBlock(type){
 
   document.getElementById('blockArea').appendChild(div);
   qt_initDragDrop();
+  if(typeof qt_renderBlkNav==='function') qt_renderBlkNav();
   // 인건비 블록 추가 시 초기 계산
   setTimeout(function(){
     bd.querySelectorAll('.isel').forEach(function(sel){
@@ -22734,6 +22789,7 @@ function qt_openModal(mode,quoteId){
     qt_bindCondDirty();
     var _ba=document.querySelector('.block-area');
     if(_ba){ _ba.innerHTML=''; QT_BC=0; }
+    if(typeof qt_renderBlkNav==='function') qt_renderBlkNav();
     var _tv=document.querySelector('.total-val'); if(_tv) _tv.textContent='₩ 0';
     // 새 견적: 자동생성 번호 + 오늘 날짜
     var _noEl=document.getElementById('quoteNo');
@@ -22822,7 +22878,7 @@ function _qt_fillModalFromData(q,mode){
       if(lastBlk&&blk.html) lastBlk.querySelector('.ib-body').innerHTML=blk.html;
     });
   }
-  setTimeout(qt_calcTotal,100);
+  setTimeout(function(){ qt_calcTotal(); if(typeof qt_renderBlkNav==='function') qt_renderBlkNav(); },100);
 }
 function qt_switchTab(el,id){
   document.querySelectorAll('.mtab').forEach(function(t){t.classList.remove('on');});
