@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260714-003 -->
+<!-- TIS-VERSION: 20260714-004 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -24058,34 +24058,50 @@ body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;ba
 
 
 body{margin:0;background:#fff;display:block;} .pdf-page{box-shadow:none;margin:0 auto;}</script>
+<script>
+/* ── [진단] 로그인창 상태 추적기: 창을 숨기는 주체의 호출 스택을 기록 (원인 확정 후 제거) ── */
+(function(){
+  function _t(){ return new Date().toISOString().slice(11,23); }
+  function _log(tag,extra){
+    var stack='';
+    try{ stack=(new Error()).stack.split('\n').slice(2,8).join(' | '); }catch(e){}
+    var line='['+_t()+'] '+tag+(extra?(' '+extra):'')+'  ⟵  '+stack;
+    console.warn('[진단]',line);
+    try{
+      var arr=JSON.parse(localStorage.getItem('_authTrace')||'[]');
+      arr.push(line); if(arr.length>80) arr=arr.slice(-80);
+      localStorage.setItem('_authTrace', JSON.stringify(arr));
+    }catch(e){}
+  }
+  window._authTraceDump=function(){
+    var arr=[]; try{ arr=JSON.parse(localStorage.getItem('_authTrace')||'[]'); }catch(e){}
+    arr.forEach(function(l){ console.log(l); });
+    return '총 '+arr.length+'건 (위 로그를 복사해주세요)';
+  };
+  window._authTraceClear=function(){ localStorage.removeItem('_authTrace'); return '추적 기록 초기화됨'; };
+  function _watch(id,label){
+    var el=document.getElementById(id);
+    if(!el||!window.MutationObserver) return;
+    var last=getComputedStyle(el).display;
+    new MutationObserver(function(){
+      var now=getComputedStyle(el).display;
+      if(now!==last){ _log(label+' display 변경: '+last+' → '+now); last=now; }
+    }).observe(el,{attributes:true,attributeFilter:['style','class']});
+  }
+  function _wrap(name){
+    var f=window[name];
+    if(typeof f!=='function') return;
+    window[name]=function(){ _log(name+'() 호출'); return f.apply(this,arguments); };
+  }
+  document.addEventListener('DOMContentLoaded',function(){
+    setTimeout(function(){
+      _watch('auth-modal','로그인창');
+      _watch('sp-loading-overlay','SP오버레이');
+      ['closeAuth','openAuth','_showSPLoading','_hideSPLoading','_initApp'].forEach(_wrap);
+      _log('추적기 가동');
+    },50);
+  });
+})();
+</script>
 </body>
-</html
-/* ── 주차선택 모달 (새 디자인) ── */
-
-
-.wk-period-head{display:flex;align-items:flex-start;justify-content:space-between;padding:20px 22px 16px;border-bottom:1px solid #F1F5F9;flex-shrink:0;}
-.wk-period-title{font-size:16px;font-weight:800;color:#0F172A;letter-spacing:-.03em;margin-bottom:2px;}
-.wk-period-sub{font-size:11px;color:#94A3B8;font-weight:500;}
-.wk-period-close{width:28px;height:28px;border-radius:8px;background:#F1F5F9;border:none;cursor:pointer;font-size:13px;color:#64748B;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.wk-period-body{padding:16px 22px;flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;}
-.wk-year-group{display:flex;background:#F8FAFC;border-radius:10px;padding:3px;gap:3px;margin-bottom:14px;}
-.wk-year-btn{flex:1;padding:7px 4px;border:none;border-radius:8px;font-size:13px;font-weight:500;color:#94A3B8;background:transparent;cursor:pointer;transition:all .15s;}
-.wk-year-btn.on{background:#fff;color:#0F172A;font-weight:700;box-shadow:0 1px 4px rgba(15,23,42,.1);}
-.wk-week-list{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:4px;}
-.wk-week-item{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:10px;cursor:pointer;transition:background .12s;border:1.5px solid transparent;}
-.wk-week-item:hover{background:#F8FAFC;}
-.wk-week-item.has{border-color:#DBEAFE;background:#F0F7FF;}
-.wk-week-item.sel{border-color:#4f7fff !important;background:#EFF6FF !important;}
-.wk-week-left{display:flex;align-items:center;gap:10px;}
-.wk-week-dot{width:7px;height:7px;border-radius:50%;background:#CBD5E1;flex-shrink:0;}
-.wk-week-dot.on{background:#4f7fff;}
-.wk-week-num{font-size:13px;font-weight:700;color:#0F172A;}
-.wk-week-num.empty{color:#CBD5E1;}
-.wk-week-range{font-size:11px;color:#94A3B8;margin-top:1px;}
-.wk-week-badge{font-size:10px;font-weight:600;color:#4f7fff;background:#EFF6FF;border-radius:20px;padding:2px 8px;white-space:nowrap;}
-.wk-period-btns{display:flex;gap:8px;padding:16px 22px 20px;border-top:1px solid #F1F5F9;flex-shrink:0;}
-.wk-period-cancel{flex:1;padding:11px;border:1.5px solid #E2E8F0;border-radius:10px;font-size:13px;font-weight:500;color:#64748B;background:#fff;cursor:pointer;}
-.wk-period-ok{flex:1;padding:11px;border:none;border-radius:10px;font-size:13px;font-weight:700;color:#fff;background:linear-gradient(135deg,#4f7fff,#6366F1);cursor:pointer;box-shadow:0 2px 8px rgba(79,127,255,.3);}
-
-
-// 고객사 자동완성
+</html>
