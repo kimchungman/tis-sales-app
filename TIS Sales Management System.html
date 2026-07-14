@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260713-002 -->
+<!-- TIS-VERSION: 20260714-002 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -2298,6 +2298,7 @@ body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;ba
 .fg{display:flex;flex-direction:column;gap:4px;}
 .flbl{font-size:11px;font-weight:600;color:var(--text);}
 .fi{padding:7px 9px;border:1px solid var(--border);border-radius:var(--rs);font-size:12px;color:var(--text);outline:none;transition:border .15s;font-family:inherit;}
+.fi-err{border-color:#DC2626!important;background:#FEF2F2!important;}
 .fi:focus{border-color:var(--blue);}
 .fi::placeholder{color:var(--sub);}
 .fi-ro{background:#F8FAFC;color:var(--sub);}
@@ -21310,10 +21311,10 @@ function qtRenderPreview(){
 
     <!-- 접속 담당자 자동 불러오기 -->
     <div class="rep-info-box">
-      <div class="rep-info-avatar">김</div>
+      <div class="rep-info-avatar" id="repCardAvatar">—</div>
       <div>
-        <div class="rep-info-name">김충만 책임</div>
-        <div class="rep-info-sub">cmkim@takis.co.kr &nbsp;·&nbsp; 010-2363-2296</div>
+        <div class="rep-info-name" id="repCardName">담당자 정보 로딩 중…</div>
+        <div class="rep-info-sub" id="repCardSub"></div>
       </div>
       <div class="rep-info-note">접속 계정 정보 자동 적용됨 · 설정에서 전화번호 변경 가능</div>
     </div>
@@ -21330,7 +21331,7 @@ function qtRenderPreview(){
     <div class="fs">
       <div class="fs-t">수발신 정보</div>
       <div class="g2">
-        <div class="fg"><label class="flbl">수신 (고객사명 귀중)</label><input class="fi" id="toName"></div>
+        <div class="fg"><label class="flbl">수신 (고객사명 귀중) <span style="color:var(--red);">*</span></label><input class="fi" id="toName"></div>
         <div class="fg"><label class="flbl">참조</label><input class="fi" id="ccName"></div>
         <div class="fg"><label class="flbl">발신</label><input class="fi" id="fromName" value="티에이케이정보시스템(주)"></div>
         <div class="fg"><label class="flbl">담당자 (자동입력)</label><input class="fi fi-ro" id="repNameField" value="" readonly></div>
@@ -21339,8 +21340,8 @@ function qtRenderPreview(){
     <div class="fs">
       <div class="fs-t">견적 정보</div>
       <div class="g2">
-        <div class="fg" style="grid-column:1/-1"><label class="flbl">프로젝트명</label><input class="fi" id="projectName"></div>
-        <div class="fg"><label class="flbl">고객사</label><input class="fi" id="clientName"></div>
+        <div class="fg" style="grid-column:1/-1"><label class="flbl">프로젝트명 <span style="color:var(--red);">*</span></label><input class="fi" id="projectName"></div>
+        <div class="fg"><label class="flbl">고객사 <span style="color:var(--red);">*</span></label><input class="fi" id="clientName"></div>
         <!-- 견적 유형은 상단 카드에서 선택 (중복 UI 제거) — 상태값 보관용 숨김 select -->
         <select id="quoteType" onchange="qt_onTypeChange(this.value)" style="display:none;"><option value="dev">개발 구축</option><option value="ma">유지보수 (MA)</option><option value="lic">라이선스·상품</option><option value="etc">기타</option></select>
         <div class="fg"><label class="flbl">견적 No. (자동생성)</label><input class="fi fi-ro" id="quoteNo" value="" readonly></div>
@@ -21437,9 +21438,25 @@ var window_qt_editing_id = null;
 var SESSION_REP = {
   get name(){ return (typeof session!=='undefined'&&session&&session.rep)?session.rep.replace(/[（(【].*$/,'').trim():''; },
   get title(){ var n=this.name; return (typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[n])||''; },
-  get email(){ var n=this.name; return (typeof authCfg!=='undefined'&&authCfg.repEmails&&authCfg.repEmails[n])||''; }, // 공유 email 폴백 제거 (타인 정보 노출 방지)
+  get email(){
+    var n=this.name;
+    var m=(typeof authCfg!=='undefined'&&authCfg.repEmails&&authCfg.repEmails[n])||'';
+    if(m) return m;
+    // 폴백: MSAL 로그인 계정 이메일 (접속자 본인 정보이므로 안전)
+    try{ if(window._msalApp){ var a=window._msalApp.getAllAccounts(); if(a.length>0) return (a[0].username||'').toLowerCase().trim(); } }catch(e){}
+    return '';
+  },
   get phone(){ var n=this.name; return (QT_SETTINGS.phones&&QT_SETTINGS.phones[n])||''; } // 공유 phone 폴백 제거 (타인 정보 노출 방지)
 };
+
+// 담당자 카드(작성 모달 상단)를 접속 계정 정보로 채움 — 신규/수정/복사 모든 모드 공통
+function qt_fillRepCard(){
+  var n=SESSION_REP.name, t=SESSION_REP.title, e=SESSION_REP.email, p=SESSION_REP.phone;
+  var av=document.getElementById('repCardAvatar'); if(av) av.textContent=n?n.charAt(0):'—';
+  var nm=document.getElementById('repCardName'); if(nm) nm.textContent=n?(n+(t?' '+t:'')):'담당자 미확인';
+  var sb=document.getElementById('repCardSub');
+  if(sb){ var parts=[]; if(e)parts.push(e); if(p)parts.push(p); sb.innerHTML=parts.join(' &nbsp;·&nbsp; ')||'<span style="color:#DC2626;">설정에서 휴대전화를 등록해주세요</span>'; }
+}
 
 
 
@@ -22321,10 +22338,15 @@ function qt_openPdf(type,quoteId){
     }
   }
   // 담당자 정보: 저장된 견적의 담당자(q.rep) 기준 — 열람자 세션이 아님 (타인 견적 열람 시 정보 오염 방지)
-  var _pdfRep=SESSION_REP.name, _q3=null;
+  var _pdfRep=SESSION_REP.name, _q3=null, _rfTitle='';
   if(quoteId){ _q3=QUOTES.find(function(x){return x.id===quoteId;}); if(_q3&&_q3.rep) _pdfRep=_q3.rep; }
+  // 폴백: 세션 이름 미해결 시 화면의 담당자 필드("이름 직책")에서 파싱
+  if(!_pdfRep){
+    var _rfv=((document.getElementById('repNameField')||{}).value||'').trim();
+    if(_rfv){ var _rfp=_rfv.split(/\s+/); _pdfRep=_rfp[0]; if(_rfp.length>1) _rfTitle=_rfp.slice(1).join(' '); }
+  }
   d.repName=_pdfRep;
-  d.repTitle=(typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[_pdfRep])||(_pdfRep===SESSION_REP.name?SESSION_REP.title:'');
+  d.repTitle=(typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[_pdfRep])||(_pdfRep===SESSION_REP.name?SESSION_REP.title:'')||_rfTitle;
   d.repEmail=(typeof authCfg!=='undefined'&&authCfg.repEmails&&authCfg.repEmails[_pdfRep])||(_pdfRep===SESSION_REP.name?SESSION_REP.email:'');
   d.repPhone=(QT_SETTINGS.phones&&QT_SETTINGS.phones[_pdfRep])||(_pdfRep===SESSION_REP.name?SESSION_REP.phone:'');
   window.PDF_DATA=d;
@@ -22597,7 +22619,7 @@ function qt_buildDevPdf(){
   h+='<table style="border-collapse:collapse;font-size:9px;line-height:2.0;">';
   h+='<tr><td style="width:36px;font-weight:600;color:#374151;vertical-align:top;">수 신</td><td style="font-weight:700;color:#0F172A;padding-left:12px;">'+recvVal+'</td></tr>';
   if(refVal) h+='<tr><td style="font-weight:600;color:#374151;vertical-align:top;">참 조</td><td style="font-weight:700;color:#0F172A;padding-left:12px;">'+refVal+'</td></tr>';
-  h+='<tr><td style="font-weight:600;color:#374151;vertical-align:top;">발 신</td><td style="font-weight:700;color:#0F172A;padding-left:12px;">'+_rNm+' '+_rTt+'</td></tr>';
+  h+='<tr><td style="font-weight:600;color:#374151;vertical-align:top;">발 신</td><td style="font-weight:700;color:#0F172A;padding-left:12px;">'+(_rNm?(_rNm+(_rTt?' '+_rTt:'')):senderVal)+'</td></tr>';
   h+='</table>';
   // 우: 회사정보
   h+='<div style="text-align:right;font-size:8.5px;color:#374151;line-height:2.0;">';
@@ -22642,7 +22664,8 @@ function qt_buildDevPdf(){
 
   // ── 푸터 ──
   h+='<div style="margin-top:14px;padding-top:8px;border-top:1.5px solid #1E293B;text-align:center;font-size:8.5px;color:#374151;">';
-  h+='티에이케이정보시스템㈜ 솔루션영업팀 &nbsp;'+_rNm+' '+_rTt+' &nbsp;(Mobile : '+phone+' / E-mail : '+_rEm+')';
+  var _ftContact=[]; if(phone)_ftContact.push('Mobile : '+phone); if(_rEm)_ftContact.push('E-mail : '+_rEm);
+  h+='티에이케이정보시스템㈜ 솔루션영업팀'+(_rNm?(' &nbsp;'+_rNm+(_rTt?' '+_rTt:'')):'')+(_ftContact.length?' &nbsp;('+_ftContact.join(' / ')+')':'');
   h+='</div>';
   h+='</div>';
   return h;
@@ -22718,6 +22741,8 @@ function qt_buildMaPdf(){
 function qt_openModal(mode,quoteId){
   window._qt_current_mode=mode||'new';
   window._qt_editing_id=quoteId||null;
+  // 상단 담당자 카드: 어떤 모드든 항상 접속 계정 기준으로 표시
+  if(typeof qt_fillRepCard==='function') qt_fillRepCard();
   // 권한: 게스트=조회만 / edit는 소유 담당자 또는 관리자만 저장 가능
   var _isGuest=(typeof session!=='undefined'&&session&&session.role==='guest');
   var _isAdmin=(typeof session!=='undefined'&&session&&session.role==='admin');
@@ -22802,10 +22827,7 @@ function qt_openModal(mode,quoteId){
     document.querySelectorAll('.tsc').forEach(function(c){c.classList.remove('sel-dev','sel-ma','sel-lic','sel-mix');});
     var _c0=document.querySelector('.tsc[data-type="dev"]'); if(_c0) _c0.classList.add('sel-dev');
     // (레거시 defaultPayment/defaultGeneral 덮어쓰기 제거 — 유형별 기본 조건이 유일한 소스)
-    // 담당자 정보 자동 입력
-    var _rn=document.getElementById('repName');if(_rn) _rn.textContent=SESSION_REP.name+' '+SESSION_REP.title;
-    var _re=document.getElementById('repEmail');if(_re) _re.textContent=SESSION_REP.email;
-    var _rph=document.getElementById('repPhone');if(_rph) _rph.textContent=SESSION_REP.phone;
+    // (담당자 카드는 qt_openModal 진입 시 qt_fillRepCard()로 공통 처리)
   }
 }
 function _qt_fillModalFromData(q,mode){
@@ -22880,7 +22902,36 @@ function _qt_fillModalFromData(q,mode){
   }
   setTimeout(function(){ qt_calcTotal(); if(typeof qt_renderBlkNav==='function') qt_renderBlkNav(); },100);
 }
+// 기본정보 필수값 검증: 미입력 필드에 하이라이트 + 첫 필드 포커스
+function qt_validateBasicInfo(){
+  var required=[
+    {id:'toName',label:'수신 (고객사명)'},
+    {id:'projectName',label:'프로젝트명'},
+    {id:'clientName',label:'고객사'}
+  ];
+  var missing=[];
+  required.forEach(function(r){
+    var el=document.getElementById(r.id);
+    if(!el) return;
+    if(!(el.value||'').trim()){
+      missing.push(r);
+      el.classList.add('fi-err');
+      el.addEventListener('input',function _c(){ el.classList.remove('fi-err'); el.removeEventListener('input',_c); });
+    } else {
+      el.classList.remove('fi-err');
+    }
+  });
+  if(missing.length){
+    var first=document.getElementById(missing[0].id);
+    if(first){ first.focus(); first.scrollIntoView({behavior:'smooth',block:'center'}); }
+    if(typeof showToast==='function') showToast('⚠️ 필수 항목을 입력해주세요: '+missing.map(function(m){return m.label;}).join(', '),'warn');
+    return false;
+  }
+  return true;
+}
 function qt_switchTab(el,id){
+  // 기본정보 필수값 미입력 시 다음 단계 이동 차단 (조회 모드는 예외)
+  if(id!=='t1' && !window._qt_readonly && !qt_validateBasicInfo()) return;
   document.querySelectorAll('.mtab').forEach(function(t){t.classList.remove('on');});
   ['t1','t2','t3','t4'].forEach(function(tid){
     var el2=document.getElementById(tid);
@@ -23055,7 +23106,7 @@ function qt_savePdf(){ qtSavePdf(); }
 
 
 // ── 견적서 설정 저장/로드 (SP + localStorage) ──
-function qt_saveSetting(){
+async function qt_saveSetting(){
   var savedAt = new Date().toISOString();
   // 단가 읽기
   var srcKeys=['tak','rel','ext'];
@@ -23077,6 +23128,20 @@ function qt_saveSetting(){
   // 담당자 정보
   if(!QT_SETTINGS.phones) QT_SETTINGS.phones={};
   var _curRep=SESSION_REP.name;
+  // ── 담당자별 번호 보존: 저장 직전 SP 최신 phones를 병합 ──
+  // QT_SETTINGS는 팀 공유 단일 객체라 통째 저장 시 "마지막 저장이 이기는" 경합으로
+  // 타인이 방금 등록한 번호가 유실될 수 있음 → 타인 키는 항상 SP 최신값을 우선 보존
+  if(window._isSPReady && typeof _spLoadItem==='function'){
+    try{
+      var _latest=await _spLoadItem('qtConfig','qtSettings');
+      if(_latest&&_latest.settings&&_latest.settings.phones){
+        var _spPh=_latest.settings.phones;
+        Object.keys(_spPh).forEach(function(k){
+          if(k!==_curRep && _spPh[k]) QT_SETTINGS.phones[k]=_spPh[k];
+        });
+      }
+    }catch(e){ /* SP 조회 실패 시 로컬 맵 기준으로 진행 (본인 키만 갱신하므로 추가 유실 없음) */ }
+  }
   if(_curRep) QT_SETTINGS.phones[_curRep]=(document.getElementById('myPhone')||{}).value||'';
   // (공유 QT_SETTINGS.phone 기록 중단 — 담당자별 phones 맵만 사용)
   QT_SETTINGS.coName=(document.getElementById('coName')||{}).value||'';
