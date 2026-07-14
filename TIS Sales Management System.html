@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260714-002 -->
+<!-- TIS-VERSION: 20260714-003 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -5075,11 +5075,16 @@ window._startSessionWatchdog = function(){
         // 유효 세션인데 앱이 초기화 안 됐으면 초기화
         if(!window._appInitialized && typeof _initApp==='function'){ _initApp(); }
       } else {
-        // 세션 무효인데 로그인창이 닫혀있으면(=유령접속) 즉시 로그인창 복귀
-        if(!authOpen && window._appInitialized){
-          console.warn('[세션감시] 유령접속 감지 - 로그인창 복귀');
+        // 세션 무효인데 로그인창이 닫혀있으면 즉시 로그인창 복귀
+        // (_appInitialized 여부 무관 — 미초기화+창없음 사각지대 제거)
+        // 단, SP 연결 진행 중이거나 MSAL 리다이렉트 왕복 중에는 대기
+        var _spOv=document.getElementById('sp-loading-overlay');
+        var _spBusy=_spOv&&getComputedStyle(_spOv).display!=='none';
+        var _redirBusy=location.search.indexOf('code=')>-1||location.hash.indexOf('code=')>-1||localStorage.getItem('_spPending')==='1';
+        if(!authOpen && !_spBusy && !_redirBusy){
+          console.warn('[세션감시] 세션 없음 + 로그인창 없음 - 로그인창 복귀');
           window._appInitialized=false;
-          if(typeof openAuth==='function') openAuth();
+          if(typeof openAuth==='function') try{ openAuth(); }catch(e){}
         }
       }
     }catch(e){}
@@ -5542,10 +5547,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   try{ applyLabels(); }catch(e){ console.warn('applyLabels',e); }
   setTimeout(()=>{
     if(typeof window._startSessionWatchdog==='function') window._startSessionWatchdog();
-    attachAllNumFormats();
-    extractIssues();
-    renderIssues();
-    renderDashIssues();
+    try{ attachAllNumFormats(); }catch(e){ console.warn('attachAllNumFormats',e); }
+    try{ extractIssues(); }catch(e){ console.warn('extractIssues',e); }
+    try{ renderIssues(); }catch(e){ console.warn('renderIssues',e); }
+    try{ renderDashIssues(); }catch(e){ console.warn('renderDashIssues',e); }
     // 리다이렉트 복귀 중이면 openAuth 스킵 (세션 복원 후 앱 진입)
     // code= 파라미터만 실제 MSAL 리다이렉트 (state= 제외)
     var _isRedirect = location.search.indexOf('code=')>-1 ||
@@ -5559,20 +5564,16 @@ document.addEventListener('DOMContentLoaded',()=>{
       localStorage.removeItem('_savedSession');
     }
     // MSAL 리다이렉트(code=)인 경우에만 로그인창 스킵
-    // _savedSession/_spPending은 더 이상 로그인창 스킵 조건으로 사용 안 함
-    localStorage.removeItem('_savedSession');
-    localStorage.removeItem('_spPending');
-    localStorage.removeItem('_spPendingTs');
+    // ⚠ _savedSession은 여기서 삭제 금지: MSAL 복귀 리스너가 읽어 세션을 복원한 뒤 스스로 삭제함
+    //   (300ms 시점 조기 삭제 → 복원 레이스로 "빈 화면+세션 없음" 버그의 원인이었음)
     localStorage.removeItem('_tisSavedSession');
     if(_isRedirect){
-      // code= URL 정리 (MSAL이 처리한 코드 재사용 방지)
-      if(window.history&&window.history.replaceState){
-        window.history.replaceState({},'',location.pathname);
-      }
-      // 1초 내 session 미설정 시 로그인창
+      // code= URL 정리는 MSAL handleRedirectPromise 완료 후(복귀 리스너)에서 수행
+      // (여기서 조기 제거 시 MSAL 초기화가 늦으면 코드 유실 → 로그인 실패 레이스)
+      // 복원(코드 교환 포함)에 시간 여유를 주고, 그래도 세션 없으면 로그인창
       setTimeout(function(){
         if(!session||!session.role||session.role==='locked') openAuth();
-      }, 1000);
+      }, 2500);
     } else {
       openAuth();
     }
@@ -14443,6 +14444,8 @@ async function _connectSP(app, account){
         _setBar('connecting','재로그인');
         localStorage.setItem('_spPending','1');
         localStorage.setItem('_spPendingTs', Date.now().toString());
+        // 리다이렉트로 페이지가 이탈하면 메모리 세션이 소멸 → 복귀 시 복원할 수 있게 저장
+        try{ if(window._sessionValid&&window._sessionValid()) localStorage.setItem('_savedSession', JSON.stringify(session)); }catch(e0){}
         await app.acquireTokenRedirect({scopes:[SP_SCOPE], account:account});
         return; // redirect로 페이지 이탈
       }catch(e2){
@@ -14461,6 +14464,12 @@ document.addEventListener('DOMContentLoaded', function(){
   _getMSAL().then(async function(app){
     var rr=null;
     try{ rr=await app.handleRedirectPromise(); }catch(e){}
+    // code 교환이 끝난 뒤에만 URL 정리 (조기 제거 시 코드 유실 레이스 방지)
+    try{
+      if((location.search.indexOf('code=')>-1||location.hash.indexOf('code=')>-1)&&history.replaceState){
+        history.replaceState({},document.title,location.pathname);
+      }
+    }catch(e){}
     if(rr && rr.account) app.setActiveAccount(rr.account);
     var account = app.getActiveAccount()||app.getAllAccounts()[0];
     if(account){
@@ -14485,8 +14494,9 @@ document.addEventListener('DOMContentLoaded', function(){
             _tabState.pipeline=sess.team; _tabState.visits=sess.team;
           }
           localStorage.removeItem('_savedSession');
-          // _initApp 호출 (대시보드 표시)
+          // _initApp 호출 (대시보드 표시) + 타이머로 떠 있을 수 있는 로그인창 닫기
           if(typeof _initApp==='function') _initApp();
+          if(typeof closeAuth==='function') closeAuth();
           // _initApp → buildRepInputs 완료 후 권한 적용 (타이밍 여유 줌)
           setTimeout(function(){
             if(typeof applyPermissions==='function') applyPermissions();
@@ -14517,6 +14527,9 @@ async function _startSP(){
     // MSAL 리다이렉트 후 복귀를 위한 pending 마킹
     localStorage.setItem('_spPending','1');
     localStorage.setItem('_spPendingTs', Date.now().toString());
+    // 리다이렉트로 페이지가 이탈하면 메모리 세션(선택한 담당자)이 소멸 → 복귀 시 복원할 수 있게 저장
+    // (이 저장이 없어서 최초 로그인 후 "빈 화면 + 세션 없음" 버그가 발생했음)
+    try{ if(window._sessionValid&&window._sessionValid()) localStorage.setItem('_savedSession', JSON.stringify(session)); }catch(e0){}
     _setBar('connecting');
     try{ await app.loginRedirect({scopes:[SP_SCOPE]}); }
     catch(e){
