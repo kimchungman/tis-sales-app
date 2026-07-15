@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260715-002 -->
+<!-- TIS-VERSION: 20260715-003 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -22425,6 +22425,18 @@ function qt_openPdf(type,quoteId){
   // 원본 시안 CSS로 완전 격리 렌더 (앱 CSS 간섭 차단)
   var _fr=document.getElementById('qtPdfFrame');
   if(_fr){
+    // 버전 배지 (미리보기 화면 전용 — iframe 밖이라 인쇄물엔 미포함)
+    try{
+      if(!window._TIS_VER){ var _vm=document.documentElement.innerHTML.match(/TIS-VERSION: ([\d-]+)/); window._TIS_VER=_vm?_vm[1]:'?'; }
+      var _vb=document.getElementById('qtPdfVerBadge');
+      if(!_vb){
+        _vb=document.createElement('div');
+        _vb.id='qtPdfVerBadge';
+        _vb.style.cssText='position:absolute;top:6px;left:10px;z-index:5;font-size:10px;font-weight:700;color:#64748B;background:rgba(241,245,249,.95);border:1px solid #E2E8F0;padding:2px 8px;border-radius:6px;font-family:Consolas,monospace;pointer-events:none;';
+        if(_fr.parentElement){ _fr.parentElement.style.position='relative'; _fr.parentElement.appendChild(_vb); }
+      }
+      _vb.textContent='v'+window._TIS_VER;
+    }catch(e){}
     var _css=(document.getElementById('qtPdfCss')||{}).textContent||'';
     var _doc=_fr.contentDocument||_fr.contentWindow.document;
     _doc.open();
