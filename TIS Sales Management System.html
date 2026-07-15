@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260714-012 -->
+<!-- TIS-VERSION: 20260714-013 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -22686,9 +22686,10 @@ function qt_buildDevPdf(){
   // ── 제목: 텍스트 렌더 (기존 캔버스 이미지 → 미리보기·인쇄 시 흐림 문제 해결) ──
   // ⚠ letter-spacing CSS는 html2canvas(PDF 저장)에서 자간이 깨지는 버그가 있어
   //   전각/일반 공백 문자로 자간을 직접 표현 — 저장 PDF와 인쇄 모두 동일하게 선명
-  h+='<div style="text-align:center;padding:16px 0 12px;margin-bottom:14px;">';
-  h+='<div style="font-size:28px;font-weight:900;color:#0F172A;font-family:\'Malgun Gothic\',\'Apple SD Gothic Neo\',sans-serif;line-height:1.35;">견\u2003\u2003적\u2003\u2003서</div>';
-  h+='<div style="font-size:13px;font-weight:500;color:#94A3B8;font-family:\'Malgun Gothic\',\'Apple SD Gothic Neo\',sans-serif;line-height:1.5;margin-top:2px;">(Q U O T A T I O N)</div>';
+  // 크기는 엑셀 원본 견적서와 동일 사양: 견적서 28pt / QUOTATION 18pt (px 아님 — pt!)
+  h+='<div style="text-align:center;padding:12px 0 10px;margin-bottom:12px;">';
+  h+='<div style="font-size:28pt;font-weight:900;color:#0F172A;font-family:\'Malgun Gothic\',\'Apple SD Gothic Neo\',sans-serif;line-height:1.3;">견\u2003\u2003적\u2003\u2003서</div>';
+  h+='<div style="font-size:18pt;font-weight:500;color:#94A3B8;font-family:\'Malgun Gothic\',\'Apple SD Gothic Neo\',sans-serif;line-height:1.4;margin-top:2px;">(Q U O T A T I O N)</div>';
   h+='</div>';
 
   // ── 수발신 + 회사정보 (좌우 배치) ──
