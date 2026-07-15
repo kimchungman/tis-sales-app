@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260715-001 -->
+<!-- TIS-VERSION: 20260715-002 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -22696,9 +22696,9 @@ function qt_buildDevPdf(){
   h+='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #E5E7EB;">';
   // 좌: 수신/참조/발신 세로 정렬
   h+='<table style="border-collapse:collapse;font-size:9px;line-height:2.0;">';
-  h+='<tr><td style="width:36px;font-weight:600;color:#000;vertical-align:top;">수 신</td><td style="color:#000;padding-left:12px;">'+recvVal+'</td></tr>';
-  if(refVal) h+='<tr><td style="font-weight:600;color:#000;vertical-align:top;">참 조</td><td style="color:#000;padding-left:12px;">'+refVal+'</td></tr>';
-  h+='<tr><td style="font-weight:600;color:#000;vertical-align:top;">발 신</td><td style="color:#000;padding-left:12px;">'+(_rNm?(_rNm+(_rTt?' '+_rTt:'')):senderVal)+'</td></tr>';
+  h+='<tr><td style="width:64px;font-weight:600;color:#000;vertical-align:top;white-space:nowrap;">수&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;신</td><td style="color:#000;padding-left:12px;">'+recvVal+'</td></tr>';
+  if(refVal) h+='<tr><td style="font-weight:600;color:#000;vertical-align:top;white-space:nowrap;">참&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;조</td><td style="color:#000;padding-left:12px;">'+refVal+'</td></tr>';
+  h+='<tr><td style="font-weight:600;color:#000;vertical-align:top;white-space:nowrap;">발&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;신</td><td style="color:#000;padding-left:12px;">'+(_rNm?(_rNm+(_rTt?' '+_rTt:'')):senderVal)+'</td></tr>';
   h+='</table>';
   // 우: 회사정보
   h+='<div style="text-align:right;font-size:8.5px;color:#374151;line-height:2.0;">';
