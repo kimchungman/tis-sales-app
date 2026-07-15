@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260714-007 -->
+<!-- TIS-VERSION: 20260714-012 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -237,13 +237,14 @@ function addSelectOpt(btn){
 }
 function deleteSelectOpt(btn){
   var field=btn.dataset.field; var idx=parseInt(btn.dataset.idx);
-  if(!confirm('삭제하시겠습니까?')) return;
+  appConfirm('삭제하시겠습니까?', function(){
   if(!authCfg.selectOptions) authCfg.selectOptions={};
   if(!authCfg.selectOptions[field]) authCfg.selectOptions[field]=getSelectOpts(field).slice();
   authCfg.selectOptions[field].splice(idx,1);
   saveAuthCfg();
   refreshSelectOptions();
   renderSelectOptsSettings();
+  });
 }
 </script>
 <script>
@@ -3470,7 +3471,7 @@ window._wkSaveEntryEdit=async function(entryId){
 
 // ── 삭제
 window._wkDeleteEntry=async function(entryId){
-  if(!confirm('이 회의록을 삭제하시겠습니까?')) return;
+  appConfirm('이 회의록을 삭제하시겠습니까?', async function(){
   var idx=window._wk.entries.findIndex(function(e){return e.id===entryId;});
   if(idx<0) return;
   window._wk.entries.splice(idx,1);
@@ -3485,6 +3486,7 @@ window._wkDeleteEntry=async function(entryId){
   if(window._wk) window._wk.lastSaveAt=Date.now();
   window._wkRenderFeed();
   if(typeof showToast==='function') showToast('🗑 삭제되었습니다');
+  });
 };
 
 
@@ -5257,11 +5259,12 @@ function editGuestAllow(idx){
   showToast('수정할 내용을 변경 후 추가해주세요.', 'info');
 }
 function deleteGuestAllow(idx){
-  if(!confirm('삭제하시겠습니까?')) return;
+  appConfirm('삭제하시겠습니까?', function(){
   if(authCfg.guestAllowList) authCfg.guestAllowList.splice(idx,1);
   saveAuthCfg();
   renderGuestAllowList();
   showToast('✅ 삭제되었습니다.');
+  });
 }
 
 // ── SP 끊김 임시 저장 ──
@@ -8435,11 +8438,12 @@ function applyPreset(name){
 }
 
 function resetTheme(){
-  if(!confirm('테마를 기본값으로 되돌리시겠습니까?')) return;
+  appConfirm('테마를 기본값으로 되돌리시겠습니까?', function(){
   theme = {...defaultTheme};
   localStorage.removeItem('weekly_theme');
   applyAllTheme();
   showToast('↺ 기본 테마로 복원되었습니다.');
+  });
 }
 
 // ══════════════════════════════════════════
@@ -8509,11 +8513,12 @@ function syncLabelInputs(){
 }
 
 function resetLabels(){
-  if(!confirm('문구를 기본값으로 되돌리시겠습니까?'))return;
+  appConfirm('문구를 기본값으로 되돌리시겠습니까?', function(){
   Object.assign(labels,defaultLabels);
   syncLabelInputs();
   applyLabels();
   showToast('↺ 문구가 기본값으로 복원되었습니다.');
+  });
 }
 
 function saveLabels(){
@@ -9231,7 +9236,7 @@ function updateTeamColor(team, idx, color){
 }
 
 function deleteRepFromTeam(team,idx){
-  if(!confirm('담당자를 삭제하시겠습니까?'))return;
+  appConfirm('담당자를 삭제하시겠습니까?', function(){
   const rep=(TEAM_REPS[team]||[])[idx];
   TEAM_REPS[team].splice(idx,1);
   if(TEAM_COLORS[team])TEAM_COLORS[team].splice(idx,1);
@@ -9239,6 +9244,7 @@ function deleteRepFromTeam(team,idx){
   if(currentTeam===team){applyCurrentTeam(team);buildRepTabs();buildRepInputs();}
   renderRepManage();renderRepAuthTable();renderDashboard();
   showToast('담당자가 삭제됐습니다.','warn');
+  });
 }
 
 
@@ -9355,10 +9361,11 @@ function addTeam(){
 }
 
 function deleteTeam(idx){
+
   if(TEAMS.length<=1){ showToast('최소 1개 팀이 필요합니다.','warn'); return; }
   const teamName=TEAMS[idx];
   const memberCount=(TEAM_REPS[teamName]||[]).length;
-  if(memberCount>0&&!confirm(`${teamName}에 ${memberCount}명의 담당자가 있습니다. 삭제하시겠습니까?`))return;
+  var _go=function(){
   TEAMS.splice(idx,1);
   delete TEAM_REPS[teamName];
   delete TEAM_COLORS[teamName];
@@ -9373,6 +9380,9 @@ function deleteTeam(idx){
   renderRepAuthTable();
   renderDashboard();
   showToast('✅ ' + teamName + ' 팀이 삭제됐습니다.');
+  };
+  if(memberCount>0){ appConfirm(`${teamName}에 ${memberCount}명의 담당자가 있습니다. 삭제하시겠습니까?`, _go); }
+  else { _go(); }
 }
 
 function saveDivName(){
@@ -11064,10 +11074,11 @@ function showToast(msg, type='info'){
 }
 
 function clearAllData(){
-  if(!confirm('⚠️ 모든 데이터를 초기화하시겠습니까?\n\n저장된 실적, 고객사, 영업활동 데이터가 모두 삭제됩니다.')) return;
+  appConfirm('⚠️ 모든 데이터를 초기화하시겠습니까?\n\n저장된 실적, 고객사, 영업활동 데이터가 모두 삭제됩니다.', function(){
   localStorage.removeItem('weekly_meeting_data');
   showToast('🗑️ 데이터가 초기화되었습니다. 페이지를 새로고침합니다.', 'warn');
   setTimeout(()=>location.reload(), 1500);
+  });
 }
 
 // ══════════════════════════════════════════
@@ -11283,7 +11294,7 @@ function _renderHistList(){
 }
 function _loadHist(date){
   const item=_getHist()[date];if(!item){showToast('데이터를 찾을 수 없습니다.','warn');return;}
-  if(!confirm(date+' 데이터를 불러오시겠습니까?'))return;
+  appConfirm(date+' 데이터를 불러오시겠습니까?', function(){
   saveToHistory();
   if(item.reps){REPS.length=0;item.reps.forEach(r=>REPS.push(r));}
   if(item.repColors){REP_COLORS.length=0;item.repColors.forEach(c=>REP_COLORS.push(c));}
@@ -11294,10 +11305,12 @@ function _loadHist(date){
   document.getElementById('hist-dropdown').style.display='none';
   setTimeout(()=>{attachAllNumFormats();resizeAllTextareas();},100);
   showToast('📅 '+date+' 데이터를 불러왔습니다.');
+  });
 }
 function clearHistory(){
-  if(!confirm('날짜 이력을 모두 삭제하시겠습니까?'))return;
+  appConfirm('날짜 이력을 모두 삭제하시겠습니까?', function(){
   localStorage.removeItem(_HIST_KEY);updateHistBtn();showToast('🕐 날짜 이력이 초기화되었습니다.','warn');
+  });
 }
 
 // ── 컬럼 너비 ──
@@ -11308,7 +11321,7 @@ function renderColActivityGrid(){const g=document.getElementById('col-activity-g
 function _aW(k,d,t){const c=parseInt(getComputedStyle(document.documentElement).getPropertyValue(k))||80;_sW(k,Math.max(40,Math.min(800,c+d)),t);}
 function _sW(k,v,t){document.documentElement.style.setProperty(k,v+'px');_svW();if(t==='c')renderColClientGrid();else renderColActivityGrid();buildRepInputs();}
 function adjustTextareaH(d){const c=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--ta-min-h'))||32;const n=Math.max(24,Math.min(120,c+d));document.documentElement.style.setProperty('--ta-min-h',n+'px');_svW();const e=document.getElementById('textarea-h-val');if(e)e.textContent=n+'px';buildRepInputs();}
-function resetColWidths(){if(!confirm('기본값으로 되돌리시겠습니까?'))return;[..._COL_C,..._COL_A].forEach(c=>document.documentElement.style.setProperty(c.key,c.def+'px'));document.documentElement.style.setProperty('--ta-min-h','32px');localStorage.removeItem('_wcw2');renderColClientGrid();renderColActivityGrid();buildRepInputs();showToast('↺ 기본값으로 복원했습니다.');}
+function resetColWidths(){appConfirm('기본값으로 되돌리시겠습니까?',function(){[..._COL_C,..._COL_A].forEach(c=>document.documentElement.style.setProperty(c.key,c.def+'px'));document.documentElement.style.setProperty('--ta-min-h','32px');localStorage.removeItem('_wcw2');renderColClientGrid();renderColActivityGrid();buildRepInputs();showToast('↺ 기본값으로 복원했습니다.');});}
 function loadColWidths2(){const s=localStorage.getItem('_wcw2');if(s){try{const d=JSON.parse(s);Object.entries(d).forEach(([k,v])=>document.documentElement.style.setProperty(k,v));}catch(e){}}}
 function _svW(){const d={};[..._COL_C,..._COL_A].forEach(c=>{d[c.key]=getComputedStyle(document.documentElement).getPropertyValue(c.key).trim();});d['--ta-min-h']=getComputedStyle(document.documentElement).getPropertyValue('--ta-min-h').trim()||'32px';localStorage.setItem('_wcw2',JSON.stringify(d));}
 
@@ -12617,7 +12630,7 @@ function _renderHL() {
 }
 
 async function _loadHistDate(date) {
-  if (!confirm(date + ' 데이터를 불러오시겠습니까?')) return;
+  appConfirm(date + ' 데이터를 불러오시겠습니까?', async function(){
   if (window._isSPReady) {
     const snap = await _spLoadItem('snapshot', date);
     if (!snap) { showToast('해당 날짜 데이터 없음', 'warn'); return; }
@@ -12632,6 +12645,7 @@ async function _loadHistDate(date) {
   const dd = document.getElementById('hist-dropdown');
   if (dd) dd.style.display = 'none';
   showToast('📅 ' + date + ' 데이터를 불러왔습니다.');
+  });
 }
 
 // ── autoSave 후 SP 자동 저장 ────────
@@ -15656,7 +15670,7 @@ function _cdbPurgeHidden(name){
   if(typeof showToast==='function') showToast('🗑 "'+n+'" 숨긴 목록에서 제거');
 }
 function _cdbPurgeAllHidden(){
-  if(typeof confirm==='function' && !confirm('숨긴 고객사 목록을 전체 비웁니다.\n(고객사 데이터가 아니라 "숨김 표시"만 제거됩니다)')) return;
+  appConfirm('숨긴 고객사 목록을 전체 비웁니다.\n(고객사 데이터가 아니라 "숨김 표시"만 제거됩니다)', function(){
   store.clientDB_deletedNames=[];
   store.clientDB_deletedMeta={};
   store.clientDB_restoreAllAt=Date.now(); // 이 시각 이전 삭제 무효 → 다른 세션의 stale 삭제명 부활 차단
@@ -15665,6 +15679,7 @@ function _cdbPurgeAllHidden(){
   if(window._isSPReady&&typeof _spSaveClientDB==='function') try{_spSaveClientDB();}catch(e){}
   var pop=document.getElementById('_cdb_hidden_pop'); if(pop) pop.remove();
   if(typeof showToast==='function') showToast('🗑 숨긴 목록을 전체 비웠습니다.');
+  });
 }
 
 // 신규 추가 팝업
@@ -18742,7 +18757,7 @@ function _wkLogSaveEditEntry(id){
 }
 
 function _wkLogDeleteEntry(id){
-  if(!confirm('삭제하시겠습니까?')) return;
+  appConfirm('삭제하시겠습니까?', function(){
   var repName, saveKey;
   if(_wkLogTab_current==='search'&&_wk.weekMode==='period'){
     // 조회 탭: searchEntries에서 삭제
@@ -18768,6 +18783,7 @@ function _wkLogDeleteEntry(id){
     if(typeof _wkSaveFeed==='function') _wkSaveFeed(_wkThisKey(), repName, _wk.entries);
   }
   _wkLogRender();
+  });
 }
 
 function _wkLogEditReply(entryId, replyId){
@@ -18835,7 +18851,7 @@ function _wkLogSaveEditReply(entryId,replyId){
 }
 
 function _wkLogDeleteReply(entryId, replyId){
-  if(!confirm('답변을 삭제하시겠습니까?')) return;
+  appConfirm('답변을 삭제하시겠습니까?', function(){
   var entries, saveKey;
   if(_wkLogTab_current==='search'&&_wk.weekMode==='period'){
     entries=_wk.searchEntries||[];
@@ -18852,6 +18868,7 @@ function _wkLogDeleteReply(entryId, replyId){
   entry.replies=(entry.replies||[]).filter(function(r){return r.id!==replyId;});
   if(typeof _wkSaveFeed==='function') _wkSaveFeed(saveKey, entry.rep, entries);
   _wkLogRender();
+  });
 }
 
 function _wkLogOpenReply(entryId){
@@ -18887,7 +18904,7 @@ function _wkLogOpenReply(entryId){
 }
 
 function _wkLogOverwriteThis(){
-  if(!confirm('이전 회의록 내용을 금주로 덮어쓰시겠습니까?\n현재 금주 내용은 삭제됩니다.')) return;
+  appConfirm('이전 회의록 내용을 금주로 덮어쓰시겠습니까?\n현재 금주 내용은 삭제됩니다.', function(){
   _wk.entries = JSON.parse(JSON.stringify(_wk.prevEntries||[]));
   if(typeof _wkSaveFeed==='function'){
     var byRep={};
@@ -18896,6 +18913,7 @@ function _wkLogOverwriteThis(){
   }
   _wkLogTab('this');
   typeof showToast==='function'&&showToast('금주 회의록으로 복사됐습니다.','ok');
+  });
 }
 
 // ── window에 명시 등록 (HTML onclick에서 호출 가능하도록) ──
@@ -20096,7 +20114,7 @@ window._wkMarkAllRead=async function(){
   }
 };
 window._wkDeleteAllNotif=async function(){
-  if(!confirm('알림을 모두 삭제하시겠습니까?')) return;
+  appConfirm('알림을 모두 삭제하시겠습니까?', async function(){
   // 이번주 월요일 계산
   var _d=new Date(); var _dow=_d.getDay();
   var _mon=new Date(_d); _mon.setDate(_d.getDate()-(_dow===0?6:_dow-1)); _mon.setHours(0,0,0,0);
@@ -20121,6 +20139,7 @@ window._wkDeleteAllNotif=async function(){
       await _wkSaveDeletedNotifIds();
     }catch(e){ console.warn('[wk notif delete]',e); }
   }
+  });
 };
 function _wkUpdateNotifBadge(){
   var cnt=(_wk&&_wk.notifications||[]).filter(function(n){return !n.read;}).length;
@@ -22469,6 +22488,9 @@ function qt_gridizeTable(tbl, hideNames){
       if(td.querySelector('.del-btn')) return false;
       var btn=td.querySelector('button');
       if(btn&&btn.textContent.trim()==='×') return false;
+      // ⚠ 병합(qt_doMerge)은 셀을 제거하지 않고 display:none으로 숨김
+      //   → 숨겨진 자리표시자 셀을 데이터 셀로 오인하면 이후 열이 전부 밀림 (병합 깨짐의 원인)
+      if(td.style&&td.style.display==='none') return false;
       return true;
     });
     var row=[]; var ti=0;
@@ -22661,33 +22683,21 @@ function qt_buildDevPdf(){
   h+='<div style="margin-bottom:14px;">'+qt_getLogoHtml()+'</div>';
   h+='<div style="border-top:1.5px solid #1E293B;margin-bottom:14px;"></div>';
 
-  // ── 제목 ──
-  var titleCanvas=document.createElement('canvas');
-  titleCanvas.width=722; titleCanvas.height=58;
-  var ctx=titleCanvas.getContext('2d');
-  ctx.fillStyle='#ffffff';
-  ctx.fillRect(0,0,722,110);
-  ctx.fillStyle='#0F172A';
-  ctx.font='900 20px "Malgun Gothic","Apple SD Gothic Neo",sans-serif';
-  ctx.textAlign='center';
-  ctx.letterSpacing='10px';
-  ctx.fillText('견  적  서', 361, 28);
-  ctx.fillStyle='#94A3B8';
-  ctx.font='500 15px "Malgun Gothic","Apple SD Gothic Neo",sans-serif';
-  ctx.letterSpacing='2px';
-  ctx.fillText('(QUOTATION)', 361, 50);
-  var titleImg=titleCanvas.toDataURL('image/png');
-  h+='<div style="text-align:center;padding:20px 0 14px;margin-bottom:14px;">';
-  h+='<img src="'+titleImg+'" style="width:722px;height:58px;display:block;margin:0 auto;">';
+  // ── 제목: 텍스트 렌더 (기존 캔버스 이미지 → 미리보기·인쇄 시 흐림 문제 해결) ──
+  // ⚠ letter-spacing CSS는 html2canvas(PDF 저장)에서 자간이 깨지는 버그가 있어
+  //   전각/일반 공백 문자로 자간을 직접 표현 — 저장 PDF와 인쇄 모두 동일하게 선명
+  h+='<div style="text-align:center;padding:16px 0 12px;margin-bottom:14px;">';
+  h+='<div style="font-size:28px;font-weight:900;color:#0F172A;font-family:\'Malgun Gothic\',\'Apple SD Gothic Neo\',sans-serif;line-height:1.35;">견\u2003\u2003적\u2003\u2003서</div>';
+  h+='<div style="font-size:13px;font-weight:500;color:#94A3B8;font-family:\'Malgun Gothic\',\'Apple SD Gothic Neo\',sans-serif;line-height:1.5;margin-top:2px;">(Q U O T A T I O N)</div>';
   h+='</div>';
 
   // ── 수발신 + 회사정보 (좌우 배치) ──
   h+='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #E5E7EB;">';
   // 좌: 수신/참조/발신 세로 정렬
   h+='<table style="border-collapse:collapse;font-size:9px;line-height:2.0;">';
-  h+='<tr><td style="width:36px;font-weight:600;color:#000;vertical-align:top;">수 신</td><td style="font-weight:700;color:#000;padding-left:12px;">'+recvVal+'</td></tr>';
-  if(refVal) h+='<tr><td style="font-weight:600;color:#000;vertical-align:top;">참 조</td><td style="font-weight:700;color:#000;padding-left:12px;">'+refVal+'</td></tr>';
-  h+='<tr><td style="font-weight:600;color:#000;vertical-align:top;">발 신</td><td style="font-weight:700;color:#000;padding-left:12px;">'+(_rNm?(_rNm+(_rTt?' '+_rTt:'')):senderVal)+'</td></tr>';
+  h+='<tr><td style="width:36px;font-weight:600;color:#000;vertical-align:top;">수 신</td><td style="color:#000;padding-left:12px;">'+recvVal+'</td></tr>';
+  if(refVal) h+='<tr><td style="font-weight:600;color:#000;vertical-align:top;">참 조</td><td style="color:#000;padding-left:12px;">'+refVal+'</td></tr>';
+  h+='<tr><td style="font-weight:600;color:#000;vertical-align:top;">발 신</td><td style="color:#000;padding-left:12px;">'+(_rNm?(_rNm+(_rTt?' '+_rTt:'')):senderVal)+'</td></tr>';
   h+='</table>';
   // 우: 회사정보
   h+='<div style="text-align:right;font-size:8.5px;color:#374151;line-height:2.0;">';
@@ -22704,15 +22714,15 @@ function qt_buildDevPdf(){
   h+='<div style="font-weight:600;margin-bottom:6px;">아래와 같이 견적합니다.</div>';
   // 표 형식으로 세로 맞춤
   h+='<table style="border-collapse:collapse;font-size:9px;line-height:2.0;">';
-  h+='<tr><td style="width:90px;color:#000;">1. 프로젝트명</td><td style="font-weight:600;color:#000;padding-left:12px;">'+projVal+'</td></tr>';
-  h+='<tr><td style="color:#374151;white-space:nowrap;">2. 견적 No.</td><td style="font-weight:600;color:#000;padding-left:12px;">'+noVal+'</td></tr>';
-  h+='<tr><td style="color:#374151;white-space:nowrap;">3. 견적 일자</td><td style="font-weight:600;color:#000;padding-left:12px;">'+dateVal+'</td></tr>';
-  h+='<tr><td style="color:#374151;white-space:nowrap;">4. 견적 유효기간</td><td style="font-weight:600;color:#000;padding-left:12px;">'+validVal+'</td></tr>';
+  h+='<tr><td style="width:90px;color:#000;">1. 프로젝트명</td><td style="color:#000;padding-left:12px;">'+projVal+'</td></tr>';
+  h+='<tr><td style="color:#374151;white-space:nowrap;">2. 견적 No.</td><td style="color:#000;padding-left:12px;">'+noVal+'</td></tr>';
+  h+='<tr><td style="color:#374151;white-space:nowrap;">3. 견적 일자</td><td style="color:#000;padding-left:12px;">'+dateVal+'</td></tr>';
+  h+='<tr><td style="color:#374151;white-space:nowrap;">4. 견적 유효기간</td><td style="color:#000;padding-left:12px;">'+validVal+'</td></tr>';
   var _hasMa=(window.PDF_DATA&&window.PDF_DATA.maStart&&window.PDF_DATA.maEnd);
   if(_hasMa){
-    h+='<tr><td style="color:#374151;white-space:nowrap;">5. 계약 기간</td><td style="font-weight:600;color:#000;padding-left:12px;">'+window.PDF_DATA.maStart.replace(/-/g,'.')+' ~ '+window.PDF_DATA.maEnd.replace(/-/g,'.')+' ('+(window.PDF_DATA.maMonths||'')+'개월)</td></tr>';
+    h+='<tr><td style="color:#374151;white-space:nowrap;">5. 계약 기간</td><td style="color:#000;padding-left:12px;">'+window.PDF_DATA.maStart.replace(/-/g,'.')+' ~ '+window.PDF_DATA.maEnd.replace(/-/g,'.')+' ('+(window.PDF_DATA.maMonths||'')+'개월)</td></tr>';
   }
-  h+='<tr><td style="color:#374151;white-space:nowrap;">'+(_hasMa?'6':'5')+'. 견적 금액&nbsp;(VAT 별도)</td><td style="font-weight:600;color:#000;padding-left:12px;">일금 '+amtKor+' 원정 &nbsp;(₩ '+finalAmt.toLocaleString()+')</td></tr>';
+  h+='<tr><td style="color:#374151;white-space:nowrap;">'+(_hasMa?'6':'5')+'. 견적 금액&nbsp;(VAT 별도)</td><td style="color:#000;padding-left:12px;">일금 '+amtKor+' 원정 &nbsp;(₩ '+finalAmt.toLocaleString()+')</td></tr>';
   h+='</table></div>';
 
   // ── 견적 항목 ──
@@ -22721,7 +22731,7 @@ function qt_buildDevPdf(){
 
   // ── 거래조건 ──
   var condLbl='width:56px;background-color:#F3F4F6 !important;border:1px solid #D1D5DB;padding:6px 8px;text-align:center;font-weight:700;font-size:8.5px;color:#000;vertical-align:middle;line-height:1.8;-webkit-print-color-adjust:exact;';
-  var condTd='padding:6px 10px;border:1px solid #D1D5DB;font-size:8.5px;color:#000;line-height:2.0;vertical-align:middle;';
+  var condTd='padding:6px 10px;border:1px solid #D1D5DB;font-size:8.5px;color:#000;line-height:2.0;vertical-align:middle;white-space:pre-line;';
   h+='<table style="width:100%;border-collapse:collapse;margin-bottom:0;">';
   h+='<tr><td style="'+condLbl+'">대금<br>지급<br>조건</td><td style="'+condTd+'">'+paymentVal+'</td></tr>';
   h+='<tr><td style="'+condLbl+'">일반<br>조건</td><td style="'+condTd+'">'+condVal+'</td></tr>';
@@ -23014,6 +23024,20 @@ function qt_syncClientFromRecv(el){
 document.addEventListener('input',function(e){
   if(e.target&&e.target.id==='clientName') e.target.dataset.manual='1';
 });
+// ── [전역 공용] 앱 확인 팝업: 네이티브 confirm 대체 ──
+// 삭제/초기화류 메시지는 자동으로 위험(빨간) 버튼 스타일 적용
+function appConfirm(msg, onOk, opts){
+  opts=opts||{};
+  if(typeof qt_confirmBox==='function'){
+    var danger=opts.danger!==undefined?opts.danger:/삭제|초기화|비웁|덮어쓰/.test(msg);
+    var okText=opts.okText||(/삭제/.test(msg)?'삭제':/초기화|되돌리/.test(msg)?'초기화':/덮어쓰/.test(msg)?'덮어쓰기':'확인');
+    qt_confirmBox({
+      title:opts.title||(danger?'삭제 확인':'확인'),
+      icon:opts.icon||(danger?'🗑️':'❓'),
+      msg:msg, okText:okText, cancelText:opts.cancelText||'취소', danger:danger
+    }, onOk, opts.onCancel);
+  } else if(confirm(msg)){ if(onOk) onOk(); } // 폴백
+}
 // ── 커스텀 확인 팝업 (브라우저 기본 confirm 대체 — 중앙 카드형) ──
 function qt_confirmBox(opts, onOk, onCancel){
   opts=opts||{};
