@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260714-013 -->
+<!-- TIS-VERSION: 20260715-001 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -2260,7 +2260,7 @@ body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;ba
 .td-rep{font-size:11px;font-weight:600;color:var(--navy);text-align:center;}
 .td-client{font-size:12px;font-weight:600;color:var(--navy);text-align:left;}
 .td-proj{font-size:12px;font-weight:500;color:var(--text);}
-.td-change{font-size:9px;color:var(--orange);margin-top:1px;}
+.td-change{font-size:11px;font-weight:600;color:var(--orange);margin-top:2px;}
 .td-no{font-size:10px;font-weight:600;color:var(--navy);}
 .type-chip{display:inline-flex;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;}
 .t-dev{background:var(--purple-s);color:var(--purple);}
@@ -22686,9 +22686,9 @@ function qt_buildDevPdf(){
   // ── 제목: 텍스트 렌더 (기존 캔버스 이미지 → 미리보기·인쇄 시 흐림 문제 해결) ──
   // ⚠ letter-spacing CSS는 html2canvas(PDF 저장)에서 자간이 깨지는 버그가 있어
   //   전각/일반 공백 문자로 자간을 직접 표현 — 저장 PDF와 인쇄 모두 동일하게 선명
-  // 크기는 엑셀 원본 견적서와 동일 사양: 견적서 28pt / QUOTATION 18pt (px 아님 — pt!)
+  // 크기는 엑셀 원본 견적서와 동일 사양: 견적서 32pt / QUOTATION 18pt (px 아님 — pt!)
   h+='<div style="text-align:center;padding:12px 0 10px;margin-bottom:12px;">';
-  h+='<div style="font-size:28pt;font-weight:900;color:#0F172A;font-family:\'Malgun Gothic\',\'Apple SD Gothic Neo\',sans-serif;line-height:1.3;">견\u2003\u2003적\u2003\u2003서</div>';
+  h+='<div style="font-size:32pt;font-weight:900;color:#0F172A;font-family:\'Malgun Gothic\',\'Apple SD Gothic Neo\',sans-serif;line-height:1.3;">견\u2003\u2003적\u2003\u2003서</div>';
   h+='<div style="font-size:18pt;font-weight:500;color:#94A3B8;font-family:\'Malgun Gothic\',\'Apple SD Gothic Neo\',sans-serif;line-height:1.4;margin-top:2px;">(Q U O T A T I O N)</div>';
   h+='</div>';
 
@@ -23170,6 +23170,8 @@ function qt_doDelete(){
   var idx=QUOTES.findIndex(function(x){return x.id===qid;});
   if(idx<0){ qt_closeModal(); return; }
   var removed=QUOTES.splice(idx,1)[0];
+  // 삭제 tombstone 기록: 다른 PC의 옛 사본이 이 견적을 부활시키지 못하게 + 삭제가 전 PC에 전파
+  try{ if(typeof QT_DELETED!=='undefined'&&removed&&removed.id) QT_DELETED[removed.id]=Date.now(); }catch(e){}
   // 캐시 + SP 저장
   try{ _qtCacheQuotes(); }catch(e){}
   try{ if(typeof qt_spSaveAll==='function') qt_spSaveAll(); }catch(e){}
@@ -23662,20 +23664,50 @@ function qt_syncToPipeline(q, mode){
 }
 
 // ── QUOTES SP 연동 (_spSaveItem 방식 - 기존 앱과 동일) ──
+// ── 미리보기에서 Ctrl+P: 부모 문서(빈 화면) 대신 견적서 iframe을 인쇄 ──
+document.addEventListener('keydown',function(e){
+  if((e.ctrlKey||e.metaKey)&&(e.key==='p'||e.key==='P')){
+    var fr=document.getElementById('qtPdfFrame');
+    var pm=fr?fr.closest('.modal-bg,.modal,[id*="df"]')||fr.parentElement:null;
+    var visible=fr&&fr.offsetParent!==null;
+    if(visible&&fr.contentWindow){
+      e.preventDefault();
+      try{ fr.contentWindow.focus(); fr.contentWindow.print(); }catch(err){}
+    }
+  }
+});
+// ── 견적 삭제 기록 (tombstone): 삭제가 모든 PC에 전파되고, 옛 로컬 사본이 부활하지 못하게 함 ──
+var QT_DELETED={};
+try{ QT_DELETED=JSON.parse(localStorage.getItem('_qtDeleted')||'{}')||{}; }catch(e){}
+function _qtTs(q){ var t=new Date(q&&(q.modifiedAt||q.createdAt)||0).getTime(); return isNaN(t)?0:t; }
+// 항목별 병합: 같은 id는 수정시각 최신이 승리, 삭제시각이 더 최신이면 제외
+function _qtMerge(localArr, spArr, localDel, spDel){
+  var del={};
+  [localDel||{}, spDel||{}].forEach(function(d){
+    Object.keys(d).forEach(function(k){ if((d[k]||0)>(del[k]||0)) del[k]=d[k]; });
+  });
+  var map={};
+  (spArr||[]).forEach(function(q){ if(q&&q.id) map[q.id]=q; });
+  (localArr||[]).forEach(function(q){
+    if(!q||!q.id) return;
+    if(!map[q.id]||_qtTs(q)>=_qtTs(map[q.id])) map[q.id]=q;
+  });
+  var out=Object.keys(map).map(function(k){return map[k];}).filter(function(q){
+    var d=del[q.id]||0;
+    return !(d>_qtTs(q)); // 삭제가 마지막 수정보다 최신이면 숨김 (복원=재저장 시 수정시각 갱신으로 자연 부활)
+  });
+  out.sort(function(a,b){ return _qtTs(b)-_qtTs(a); });
+  return {quotes:out, deleted:del};
+}
 async function qt_spFetchQuotes(){
   if(!window._isSPReady||typeof _spLoadItem!=='function'){
     _qtLoadCachedQuotes(); qtRenderQtList(); return;
   }
   try{
     var data=await _spLoadItem('quotations','allQuotes');
-    if(data&&Array.isArray(data.quotes)){
-      // 로컬 미업로드 병합
-      var spIds=new Set(data.quotes.map(function(q){return q.id;}));
-      (QUOTES||[]).filter(function(q){return !spIds.has(q.id);})
-        .forEach(function(q){ data.quotes.unshift(q); });
-      QUOTES=data.quotes;
-      _qtCacheQuotes();
-    }
+    var m=_qtMerge(QUOTES||[], (data&&data.quotes)||[], QT_DELETED, (data&&data.deleted)||{});
+    QUOTES=m.quotes; QT_DELETED=m.deleted;
+    _qtCacheQuotes();
     var _sc=(function(){var el=document.getElementById('qt-content')||document.getElementById('qt-list-body');return el?el.scrollTop:0;})();
     qtRenderQtList();
     requestAnimationFrame(function(){var el=document.getElementById('qt-content')||document.getElementById('qt-list-body');if(el)el.scrollTop=_sc;});
@@ -23687,14 +23719,26 @@ async function qt_spFetchQuotes(){
 async function qt_spSaveAll(){
   if(!window._isSPReady||typeof _spSaveItem!=='function') return;
   try{
-    await _spSaveItem('quotations','allQuotes',{quotes:QUOTES,savedAt:new Date().toISOString()});
+    // 저장 직전 SP 최신과 병합 → 다른 담당자가 방금 등록/수정한 견적을 절대 덮어쓰지 않음
+    var latest=null;
+    try{ latest=await _spLoadItem('quotations','allQuotes'); }catch(e0){}
+    var m=_qtMerge(QUOTES||[], (latest&&latest.quotes)||[], QT_DELETED, (latest&&latest.deleted)||{});
+    QUOTES=m.quotes; QT_DELETED=m.deleted;
+    _qtCacheQuotes();
+    await _spSaveItem('quotations','allQuotes',{quotes:QUOTES, deleted:QT_DELETED, savedAt:new Date().toISOString()});
+    if(typeof qtRenderQtList==='function') qtRenderQtList();
   }catch(e){ console.warn('[견적서] SP 저장 실패',e); }
 }
-// 하위 호환 (saveQuote/updateQuote/deleteQuote 모두 전체 저장으로 처리)
+// 하위 호환 (saveQuote/updateQuote/deleteQuote 모두 병합 저장으로 처리)
 function qt_spSaveQuote(q){ if(!q._spId) QUOTES.unshift(q); _qtCacheQuotes(); qt_spSaveAll(); qtRenderQtList(); }
 function qt_spUpdateQuote(spId,q){ QUOTES=QUOTES.map(function(x){return x._spId===spId?Object.assign({},x,q):x;}); _qtCacheQuotes(); qt_spSaveAll(); }
-function qt_spDeleteQuote(spId){ QUOTES=QUOTES.filter(function(x){return x._spId!==spId;}); _qtCacheQuotes(); qt_spSaveAll(); qtRenderQtList(); }
-function _qtCacheQuotes(){ try{localStorage.setItem('_qtQuotes',JSON.stringify(QUOTES));}catch(e){} }
+function qt_spDeleteQuote(spId){
+  var _t=QUOTES.find(function(x){return x._spId===spId;});
+  if(_t&&_t.id) QT_DELETED[_t.id]=Date.now();
+  QUOTES=QUOTES.filter(function(x){return x._spId!==spId;});
+  _qtCacheQuotes(); qt_spSaveAll(); qtRenderQtList();
+}
+function _qtCacheQuotes(){ try{localStorage.setItem('_qtQuotes',JSON.stringify(QUOTES));localStorage.setItem('_qtDeleted',JSON.stringify(QT_DELETED));}catch(e){} }
 function _qtLoadCachedQuotes(){ try{var ls=localStorage.getItem('_qtQuotes');if(ls){QUOTES=JSON.parse(ls);return true;}}catch(e){} return false; }
 
 
