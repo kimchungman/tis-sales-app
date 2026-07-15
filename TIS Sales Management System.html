@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260715-004 -->
+<!-- TIS-VERSION: 20260715-005 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -22698,9 +22698,9 @@ function qt_buildDevPdf(){
   // ── 제목: 텍스트 렌더 (기존 캔버스 이미지 → 미리보기·인쇄 시 흐림 문제 해결) ──
   // ⚠ letter-spacing CSS는 html2canvas(PDF 저장)에서 자간이 깨지는 버그가 있어
   //   전각/일반 공백 문자로 자간을 직접 표현 — 저장 PDF와 인쇄 모두 동일하게 선명
-  // 크기는 엑셀 원본 견적서와 동일 사양: 견적서 32pt / QUOTATION 18pt (px 아님 — pt!)
+  // 크기는 엑셀 원본 견적서와 동일 사양: 견적서 28pt / QUOTATION 18pt (px 아님 — pt!)
   h+='<div style="text-align:center;padding:12px 0 10px;margin-bottom:12px;">';
-  h+='<div class="q-ttl-hero" style="font-size:32pt;font-weight:900;color:#0F172A;line-height:1.3;">견\u2003\u2003적\u2003\u2003서</div>';
+  h+='<div class="q-ttl-hero" style="font-size:28pt;font-weight:900;color:#0F172A;line-height:1.3;">견\u2003\u2003적\u2003\u2003서</div>';
   h+='<div class="q-ttl-hero-en" style="font-size:18pt;font-weight:500;color:#94A3B8;line-height:1.4;margin-top:2px;">(Q U O T A T I O N)</div>';
   h+='</div>';
 
@@ -22708,7 +22708,7 @@ function qt_buildDevPdf(){
   h+='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #E5E7EB;">';
   // 좌: 수신/참조/발신 세로 정렬
   h+='<table style="border-collapse:collapse;font-size:9px;line-height:2.0;">';
-  h+='<tr><td style="width:90px;color:#000;vertical-align:top;white-space:nowrap;">수&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;신</td><td style="color:#000;padding-left:12px;">'+recvVal+'</td></tr>';
+  h+='<tr><td style="width:130px;color:#000;vertical-align:top;white-space:nowrap;">수&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;신</td><td style="color:#000;padding-left:12px;">'+recvVal+'</td></tr>';
   if(refVal) h+='<tr><td style="color:#000;vertical-align:top;white-space:nowrap;">참&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;조</td><td style="color:#000;padding-left:12px;">'+refVal+'</td></tr>';
   h+='<tr><td style="color:#000;vertical-align:top;white-space:nowrap;">발&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;신</td><td style="color:#000;padding-left:12px;">'+(_rNm?(_rNm+(_rTt?' '+_rTt:'')):senderVal)+'</td></tr>';
   h+='</table>';
@@ -22727,10 +22727,10 @@ function qt_buildDevPdf(){
   h+='<div style="font-weight:600;margin-bottom:6px;">아래와 같이 견적합니다.</div>';
   // 표 형식으로 세로 맞춤
   h+='<table style="border-collapse:collapse;font-size:9px;line-height:2.0;">';
-  h+='<tr><td style="width:90px;color:#000;">1. 프로젝트명</td><td style="color:#000;padding-left:12px;">'+projVal+'</td></tr>';
-  h+='<tr><td style="color:#374151;white-space:nowrap;">2. 견적 No.</td><td style="color:#000;padding-left:12px;">'+noVal+'</td></tr>';
-  h+='<tr><td style="color:#374151;white-space:nowrap;">3. 견적 일자</td><td style="color:#000;padding-left:12px;">'+dateVal+'</td></tr>';
-  h+='<tr><td style="color:#374151;white-space:nowrap;">4. 견적 유효기간</td><td style="color:#000;padding-left:12px;">'+validVal+'</td></tr>';
+  h+='<tr><td style="width:130px;color:#000;white-space:nowrap;">1. 프로젝트명</td><td style="color:#000;padding-left:12px;">'+projVal+'</td></tr>';
+  h+='<tr><td style="color:#000;white-space:nowrap;">2. 견적 No.</td><td style="color:#000;padding-left:12px;">'+noVal+'</td></tr>';
+  h+='<tr><td style="color:#000;white-space:nowrap;">3. 견적 일자</td><td style="color:#000;padding-left:12px;">'+dateVal+'</td></tr>';
+  h+='<tr><td style="color:#000;white-space:nowrap;">4. 견적 유효기간</td><td style="color:#000;padding-left:12px;">'+validVal+'</td></tr>';
   var _hasMa=(window.PDF_DATA&&window.PDF_DATA.maStart&&window.PDF_DATA.maEnd);
   if(_hasMa){
     h+='<tr><td style="color:#374151;white-space:nowrap;">5. 계약 기간</td><td style="color:#000;padding-left:12px;">'+window.PDF_DATA.maStart.replace(/-/g,'.')+' ~ '+window.PDF_DATA.maEnd.replace(/-/g,'.')+' ('+(window.PDF_DATA.maMonths||'')+'개월)</td></tr>';
@@ -24332,7 +24332,7 @@ body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;ba
 
 body{margin:0;background:#fff;display:block;} .pdf-page{box-shadow:none;margin:0 auto;}
 /* ── 견적서 텍스트 타이틀 (최후방 예외: 전 구간 폰트 강제 규칙을 이김) ── */
-.q-ttl-hero{font-size:32pt!important;font-weight:900!important;line-height:1.3!important;}
+.q-ttl-hero{font-size:28pt!important;font-weight:900!important;line-height:1.3!important;}
 .q-ttl-hero-en{font-size:18pt!important;font-weight:500!important;line-height:1.4!important;}
 </script>
 <script>
