@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260715-011 -->
-
+<!-- TIS-VERSION: 20260720-001 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -2261,7 +2260,7 @@ body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;ba
 .td-rep{font-size:11px;font-weight:600;color:var(--navy);text-align:center;}
 .td-client{font-size:12px;font-weight:600;color:var(--navy);text-align:left;}
 .td-proj{font-size:12px;font-weight:500;color:var(--text);}
-.td-change{font-size:11px;font-weight:600;color:var(--orange);margin-top:2px;}
+.td-change{font-size:11px;font-weight:500;color:#B45309;margin-top:3px;padding-left:7px;border-left:2px solid #FCD34D;line-height:1.4;}
 .td-no{font-size:10px;font-weight:600;color:var(--navy);}
 .type-chip{display:inline-flex;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;}
 .t-dev{background:var(--purple-s);color:var(--purple);}
@@ -5597,7 +5596,7 @@ function updateSBWeek(d){
   var _sdt=document.getElementById('sb-dt'); if(_sdt) _sdt.textContent=(mon.getMonth()+1)+'/'+mon.getDate()+' ~ '+(fri.getMonth()+1)+'/'+fri.getDate();
 }
 
-const pgMeta={dashboard:['통합 대시보드','경영계획 vs 실적 현황'],weekly:['주간회의 요약','주간 영업 현황 보고 및 회의록'],input:['영업 진행 현황','담당자별 실적 및 활동 입력'],issues:['이슈 현황','고객사별 이슈 및 리스크'],pipeline:['프로젝트 현황','신규 및 기존 고객 영업 현황'],visits:['고객 접점 현황','고객 접점 기록 대시보드'],contract:['계약 현황','고객사별 계약 및 유지보수 현황'],export:['엑셀 출력','주간회의 자료 다운로드'],personal:['개인설정','테마 및 글씨 크기 설정'],settings:['설정','담당자 관리 및 회의 날짜 설정'],accesslog:['접속 이력','MS 계정 및 담당자별 접속 현황'],clients:['고객사 관리','고객사별 정보 및 영업 이력']};
+const pgMeta={dashboard:['통합 대시보드','경영계획 vs 실적 현황'],weekly:['주간회의 요약','주간 영업 현황 보고 및 회의록'],input:['영업 진행 현황','담당자별 실적 및 활동 입력'],issues:['이슈 현황','고객사별 이슈 및 리스크'],pipeline:['프로젝트 현황','신규 및 기존 고객 영업 현황'],visits:['고객 접점 현황','고객 접점 기록 대시보드'],contract:['계약 현황','고객사별 계약 및 유지보수 현황'],export:['엑셀 출력','주간회의 자료 다운로드'],personal:['개인설정','테마 및 글씨 크기 설정'],settings:['설정','담당자 관리 및 회의 날짜 설정'],accesslog:['접속 이력','MS 계정 및 담당자별 접속 현황'],clients:['고객사 관리','고객사별 정보 및 영업 이력'],quotation:['견적서 관리','견적서 작성 · 이력 · PDF 출력']};
 function switchSettingsTab(tab){
   if(tab==='기본설정'){
     if(typeof renderLayoutSettings==='function') setTimeout(renderLayoutSettings,50);
@@ -21409,7 +21408,7 @@ function qtRenderPreview(){
         
       </div>
     </div>
-      <div style="background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:var(--r);padding:12px 14px;margin-top:10px;"><div style="font-size:12px;font-weight:700;color:#92400E;margin-bottom:7px;">차수 변경 요약 <span style="font-size:10px;font-weight:400;color:#B45309;">내부 기록용 · PDF 미출력</span></div><input class="fi" id="changeSummary" style="background:#fff;border-color:#FDE68A;width:100%;" placeholder="예: 라이선스 수량 변경, 개발공수 조정 (2차 수정)"></div>
+      <div style="background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:var(--r);padding:12px 14px;margin-top:10px;"><div style="font-size:12px;font-weight:700;color:#92400E;margin-bottom:7px;">특이사항 <span style="font-size:10px;font-weight:400;color:#B45309;">내부 기록용 · PDF 미출력</span></div><input class="fi" id="changeSummary" style="background:#fff;border-color:#FDE68A;width:100%;" placeholder="예: 라이선스 수량 변경, 개발공수 조정, 특이 요청사항 등"></div>
       
     </div>
     <div id="t2" style="padding:16px 20px;display:none;">
@@ -22701,8 +22700,8 @@ function qt_buildDevPdf(){
   //   전각/일반 공백 문자로 자간을 직접 표현 — 저장 PDF와 인쇄 모두 동일하게 선명
   // 크기는 엑셀 원본 견적서와 동일 사양: 견적서 20pt / QUOTATION 13pt (엑셀 28/18pt의 본문대비 비율을 이 문서 본문 9.5px 기준으로 환산) (px 아님 — pt!)
   h+='<div style="text-align:center;padding:12px 0 10px;margin-bottom:12px;">';
-  h+='<div class="q-ttl-hero" style="font-size:10pt;font-weight:900;color:#0F172A;line-height:1.3;">견\u2003\u2003적\u2003\u2003서</div>';
-  h+='<div class="q-ttl-hero-en" style="font-size:6pt;font-weight:500;color:#94A3B8;line-height:1.4;margin-top:2px;">(Q U O T A T I O N)</div>';
+  h+='<div class="q-ttl-hero" style="font-size:12pt;font-weight:900;color:#0F172A;line-height:1.3;">견\u2003\u2003적\u2003\u2003서</div>';
+  h+='<div class="q-ttl-hero-en" style="font-size:9pt;font-weight:500;color:#94A3B8;line-height:1.4;margin-top:2px;">(Q U O T A T I O N)</div>';
   h+='</div>';
 
   // ── 수발신 + 회사정보 (좌우 배치) ──
@@ -23230,7 +23229,9 @@ function qt_renderPreview(){
   var date=dateEl?dateEl.value:'';
   var validSel=document.getElementById('validSel');
   var validInp=document.getElementById('validInput');
-  var validity=validInp&&validInp.style.display!=='none'?validInp.value:(validSel?validSel.options[validSel.selectedIndex].text:'');
+  var _vWrap=document.getElementById('validDirectWrap');
+  var _vDirect=_vWrap&&_vWrap.style.display!=='none';
+  var validity=_vDirect?((validInp&&validInp.value)||''):(validSel&&validSel.options[validSel.selectedIndex]?validSel.options[validSel.selectedIndex].text:'');
   var noEl=document.getElementById('quoteNo');
   var no=noEl?noEl.value:'';
 
@@ -23819,7 +23820,7 @@ function qtRenderQtList(){
       '<div class="td-num">'+(idx+1)+'</div>'+
       '<div class="td-rep">'+(latest.rep||'—')+'</div>'+
       '<div class="td-client">'+(latest.client||'—')+'</div>'+
-      '<div class="td L"><div class="td-proj">'+(latest.proj||'—')+(latest.isDraft?' <span style="font-size:9px;font-weight:800;color:#C2410C;background:#FFF7ED;border:1px solid #FED7AA;border-radius:4px;padding:1px 5px;vertical-align:middle;">임시</span>':'')+'</div>'+(latest.changeSum?'<div class="td-change">↑ '+latest.changeSum+'</div>':'')+'</div>'+
+      '<div class="td L"><div class="td-proj">'+(latest.proj||'—')+(latest.isDraft?' <span style="font-size:9px;font-weight:800;color:#C2410C;background:#FFF7ED;border:1px solid #FED7AA;border-radius:4px;padding:1px 5px;vertical-align:middle;position:relative;top:-1px;display:inline-block;line-height:1.4;">임시</span>':'')+'</div>'+(latest.changeSum?'<div class="td-change">'+latest.changeSum+'</div>':'')+'</div>'+
       '<div class="td"><span class="td-no">'+(latest.id||'—')+'</span></div>'+
       '<div class="td"><span class="type-chip '+typeCls[latest.type]+'">'+(typeMap[latest.type]||latest.type)+'</span></div>'+
       '<div class="td">'+(latest.date||'—')+'</div>'+
@@ -24341,8 +24342,8 @@ body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;ba
 
 body{margin:0;background:#fff;display:block;} .pdf-page{box-shadow:none;margin:0 auto;}
 /* ── 견적서 텍스트 타이틀 (최후방 예외: 전 구간 폰트 강제 규칙을 이김) ── */
-.q-ttl-hero{font-size:10pt!important;font-weight:900!important;line-height:1.3!important;}
-.q-ttl-hero-en{font-size:6pt!important;font-weight:500!important;line-height:1.4!important;}
+.q-ttl-hero{font-size:12pt!important;font-weight:900!important;line-height:1.3!important;}
+.q-ttl-hero-en{font-size:9pt!important;font-weight:500!important;line-height:1.4!important;}
 </script>
 <script>
 /* ── [진단] 로그인창 상태 추적기: 창을 숨기는 주체의 호출 스택을 기록 (원인 확정 후 제거) ── */
