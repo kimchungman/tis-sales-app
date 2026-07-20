@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260720-002 -->
+<!-- TIS-VERSION: 20260720-004 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -22440,7 +22440,7 @@ function qt_openPdf(type,quoteId){
     var _css=(document.getElementById('qtPdfCss')||{}).textContent||'';
     var _doc=_fr.contentDocument||_fr.contentWindow.document;
     _doc.open();
-    _doc.write('<!DOCTYPE html><html><head><meta charset="utf-8"><style>'+_css+'</style></head><body><div class="pdf-page">'+_pdfHtml+'</div></body></html>');
+    _doc.write('<!DOCTYPE html><html><head><meta charset="utf-8"><style>'+_css+'</style></head><body><div id="pdfOv"><div class="pdf-page">'+_pdfHtml+'</div></div></body></html>');
     _doc.close();
     // 내용 높이에 맞춰 iframe 높이 조정
     setTimeout(function(){
@@ -22700,7 +22700,7 @@ function qt_buildDevPdf(){
   //   전각/일반 공백 문자로 자간을 직접 표현 — 저장 PDF와 인쇄 모두 동일하게 선명
   // 크기는 엑셀 원본 견적서와 동일 사양: 견적서 20pt / QUOTATION 13pt (엑셀 28/18pt의 본문대비 비율을 이 문서 본문 9.5px 기준으로 환산) (px 아님 — pt!)
   h+='<div style="text-align:center;padding:12px 0 10px;margin-bottom:12px;">';
-  h+='<div class="q-ttl-hero" style="font-size:12pt;font-weight:900;color:#0F172A;line-height:1.3;">견\u2003\u2003적\u2003\u2003서</div>';
+  h+='<div class="q-ttl-hero" style="font-size:12.5pt;font-weight:900;color:#0F172A;line-height:1.3;">견\u2003\u2003적\u2003\u2003서</div>';
   h+='<div class="q-ttl-hero-en" style="font-size:9pt;font-weight:500;color:#94A3B8;line-height:1.4;margin-top:2px;">(Q U O T A T I O N)</div>';
   h+='</div>';
 
@@ -23693,7 +23693,7 @@ document.addEventListener('keydown',function(e){
   if((e.ctrlKey||e.metaKey)&&(e.key==='p'||e.key==='P')){
     var fr=document.getElementById('qtPdfFrame');
     var pm=fr?fr.closest('.modal-bg,.modal,[id*="df"]')||fr.parentElement:null;
-    var visible=fr&&fr.offsetParent!==null;
+    var visible=fr&&fr.getBoundingClientRect().width>0;
     if(visible&&fr.contentWindow){
       e.preventDefault();
       try{ fr.contentWindow.focus(); fr.contentWindow.print(); }catch(err){}
@@ -24344,7 +24344,7 @@ body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;ba
 
 body{margin:0;background:#fff;display:block;} .pdf-page{box-shadow:none;margin:0 auto;}
 /* ── 견적서 텍스트 타이틀 (최후방 예외: 전 구간 폰트 강제 규칙을 이김) ── */
-.q-ttl-hero{font-size:12pt!important;font-weight:900!important;line-height:1.3!important;}
+.q-ttl-hero{font-size:12.5pt!important;font-weight:900!important;line-height:1.3!important;}
 .q-ttl-hero-en{font-size:9pt!important;font-weight:500!important;line-height:1.4!important;}
 </script>
 <script>
