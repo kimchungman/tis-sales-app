@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260715-007 -->
+<!-- TIS-VERSION: 20260715-008 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -22700,8 +22700,8 @@ function qt_buildDevPdf(){
   //   전각/일반 공백 문자로 자간을 직접 표현 — 저장 PDF와 인쇄 모두 동일하게 선명
   // 크기는 엑셀 원본 견적서와 동일 사양: 견적서 20pt / QUOTATION 13pt (엑셀 28/18pt의 본문대비 비율을 이 문서 본문 9.5px 기준으로 환산) (px 아님 — pt!)
   h+='<div style="text-align:center;padding:12px 0 10px;margin-bottom:12px;">';
-  h+='<div class="q-ttl-hero" style="font-size:13pt;font-weight:900;color:#0F172A;line-height:1.3;">견\u2003\u2003적\u2003\u2003서</div>';
-  h+='<div class="q-ttl-hero-en" style="font-size:10pt;font-weight:500;color:#94A3B8;line-height:1.4;margin-top:2px;">(Q U O T A T I O N)</div>';
+  h+='<div class="q-ttl-hero" style="font-size:12pt;font-weight:900;color:#0F172A;line-height:1.3;">견\u2003\u2003적\u2003\u2003서</div>';
+  h+='<div class="q-ttl-hero-en" style="font-size:9pt;font-weight:500;color:#94A3B8;line-height:1.4;margin-top:2px;">(Q U O T A T I O N)</div>';
   h+='</div>';
 
   // ── 수발신 + 회사정보 (좌우 배치) ──
@@ -22733,9 +22733,9 @@ function qt_buildDevPdf(){
   h+='<tr><td style="color:#000;white-space:nowrap;">4. 견적 유효기간</td><td style="color:#000;padding-left:8px;">'+validVal+'</td></tr>';
   var _hasMa=(window.PDF_DATA&&window.PDF_DATA.maStart&&window.PDF_DATA.maEnd);
   if(_hasMa){
-    h+='<tr><td style="color:#374151;white-space:nowrap;">5. 계약 기간</td><td style="color:#000;padding-left:8px;">'+window.PDF_DATA.maStart.replace(/-/g,'.')+' ~ '+window.PDF_DATA.maEnd.replace(/-/g,'.')+' ('+(window.PDF_DATA.maMonths||'')+'개월)</td></tr>';
+    h+='<tr><td style="color:#000;white-space:nowrap;">5. 계약 기간</td><td style="color:#000;padding-left:8px;">'+window.PDF_DATA.maStart.replace(/-/g,'.')+' ~ '+window.PDF_DATA.maEnd.replace(/-/g,'.')+' ('+(window.PDF_DATA.maMonths||'')+'개월)</td></tr>';
   }
-  h+='<tr><td style="color:#374151;white-space:nowrap;">'+(_hasMa?'6':'5')+'. 견적 금액&nbsp;(VAT 별도)</td><td style="color:#000;padding-left:8px;">일금 '+amtKor+' 원정 &nbsp;(₩ '+finalAmt.toLocaleString()+')</td></tr>';
+  h+='<tr><td style="color:#000;white-space:nowrap;">'+(_hasMa?'6':'5')+'. 견적 금액&nbsp;(VAT 별도)</td><td style="color:#000;padding-left:8px;">일금 '+amtKor+' 원정 &nbsp;(₩ '+finalAmt.toLocaleString()+')</td></tr>';
   h+='</table></div>';
 
   // ── 견적 항목 ──
@@ -24332,8 +24332,8 @@ body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;ba
 
 body{margin:0;background:#fff;display:block;} .pdf-page{box-shadow:none;margin:0 auto;}
 /* ── 견적서 텍스트 타이틀 (최후방 예외: 전 구간 폰트 강제 규칙을 이김) ── */
-.q-ttl-hero{font-size:13pt!important;font-weight:900!important;line-height:1.3!important;}
-.q-ttl-hero-en{font-size:10pt!important;font-weight:500!important;line-height:1.4!important;}
+.q-ttl-hero{font-size:12pt!important;font-weight:900!important;line-height:1.3!important;}
+.q-ttl-hero-en{font-size:9pt!important;font-weight:500!important;line-height:1.4!important;}
 </script>
 <script>
 /* ── [진단] 로그인창 상태 추적기: 창을 숨기는 주체의 호출 스택을 기록 (원인 확정 후 제거) ── */
