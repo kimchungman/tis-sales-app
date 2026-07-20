@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260720-001 -->
+<!-- TIS-VERSION: 20260720-002 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -15192,7 +15192,7 @@ function _cdbHTab(el,type,id){
   var hList=document.getElementById('cdb-hlist'); if(!hList) return;
   var pos=hList.scrollTop||0;
   hList.innerHTML=hist.length?hist.map(function(h){
-    return '<div class="cdb-hi"><div class="cdb-hd" style="background:'+(typeColor[h.type]||'#94A3B8')+';"></div><div class="cdb-hw"><div>'+TB(h.type)+'<span style="font-size:12px;color:#374151;">'+_cdbEsc(_cdbStrip(h.text))+(h.sub?'<div style="color:#94A3B8;font-size:11px;margin-top:3px;line-height:1.5;">'+_renderRich(h.sub)+'</div>':'')+'</span></div><div style="font-size:10px;color:#94A3B8;margin-top:2px;">'+(h.rep?_cdbEsc(h.rep)+' · ':'')+_cdbEsc(h.date||'')+'</div></div></div>';
+    return '<div class="cdb-hi"><div class="cdb-hd" style="background:'+(typeColor[h.type]||'#94A3B8')+';"></div><div class="cdb-hw"><div>'+TB(h.type)+'<span style="font-size:12px;color:#0F172A;">'+_cdbEsc(_cdbStrip(h.text))+(h.sub?'<div style="color:#475569;font-size:11px;margin-top:3px;line-height:1.5;">'+_renderRich(h.sub)+'</div>':'')+'</span></div><div style="font-size:10px;color:#64748B;margin-top:2px;">'+(h.rep?_cdbEsc(h.rep)+' · ':'')+_cdbEsc(h.date||'')+'</div></div></div>';
   }).join(''):'<div style="padding:20px;text-align:center;color:#94A3B8;font-size:12px;">이력이 없습니다.</div>';
   requestAnimationFrame(function(){ hList.scrollTop=pos; });
 }
@@ -22834,6 +22834,8 @@ function qt_openModal(mode,quoteId){
   window._qt_editing_id=quoteId||null;
   // 상단 담당자 카드: 어떤 모드든 항상 접속 계정 기준으로 표시
   if(typeof qt_fillRepCard==='function') qt_fillRepCard();
+  // 이전 세션의 필수값 에러 표시(빨간 채우기/테두리) 초기화
+  document.querySelectorAll('#writeModal .fi-err').forEach(function(el){ el.classList.remove('fi-err'); });
   // 권한: 게스트=조회만 / edit는 소유 담당자 또는 관리자만 저장 가능
   var _isGuest=(typeof session!=='undefined'&&session&&session.role==='guest');
   var _isAdmin=(typeof session!=='undefined'&&session&&session.role==='admin');
