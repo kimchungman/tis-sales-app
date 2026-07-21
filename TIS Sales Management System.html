@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260720-016 -->
+<!-- TIS-VERSION: 20260720-017 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -2349,9 +2349,10 @@ body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;ba
 .it-wrap{overflow:visible;position:relative;margin:0;}
 .it th{background:#F1F5F9;color:#475569;padding:6px 8px;text-align:center !important;font-size:10.5px;font-weight:700;letter-spacing:.02em;white-space:nowrap;border-bottom:2px solid #CBD5E1;}
 /* 등급/단가기준 select: 화살표 제거(공간 절약) + 미선택 시 회색 가이드 */
-.it .isel{appearance:none;-webkit-appearance:none;-moz-appearance:none;background:transparent;border:none;text-align:center;text-align-last:center;cursor:pointer;padding:2px 0;border-radius:5px;transition:background .12s;}
-.it .isel:hover{background:#EEF2FF;}
-.it .isel:has(option[value=""]:checked){color:#94A3B8;}
+.it .isel{appearance:none;-webkit-appearance:none;-moz-appearance:none;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:6px;text-align:center;text-align-last:center;cursor:pointer;padding:3px 4px;font-weight:600;color:#334155;transition:border-color .12s, background .12s, box-shadow .12s;}
+.it .isel:hover{border-color:#93C5FD;background:#EFF6FF;}
+.it .isel:focus{outline:none;border-color:#3B82F6;box-shadow:0 0 0 2px rgba(59,130,246,.15);}
+.it .isel:has(option[value=""]:checked){color:#94A3B8;font-weight:400;background:#FAFBFC;}
 /* 금액 계열 셀·입력값 우측 정렬 (전 유형) */
 .it td.gc,.it td.gca,.it td.gp,.it td.gpa,.it td.lic-consumer,.it td.lic-propose,.it td.ma-propose{text-align:right !important;}
 /* 열너비 드래그 핸들 (전 유형 공통) */
@@ -22610,7 +22611,8 @@ function qt_gridizeTable(tbl, hideNames){
   return {ths:visibleThs, rows:grid};
 }
 // ── [공용] 에디터에서 사용자가 조절한 열너비 → PDF %폭 (조절값 그대로 출력 반영) ──
-function qt_colPctsFromEditor(tbl, hideNames){
+function qt_colPctsFromEditor(tbl, hideNames, raw){
+  // raw=true: 에디터의 실제 비율 그대로(최종검토용, 화면과 1:1) / 기본: 금액 열 고정 %(PDF 유형 간 정렬)
   hideNames=hideNames||[];
   try{
     var AMT=['소비자단가','소비자가','공급단가','공급가','제안단가','제안금액','판매단가','판매금액','구축금액'];
@@ -22622,14 +22624,13 @@ function qt_colPctsFromEditor(tbl, hideNames){
     ths.forEach(function(th,i){
       var t=th.textContent.trim();
       if(t===''||hideNames.indexOf(t)!==-1) return; // ×열·숨김열 제외
-      var col=cols[i]; var w=0;
-      if(col){
+      var col=cols[i]; var w=(th.offsetWidth||0); // 실제 렌더 폭 우선 (유연 열도 정확)
+      if(!w&&col){
         w=parseFloat(col.style.width)||0;
         if(!w&&col.style.minWidth) w=parseFloat(col.style.minWidth)||0;
       }
-      if(!w) w=(th.offsetWidth||0);
       if(!w) w=240; // 유연(역할/품목) 열 기본 추정
-      items.push({amt:AMT.indexOf(t)!==-1, w:w});
+      items.push({amt:!raw&&AMT.indexOf(t)!==-1, w:w});
     });
     if(items.length<2) return null;
     var amtN=items.filter(function(x){return x.amt;}).length;
@@ -23445,15 +23446,15 @@ function qt_renderPreview(){
     if(tbl){
       // PDF와 동일 규칙: 통일 컬럼폭(구분/소비자단가 등 동일 위치) + 병합 반영 + 단가기준 숨김
       var G=qt_gridizeTable(tbl,['단가기준','단가']);
-      var pcts=qt_colPctsFromEditor(tbl,['단가기준','단가'])||qt_calcColPcts(G.ths);
-      html+='<table style="width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed;"><colgroup>';
+      var pcts=qt_colPctsFromEditor(tbl,['단가기준','단가'],true)||qt_calcColPcts(G.ths); // raw: 견적항목 화면 비율 1:1
+      html+='<table style="width:100%;border-collapse:collapse;font-size:11.5px;table-layout:fixed;"><colgroup>';
       pcts.forEach(function(p){ html+='<col style="width:'+p+'%">'; });
       html+='</colgroup>';
       html+='<thead><tr style="background:#F1F5F9;">';
       G.ths.forEach(function(th){
         var t=th.textContent.trim();
         var al=(t!=='구분'&&(t==='투입 인력 역할'||t==='품목'||t==='품목 / 비고'||(th.classList&&th.classList.contains('L'))))?'left':'center';
-        html+='<th style="padding:5px 8px;border:1px solid #E2E8F0;font-size:10px;color:#475569;text-align:'+al+';white-space:nowrap;overflow:hidden;">'+t+'</th>';
+        html+='<th style="padding:6px 8px;border:1px solid #E2E8F0;font-size:10.5px;font-weight:700;color:#475569;background:#F1F5F9;text-align:center;white-space:nowrap;overflow:hidden;">'+t+'</th>';
       });
       html+='</tr></thead><tbody>';
       G.rows.forEach(function(cells){
@@ -23471,7 +23472,7 @@ function qt_renderPreview(){
             txt=val?(val.tagName==='SELECT'?(val.options[val.selectedIndex]?val.options[val.selectedIndex].text:''):val.value):td.textContent.trim();
           }
           var rsAttr=(cell&&cell.rowspan>1)?(' rowspan="'+cell.rowspan+'"'):'';
-          html+='<td'+rsAttr+' style="padding:5px 8px;border:1px solid #E2E8F0;text-align:'+al+';vertical-align:middle;word-break:break-all;">'+txt+'</td>';
+          html+='<td'+rsAttr+' style="padding:5px 8px;border:1px solid #E2E8F0;font-size:11.5px;text-align:'+al+';vertical-align:middle;word-break:break-all;">'+txt+'</td>';
         });
         html+='</tr>';
       });
