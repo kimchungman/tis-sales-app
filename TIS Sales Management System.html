@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260721-016 -->
+<!-- TIS-VERSION: 20260721-019 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -2394,7 +2394,7 @@ body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;ba
 .it .isel:focus{outline:none;border-color:#3B82F6;box-shadow:0 0 0 2px rgba(59,130,246,.15);}
 .it .isel:has(option[value=""]:checked){color:#94A3B8;font-weight:400;background:#FAFBFC;}
 /* 금액 계열 셀·입력값 우측 정렬 (전 유형) */
-.it td.gc,.it td.gca,.it td.gp,.it td.gpa,.it td.lic-consumer,.it td.lic-propose,.it td.ma-propose{text-align:right !important;}
+.it td.gc,.it td.gca,.it td.gp,.it td.gpa,.it td.lic-consumer,.it td.lic-propose,.it td.ma-propose,.it td.ma-base{text-align:right !important;}
 /* 열너비 드래그 핸들 (전 유형 공통) */
 .it th{position:relative;}
 .qt-rz{position:absolute;top:0;right:-4px;width:8px;height:100%;cursor:col-resize;z-index:6;user-select:none;}
@@ -10265,7 +10265,10 @@ function _ipRestoreRange(){
 function _getClientNames(){
   var names=[];
   if(typeof store!=='undefined'&&store){
-    (store.clientDB||[]).forEach(function(cl){ if(cl.name) names.push(cl.name); });
+    (store.clientDB||[]).forEach(function(cl){
+      if(cl.name) names.push(cl.name);
+      (cl.aliases||[]).forEach(function(a){ if(a) names.push(a); }); // 별칭도 후보에 포함
+    });
     Object.keys(store.reps||{}).forEach(function(rep){
       var d=store.reps[rep]; if(!d) return;
       (d.clients||[]).forEach(function(cl){ if(cl.name) names.push(cl.name); });
@@ -14956,6 +14959,40 @@ function _cdbAutoRegister(name){
 }
 
 // 이름 변경 + 전체 데이터 업데이트
+// ── 고객사 별칭(Alias) 코어 ──
+// 한 고객사에 여러 표기(법인명/약칭/영문명)를 묶어 집계는 대표명으로 통일
+function _cdbNorm(s){ return String(s||'').replace(/\s+/g,'').replace(/[()（）·.,\-]/g,'').toLowerCase(); }
+function _cdbAliasesOf(item){ return (item&&Array.isArray(item.aliases))?item.aliases:[]; }
+// 이름(대표명 또는 별칭)으로 고객사 찾기
+function _cdbResolve(name){
+  if(!name) return null;
+  var n=_cdbNorm(name);
+  var all=_cdbAll();
+  for(var i=0;i<all.length;i++){
+    if(_cdbNorm(all[i].name)===n) return all[i];
+    var al=_cdbAliasesOf(all[i]);
+    for(var j=0;j<al.length;j++){ if(_cdbNorm(al[j])===n) return all[i]; }
+  }
+  return null;
+}
+// 어떤 표기든 대표명으로 환산 (집계·이력 매칭용)
+function _cdbCanonical(name){
+  var it=_cdbResolve(name);
+  return it?it.name:(name||'');
+}
+// 이 고객사에 속한 모든 표기 (대표명+별칭)
+function _cdbAllNamesOf(nameOrItem){
+  var it=(typeof nameOrItem==='string')?_cdbResolve(nameOrItem):nameOrItem;
+  if(!it) return [nameOrItem].filter(Boolean);
+  return [it.name].concat(_cdbAliasesOf(it));
+}
+// 두 표기가 같은 고객사인가
+function _cdbSameClient(a,b){
+  if(!a||!b) return false;
+  if(_cdbNorm(a)===_cdbNorm(b)) return true;
+  var ia=_cdbResolve(a), ib=_cdbResolve(b);
+  return !!(ia&&ib&&ia.id===ib.id);
+}
 function _cdbRename(id, newName){
   var item=_cdbById(id); if(!item) return;
   var oldName=item.name;
@@ -14966,8 +15003,13 @@ function _cdbRename(id, newName){
     _cdbDeleteItem(id);
   } else {
     item.name=newName;
+    // 옛 이름을 별칭으로 보존 → 과거 문서·타 담당자 입력이 계속 이 고객사로 모임
+    if(oldName&&_cdbNorm(oldName)!==_cdbNorm(newName)){
+      item.aliases=item.aliases||[];
+      if(!item.aliases.some(function(a){return _cdbNorm(a)===_cdbNorm(oldName);})) item.aliases.push(oldName);
+    }
   }
-  // 전체 데이터 업데이트
+  // 전체 데이터 업데이트 (견적서는 원본 표기 유지 — 별칭으로 자동 매칭됨)
   Object.keys(store.reps||{}).forEach(function(rep){
     var d=store.reps[rep]; if(!d) return;
     (d.activities||[]).forEach(function(a){ if(a.client===oldName) a.client=newName; });
@@ -15014,9 +15056,9 @@ function _cdbGetHistory(name,typeFilter){
   if(!typeFilter||typeFilter==='견적'||typeFilter==='all'){
     try{
       (typeof QUOTES!=='undefined'?QUOTES:[]).forEach(function(q){
-        if((q.client||'')!==name) return;
+        if(!_cdbSameClient(q.client||'', name)) return;
         items.push({type:'견적',rep:q.rep||'',
-          text:(q.proj||'(프로젝트명 없음)')+((q.round&&q.round>1)?' · '+q.round+'차':''),
+          text:(q.proj||'(프로젝트명 없음)')+((q.round&&q.round>1)?' · '+q.round+'차':'')+((q.client&&_cdbNorm(q.client)!==_cdbNorm(name))?' ['+q.client+']':''),
           sub:(q.amount?Number(q.amount).toLocaleString('ko-KR')+'원':'')+(q.id?' · '+q.id:''),
           date:(q.date||'').slice(0,10), sort:q.date||q.createdAt||''});
       });
@@ -15062,7 +15104,7 @@ function _cdbGetKPI(name){
     (d.issuesList||[]).forEach(function(iss){ if(iss.client===name&&iss.status!=='완료') kpi.issues++; });
     (d.visitLog||[]).forEach(function(v){ if((v.company||v.client||'')===name) kpi.visits++; });
   });
-  if(typeof QUOTES!=='undefined') QUOTES.forEach(function(q){ if(q.client===name) kpi.quotes++; });
+  if(typeof QUOTES!=='undefined') QUOTES.forEach(function(q){ if(_cdbSameClient(q.client||'',name)) kpi.quotes++; });
   return kpi;
 }
 
@@ -15216,7 +15258,10 @@ function _cdbRenderDetail(id){
     +'</div>'
     +'<div class="cdb-body">'
       +'<div class="cdb-info">'
-        +'<div class="cdb-st">담당자 (고객사 측)</div>'+ccHTML
+        +'<div class="cdb-st">다른 표기 (별칭)</div>'
+        +'<div style="font-size:10.5px;color:var(--muted);line-height:1.5;margin:-2px 0 7px;">법인명·약칭 등 다른 이름으로 입력된 견적·활동도 이 고객사로 모입니다.</div>'
+        +'<div id="cdb-alias-wrap" style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:4px;">'+_cdbAliasChips(item)+'</div>'
+        +'<div class="cdb-st" style="margin-top:14px;">담당자 (고객사 측)</div>'+ccHTML
         +'<div class="cdb-st" style="margin-top:14px;">비고</div>'
         +'<textarea class="cdb-note" placeholder="고객사 관련 메모를 입력하세요..." onchange="_cdbSaveNote(\''+id+'\',this.value)">'+_cdbEsc(item.note||'')+'</textarea>'
       +'</div>'
@@ -15498,6 +15543,53 @@ function _cdbStrip(s){
 
 
 
+function _cdbAliasChips(item){
+  var h='';
+  (item.aliases||[]).forEach(function(a,i){
+    h+='<span style="display:inline-flex;align-items:center;gap:4px;background:var(--light);border:1px solid var(--border);border-radius:8px;padding:3px 8px;font-size:11.5px;color:var(--text);">'
+      +'<span>'+_cdbEsc(a)+'</span>'
+      +'<button onclick="_cdbDelAlias(\''+item.id+'\','+i+')" style="border:none;background:none;cursor:pointer;color:var(--muted2);font-size:12px;padding:0 1px;line-height:1;" title="삭제">×</button></span>';
+  });
+  h+='<span id="cdb-alias-add"><button onclick="_cdbShowAliasInput(\''+item.id+'\')" style="padding:3px 10px;border:1.5px dashed var(--border);border-radius:8px;background:transparent;color:var(--muted);font-size:11.5px;cursor:pointer;font-family:inherit;">＋ 별칭 추가</button></span>';
+  return h;
+}
+function _cdbShowAliasInput(id){
+  var slot=document.getElementById('cdb-alias-add');
+  if(!slot) return;
+  slot.innerHTML='<span style="display:inline-flex;align-items:center;gap:4px;background:var(--card);border:1.5px solid var(--primary);border-radius:8px;padding:2px 6px;">'
+    +'<input id="cdb-alias-new" type="text" placeholder="예: SK Hynix America" style="border:none;background:transparent;font-size:11.5px;width:150px;outline:none;font-family:inherit;color:var(--text);" '
+    +'onkeydown="if(event.key===\'Enter\')_cdbAddAlias(\''+id+'\');if(event.key===\'Escape\')_cdbRenderDetail(\''+id+'\');">'
+    +'<button onclick="_cdbAddAlias(\''+id+'\')" style="border:none;background:none;cursor:pointer;color:var(--primary);font-size:13px;font-weight:800;padding:0 2px;">✓</button>'
+    +'<button onclick="_cdbRenderDetail(\''+id+'\')" style="border:none;background:none;cursor:pointer;color:var(--muted2);font-size:12px;padding:0 2px;">✕</button></span>';
+  var inp=document.getElementById('cdb-alias-new'); if(inp) inp.focus();
+}
+function _cdbAddAlias(id){
+  var item=_cdbById(id); if(!item) return;
+  var inp=document.getElementById('cdb-alias-new');
+  var v=inp?inp.value.trim():'';
+  if(!v){ _cdbRenderDetail(id); return; }
+  var owner=_cdbResolve(v);
+  if(owner&&owner.id!==id){ showToast&&showToast('⚠️ 이미 "'+owner.name+'"에 등록된 표기입니다.','warn'); return; }
+  if(_cdbNorm(v)===_cdbNorm(item.name)){ showToast&&showToast('대표명과 동일합니다.','warn'); return; }
+  item.aliases=item.aliases||[];
+  if(item.aliases.some(function(a){return _cdbNorm(a)===_cdbNorm(v);})){ showToast&&showToast('이미 등록된 별칭입니다.','warn'); return; }
+  item.aliases.push(v);
+  if(typeof autoSave==='function') autoSave();
+  if(window._isSPReady&&typeof _spSaveClientDB==='function') try{ _spSaveClientDB(); }catch(e){}
+  if(typeof _cdbInvalidateAll==='function') _cdbInvalidateAll();
+  _cdbRenderDetail(id);
+  showToast&&showToast('✅ 별칭이 추가되었습니다. 이 표기로 등록된 데이터가 함께 모입니다.');
+}
+function _cdbDelAlias(id, idx){
+  var item=_cdbById(id); if(!item||!item.aliases) return;
+  appConfirm('별칭 "'+item.aliases[idx]+'"을(를) 삭제하시겠습니까?', function(){
+    item.aliases.splice(idx,1);
+    if(typeof autoSave==='function') autoSave();
+    if(window._isSPReady&&typeof _spSaveClientDB==='function') try{ _spSaveClientDB(); }catch(e){}
+    if(typeof _cdbInvalidateAll==='function') _cdbInvalidateAll();
+    _cdbRenderDetail(id);
+  });
+}
 function _cdbSaveNote(id,val){
   var item=_cdbById(id); if(!item) return;
   item.note=val;
@@ -15865,8 +15957,9 @@ function _cdbSyncFromStore(){
   Object.keys(names).forEach(function(n){
     // 삭제된 고객사는 자동 재등록 방지
     if((store.clientDB_deletedNames||[]).indexOf(n)>=0) return;
-    if(!_cdbByName(n)){
-      _cdbAll().push({id:_cdbNewId(),name:n,contacts:[],note:'',autoAdded:true,createdAt:new Date().toISOString()});
+    // 대표명/별칭 어디에도 없을 때만 신규 등록 (별칭 표기는 기존 고객사로 흡수)
+    if(!_cdbResolve(n)){
+      _cdbAll().push({id:_cdbNewId(),name:n,aliases:[],contacts:[],note:'',autoAdded:true,createdAt:new Date().toISOString()});
       changed=true;
     }
   });
@@ -21448,7 +21541,7 @@ function qtRenderPreview(){
     <div class="fs">
       <div class="fs-t">수발신 정보</div>
       <div class="g2">
-        <div class="fg"><label class="flbl">수신 (고객사명 귀중) <span style="color:var(--red);">*</span></label><input class="fi" id="toName" oninput="qt_syncClientFromRecv(this)"></div>
+        <div class="fg"><label class="flbl">수신 (고객사명 귀중) <span style="color:var(--red);">*</span></label><div style="position:relative;"><input class="fi" id="toName" oninput="qt_syncClientFromRecv(this)" autocomplete="off"><div id="toNameDrop" style="display:none;"></div></div></div>
         <div class="fg"><label class="flbl">참조 <span style="color:var(--red);">*</span></label><input class="fi" id="ccName"></div>
         <div class="fg"><label class="flbl">발신</label><input class="fi" id="fromName" value="티에이케이정보시스템(주)"></div>
         <div class="fg"><label class="flbl">담당자 (자동입력)</label><input class="fi fi-ro" id="repNameField" value="" readonly></div>
@@ -22863,7 +22956,7 @@ function qt_buildDevPdf(){
         var thEl=G.ths[ci];
         var t=thEl?thEl.textContent.trim():'';
         var al=(t!=='구분'&&(t==='투입 인력 역할'||t==='품목'||t==='품목 / 비고'||(thEl&&thEl.classList&&thEl.classList.contains('L'))))?'left':'center';
-        var isAmt=(t==='제안금액'||t==='판매금액'||t==='소비자단가'||t==='소비자가'||t==='공급단가'||t==='공급가'||t==='제안단가'||t==='판매단가');
+        var isAmt=(t==='제안금액'||t==='판매금액'||t==='소비자단가'||t==='소비자가'||t==='공급단가'||t==='공급가'||t==='제안단가'||t==='판매단가'||t==='구축금액'||t==='구축비');
         if(isAmt) al='right';
         var txt='';
         if(td){
@@ -23075,6 +23168,14 @@ function qt_openModal(mode,quoteId){
   // 이전 세션의 필수값 에러 표시(빨간 채우기/테두리) 초기화
   document.querySelectorAll('#writeModal .fi-err').forEach(function(el){ el.classList.remove('fi-err'); });
   window._qt_t3ChipSel=null; // 조건비고 유형 칩 수동 선택 초기화 (견적별 독립)
+  // 수신 고객사 자동완성 바인딩 (등록 고객사·별칭 매칭 — 다른 메뉴와 동일 UI)
+  try{
+    var _tn=document.getElementById('toName');
+    if(_tn&&!_tn.dataset._acBound&&typeof _bindClientDrop==='function'){
+      _bindClientDrop('toName','toNameDrop');
+      _tn.dataset._acBound='1';
+    }
+  }catch(e){}
   // 권한: 게스트=조회만 / edit는 소유 담당자 또는 관리자만 저장 가능
   var _isGuest=(typeof session!=='undefined'&&session&&session.role==='guest');
   var _isAdmin=(typeof session!=='undefined'&&session&&session.role==='admin');
@@ -23576,6 +23677,12 @@ function qt_renderPreview(){
         });
       })();
       // 3) 숫자·단위·등급·단가기준 열은 중앙 정렬 강제 (옛 저장분 정렬 누락 보정)
+      (function(){
+        var RIGHT=['소비자단가','소비자가','공급단가','공급가','제안단가','제안금액','판매단가','판매금액','구축금액','구축비'];
+        var ridx=[];
+        cl.querySelectorAll('thead th').forEach(function(th){ if(RIGHT.indexOf(th.textContent.trim())!==-1) ridx.push(th.cellIndex); });
+        cl.querySelectorAll('tbody td').forEach(function(td){ if(ridx.indexOf(td.cellIndex)!==-1) td.style.textAlign='right'; });
+      })();
       (function(){
         var CENTER=['수량','단위','등급','단가기준','구분'];
         var idxs=[];
