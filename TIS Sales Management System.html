@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260720-018 -->
+<!-- TIS-VERSION: 20260720-019 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -23445,16 +23445,23 @@ function qt_renderPreview(){
     var tbl=ib.querySelector('table.it');
     if(tbl){
       // PDF와 동일 규칙: 통일 컬럼폭(구분/소비자단가 등 동일 위치) + 병합 반영 + 단가기준 숨김
-      var G=qt_gridizeTable(tbl,['단가기준','단가']);
-      var pcts=qt_colPctsFromEditor(tbl,['단가기준','단가'],true)||qt_calcColPcts(G.ths); // raw: 견적항목 화면 비율 1:1
-      html+='<table style="width:100%;border-collapse:collapse;font-size:11.5px;table-layout:fixed;"><colgroup>';
-      pcts.forEach(function(p){ html+='<col style="width:'+p+'%">'; });
+      var G=qt_gridizeTable(tbl,[]); // 최종검토는 입력 화면 전체(단가기준 포함)를 그대로 미러
+      // 견적항목 화면의 실제 픽셀 열너비를 그대로 복사 (th.cellIndex로 colgroup 매칭)
+      var _cols=tbl.querySelectorAll('colgroup col');
+      var _ws=G.ths.map(function(th){
+        var w=th.offsetWidth||0;
+        if(!w){ var col=_cols[th.cellIndex];
+          if(col){ w=parseFloat(col.style.width)||parseFloat(col.style.minWidth)||0; } }
+        return w||240;
+      });
+      var _totW=_ws.reduce(function(a,b){return a+b;},0);
+      html+='<div style="overflow-x:auto;"><table style="width:'+_totW+'px;border-collapse:collapse;font-size:11.5px;table-layout:fixed;"><colgroup>';
+      _ws.forEach(function(w){ html+='<col style="width:'+w+'px">'; });
       html+='</colgroup>';
       html+='<thead><tr style="background:#F1F5F9;">';
       G.ths.forEach(function(th){
         var t=th.textContent.trim();
-        var al=(t!=='구분'&&(t==='투입 인력 역할'||t==='품목'||t==='품목 / 비고'||(th.classList&&th.classList.contains('L'))))?'left':'center';
-        html+='<th style="padding:6px 8px;border:1px solid #E2E8F0;font-size:10.5px;font-weight:700;color:#475569;background:#F1F5F9;text-align:center;white-space:nowrap;overflow:hidden;">'+t+'</th>';
+        html+='<th style="padding:6px 8px;border:1px solid #E2E8F0;font-size:10.5px;font-weight:700;letter-spacing:.02em;color:#475569;background:#F1F5F9;text-align:center;white-space:nowrap;overflow:hidden;">'+t+'</th>';
       });
       html+='</tr></thead><tbody>';
       G.rows.forEach(function(cells){
@@ -23464,19 +23471,23 @@ function qt_renderPreview(){
           var td=cell?cell.td:null;
           var thEl=G.ths[ci];
           var t=thEl?thEl.textContent.trim():'';
-          var al=(t!=='구분'&&(t==='투입 인력 역할'||t==='품목'||t==='품목 / 비고'||(thEl&&thEl.classList&&thEl.classList.contains('L'))))?'left':'center';
-          if(t==='제안금액'||t==='판매금액'||t==='소비자단가'||t==='소비자가'||t==='공급단가'||t==='공급가'||t==='제안단가'||t==='판매단가') al='right';
-          var txt='';
+          var txt=''; var al='';
           if(td){
             var val=td.querySelector('input,textarea,select');
             txt=val?(val.tagName==='SELECT'?(val.options[val.selectedIndex]?val.options[val.selectedIndex].text:''):val.value):td.textContent.trim();
+            // 정렬: 입력 화면의 실제 정렬(입력요소 > 셀 인라인)을 그대로 복사
+            al=(val&&val.style&&val.style.textAlign)||td.style.textAlign||'';
+          }
+          if(!al){
+            al=(t==='투입 인력 역할'||t==='품목'||t==='품목 / 비고'||(thEl&&thEl.classList&&thEl.classList.contains('L')))?'left':'center';
+            if(['제안금액','판매금액','소비자단가','소비자가','공급단가','공급가','제안단가','판매단가','구축금액'].indexOf(t)!==-1) al='right';
           }
           var rsAttr=(cell&&cell.rowspan>1)?(' rowspan="'+cell.rowspan+'"'):'';
           html+='<td'+rsAttr+' style="padding:5px 8px;border:1px solid #E2E8F0;font-size:11.5px;text-align:'+al+';vertical-align:middle;word-break:break-all;">'+txt+'</td>';
         });
         html+='</tr>';
       });
-      html+='</tbody></table>';
+      html+='</tbody></table></div>';
     }
     html+='</div>';
   });
