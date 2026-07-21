@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260720-008 -->
+<!-- TIS-VERSION: 20260720-012 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -2348,6 +2348,12 @@ body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;ba
 .it{width:100%;border-collapse:collapse;font-size:11px;}
 .it-wrap{overflow:visible;position:relative;margin:0;}
 .it th{background:#F1F5F9;color:#475569;padding:6px 8px;text-align:center !important;font-size:10.5px;font-weight:700;letter-spacing:.02em;white-space:nowrap;border-bottom:2px solid #CBD5E1;}
+/* 금액 계열 셀·입력값 우측 정렬 (전 유형) */
+.it td.gc,.it td.gca,.it td.gp,.it td.gpa,.it td.lic-consumer,.it td.lic-propose,.it td.ma-propose{text-align:right !important;}
+/* 열너비 드래그 핸들 (전 유형 공통) */
+.it th{position:relative;}
+.qt-rz{position:absolute;top:0;right:-4px;width:8px;height:100%;cursor:col-resize;z-index:6;user-select:none;}
+.qt-rz:hover,.qt-rz.on{background:linear-gradient(to right,transparent 2px,rgba(79,127,255,.5) 2px,rgba(79,127,255,.5) 5px,transparent 5px);}
 .it th.L{text-align:center !important;}
 .it th.L{text-align:left;}.it th.R{text-align:right;}.it td.R{text-align:right;}
 .it td{padding:5px 6px;border:1px solid var(--border2);text-align:center;vertical-align:middle;}
@@ -20683,7 +20689,7 @@ function qtAddBlock(type,savedData){
   var n=nums[idx]||'';
   var cfgs={
     mm:{badge:'인건비',bc:'#EDE9FE',tc:'#5B21B6',
-      body:'<div style="overflow-x:auto;"><table class="qt-it" style="table-layout:fixed;width:100%;min-width:700px;"><colgroup><col style="width:56px"><col style="min-width:120px"><col style="width:38px"><col style="width:38px"><col style="width:78px"><col style="width:72px"><col style="width:86px"><col style="width:86px"><col style="width:86px"><col style="width:86px"><col style="width:26px"></colgroup><thead><tr><th class="L">구분</th><th class="L">투입 인력 역할</th><th>수량</th><th>단위</th><th>등급</th><th>단가기준</th><th>소비자단가</th><th>소비자가</th><th>제안단가</th><th>제안금액</th><th></th></tr></thead><tbody id="qt-tbmmBC"><tr><td class="L"><input class="qt-ii" style="text-align:center;" placeholder="구분"></td><td class="L"><textarea class="qt-ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="역할 입력"></textarea></td><td><input class="qt-ii" style="text-align:center;" value="1.0" oninput="qt_calcMM(this)"></td><td><input class="qt-ii" style="text-align:center;" value="MM"></td><td><select class="qt-isel" style="width:100%;" onchange="qt_calcMM(this)"><option>특급</option><option>고급</option><option selected>중급</option><option>초급</option></select></td><td><select class="qt-isel qt-src-sel" style="width:100%;font-size:10px;" onchange="qt_calcMM(this)"><option value="tak">TAK</option><option value="rel">관계사</option><option value="ext">대외</option></select></td><td class="qt-gc" style="text-align:right;">25,019,615</td><td class="qt-gca" style="text-align:right;">25,019,615</td><td class="qt-gp" style="text-align:right;">15,600,000</td><td class="qt-gpa" style="text-align:right;">15,600,000</td><td><button class="qt-del-btn" onclick="this.closest(\'tr\').remove();qtCalcTotal()">×</button></td></tr></tbody></table></div><span class="qt-add-r" onclick="qtAddMMRow(\'qt-tbmmBC\')">＋ 행 추가</span>'},
+      body:'<div style="overflow-x:auto;"><table class="qt-it" style="table-layout:fixed;width:100%;min-width:700px;"><colgroup><col style="width:56px"><col style="min-width:120px"><col style="width:38px"><col style="width:54px"><col style="width:62px"><col style="width:72px"><col style="width:86px"><col style="width:86px"><col style="width:86px"><col style="width:86px"><col style="width:26px"></colgroup><thead><tr><th class="L">구분</th><th class="L">투입 인력 역할</th><th>수량</th><th>단위</th><th>등급</th><th>단가기준</th><th>소비자단가</th><th>소비자가</th><th>제안단가</th><th>제안금액</th><th></th></tr></thead><tbody id="qt-tbmmBC"><tr><td class="L"><input class="qt-ii" style="text-align:center;" placeholder="구분"></td><td class="L"><textarea class="qt-ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="역할 입력"></textarea></td><td><input class="qt-ii" style="text-align:center;" value="1.0" oninput="qt_calcMM(this)"></td><td><input class="qt-ii" style="text-align:center;" value="MM"></td><td><select class="qt-isel" style="width:100%;" onchange="qt_calcMM(this)"><option>특급</option><option>고급</option><option selected>중급</option><option>초급</option></select></td><td><select class="qt-isel qt-src-sel" style="width:100%;font-size:10px;" onchange="qt_calcMM(this)"><option value="tak">TAK</option><option value="rel">관계사</option><option value="ext">대외</option></select></td><td class="qt-gc" style="text-align:right;">25,019,615</td><td class="qt-gca" style="text-align:right;">25,019,615</td><td class="qt-gp" style="text-align:right;">15,600,000</td><td class="qt-gpa" style="text-align:right;">15,600,000</td><td><button class="qt-del-btn" onclick="this.closest(\'tr\').remove();qtCalcTotal()">×</button></td></tr></tbody></table></div><span class="qt-add-r" onclick="qtAddMMRow(\'qt-tbmmBC\')">＋ 행 추가</span>'},
     lic:{badge:'라이선스(상품)',bc:'#FFF7ED',tc:'#C2410C',
       body:'<div style="overflow-x:auto;"><table class="qt-it" style="table-layout:fixed;width:100%;"><colgroup><col style="width:68px"><col><col style="width:44px"><col style="width:36px"><col style="width:75px"><col style="width:75px"><col style="width:75px"><col style="width:75px"><col style="width:28px"></colgroup><thead><tr><th class="L">구분</th><th class="L">품목</th><th>수량</th><th>단위</th><th>소비자단가</th><th>소비자가</th><th>제안단가</th><th>제안금액</th><th></th></tr></thead><tbody id="qt-tblicBC"><tr><td class="L"><input class="qt-ii" style="text-align:center;" placeholder="구분"></td><td class="L"><textarea class="qt-ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="품목명 입력"></textarea></td><td><input class="qt-ii" style="text-align:center;" placeholder="1" oninput="qt_calcLic(this)"></td><td><input class="qt-ii" style="text-align:center;" placeholder="식"></td><td style="text-align:right;"><input class="qt-ii" style="text-align:right;" placeholder="0" oninput="qt_calcLic(this)"></td><td class="qt-lic-consumer" style="text-align:right;">—</td><td style="text-align:right;"><input class="qt-ii" style="text-align:right;" placeholder="0" oninput="qt_calcLic(this)"></td><td class="qt-lic-propose" style="text-align:right;">—</td><td><button class="qt-del-btn" onclick="this.closest(\'tr\').remove();qtCalcTotal()">×</button></td></tr></tbody></table></div><span class="qt-add-r" onclick="qtAddCommonRow(\'qt-tblicBC\')">＋ 행 추가</span>'},
     ma:{badge:'유지보수(MA)',bc:'#ECFDF5',tc:'#065F46',
@@ -22332,6 +22338,68 @@ function qt_addMMRow(tbid){
 
 // 블록 추가
 var QT_BC=3;
+// ── 열너비 사용자 조절: 헤더 경계 드래그 ──
+// 조절값은 테이블 colgroup에 직접 기록 → 견적 저장 시 블록 HTML에 포함되어 "그 견적에만" 유지됨
+function qt_initColResize(){
+  document.querySelectorAll('#blockArea table.it').forEach(function(tbl){
+    var ths=tbl.querySelectorAll('thead th');
+    ths.forEach(function(th,idx){
+      if(idx>=ths.length-1) return; // 마지막(× 버튼) 열 제외
+      if(th.querySelector('.qt-rz')) return;
+      var h=document.createElement('div');
+      h.className='qt-rz'; h.title='드래그로 열 너비 조절 (이 견적에 저장됨)';
+      h.addEventListener('mousedown',function(e){
+        e.preventDefault(); e.stopPropagation();
+        var cols=tbl.querySelectorAll('colgroup col');
+        var col=cols[idx]; if(!col) return;
+        var startX=e.clientX, startW=th.offsetWidth||parseInt(col.style.width)||80;
+        h.classList.add('on');
+        var ib=tbl.closest('.ib');
+        var badge=(ib&&ib.querySelector('.ib-badge'))?ib.querySelector('.ib-badge').textContent.trim():'';
+        function mv(ev){
+          var w=Math.max(30, startW+(ev.clientX-startX));
+          col.style.minWidth=''; col.style.width=w+'px';
+        }
+        function up(ev){
+          document.removeEventListener('mousemove',mv);
+          document.removeEventListener('mouseup',up);
+          h.classList.remove('on');
+          var w=Math.max(30, startW+(ev.clientX-startX));
+          // 이 견적 안의 같은 유형 블록끼리는 동기 (문서 일관성)
+          document.querySelectorAll('#blockArea table.it').forEach(function(t2){
+            var ib2=t2.closest('.ib');
+            var b2=(ib2&&ib2.querySelector('.ib-badge'))?ib2.querySelector('.ib-badge').textContent.trim():'';
+            if(b2!==badge) return;
+            var c2=t2.querySelectorAll('colgroup col')[idx];
+            if(c2){ c2.style.minWidth=''; c2.style.width=w+'px'; }
+          });
+        }
+        document.addEventListener('mousemove',mv);
+        document.addEventListener('mouseup',up);
+      });
+      th.appendChild(h);
+    });
+  });
+}
+// ── 저장 견적 복원 시 금액 열 정렬 정규화 (옛 저장분의 좌측 정렬 교정) ──
+function qt_normalizeAlign(){
+  var AMT=['소비자단가','소비자가','공급단가','공급가','제안단가','제안금액','판매단가','판매금액','구축금액'];
+  document.querySelectorAll('#blockArea table.it').forEach(function(tbl){
+    var ths=Array.from(tbl.querySelectorAll('thead th'));
+    var amtIdx=[];
+    ths.forEach(function(th,i2){ if(AMT.indexOf(th.textContent.trim())!==-1) amtIdx.push(i2); });
+    if(!amtIdx.length) return;
+    tbl.querySelectorAll('tbody tr').forEach(function(tr){
+      var tds=tr.querySelectorAll('td');
+      amtIdx.forEach(function(i2){
+        var td=tds[i2]; if(!td) return;
+        td.style.textAlign='right';
+        var inp=td.querySelector('input,textarea');
+        if(inp) inp.style.textAlign='right';
+      });
+    });
+  });
+}
 function qt_addBlock(type){
   QT_BC++;var id='blk'+QT_BC;
   var nums=['①','②','③','④','⑤','⑥','⑦','⑧'];
@@ -22371,6 +22439,7 @@ function qt_addBlock(type){
   div.appendChild(bd);
 
   document.getElementById('blockArea').appendChild(div);
+  qt_initColResize(); // 열너비 조절 핸들 부착
   qt_initDragDrop();
   if(typeof qt_renderBlkNav==='function') qt_renderBlkNav();
   // 인건비 블록 추가 시 초기 계산
@@ -22528,6 +22597,32 @@ function qt_gridizeTable(tbl, hideNames){
   });
   return {ths:visibleThs, rows:grid};
 }
+// ── [공용] 에디터에서 사용자가 조절한 열너비 → PDF %폭 (조절값 그대로 출력 반영) ──
+function qt_colPctsFromEditor(tbl, hideNames){
+  hideNames=hideNames||[];
+  try{
+    var ths=Array.from(tbl.querySelectorAll('thead th'));
+    var cols=tbl.querySelectorAll('colgroup col');
+    if(!cols.length) return null;
+    var ws=[]; var ok=true;
+    ths.forEach(function(th,i){
+      var t=th.textContent.trim();
+      if(t===''||hideNames.indexOf(t)!==-1) return; // ×열·숨김열 제외
+      var col=cols[i]; var w=0;
+      if(col){
+        w=parseFloat(col.style.width)||0;
+        if(!w&&col.style.minWidth) w=parseFloat(col.style.minWidth)||0;
+      }
+      if(!w) w=(th.offsetWidth||0);
+      if(!w) w=240; // 유연(역할/품목) 열 기본 추정
+      ws.push(w);
+    });
+    if(ws.length<2) return null;
+    var sum=ws.reduce(function(a,b){return a+b;},0);
+    if(!sum) return null;
+    return ws.map(function(w){ return (w/sum*100).toFixed(2); });
+  }catch(e){ return null; }
+}
 // ── [공용] 통일 컬럼폭(%) — "구분/소비자단가" 등 동일 헤더는 모든 유형에서 동일 폭 ──
 function qt_calcColPcts(visibleThs){
   var KNOWN={'구분':76,'수량':44,'개월':52,'단위':36,'등급':52,'요율':60,
@@ -22626,7 +22721,7 @@ function qt_buildDevPdf(){
 
     var isMM=(badgeTxt==='인건비');
     // [공용] 통일 컬럼폭 (%) — 모든 유형에서 동일 헤더는 동일 위치/폭
-    var colPcts=qt_calcColPcts(visibleThs);
+    var colPcts=qt_colPctsFromEditor(tbl,HIDE)||qt_calcColPcts(visibleThs);
     var cg='<colgroup>';
     colPcts.forEach(function(p){ cg+='<col style="width:'+p+'%">'; });
     cg+='</colgroup>';
@@ -23034,6 +23129,8 @@ function _qt_fillModalFromData(q,mode){
       var lastBlk=ibs[ibs.length-1];
       if(lastBlk&&blk.html) lastBlk.querySelector('.ib-body').innerHTML=blk.html;
     });
+    qt_initColResize(); // 조절 핸들 부착 (복원된 견적별 colgroup은 그대로 존중)
+    qt_normalizeAlign(); // 금액 열 우측 정렬 보정
   }
   setTimeout(function(){ qt_calcTotal(); if(typeof qt_renderBlkNav==='function') qt_renderBlkNav(); },100);
 }
@@ -23149,7 +23246,15 @@ function qt_t3LoadCond(el){
 }
 // 현재 견적 유형에 맞춰 t3 칩 활성 표시
 function qt_t3SyncChips(t){
-  t=t||window._qt_t3ChipSel||((document.getElementById('quoteType')||{}).value||'dev');
+  if(!t){
+    t=window._qt_t3ChipSel;
+    // 메모리에 없으면 편집 중 견적의 저장값(condChip)에서 복원 — 타이밍/경로 무관 보장
+    if(!t&&window._qt_editing_id&&typeof QUOTES!=='undefined'){
+      var _eq=QUOTES.find(function(x){return x.id===window._qt_editing_id;});
+      if(_eq&&_eq.condChip){ t=_eq.condChip; window._qt_t3ChipSel=t; }
+    }
+    t=t||((document.getElementById('quoteType')||{}).value||'dev');
+  }
   document.querySelectorAll('#t3CondTabs .chip').forEach(function(ch){
     ch.classList.toggle('on', ch.getAttribute('data-ct')===t);
   });
@@ -23320,7 +23425,7 @@ function qt_renderPreview(){
     if(tbl){
       // PDF와 동일 규칙: 통일 컬럼폭(구분/소비자단가 등 동일 위치) + 병합 반영 + 단가기준 숨김
       var G=qt_gridizeTable(tbl,['단가기준','단가']);
-      var pcts=qt_calcColPcts(G.ths);
+      var pcts=qt_colPctsFromEditor(tbl,['단가기준','단가'])||qt_calcColPcts(G.ths);
       html+='<table style="width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed;"><colgroup>';
       pcts.forEach(function(p){ html+='<col style="width:'+p+'%">'; });
       html+='</colgroup>';
@@ -23621,7 +23726,10 @@ function qt_saveCurrentQuote(isDraft){
     recv:(document.getElementById('toName')||{}).value||'',
     ref:(document.getElementById('ccName')||{}).value||'',
     sender:(document.getElementById('fromName')||{}).value||'티에이케이정보시스템(주)',
-    condChip:window._qt_t3ChipSel||'', // 조건비고 유형 칩 선택 유지
+    condChip:(function(){
+      if(window._qt_t3ChipSel) return window._qt_t3ChipSel;
+      try{ var _p=qid&&QUOTES.find(function(x){return x.id===qid;}); return (_p&&_p.condChip)||''; }catch(e){ return ''; }
+    })(), // 조건비고 유형 칩: 현재 선택 > 기존 저장값 순으로 유지
     paymentCond:(document.getElementById('paymentCond')||{}).value||'',
     generalCond:(document.getElementById('generalCond')||{}).value||'',
     otherCond:(document.getElementById('otherCond')||{}).value||'',
