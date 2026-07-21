@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260721-002 -->
+<!-- TIS-VERSION: 20260721-004 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -3069,20 +3069,30 @@ function _getMenuOrder(){
   return allIds;
 }
 
-function _renderSidebar(){
-  // 실제 사이드바(snav-*)를 저장된 순서대로 재배치 (마크업/이벤트/권한 로직 보존)
-  var order=_getMenuOrder();
-  var first=document.getElementById('snav-'+order[0]);
-  if(!first||!first.parentNode) return;
-  var parent=first.parentNode;
-  order.forEach(function(pid){
-    var el=document.getElementById('snav-'+pid);
-    if(el) parent.appendChild(el);
+function _sbSections(){
+  var lbl=document.querySelector('.sb-label'); if(!lbl) return null;
+  var body=lbl.parentNode;
+  var secs=[]; var cur=null;
+  Array.from(body.children).forEach(function(el){
+    if(el.classList&&el.classList.contains('sb-label')){ cur={label:el,items:[]}; secs.push(cur); }
+    else if(cur&&el.classList&&el.classList.contains('sb-item')){ cur.items.push(el); }
   });
-  // 관리자 전용 항목은 항상 맨 아래 유지
-  ['snav-settings','snav-accesslog'].forEach(function(id){
-    var el=document.getElementById(id);
-    if(el) parent.appendChild(el);
+  return {body:body,secs:secs};
+}
+function _renderSidebar(){
+  // 사이드바 = 평면 구조(sb-label 구분자 + sb-item). 섹션 순서 + 섹션 내 메뉴 순서를 재조립.
+  var S=_sbSections(); if(!S||!S.secs.length) return;
+  var order=_getMenuOrder();
+  var rank=function(el){ var i2=order.indexOf((el.id||'').replace('snav-','')); return i2<0?999:i2; };
+  var secs=S.secs.slice();
+  var so=(typeof authCfg!=='undefined'&&authCfg.sectionOrder&&authCfg.sectionOrder.length)?authCfg.sectionOrder:null;
+  if(so){ secs.sort(function(a,b){
+    var ai=so.indexOf(a.label.textContent.trim()), bi=so.indexOf(b.label.textContent.trim());
+    return (ai<0?999:ai)-(bi<0?999:bi);
+  }); }
+  secs.forEach(function(sec){
+    S.body.appendChild(sec.label);
+    sec.items.slice().sort(function(a,b){ return rank(a)-rank(b); }).forEach(function(el){ S.body.appendChild(el); });
   });
 }
 
@@ -4395,9 +4405,9 @@ window._updateSidebarByRole=function(){
       </div>
     </div>
     <div class="sec-card">
-      <div class="sec-head"><h3>화면 레이아웃 설정</h3></div>
+      <div class="sec-head"><h3>메뉴 이름·표시 설정</h3></div>
       <div class="sec-body">
-        <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">각 메뉴의 섹션 표시 여부와 이름을 설정합니다.</p>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">전체 메뉴의 표시 이름과 표시 여부를 설정합니다. 저장 시 모든 사용자에게 적용됩니다.</p>
         <table style="width:100%;border-collapse:collapse;font-size:12px;">
           <thead>
             <tr style="background:#F8FAFF;">
@@ -4418,9 +4428,12 @@ window._updateSidebarByRole=function(){
       <div class="sec-card">
         <div class="sec-head"><h3>메뉴 순서 설정</h3></div>
         <div class="sec-body">
-          <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">드래그하여 순서를 변경합니다. 변경사항은 SP에 자동 저장됩니다.</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">드래그하여 순서를 변경합니다. 변경사항은 모든 사용자에게 적용됩니다.</div>
+          <div style="font-size:11.5px;font-weight:700;color:var(--muted);margin:4px 0 6px;">분류(섹션) 순서</div>
+          <div id="cfg-sec-order-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;"></div>
+          <div style="font-size:11.5px;font-weight:700;color:var(--muted);margin:4px 0 6px;">메뉴 순서 <span style="font-weight:400;">(같은 분류 안에서 적용)</span></div>
           <div id="cfg-menu-order-list" style="display:flex;flex-direction:column;gap:6px;"></div>
-          <button onclick="var def=NAV_MENUS.map(function(m){return m.id;});_saveMenuOrder(def);_renderSidebar();renderCfgMenuOrder();showToast&&showToast('기본 순서로 초기화됐습니다.','ok');" style="margin-top:10px;font-size:11px;padding:5px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--muted);cursor:pointer;">↺ 기본 순서로 초기화</button>
+          <button onclick="var def=NAV_MENUS.map(function(m){return m.id;});_saveMenuOrder(def);_renderSidebar();renderCfgMenuOrder(); if(typeof renderCfgSecOrder==='function') renderCfgSecOrder();showToast&&showToast('기본 순서로 초기화됐습니다.','ok');" style="margin-top:10px;font-size:11px;padding:5px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--muted);cursor:pointer;">↺ 기본 순서로 초기화</button>
         </div>
       </div>
     </div>
@@ -5428,6 +5441,7 @@ function loadPersonalSettings(){
   var theme = localStorage.getItem('_personalTheme') || localStorage.getItem('_appTheme');
   if(theme && typeof applyTheme==='function') applyTheme(theme);
   if(typeof _renderSidebar==='function') try{ _renderSidebar(); }catch(e){}
+  if(typeof applyLayoutSettings==='function') try{ applyLayoutSettings(); }catch(e){}
   var size = localStorage.getItem('_appFontSize');
   if(size) applyFontSize(size);
   // UI 복원
@@ -5629,65 +5643,55 @@ function switchSettingsTab(tab){
 var _layoutCfg = {};
 
 function renderLayoutSettings(){
-  var tbody = document.getElementById('layout-settings-tbody');
+  var tbody=document.getElementById('layout-settings-tbody');
   if(!tbody) return;
-  var menus = [
-    {id:'dashboard', name:'통합 대시보드'},
-    {id:'input', name:'영업 진행 현황'},
-    {id:'issues', name:'이슈 현황'},
-    {id:'pipeline', name:'프로젝트 현황'},
-  ];
-  var saved = JSON.parse(localStorage.getItem('_layoutCfg')||'{}');
-  var rows = menus.map(function(m){
-    var label = saved[m.id+'_label'] || m.name;
-    var visible = saved[m.id+'_visible'] !== false;
-    return '<tr style="border-bottom:1px solid var(--border);">'+
-      '<td style="padding:8px;font-weight:600;">'+m.name+'</td>'+
-      '<td style="padding:8px;"><input type="text" value="'+label+'" id="layout_label_'+m.id+'" style="border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit;width:90%;"></td>'+
-      '<td style="padding:8px;text-align:center;"><input type="checkbox" '+(visible?'checked':'')+'  id="layout_vis_'+m.id+'" style="width:16px;height:16px;cursor:pointer;"></td>'+
-      '</tr>';
+  var labels=(typeof authCfg!=='undefined'&&authCfg.menuLabels)||{};
+  var hidden=(typeof authCfg!=='undefined'&&authCfg.menuHidden)||{};
+  var LOCK=['dashboard','personal']; // 홈·개인설정은 숨김 불가 (이름은 변경 가능)
+  tbody.innerHTML=NAV_MENUS.map(function(m){
+    var label=labels[m.id]||m.label;
+    var vis=hidden[m.id]!==true;
+    var lock=LOCK.indexOf(m.id)!==-1;
+    return '<tr style="border-bottom:1px solid var(--border);">'
+      +'<td style="padding:8px;font-weight:600;color:var(--muted);">'+m.label+'</td>'
+      +'<td style="padding:8px;"><input type="text" value="'+label.replace(/"/g,'&quot;')+'" id="layout_label_'+m.id+'" style="border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit;width:90%;"></td>'
+      +'<td style="padding:8px;text-align:center;"><input type="checkbox" '+(vis?'checked':'')+(lock?' disabled title="이 메뉴는 숨길 수 없습니다"':'')+' id="layout_vis_'+m.id+'" style="width:16px;height:16px;cursor:'+(lock?'not-allowed':'pointer')+';"></td>'
+      +'</tr>';
   }).join('');
-  tbody.innerHTML = rows;
 }
 
 function saveLayoutSettings(){
-  var menus = ['dashboard','input','issues','pipeline'];
-  var cfg = {};
-  menus.forEach(function(id){
-    var labelEl = document.getElementById('layout_label_'+id);
-    var visEl = document.getElementById('layout_vis_'+id);
-    if(labelEl) cfg[id+'_label'] = labelEl.value;
-    if(visEl) cfg[id+'_visible'] = visEl.checked;
+  if(typeof authCfg==='undefined') return;
+  authCfg.menuLabels=authCfg.menuLabels||{};
+  authCfg.menuHidden=authCfg.menuHidden||{};
+  NAV_MENUS.forEach(function(m){
+    var labelEl=document.getElementById('layout_label_'+m.id);
+    var visEl=document.getElementById('layout_vis_'+m.id);
+    if(labelEl){
+      var v=labelEl.value.trim();
+      if(v&&v!==m.label) authCfg.menuLabels[m.id]=v; else delete authCfg.menuLabels[m.id];
+    }
+    if(visEl&&!visEl.disabled){
+      if(!visEl.checked) authCfg.menuHidden[m.id]=true; else delete authCfg.menuHidden[m.id];
+    }
   });
-  localStorage.setItem('_layoutCfg', JSON.stringify(cfg));
-  applyLayoutSettings(cfg);
-  showToast('✅ 레이아웃 설정 저장됨');
+  saveAuthCfg(); // localStorage + SP 저장 → 모든 사용자에게 전파
+  applyLayoutSettings();
+  showToast('✅ 메뉴 설정이 저장되어 모든 사용자에게 적용됩니다.');
 }
 
 function applyLayoutSettings(cfg){
-  if(!cfg) cfg = JSON.parse(localStorage.getItem('_layoutCfg')||'{}');
-  var menus = ['dashboard','input','issues','pipeline'];
-  menus.forEach(function(id){
-    var label = cfg[id+'_label'];
-    var visible = cfg[id+'_visible'];
-    if(label){
-      // nav-item 텍스트 변경
-      var navItems = document.querySelectorAll('.nav-item');
-      navItems.forEach(function(n){
-        var nid=(n.id||'').replace('nav-','');
-        var oc = n.getAttribute('onclick')||'';
-        if(nid===id||oc.includes("'"+id+"'")){
-          var span = n.querySelector('span:not(.icon)') || n.lastChild;
-          if(span && span.nodeType===3) n.lastChild.textContent = label;
-          else if(span) span.textContent = label;
-        }
-      });
-    }
-    if(visible===false){
-      document.querySelectorAll('.nav-item').forEach(function(n){
-        var nid2=(n.id||'').replace('nav-',''); if(nid2===id||(n.getAttribute('onclick')||'').includes("'"+id+"'")) n.style.display='none';
-      });
-    }
+  // 실제 사이드바(snav-*)에 이름/표시 적용 (authCfg 기반 — SP로 전 사용자 동기화)
+  var labels=(typeof authCfg!=='undefined'&&authCfg.menuLabels)||{};
+  var hidden=(typeof authCfg!=='undefined'&&authCfg.menuHidden)||{};
+  NAV_MENUS.forEach(function(m){
+    var el=document.getElementById('snav-'+m.id);
+    if(!el) return;
+    var spans=el.querySelectorAll('span');
+    var txtSpan=spans.length?spans[spans.length-1]:null;
+    if(txtSpan) txtSpan.textContent=labels[m.id]||m.label;
+    if(hidden[m.id]===true) el.style.display='none';
+    else if(el.style.display==='none'&&['dashboard','weekly','clients','quotation','contract','visits','pipeline','issues','personal'].indexOf(m.id)!==-1) el.style.display='';
   });
 }
 
@@ -9275,6 +9279,42 @@ function renderCfgTeams(){
 }
 
 // ── 관리자 설정: 메뉴 순서 변경 ──────
+function renderCfgSecOrder(){
+  var list=document.getElementById('cfg-sec-order-list');
+  if(!list) return;
+  var S=(typeof _sbSections==='function')?_sbSections():null;
+  var names=S?S.secs.map(function(s){return s.label.textContent.trim();}):[];
+  var so=(typeof authCfg!=='undefined'&&authCfg.sectionOrder&&authCfg.sectionOrder.length)?authCfg.sectionOrder.slice():names.slice();
+  // 신규 섹션 뒤에 붙이고 없는 것 제거
+  so=so.filter(function(n){return names.indexOf(n)>=0;});
+  names.forEach(function(n){ if(so.indexOf(n)<0) so.push(n); });
+  list.innerHTML='';
+  so.forEach(function(name,idx){
+    var row=document.createElement('div');
+    row.draggable=true;
+    row.style.cssText='display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;cursor:grab;user-select:none;';
+    row.innerHTML='<span style="color:var(--muted);font-size:14px;">⠿</span><span style="font-size:12px;color:var(--text);flex:1;font-weight:700;">'+name+'</span><span style="font-size:10px;color:var(--muted);">'+(idx+1)+'번</span>';
+    row.addEventListener('dragstart',function(e){ e.dataTransfer.setData('text/plain','SEC:'+name); row.style.opacity='0.4'; });
+    row.addEventListener('dragend',function(){ row.style.opacity='1'; });
+    row.addEventListener('dragover',function(e){ e.preventDefault(); row.style.background='var(--bg)'; });
+    row.addEventListener('dragleave',function(){ row.style.background='var(--card)'; });
+    row.addEventListener('drop',function(e){
+      e.preventDefault(); row.style.background='var(--card)';
+      var data=e.dataTransfer.getData('text/plain');
+      if(data.indexOf('SEC:')!==0) return;
+      var from=data.slice(4); if(from===name) return;
+      var cur=so.slice();
+      cur.splice(cur.indexOf(from),1);
+      cur.splice(cur.indexOf(name)>=0?cur.indexOf(name):cur.length,0,from);
+      authCfg.sectionOrder=cur;
+      saveAuthCfg();
+      _renderSidebar();
+      renderCfgSecOrder();
+      showToast&&showToast('분류 순서가 저장됐습니다.','ok');
+    });
+    list.appendChild(row);
+  });
+}
 function renderCfgMenuOrder(){
   var list=document.getElementById('cfg-menu-order-list');
   if(!list) return;
@@ -9319,7 +9359,7 @@ function renderCfgMenuOrder(){
       curOrder.splice(ti,0,fromPid);
       _saveMenuOrder(curOrder);
       _renderSidebar();
-      renderCfgMenuOrder();
+      renderCfgMenuOrder(); if(typeof renderCfgSecOrder==='function') renderCfgSecOrder();
       showToast&&showToast('메뉴 순서가 저장됐습니다.','ok');
     });
     // 모바일 터치 지원
@@ -9339,7 +9379,7 @@ function renderCfgMenuOrder(){
       curOrder.splice(ti,0,pid);
       _saveMenuOrder(curOrder);
       _renderSidebar();
-      renderCfgMenuOrder();
+      renderCfgMenuOrder(); if(typeof renderCfgSecOrder==='function') renderCfgSecOrder();
       showToast&&showToast('메뉴 순서가 저장됐습니다.','ok');
     },{ passive:true });
     list.appendChild(row);
