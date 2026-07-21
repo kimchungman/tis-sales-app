@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260720-007 -->
+<!-- TIS-VERSION: 20260720-008 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -22960,6 +22960,12 @@ function qt_openModal(mode,quoteId){
   }
 }
 function _qt_fillModalFromData(q,mode){
+  // 저장된 조건비고 유형 칩 선택 복원 (없으면 견적 유형 기준)
+  try{
+    window._qt_t3ChipSel=(q&&q.condChip)||null;
+    if(typeof qt_t3SyncChips==='function') setTimeout(qt_t3SyncChips,60);
+  }catch(e){}
+
   var isEdit=(mode==='edit');
   // 기본 정보 채우기
   var fields={proj:'projectName',client:'clientName',recv:'toName',ref:'ccName',
@@ -23615,6 +23621,7 @@ function qt_saveCurrentQuote(isDraft){
     recv:(document.getElementById('toName')||{}).value||'',
     ref:(document.getElementById('ccName')||{}).value||'',
     sender:(document.getElementById('fromName')||{}).value||'티에이케이정보시스템(주)',
+    condChip:window._qt_t3ChipSel||'', // 조건비고 유형 칩 선택 유지
     paymentCond:(document.getElementById('paymentCond')||{}).value||'',
     generalCond:(document.getElementById('generalCond')||{}).value||'',
     otherCond:(document.getElementById('otherCond')||{}).value||'',
