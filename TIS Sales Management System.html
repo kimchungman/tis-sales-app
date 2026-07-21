@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260721-026 -->
+<!-- TIS-VERSION: 20260721-028 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -15015,9 +15015,8 @@ function _cdbRename(id, newName){
     // 기존 고객사로 병합: 옛 이름과 별칭들도 흡수 → 과거 표기로 입력된 데이터가 계속 모임
     dup.aliases=dup.aliases||[];
     [oldName].concat(item.aliases||[]).forEach(function(a){
-      if(!a) return;
-      if(_cdbNorm(a)===_cdbNorm(dup.name)) return;
-      if(dup.aliases.some(function(x){return _cdbNorm(x)===_cdbNorm(a);})) return;
+      if(!a||a===dup.name) return;
+      if(dup.aliases.indexOf(a)!==-1) return;
       dup.aliases.push(a);
     });
     if(item.contacts&&item.contacts.length) dup.contacts=(dup.contacts||[]).concat(item.contacts);
@@ -15025,10 +15024,10 @@ function _cdbRename(id, newName){
     _cdbDeleteItem(id);
   } else {
     item.name=newName;
-    // 옛 이름을 별칭으로 보존 → 과거 문서·타 담당자 입력이 계속 이 고객사로 모임
-    if(oldName&&_cdbNorm(oldName)!==_cdbNorm(newName)){
+    // 옛 이름을 별칭으로 보존 (띄어쓰기·대소문자만 다른 표기도 목록에 명시적으로 남김)
+    if(oldName&&oldName!==newName){
       item.aliases=item.aliases||[];
-      if(!item.aliases.some(function(a){return _cdbNorm(a)===_cdbNorm(oldName);})) item.aliases.push(oldName);
+      if(item.aliases.indexOf(oldName)===-1) item.aliases.push(oldName);
     }
   }
   // 전체 데이터 업데이트 (견적서는 원본 표기 유지 — 별칭으로 자동 매칭됨)
@@ -15040,6 +15039,8 @@ function _cdbRename(id, newName){
     (d.visitLog||[]).forEach(function(v){ if(v.client===oldName) v.client=newName; });
   });
   if(typeof autoSave==='function') autoSave();
+  // SP 즉시 저장 (미저장 시 10초 동기화가 옛 목록으로 덮어써 별칭·이름이 되돌아감)
+  if(window._isSPReady&&typeof _spSaveClientDB==='function'){ try{ _spSaveClientDB(); }catch(e){ console.warn('[cdbRename] SP 저장 실패',e); } }
   if(typeof _cdbInvalidateAll==='function') _cdbInvalidateAll();
 }
 
@@ -15618,6 +15619,8 @@ function _cdbSaveNote(id,val){
   var item=_cdbById(id); if(!item) return;
   item.note=val;
   _cdbSaveItem(item);
+
+  if(window._isSPReady&&typeof _spSaveClientDB==='function'){ try{ _spSaveClientDB(); }catch(e){} } // 비고도 SP 저장
 }
 function _cdbRemoveManualRep(id,rep){
   var item=_cdbById(id); if(!item) return;
