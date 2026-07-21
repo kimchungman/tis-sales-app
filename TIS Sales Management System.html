@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260720-021 -->
+<!-- TIS-VERSION: 20260721-002 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -156,47 +156,83 @@ function refreshSelectOptions(){
 function renderSelectOptsSettings(){
   var el=document.getElementById('select-opts-container');
   if(!el) return;
-  var fields=[
-    {key:'clientType',      label:'고객사별 실적 - 유형',    fixed:false},
-    {key:'clientStatus',    label:'고객사별 실적 - 상태',    fixed:false},
-    {key:'clientProduct',   label:'고객사별 실적 - 제품',    fixed:false},
-    {key:'activityType',    label:'영업활동 - 구분',          fixed:false},
-    {key:'activityProgress',label:'영업활동 - 진행사항',     fixed:false},
-    {key:'issueSev',        label:'이슈사항 - 중요도',       fixed:true},
-    {key:'issueStatus',     label:'이슈사항 - 처리상태',     fixed:true},
-    {key:'contactType',     label:'접점 기록 - 접점 유형',   fixed:false},
-    {key:'contactPurpose',  label:'접점 기록 - 접점 목적',   fixed:false},
-    {key:'contractType',    label:'계약 관리 - 계약 유형',    fixed:false},
-    {key:'managementType',  label:'계약 관리 - 관리 유형',    fixed:false},
-    {key:'contractStatus',  label:'계약 관리 - 계약 상태',    fixed:false}
+  var groups=[
+    {name:'고객사별 실적',icon:'🏢',fields:[
+      {key:'clientType',label:'유형',fixed:false},
+      {key:'clientStatus',label:'상태',fixed:false},
+      {key:'clientProduct',label:'제품',fixed:false}]},
+    {name:'영업활동',icon:'📈',fields:[
+      {key:'activityType',label:'구분',fixed:false},
+      {key:'activityProgress',label:'진행사항',fixed:false}]},
+    {name:'이슈사항',icon:'⚠️',fields:[
+      {key:'issueSev',label:'중요도',fixed:true},
+      {key:'issueStatus',label:'처리상태',fixed:true}]},
+    {name:'접점 기록',icon:'🤝',fields:[
+      {key:'contactType',label:'접점 유형',fixed:false},
+      {key:'contactPurpose',label:'접점 목적',fixed:false}]},
+    {name:'계약 관리',icon:'📄',fields:[
+      {key:'contractType',label:'계약 유형',fixed:false},
+      {key:'managementType',label:'관리 유형',fixed:false},
+      {key:'contractStatus',label:'계약 상태',fixed:false}]}
   ];
+  var openGrp=window._soOpenGrp||'';
   var h='';
-  fields.forEach(function(f){
-    var opts=getSelectOpts(f.key);
-    h+='<div style="margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #F1F5F9;">';
-    h+='<div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:8px;">'+f.label;
-    if(f.fixed) h+=' <span style="font-size:10px;color:#94A3B8;font-weight:400;">(라벨만 변경)</span>';
-    h+='</div><div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">';
-    opts.forEach(function(opt,i){
-      var _da=f.fixed?'':' draggable="true" data-sofield="'+f.key+'" data-soidx="'+i+'" ondragstart="soStartDrag(event,this)" ondragover="soDragOver(event)" ondrop="soDrop(event,this)" ondragleave="soDragLeave(event)"';
-      h+='<div'+_da+' style="display:inline-flex;align-items:center;gap:3px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:3px 8px;cursor:'+(f.fixed?'default':'grab')+';transition:all 0.15s;">';
-      if(!f.fixed) h+='<span style="color:#CBD5E1;font-size:10px;margin-right:2px;user-select:none;">⠿</span>';
-      h+='<input type="text" value="'+opt.replace(/"/g,'&quot;')+'" data-field="'+f.key+'" data-idx="'+i+'" oninput="updateSelectOpt(this)" style="border:none;background:transparent;font-size:12px;font-weight:600;color:#374151;width:'+Math.max(opt.length*7,40)+'px;min-width:30px;max-width:120px;outline:none;font-family:inherit;">';
-      if(!f.fixed) h+='<button onclick="deleteSelectOpt(this)" data-field="'+f.key+'" data-idx="'+i+'" style="border:none;background:none;cursor:pointer;color:#94A3B8;font-size:13px;padding:0 2px;line-height:1;" title="삭제">×</button>';
-      h+='</div>';
+  groups.forEach(function(g){
+    var cnt=g.fields.reduce(function(a,f){return a+getSelectOpts(f.key).length;},0);
+    var isOpen=(openGrp===g.name);
+    h+='<details '+(isOpen?'open ':'')+'ontoggle="if(this.open)window._soOpenGrp=\''+g.name+'\'" style="margin-bottom:10px;border:1px solid var(--border);border-radius:10px;background:var(--card);overflow:hidden;">';
+    h+='<summary style="display:flex;align-items:center;gap:8px;padding:11px 14px;cursor:pointer;user-select:none;font-size:12.5px;font-weight:700;color:var(--text);list-style:none;">';
+    h+='<span>'+g.icon+'</span><span style="flex:1;">'+g.name+'</span>';
+    h+='<span style="font-size:10px;font-weight:600;color:var(--muted);background:var(--light);padding:2px 8px;border-radius:10px;">'+g.fields.length+'개 항목 · 옵션 '+cnt+'</span>';
+    h+='<span style="color:var(--muted2);font-size:11px;">▾</span></summary>';
+    h+='<div style="padding:4px 14px 12px;">';
+    g.fields.forEach(function(f){
+      var opts=getSelectOpts(f.key);
+      h+='<div style="margin:10px 0 14px;">';
+      h+='<div style="font-size:11.5px;font-weight:700;color:var(--muted);margin-bottom:7px;">'+f.label;
+      if(f.fixed) h+=' <span style="font-size:10px;color:var(--muted2);font-weight:400;">(라벨만 변경 가능)</span>';
+      h+='</div><div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">';
+      opts.forEach(function(opt,i2){
+        var _da=f.fixed?'':' draggable="true" data-sofield="'+f.key+'" data-soidx="'+i2+'" ondragstart="soStartDrag(event,this)" ondragover="soDragOver(event)" ondrop="soDrop(event,this)" ondragleave="soDragLeave(event)"';
+        h+='<div'+_da+' style="display:inline-flex;align-items:center;gap:3px;background:var(--light);border:1px solid var(--border);border-radius:8px;padding:3px 8px;cursor:'+(f.fixed?'default':'grab')+';transition:all 0.15s;">';
+        if(!f.fixed) h+='<span style="color:var(--muted2);font-size:10px;margin-right:2px;user-select:none;">⠿</span>';
+        h+='<input type="text" value="'+opt.replace(/"/g,'&quot;')+'" data-field="'+f.key+'" data-idx="'+i2+'" oninput="updateSelectOpt(this)" style="border:none;background:transparent;font-size:12px;font-weight:600;color:var(--text);width:'+Math.max(opt.length*7,40)+'px;min-width:30px;max-width:120px;outline:none;font-family:inherit;">';
+        if(!f.fixed) h+='<button onclick="deleteSelectOpt(this)" data-field="'+f.key+'" data-idx="'+i2+'" style="border:none;background:none;cursor:pointer;color:var(--muted2);font-size:13px;padding:0 2px;line-height:1;" title="삭제">×</button>';
+        h+='</div>';
+      });
+      if(!f.fixed){
+        h+='<span id="so-add-'+f.key+'"><button onclick="soShowAddInput(\''+f.key+'\')" style="padding:3px 10px;border:1.5px dashed var(--border);border-radius:8px;background:transparent;color:var(--muted);font-size:11.5px;cursor:pointer;font-family:inherit;">＋ 추가</button></span>';
+      }
+      h+='</div></div>';
     });
-    if(!f.fixed) h+='<button onclick="addSelectOpt(this)" data-field="'+f.key+'" style="padding:3px 10px;border:1.5px dashed #CBD5E1;border-radius:8px;background:transparent;font-size:12px;color:#94A3B8;cursor:pointer;font-family:inherit;">+ 추가</button>';
-    h+='</div></div>';
+    h+='</div></details>';
   });
-  // 스크롤 위치 보존
-  var _st=0;
-  var _scrollWrap=el.querySelector('[style*="overflow-y:auto"]')||el.querySelector('[style*="overflow-y: auto"]');
-  if(_scrollWrap)_st=_scrollWrap.scrollTop;
   el.innerHTML=h;
-  if(_st>0){
-    var _nw=el.querySelector('[style*="overflow-y:auto"]')||el.querySelector('[style*="overflow-y: auto"]');
-    if(_nw)_nw.scrollTop=_st;
-  }
+}
+// prompt 없는 인라인 추가: + 클릭 → 입력칸 → Enter/체크 확정, Esc 취소
+function soShowAddInput(field){
+  var slot=document.getElementById('so-add-'+field);
+  if(!slot) return;
+  slot.innerHTML='<span style="display:inline-flex;align-items:center;gap:4px;background:var(--card);border:1.5px solid var(--primary);border-radius:8px;padding:2px 6px;">'
+    +'<input id="so-new-'+field+'" type="text" placeholder="새 옵션" style="border:none;background:transparent;font-size:12px;width:90px;outline:none;font-family:inherit;color:var(--text);" '
+    +'onkeydown="if(event.key===\'Enter\')soCommitAdd(\''+field+'\');if(event.key===\'Escape\')renderSelectOptsSettings();">'
+    +'<button onclick="soCommitAdd(\''+field+'\')" style="border:none;background:none;cursor:pointer;color:var(--primary);font-size:13px;font-weight:800;padding:0 2px;">✓</button>'
+    +'<button onclick="renderSelectOptsSettings()" style="border:none;background:none;cursor:pointer;color:var(--muted2);font-size:12px;padding:0 2px;">✕</button></span>';
+  var inp=document.getElementById('so-new-'+field);
+  if(inp) inp.focus();
+}
+function soCommitAdd(field){
+  var inp=document.getElementById('so-new-'+field);
+  var v=inp?inp.value.trim():'';
+  if(!v){ renderSelectOptsSettings(); return; }
+  if(!authCfg.selectOptions) authCfg.selectOptions={};
+  if(!authCfg.selectOptions[field]) authCfg.selectOptions[field]=getSelectOpts(field).slice();
+  if(authCfg.selectOptions[field].indexOf(v)!==-1){ showToast&&showToast('이미 존재하는 옵션입니다.','warn'); return; }
+  authCfg.selectOptions[field].push(v);
+  saveAuthCfg();
+  refreshSelectOptions();
+  renderSelectOptsSettings();
+  showToast&&showToast('✅ 옵션이 추가되었습니다.');
 }
 var _soDragField='', _soDragIdx=-1;
 function soStartDrag(e,el){
@@ -2999,6 +3035,7 @@ aside#main-sidebar.collapsed~.topbar{ left:56px; }
 var NAV_MENUS=[
   {id:'dashboard',label:'통합 대시보드',svg:`<svg class="nav-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`},
   {id:'clients',label:'고객사 관리',svg:`<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>`},
+  {id:'quotation',label:'견적서 관리',svg:`<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`},
   {id:'weekly',label:'주간회의 요약',svg:`<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="16" y1="14" x2="16" y2="14"/></svg>`},
   {id:'input',label:'영업 진행 현황',svg:`<svg class="nav-icon" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>`},
   {id:'contract',label:'계약 현황',svg:`<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`},
@@ -3033,24 +3070,20 @@ function _getMenuOrder(){
 }
 
 function _renderSidebar(){
-  var container=document.getElementById('nav-menu-container');
-  if(!container) return;
+  // 실제 사이드바(snav-*)를 저장된 순서대로 재배치 (마크업/이벤트/권한 로직 보존)
   var order=_getMenuOrder();
-  container.innerHTML='';
+  var first=document.getElementById('snav-'+order[0]);
+  if(!first||!first.parentNode) return;
+  var parent=first.parentNode;
   order.forEach(function(pid){
-    var menu=NAV_MENUS.find(function(m){ return m.id===pid; });
-    if(!menu) return;
-    var el=document.createElement('div');
-    el.className='nav-item';
-    el.id='nav-'+pid;
-    el.innerHTML=menu.svg+menu.label;
-    (function(p){ el.onclick=function(){ showPage(p,this); }; })(pid);
-    container.appendChild(el);
+    var el=document.getElementById('snav-'+pid);
+    if(el) parent.appendChild(el);
   });
-  // 현재 활성 페이지 표시
-  var curPage=typeof currentPage!=='undefined'?currentPage:'dashboard';
-  var activeEl=document.getElementById('nav-'+curPage);
-  if(activeEl) activeEl.classList.add('active');
+  // 관리자 전용 항목은 항상 맨 아래 유지
+  ['snav-settings','snav-accesslog'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) parent.appendChild(el);
+  });
 }
 
 function _saveMenuOrder(order){
@@ -4166,40 +4199,20 @@ window._updateSidebarByRole=function(){
             <span class="theme-name">라이트</span>
             <span class="theme-desc">기본 밝은 화면</span>
           </button>
-          <button onclick="savePersonalTheme('dark')" class="theme-btn" id="tbtn-dark">
-            <div class="theme-swatch" style="background:linear-gradient(135deg,#0F172A,#1E293B);"></div>
-            <span class="theme-name">다크</span>
-            <span class="theme-desc">눈에 편한 어두운 화면</span>
-          </button>
           <button onclick="savePersonalTheme('blue')" class="theme-btn" id="tbtn-blue">
             <div class="theme-swatch" style="background:linear-gradient(135deg,#1E40AF,#3B82F6);"></div>
             <span class="theme-name">오션 블루</span>
-            <span class="theme-desc">차분한 블루 톤</span>
+            <span class="theme-desc">청량한 블루 톤</span>
           </button>
           <button onclick="savePersonalTheme('green')" class="theme-btn" id="tbtn-green">
             <div class="theme-swatch" style="background:linear-gradient(135deg,#064E3B,#10B981);"></div>
             <span class="theme-name">포레스트</span>
-            <span class="theme-desc">자연스러운 그린 톤</span>
-          </button>
-          <button onclick="savePersonalTheme('red')" class="theme-btn" id="tbtn-red">
-            <div class="theme-swatch" style="background:linear-gradient(135deg,#7F1D1D,#EF4444);"></div>
-            <span class="theme-name">루비</span>
-            <span class="theme-desc">강렬한 레드 톤</span>
-          </button>
-          <button onclick="savePersonalTheme('purple')" class="theme-btn" id="tbtn-purple">
-            <div class="theme-swatch" style="background:linear-gradient(135deg,#4C1D95,#7C3AED);"></div>
-            <span class="theme-name">퍼플</span>
-            <span class="theme-desc">고급스러운 보라 톤</span>
+            <span class="theme-desc">차분한 그린 톤</span>
           </button>
           <button onclick="savePersonalTheme('slate')" class="theme-btn" id="tbtn-slate">
-            <div class="theme-swatch" style="background:linear-gradient(135deg,#1E293B,#475569);"></div>
+            <div class="theme-swatch" style="background:linear-gradient(135deg,#1E293B,#64748B);"></div>
             <span class="theme-name">슬레이트</span>
             <span class="theme-desc">세련된 회색 톤</span>
-          </button>
-          <button onclick="savePersonalTheme('teal')" class="theme-btn" id="tbtn-teal">
-            <div class="theme-swatch" style="background:linear-gradient(135deg,#134E4A,#0EA5A0);"></div>
-            <span class="theme-name">틸</span>
-            <span class="theme-desc">청록 계열 톤</span>
           </button>
         </div>
       </div>
@@ -4472,26 +4485,6 @@ window._updateSidebarByRole=function(){
       <div class="sec-body">
 
 
-        <!-- SP 데이터 진단 -->
-        <div style="margin-bottom:16px;padding:12px;background:#EFF6FF;border-radius:8px;border:1px solid #BFDBFE;">
-          <div style="font-size:12px;font-weight:700;color:#1E40AF;margin-bottom:8px;">🔍 SP 데이터 진단</div>
-          <div style="font-size:11px;color:#1E3A8A;margin-bottom:8px;">SP에 저장된 실제 데이터를 확인합니다.</div>
-          <button onclick="_spDiagnose()" style="padding:6px 14px;background:#2563EB;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">🔍 SP 데이터 조회</button>
-          <div id="sp-diag-result" style="margin-top:8px;font-size:11px;font-family:monospace;white-space:pre-wrap;max-height:300px;overflow-y:auto;background:#F8FAFC;padding:8px;border-radius:4px;display:none;"></div>
-        </div>
-        <!-- 아카이브 복구 -->
-        <div style="margin-bottom:16px;padding:12px;background:#F0FDF4;border-radius:8px;border:1px solid #BBF7D0;">
-          <div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:8px;">🔁 영업활동/이슈 아카이브 복구</div>
-          <div style="font-size:11px;color:#14532D;margin-bottom:8px;">이전에 연도별로 분리 저장된 영업활동·이슈사항을 현재 데이터로 복원합니다.</div>
-          <button onclick="_spRecoverArchiveActivities()" style="padding:6px 14px;background:#16A34A;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">🔁 아카이브 복구</button>
-        </div>
-
-        <!-- SP 데이터 정리 -->
-        <div style="margin-bottom:16px;padding:12px;background:#FFF7ED;border-radius:8px;border:1px solid #FED7AA;">
-          <div style="font-size:12px;font-weight:700;color:#C2410C;margin-bottom:8px;">🗄️ SP 데이터 정리</div>
-          <div style="font-size:11px;color:#78350F;margin-bottom:8px;">날짜별 구버전 키를 삭제해 SP 용량을 최적화합니다. 관리자만 실행 가능합니다.</div>
-          <button onclick="_spCleanupOldKeys()" style="padding:6px 14px;background:#EA580C;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">🧹 SP 구버전 키 정리</button>
-        </div>
         <!-- 관리자 비밀번호 -->
         <div style="margin-bottom:16px;padding:12px;background:#EFF6FF;border-radius:8px;border:1px solid #BFDBFE;">
           <div style="font-size:12px;font-weight:700;color:#1E40AF;margin-bottom:8px;">🛡️ 관리자 비밀번호</div>
@@ -5434,6 +5427,7 @@ function applyFontSize(size){
 function loadPersonalSettings(){
   var theme = localStorage.getItem('_personalTheme') || localStorage.getItem('_appTheme');
   if(theme && typeof applyTheme==='function') applyTheme(theme);
+  if(typeof _renderSidebar==='function') try{ _renderSidebar(); }catch(e){}
   var size = localStorage.getItem('_appFontSize');
   if(size) applyFontSize(size);
   // UI 복원
@@ -9882,9 +9876,15 @@ function applyTheme(t){
       navText:'#F1F5F9',navMuted:'rgba(241,245,249,0.7)',
       navBg:'#1E293B'
     },
+    slate:{
+      navy:'#1E293B',bg:'#F1F5F9',card:'white',border:'#CBD5E1',
+      text:'#0F172A',muted:'#64748B',muted2:'#94A3B8',light:'#E2E8F0',
+      navText:'white',navMuted:'rgba(255,255,255,0.7)',
+      navBg:'#1E293B'
+    },
     blue:{
       navy:'#1E40AF',bg:'#EFF6FF',card:'white',border:'#BFDBFE',
-      text:'#1E293B',muted:'#3B82F6',muted2:'#93C5FD',light:'#DBEAFE',
+      text:'#1E293B',muted:'#64748B',muted2:'#94A3B8',light:'#DBEAFE',
       navText:'white',navMuted:'rgba(255,255,255,0.7)',
       navBg:'#1E40AF'
     },
@@ -9896,7 +9896,7 @@ function applyTheme(t){
     },
     green:{
       navy:'#064E3B',bg:'#F0FDF4',card:'white',border:'#A7F3D0',
-      text:'#1E293B',muted:'#10B981',muted2:'#6EE7B7',light:'#D1FAE5',
+      text:'#1E293B',muted:'#64748B',muted2:'#94A3B8',light:'#D1FAE5',
       navText:'white',navMuted:'rgba(255,255,255,0.7)',
       navBg:'#064E3B'
     }
@@ -23477,7 +23477,18 @@ function qt_renderPreview(){
           }
         });
       })();
-      // 3) 리사이즈 핸들 제거 + 편집 잔재 정리
+      // 3) 숫자·단위·등급·단가기준 열은 중앙 정렬 강제 (옛 저장분 정렬 누락 보정)
+      (function(){
+        var CENTER=['수량','단위','등급','단가기준','구분'];
+        var idxs=[];
+        cl.querySelectorAll('thead th').forEach(function(th){
+          if(CENTER.indexOf(th.textContent.trim())!==-1) idxs.push(th.cellIndex);
+        });
+        cl.querySelectorAll('tbody td').forEach(function(td){
+          if(idxs.indexOf(td.cellIndex)!==-1) td.style.textAlign='center';
+        });
+      })();
+      // 4) 리사이즈 핸들 제거 + 편집 잔재 정리
       cl.querySelectorAll('.qt-rz').forEach(function(h){ h.remove(); });
       cl.removeAttribute('id');
       html+='<div style="overflow-x:auto;">'+cl.outerHTML+'</div>';
