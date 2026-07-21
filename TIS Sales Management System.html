@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260720-020 -->
+<!-- TIS-VERSION: 20260720-021 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -23445,51 +23445,42 @@ function qt_renderPreview(){
     var tbl=ib.querySelector('table.it');
     if(tbl){
       // PDF와 동일 규칙: 통일 컬럼폭(구분/소비자단가 등 동일 위치) + 병합 반영 + 단가기준 숨김
-      var G=qt_gridizeTable(tbl,[]); // 최종검토는 입력 화면 전체(단가기준 포함)를 그대로 미러
-      // 견적항목의 colgroup을 그대로 복사 + width:100% → 브라우저가 에디터와 동일하게 비례 렌더 (픽셀 미러)
-      var _cols=tbl.querySelectorAll('colgroup col');
-      html+='<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:11.5px;table-layout:fixed;'+(tbl.style.minWidth?('min-width:'+tbl.style.minWidth+';'):'')+'"><colgroup>';
-      G.ths.forEach(function(th){
-        var col=_cols[th.cellIndex];
-        var st='';
-        if(col){
-          if(col.style.width) st+='width:'+col.style.width+';';
-          if(col.style.minWidth) st+='min-width:'+col.style.minWidth+';';
+      // [픽셀 미러] 견적항목 테이블 DOM을 통째로 복제 → 같은 클래스/CSS로 렌더 = 완전 동일
+      var cl=tbl.cloneNode(true);
+      // 1) 입력 요소를 값 텍스트로 치환 (정렬은 입력요소의 것을 셀로 승계)
+      cl.querySelectorAll('input,textarea,select').forEach(function(ctrl){
+        var td=ctrl.closest('td');
+        var txt='';
+        if(ctrl.tagName==='SELECT'){
+          var op=ctrl.options[ctrl.selectedIndex];
+          txt=(op&&op.value!=='')?op.text:'';
+        } else { txt=ctrl.value||''; }
+        var span=document.createElement('span');
+        span.textContent=txt;
+        if(ctrl.tagName==='TEXTAREA'){ span.style.whiteSpace='pre-wrap'; span.style.wordBreak='break-word'; span.style.display='block'; }
+        if(td){
+          var alSrc=(ctrl.style&&ctrl.style.textAlign)||'';
+          if(alSrc) td.style.textAlign=alSrc;
+          else if(ctrl.tagName==='TEXTAREA'&&!td.style.textAlign) td.style.textAlign='left';
         }
-        html+= st?('<col style="'+st+'">'):'<col>';
+        ctrl.parentNode.replaceChild(span,ctrl);
       });
-      html+='</colgroup>';
-      html+='<thead><tr style="background:#F1F5F9;">';
-      G.ths.forEach(function(th){
-        var t=th.textContent.trim();
-        html+='<th style="padding:6px 8px;border:1px solid #E2E8F0;font-size:10.5px;font-weight:700;letter-spacing:.02em;color:#475569;background:#F1F5F9;text-align:center;white-space:nowrap;overflow:hidden;">'+t+'</th>';
-      });
-      html+='</tr></thead><tbody>';
-      G.rows.forEach(function(cells){
-        html+='<tr>';
-        cells.forEach(function(cell,ci){
-          if(cell&&cell.skip) return; // 병합 점유 셀 생략 (작성 화면 병합 그대로 재현)
-          var td=cell?cell.td:null;
-          var thEl=G.ths[ci];
-          var t=thEl?thEl.textContent.trim():'';
-          var txt=''; var al='';
-          if(td){
-            var val=td.querySelector('input,textarea,select');
-            txt=val?(val.tagName==='SELECT'?(val.options[val.selectedIndex]?val.options[val.selectedIndex].text:''):val.value):td.textContent.trim();
-            // 정렬: 입력 화면의 실제 정렬(입력요소 > 셀 인라인)을 그대로 복사
-            al=(val&&val.style&&val.style.textAlign)||td.style.textAlign||'';
+      // 2) 삭제(×) 열 무력화: 버튼 제거 + 해당 열 폭 0 (열 삭제는 rowspan 구조를 깨므로 폭만 접음)
+      cl.querySelectorAll('.del-btn').forEach(function(b){ var td=b.closest('td'); if(td){ td.innerHTML=''; td.style.padding='0'; td.style.border='none'; } });
+      (function(){
+        var ths=cl.querySelectorAll('thead th');
+        var cols=cl.querySelectorAll('colgroup col');
+        ths.forEach(function(th){
+          if(th.textContent.trim()===''){
+            th.style.padding='0'; th.style.border='none';
+            var col=cols[th.cellIndex]; if(col){ col.style.width='0px'; col.style.minWidth='0'; }
           }
-          if(!al){
-            al=(t==='투입 인력 역할'||t==='품목'||t==='품목 / 비고'||(thEl&&thEl.classList&&thEl.classList.contains('L')))?'left':'center';
-            if(['제안금액','판매금액','소비자단가','소비자가','공급단가','공급가','제안단가','판매단가','구축금액'].indexOf(t)!==-1) al='right';
-          }
-          var rsAttr=(cell&&cell.rowspan>1)?(' rowspan="'+cell.rowspan+'"'):'';
-          var wrapS=(al==='right')?'white-space:nowrap;':'white-space:pre-wrap;word-break:break-word;';
-          html+='<td'+rsAttr+' style="padding:5px 8px;border:1px solid #E2E8F0;font-size:11.5px;text-align:'+al+';vertical-align:middle;'+wrapS+'">'+txt+'</td>';
         });
-        html+='</tr>';
-      });
-      html+='</tbody></table></div>';
+      })();
+      // 3) 리사이즈 핸들 제거 + 편집 잔재 정리
+      cl.querySelectorAll('.qt-rz').forEach(function(h){ h.remove(); });
+      cl.removeAttribute('id');
+      html+='<div style="overflow-x:auto;">'+cl.outerHTML+'</div>';
     }
     html+='</div>';
   });
