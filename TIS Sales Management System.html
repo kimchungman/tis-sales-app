@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260721-022 -->
+<!-- TIS-VERSION: 20260721-026 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -3594,15 +3594,28 @@ document.addEventListener('selectionchange',function(){
 window._spRefreshData=async function _spRefreshData(){
   try{
     if(typeof showToast==='function') showToast('최신 데이터를 불러오는 중...','info');
-    // SP 연결된 경우 최신 데이터 동기화
+    // SP 연결된 경우 최신 데이터 동기화 (로그인 직후와 동일한 범위)
     if(window._isSPReady&&window._spDataLoaded){
       await _spSyncOtherReps();
+      try{ if(typeof _spLoadAllVisitLogs==='function') await _spLoadAllVisitLogs(); }catch(e){}   // 접점기록
+      try{ if(typeof _spLoadHistList==='function') await _spLoadHistList(); }catch(e){}           // 이력
+      try{ if(typeof qt_spFetchQuotes==='function') await qt_spFetchQuotes(); }catch(e){}         // 견적서
+      try{ if(typeof _spLoadClientDB==='function') await _spLoadClientDB(); }catch(e){}           // 고객사·별칭
+      try{ if(typeof _spLoadSettings==='function') await _spLoadSettings(); }catch(e){}           // 관리자 설정(메뉴/배너 등)
+      try{ if(typeof _loadAccessLog==='function') await _loadAccessLog(); }catch(e){}             // 접속현황
+      try{ if(typeof window._syncWeeklyFeed==='function') await window._syncWeeklyFeed(); }catch(e){} // 주간회의(피드·알림)
     }
     // 현재 페이지 재렌더 (SP 연결 여부 무관)
     try{ renderDashboard(); }catch(e){}
     try{ renderIssues(); }catch(e){}
     try{ renderPipeline(); }catch(e){}
     if(typeof _wkRenderAll==='function') try{ _wkRenderAll(); }catch(e){}
+    if(typeof qtRenderQtList==='function') try{ qtRenderQtList(); }catch(e){}
+    if(typeof _cdbSyncFromStore==='function') try{ _cdbSyncFromStore(); }catch(e){}
+    if(typeof _cdbRenderList==='function') try{ _cdbRenderList(); }catch(e){}
+    if(typeof _renderSidebar==='function') try{ _renderSidebar(); }catch(e){}
+    if(typeof applyLayoutSettings==='function') try{ applyLayoutSettings(); }catch(e){}
+    if(typeof updateAccessDisplay==='function') try{ updateAccessDisplay(); }catch(e){}
     if(typeof showToast==='function') showToast('✅ 업데이트됐습니다.','success');
   }catch(e){
     console.warn('[refresh]', e);
@@ -11738,6 +11751,7 @@ async function _initSPCore() {
         // 작성/미리보기/설정 모달이 열려있으면 동기화 보류 (편집 중 덮어쓰기·재렌더 방지)
         if(_qPage&&_qPage.style.display!=='none'&&!_wmOpen&&!_pdfOpen&&!_setOpen&&typeof qt_spFetchQuotes==='function'){
           await qt_spFetchQuotes();
+          try{ if(typeof _cdbSyncFromStore==='function') _cdbSyncFromStore(); }catch(e){} // 견적 고객사 자동등록 반영
         }
       }catch(e){}
     }, 10000); // 10초마다 동기화
@@ -14998,6 +15012,14 @@ function _cdbRename(id, newName){
   var oldName=item.name;
   var dup=_cdbByName(newName);
   if(dup&&dup.id!==id){
+    // 기존 고객사로 병합: 옛 이름과 별칭들도 흡수 → 과거 표기로 입력된 데이터가 계속 모임
+    dup.aliases=dup.aliases||[];
+    [oldName].concat(item.aliases||[]).forEach(function(a){
+      if(!a) return;
+      if(_cdbNorm(a)===_cdbNorm(dup.name)) return;
+      if(dup.aliases.some(function(x){return _cdbNorm(x)===_cdbNorm(a);})) return;
+      dup.aliases.push(a);
+    });
     if(item.contacts&&item.contacts.length) dup.contacts=(dup.contacts||[]).concat(item.contacts);
     if(item.note&&!dup.note) dup.note=item.note;
     _cdbDeleteItem(id);
@@ -15570,15 +15592,17 @@ function _cdbAddAlias(id){
   if(!v){ _cdbRenderDetail(id); return; }
   var owner=_cdbResolve(v);
   if(owner&&owner.id!==id){ showToast&&showToast('⚠️ 이미 "'+owner.name+'"에 등록된 표기입니다.','warn'); return; }
-  if(_cdbNorm(v)===_cdbNorm(item.name)){ showToast&&showToast('대표명과 동일합니다.','warn'); return; }
   item.aliases=item.aliases||[];
-  if(item.aliases.some(function(a){return _cdbNorm(a)===_cdbNorm(v);})){ showToast&&showToast('이미 등록된 별칭입니다.','warn'); return; }
+  // 글자 그대로 같은 표기만 중복으로 차단 (띄어쓰기·대소문자만 다른 표기는 등록 허용)
+  if(v===item.name||item.aliases.indexOf(v)!==-1){ showToast&&showToast('이미 등록된 표기입니다.','warn'); return; }
+  // 정규화 기준으로는 이미 같은 고객사로 인식되는 표기 — 등록은 허용하되 안내
+  var _autoMatched=(_cdbNorm(v)===_cdbNorm(item.name)||item.aliases.some(function(a){return _cdbNorm(a)===_cdbNorm(v);}));
   item.aliases.push(v);
   if(typeof autoSave==='function') autoSave();
   if(window._isSPReady&&typeof _spSaveClientDB==='function') try{ _spSaveClientDB(); }catch(e){}
   if(typeof _cdbInvalidateAll==='function') _cdbInvalidateAll();
   _cdbRenderDetail(id);
-  showToast&&showToast('✅ 별칭이 추가되었습니다. 이 표기로 등록된 데이터가 함께 모입니다.');
+  showToast&&showToast(_autoMatched?'✅ 추가했습니다. (띄어쓰기·대소문자만 다른 표기는 원래 자동으로 같은 고객사로 인식됩니다)':'✅ 별칭이 추가되었습니다. 이 표기로 등록된 데이터가 함께 모입니다.');
 }
 function _cdbDelAlias(id, idx){
   var item=_cdbById(id); if(!item||!item.aliases) return;
