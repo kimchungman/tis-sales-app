@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260720-004 -->
+<!-- TIS-VERSION: 20260720-007 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -21054,7 +21054,7 @@ function qtOpenPdf(){
   var fname=document.getElementById('qt-pdf-fname');
   if(ov) ov.style.display='flex';
   if(content) content.innerHTML=qtBuildPdf(q);
-  if(fname) fname.textContent='(TIS)_'+(q.client||'').replace(/\s/g,'')+'_'+(q.id||'').replace(/\s/g,'')+'_견적서.pdf';
+  if(fname) fname.textContent=qt_pdfFileName(q);
   window._qt_pdf_q=q;
 }
 function qtClosePdf(){
@@ -21066,13 +21066,24 @@ function qtClosePdf(){
 /* (removed duplicate qt_numToKor) */
 
 /* (removed duplicate qt_buildDevPdf) */
+// PDF 파일명: (TIS) 프로젝트명_견적서_견적번호.pdf
+// - 날짜는 견적번호에 이미 포함(SQ-XX YYMMDD-NN)되어 별도 표기 생략
+// - 프로젝트명 40자 초과 시 절단, 파일명 금지문자 치환
+function qt_pdfFileName(q){
+  q=q||{};
+  var proj=(q.proj||'').trim().replace(/[\\/:*?"<>|]/g,'_');
+  if(proj.length>40) proj=proj.slice(0,40)+'…';
+  var parts=['(TIS)'+(proj?' '+proj:''),'견적서'];
+  if(q.id) parts.push(q.id);
+  return parts.join('_')+'.pdf';
+}
 function qtSavePdf(){
   var targetEl=document.getElementById('pdfContent');
   if(!targetEl||!targetEl.innerHTML.trim()){alert('PDF 내용이 없습니다.');return;}
   var q=window._qt_pdf_q||{};
-  var fname='(TIS)_'+(q.client||'견적서').replace(/\s/g,'')+'_'+(q.id||'').replace(/\s/g,'')+'_견적서.pdf';
+  var fname=qt_pdfFileName(q);
   var saveBtn=document.querySelector('#pdfOv .pdf-tb button');
-  if(saveBtn){saveBtn.textContent='생성 중...';saveBtn.disabled=true;}
+  if(saveBtn){saveBtn.dataset._orig=saveBtn.innerHTML;saveBtn.textContent='저장 중…';saveBtn.disabled=true;saveBtn.style.opacity='.6';}
   // iframe(원본 CSS 적용) 문서 안에서 렌더해야 시안과 동일한 PDF가 나옴
   var _fr=document.getElementById('qtPdfFrame');
   var _fdoc=(_fr&&(_fr.contentDocument||_fr.contentWindow.document))||document;
@@ -21106,13 +21117,13 @@ function qtSavePdf(){
         else{
           _fdoc.body.removeChild(wrap);
           pdf.save(fname);
-          if(saveBtn){saveBtn.textContent='📥 PDF 저장';saveBtn.disabled=false;}
+          if(saveBtn){saveBtn.innerHTML=saveBtn.dataset._orig||'PDF 저장';saveBtn.disabled=false;saveBtn.style.opacity='';}
         }
       }).catch(function(e){
         if(_fdoc.body.contains(clipDiv)) _fdoc.body.removeChild(clipDiv);
         if(_fdoc.body.contains(wrap)) _fdoc.body.removeChild(wrap);
         alert('PDF 생성 실패: '+e.message);
-        if(saveBtn){saveBtn.textContent='📥 PDF 저장';saveBtn.disabled=false;}
+        if(saveBtn){saveBtn.innerHTML=saveBtn.dataset._orig||'PDF 저장';saveBtn.disabled=false;saveBtn.style.opacity='';}
       });
   }
   renderPage(0);
@@ -22123,10 +22134,10 @@ function qt_onTypeChange(t){
   // MA 계약기간 표시 토글
   var w=document.getElementById('maPeriodWrap');
   if(w) w.style.display=(t==='ma')?'':'none';
-  // 조건비고 탭의 유형 칩도 동기화
-  if(typeof qt_t3SyncChips==='function') qt_t3SyncChips(t);
   // 조건 적용: 손대지 않았으면 자동, 손댔으면 커스텀 팝업으로 확인
   var doApply=function(){
+    window._qt_t3ChipSel=t; // 조건이 실제 교체됐을 때만 칩 선택도 새 유형으로
+    if(typeof qt_t3SyncChips==='function') qt_t3SyncChips(t);
     var v=qt_getCondByType(t);
     var p=document.getElementById('paymentCond'); if(p){ p.value=v.payment; if(typeof qt_autoH==='function') qt_autoH(p); }
     var g=document.getElementById('generalCond'); if(g){ g.value=v.general; if(typeof qt_autoH==='function') qt_autoH(g); }
@@ -22569,6 +22580,18 @@ function qt_buildDevPdf(){
   var tdR='padding:5px 7px;border:1px solid #D1D5DB;font-size:8.5px;color:#000;text-align:right;vertical-align:middle;';
 
   var allIbs=Array.from(document.querySelectorAll('#blockArea .ib'));
+  // 데이터 블록 수 (할인 블록·열 없는 블록 제외) — 1개면 소계 생략, 2개↑면 소계 ①②+합계 합산표기
+  var dataBlockCount=allIbs.filter(function(b){
+    var bd=b.querySelector('.ib-badge');
+    if(bd&&bd.textContent.trim()==='특별 할인') return false;
+    var t=b.querySelector('table.it');
+    if(!t) return false;
+    var hasCol=Array.from(t.querySelectorAll('thead th')).some(function(th){
+      var tx=th.textContent.trim();
+      return tx!==''&&tx!=='단가기준'&&tx!=='단가';
+    });
+    return hasCol;
+  }).length;
   var blockIdx=0;
   allIbs.forEach(function(ib){
     var badge=ib.querySelector('.ib-badge');
@@ -22659,13 +22682,15 @@ function qt_buildDevPdf(){
       blocksHtml+='</tr>';
     });
 
-    // 소계 (번호 포함)
+    // 소계: 유형 2개 이상일 때만 (1개면 소계=합계 중복이라 생략하고 바로 합계로)
     var subNums=['①','②','③','④','⑤','⑥','⑦','⑧'];
-    var subNum=subNums[blockIdx]||'';
-    blocksHtml+='<tr style="background:#EEF2F7;">';
-    blocksHtml+='<td colspan="'+(lastColCount-1)+'" style="'+tdR+'font-weight:700;color:#000;border-color:#B0B8C4;background:#EEF2F7;">소 &nbsp; 계 &nbsp;'+subNum+'</td>';
-    blocksHtml+='<td style="'+tdR+'font-weight:700;color:#000;border-color:#B0B8C4;background:#EEF2F7;">'+subAmt.toLocaleString()+'</td>';
-    blocksHtml+='</tr>';
+    if(dataBlockCount>=2){
+      var subNum=subNums[blockIdx]||'';
+      blocksHtml+='<tr style="background:#EEF2F7;">';
+      blocksHtml+='<td colspan="'+(lastColCount-1)+'" style="'+tdR+'font-weight:700;color:#000;border-color:#B0B8C4;background:#EEF2F7;">소 &nbsp; 계 &nbsp;'+subNum+'</td>';
+      blocksHtml+='<td style="'+tdR+'font-weight:700;color:#000;border-color:#B0B8C4;background:#EEF2F7;">'+subAmt.toLocaleString()+'</td>';
+      blocksHtml+='</tr>';
+    }
     blocksHtml+='</tbody></table>';
     blockIdx++;
   });
@@ -22681,7 +22706,12 @@ function qt_buildDevPdf(){
     summaryHtml+='<td style="'+tdR+'border-color:#D1D5DB;font-weight:700;color:#DC2626;">- '+discAmt.toLocaleString()+'</td></tr>';
   }
   summaryHtml+='<tr style="background-color:#F1F5F9 !important;-webkit-print-color-adjust:exact;">';
-  summaryHtml+='<td colspan="'+(lastColCount-1)+'" style="'+tdS+'font-weight:700;border-color:#B0B8C4;">합 &nbsp; 계</td>';
+  var _sumLbl='합 &nbsp; 계';
+  if(dataBlockCount>=2){
+    var _nums=['①','②','③','④','⑤','⑥','⑦','⑧'].slice(0,dataBlockCount).join('+');
+    _sumLbl+=' &nbsp;('+_nums+')';
+  }
+  summaryHtml+='<td colspan="'+(lastColCount-1)+'" style="'+tdS+'font-weight:700;border-color:#B0B8C4;">'+_sumLbl+'</td>';
   summaryHtml+='<td style="'+tdR+'font-weight:700;border-color:#B0B8C4;">'+totalPropose.toLocaleString()+'</td></tr>';
   summaryHtml+='<tr style="background-color:#3B4A6B !important;-webkit-print-color-adjust:exact;">';
   summaryHtml+='<td colspan="'+(lastColCount-1)+'" style="'+tdS+'font-weight:800;color:#fff;font-size:10px;border-color:#3B4A6B;">제안 금액 (VAT별도)</td>';
@@ -22836,6 +22866,7 @@ function qt_openModal(mode,quoteId){
   if(typeof qt_fillRepCard==='function') qt_fillRepCard();
   // 이전 세션의 필수값 에러 표시(빨간 채우기/테두리) 초기화
   document.querySelectorAll('#writeModal .fi-err').forEach(function(el){ el.classList.remove('fi-err'); });
+  window._qt_t3ChipSel=null; // 조건비고 유형 칩 수동 선택 초기화 (견적별 독립)
   // 권한: 게스트=조회만 / edit는 소유 담당자 또는 관리자만 저장 가능
   var _isGuest=(typeof session!=='undefined'&&session&&session.role==='guest');
   var _isAdmin=(typeof session!=='undefined'&&session&&session.role==='admin');
@@ -23094,6 +23125,7 @@ function qt_t3LoadCond(el){
     if(p){ p.value=v.payment||''; if(typeof qt_autoH==='function') qt_autoH(p); }
     if(g){ g.value=v.general||''; if(typeof qt_autoH==='function') qt_autoH(g); }
     if(o){ o.value=v.other||''; if(typeof qt_autoH==='function') qt_autoH(o); }
+    window._qt_t3ChipSel=t; // 사용자가 고른 칩 기억 (탭 이동 후 복귀해도 유지)
     qt_t3SyncChips(t);
     window._qtCondDirty=false;
     if(typeof showToast==='function') showToast('✅ '+el.textContent.trim()+' 기본조건이 적용되었습니다.');
@@ -23111,7 +23143,7 @@ function qt_t3LoadCond(el){
 }
 // 현재 견적 유형에 맞춰 t3 칩 활성 표시
 function qt_t3SyncChips(t){
-  t=t||((document.getElementById('quoteType')||{}).value||'dev');
+  t=t||window._qt_t3ChipSel||((document.getElementById('quoteType')||{}).value||'dev');
   document.querySelectorAll('#t3CondTabs .chip').forEach(function(ch){
     ch.classList.toggle('on', ch.getAttribute('data-ct')===t);
   });
