@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260721-028 -->
+<!-- TIS-VERSION: 20260721-029 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -716,6 +716,26 @@ label,th{color:var(--muted);}
 #settings-tab-nav button{transition:var(--trans);}
 #settings-tab-nav button:hover{color:var(--primary)!important;}
 
+/* ══ 항목 숨김/복구 (레이아웃 불변: 절대배치 버튼 + display 토글) ══ */
+[data-hid="1"]{display:none !important;}
+.hid-show div[data-hid="1"]{display:grid !important;opacity:.5;}
+.hid-show tr[data-hid="1"]{display:table-row !important;opacity:.5;}
+.hid-host{position:relative;}
+.hid-btn{position:absolute;right:6px;top:50%;transform:translateY(-50%);z-index:5;
+  width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid #E2E8F0;background:#fff;border-radius:7px;cursor:pointer;color:#94A3B8;
+  font-size:12px;line-height:1;padding:0;font-family:inherit;opacity:0;transition:opacity .12s,border-color .12s,color .12s;}
+.hid-host:hover .hid-btn,.hid-host:focus-within .hid-btn{opacity:1;}
+.hid-btn:hover{border-color:#CBD5E1;color:#475569;background:#F8FAFC;}
+.hid-btn:focus-visible{outline:2px solid #4f7fff;outline-offset:1px;opacity:1;}
+/* 복구 버튼 = 숨김 칩 동일 디자인 (통일감) */
+.hid-restore,.hid-chip{display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 10px;border-radius:7px;
+  border:1px solid #BFDBFE;background:#EFF6FF;color:#2563EB;font-size:11px;font-weight:700;
+  cursor:pointer;font-family:inherit;transition:background .12s;white-space:nowrap;}
+.hid-restore:hover,.hid-chip:hover{background:#DBEAFE;}
+.hid-restore{position:absolute;right:6px;top:50%;transform:translateY(-50%);z-index:5;opacity:1;}
+.hid-chip.on{background:#2563EB;border-color:#2563EB;color:#fff;}
+@media (max-width:640px){ .hid-btn{opacity:1;} }
 /* ── 테마 버튼 ── */
 .theme-btn{display:flex;align-items:center;gap:10px;padding:10px 14px;
   border-radius:var(--radius);border:2px solid var(--border);cursor:pointer;
@@ -7145,6 +7165,141 @@ function buildRepInputs(){
 }
 
 
+// ══ 항목 숨김/복구 엔진 (고객사별 실적·영업활동·이슈사항·고객접점·계약 공통) ══
+// 원칙: 데이터는 그대로 보관(집계·고객사관리 이력에 계속 포함), 목록에서만 감춤
+var HID_KIND={clients:'고객사별 실적',activities:'영업활동',issuesList:'이슈사항',visitLog:'고객 접점',contracts:'계약'};
+function _hidCanEdit(rep){
+  try{
+    if(typeof session==='undefined'||!session) return false;
+    if(session.role==='admin') return true;
+    return session.role==='rep'&&session.rep===rep;
+  }catch(e){ return false; }
+}
+function _hidIdxOfId(kind,rep,id){
+  try{
+    var arr=(store.reps[rep]||{})[kind]||[];
+    for(var i=0;i<arr.length;i++){ if(arr[i]&&String(arr[i].id)===String(id)) return i; }
+  }catch(e){}
+  return -1;
+}
+function _hidItem(kind,rep,idx){
+  try{ var d=store.reps[rep]; return d&&d[kind]?d[kind][idx]:null; }catch(e){ return null; }
+}
+function _hidIsHidden(it){ return !!(it&&it._hidden===true); }
+// 행에 붙일 버튼 HTML (절대배치 → 기존 레이아웃 불변)
+function _hidBtnHtml(kind,rep,idx,hidden){
+  if(!_hidCanEdit(rep)) return '';
+  var oc="event.stopPropagation();_hidSet('"+kind+"','"+String(rep).replace(/'/g,"\\'")+"',"+idx+","+(hidden?'false':'true')+")";
+  if(hidden) return '<button class="hid-restore" onclick="'+oc+'" title="다시 표시">↩ 복구</button>';
+  return '<button class="hid-btn" onclick="'+oc+'" title="목록에서 숨기기" aria-label="숨기기">&#128065;</button>';
+}
+function _hidRowAttrs(kind,rep,idx,it){
+  return ' class-hid-host data-hidkind="'+kind+'" data-hidrep="'+String(rep).replace(/"/g,'&quot;')+'" data-hididx="'+idx+'"'
+    +(_hidIsHidden(it)?' data-hid="1"':'');
+}
+// 숨김/복구 실행
+function _hidSet(kind,rep,idx,hide){
+  var it=_hidItem(kind,rep,idx);
+  if(!it){ return; }
+  if(!_hidCanEdit(rep)){ if(typeof showToast==='function') showToast('권한이 없습니다.','warn'); return; }
+  var run=function(){
+    if(hide){
+      it._hidden=true;
+      it._hiddenBy=(typeof session!=='undefined'&&session&&session.rep)||'';
+      it._hiddenAt=new Date().toISOString();
+    } else {
+      delete it._hidden; delete it._hiddenBy; delete it._hiddenAt;
+    }
+    _hidPersist(rep);
+    _hidRefreshRow(kind,rep,idx);
+    _hidUpdateChips();
+    if(typeof showToast==='function') showToast(hide?'👁 항목을 숨겼습니다. (숨김 목록에서 복구 가능)':'↩ 항목을 복구했습니다.');
+  };
+  if(hide&&typeof appConfirm==='function'){
+    appConfirm('이 항목을 숨기시겠습니까?\n목록에서만 보이지 않으며, 데이터와 집계·고객사 이력은 그대로 유지됩니다.', run);
+  } else { run(); }
+}
+// 저장 + SP 동기화 (관리자가 타 담당자 항목을 숨겨도 그 담당자에게 반영)
+function _hidPersist(rep){
+  try{ if(typeof autoSave==='function') autoSave(); }catch(e){}
+  try{
+    if(!window._isSPReady) return;
+    var me=(typeof session!=='undefined'&&session&&session.rep)||'';
+    if(rep===me&&typeof _spSaveMyRep==='function'){ _spSaveMyRep(); }
+    else if(typeof _spSaveRepByName==='function'){ _spSaveRepByName(rep); }
+    else if(typeof _spSaveMyRep==='function'){ _spSaveMyRep(); }
+  }catch(e){ console.warn('[hid] SP 저장 실패',e); }
+}
+// 해당 행만 갱신 (전체 재렌더 없이 → 스크롤·입력 상태 보존)
+function _hidRefreshRow(kind,rep,idx){
+  var sel='[data-hidkind="'+kind+'"][data-hidrep="'+String(rep).replace(/"/g,'\\"')+'"][data-hididx="'+idx+'"]';
+  var rows=document.querySelectorAll(sel);
+  var it=_hidItem(kind,rep,idx);
+  var hidden=_hidIsHidden(it);
+  Array.prototype.forEach.call(rows,function(row){
+    if(hidden) row.setAttribute('data-hid','1'); else row.removeAttribute('data-hid');
+    var old=row.querySelector('.hid-btn,.hid-restore');
+    if(old) old.remove();
+    var html=_hidBtnHtml(kind,rep,idx,hidden);
+    if(html){
+      var tmp=document.createElement('div'); tmp.innerHTML=html;
+      row.appendChild(tmp.firstChild);
+    }
+  });
+}
+// 섹션별 "숨김 N" 칩 설치·갱신 (헤더 우측에 추가 — 기존 요소 위치 불변)
+function _hidUpdateChips(){
+  try{
+    var groups={};
+    document.querySelectorAll('[data-hidkind]').forEach(function(row){
+      var k=row.getAttribute('data-hidkind'), r=row.getAttribute('data-hidrep');
+      var host=row.parentNode; if(!host) return;
+      var key=k+'|'+r+'|'+(host.id||'');
+      if(!groups[key]) groups[key]={kind:k,rep:r,host:host,hidden:0};
+      if(row.getAttribute('data-hid')==='1') groups[key].hidden++;
+    });
+    Object.keys(groups).forEach(function(key){
+      var g=groups[key];
+      var card=g.host.closest('.sec-card')||g.host.closest('.rep-sec')||g.host.parentNode;
+      if(!card) return;
+      var head=card.querySelector('.sec-head')||card.querySelector('.vt-head')||card.firstElementChild;
+      if(!head) return;
+      var id='hidchip-'+g.kind+'-'+(g.host.id||'x');
+      var chip=document.getElementById(id);
+      if(g.hidden<=0){ if(chip) chip.remove(); if(g.host.classList) g.host.classList.remove('hid-show'); return; }
+      if(!chip){
+        chip=document.createElement('button');
+        chip.id=id; chip.className='hid-chip'; chip.type='button';
+        chip.title='숨긴 항목 보기 / 접기';
+        chip.style.marginLeft='8px';
+        chip.addEventListener('click',function(e){
+          e.preventDefault(); e.stopPropagation();
+          var on=g.host.classList.toggle('hid-show');
+          chip.classList.toggle('on',on);
+        });
+        head.appendChild(chip);
+      }
+      chip.innerHTML='&#128065; 숨김 '+g.hidden;
+    });
+  }catch(e){ console.warn('[hid] chip',e); }
+}
+// 렌더 이후 자동 설치 (여러 경로 대응)
+function _hidInstall(){
+  try{
+    document.querySelectorAll('[data-hidkind]').forEach(function(row){
+      row.classList.add('hid-host');
+      if(row.querySelector('.hid-btn,.hid-restore')) return;
+      var kind=row.getAttribute('data-hidkind'), rep=row.getAttribute('data-hidrep'), idx=parseInt(row.getAttribute('data-hididx'),10);
+      var html=_hidBtnHtml(kind,rep,idx,row.getAttribute('data-hid')==='1');
+      if(!html) return;
+      var tmp=document.createElement('div'); tmp.innerHTML=html;
+      row.appendChild(tmp.firstChild);
+    });
+    _hidUpdateChips();
+  }catch(e){ console.warn('[hid] install',e); }
+}
+window._hidSet=_hidSet; window._hidInstall=_hidInstall;
+setInterval(function(){ try{ _hidInstall(); }catch(e){} }, 1200); // 각 목록 재렌더 후 자동 반영
 function cRow(rep,ci,cl){
   cl=cl||{};
   var dotCls=cl.wk!==false?'wk-dot-filled':'wk-dot-empty-ring';
@@ -7164,7 +7319,7 @@ function cRow(rep,ci,cl){
   var foreDisp=forecastSum>0?forecastSum.toLocaleString('ko-KR'):'<span style="color:#CBD5E1;">—</span>';
   var issueDisp=cl.issue?('<div class="ip-rich-view" style="font-size:12px;line-height:1.6;color:#0F172A;text-align:left;">'+cl.issue+'</div>'):'<span style="color:#CBD5E1;font-size:11px;">—</span>';
   var bgEven=ci%2===1?'background:#F8FBFF;':'';
-  return '<div class="lr g-ct ip-row" style="'+bgEven+'" data-action="openClient" data-rep="'+rep+'" data-ci="'+ci+'" title="클릭하여 수정">'
+  return '<div class="lr g-ct ip-row hid-host" style="'+bgEven+'" data-action="openClient" data-rep="'+rep+'" data-ci="'+ci+'" data-hidkind="clients" data-hidrep="'+rep+'" data-hididx="'+ci+'"'+(_hidIsHidden(cl)?' data-hid="1"':'')+' title="클릭하여 수정">'
     +'<div class="td-c"><span class="'+dotCls+'"></span></div>'
     +'<div class="td-c"><span class="nbadge">'+(ci+1)+'</span></div>'
     +'<div class="td-l" style="font-weight:600;color:#0F172A;">'+(cl.name||'')+'</div>'
@@ -7199,6 +7354,11 @@ function _iRow2(rep,ii,iss){
   div.style.cssText=bgEven+'cursor:pointer;';
   div.setAttribute('data-rep',rep);
   div.setAttribute('data-ii',String(ii));
+  div.classList.add('hid-host');
+  div.setAttribute('data-hidkind','issuesList');
+  div.setAttribute('data-hidrep',rep);
+  div.setAttribute('data-hididx',String(ii));
+  if(_hidIsHidden(iss)) div.setAttribute('data-hid','1');
   div.title='클릭하여 수정';
   div.onclick=function(){ window._ipOpenIssue(rep,ii,!(window._canEditRep&&window._canEditRep(rep))); };
   div.innerHTML=''
@@ -7223,7 +7383,7 @@ function aRow(rep,ai,a){
   var amt=a.amount&&parseFloat(a.amount)>0?parseFloat(a.amount).toLocaleString('ko-KR'):'<span style="color:#CBD5E1;">—</span>';
   var contentHtml=a.content?('<div class="ip-rich-view" style="text-align:left;font-size:12px;line-height:1.6;color:#334155;">'+a.content+'</div>'):'';
   var bgEven=ai%2===1?'background:#F8FBFF;':'';
-  return '<div class="lr g-at ip-row" style="'+bgEven+'" data-action="openActivity" data-rep="'+rep+'" data-ai="'+ai+'" title="클릭하여 수정">'
+  return '<div class="lr g-at ip-row hid-host" style="'+bgEven+'" data-action="openActivity" data-rep="'+rep+'" data-ai="'+ai+'" data-hidkind="activities" data-hidrep="'+rep+'" data-hididx="'+ai+'"'+(_hidIsHidden(a)?' data-hid="1"':'')+' title="클릭하여 수정">'
     +'<div class="td-c"><span class="'+dotCls+'"></span></div>'
     +'<div class="td-c"><span class="nbadge">'+(ai+1)+'</span></div>'
     +'<div class="td-l" style="font-weight:600;color:#0F172A;">'+(a.client||'')+'</div>'
@@ -13292,7 +13452,7 @@ function _vRow(rep,idx,v){
 
   var delBtn=canEdit?'<button onclick="deleteVisit(\''+rep+'\','+idx+')" style="width:26px;height:26px;border-radius:5px;border:1px solid #FCA5A5;background:#FEF2F2;color:#DC2626;cursor:pointer;font-size:14px;line-height:1;flex-shrink:0;">&#215;</button>':'';
 
-  return '<tr id="vr-'+rep+'-'+idx+'">'
+  return '<tr class="hid-host" data-hidkind="visitLog" data-hidrep="'+rep.replace(/"/g,'&quot;')+'" data-hididx="'+idx+'"'+(_hidIsHidden(v)?' data-hid="1"':'')+' id="vr-'+rep+'-'+idx+'">'
     +'<td style="width:100px;vertical-align:middle;padding:5px 5px;text-align:center;">'+dateInp('date',v.date)+'</td>'
     +'<td style="width:160px;vertical-align:middle;padding:5px 5px;text-align:center;">'+inpCenter('company',v.company,'vco_'+r+'_'+idx)+'</td>'
     +'<td style="width:110px;vertical-align:middle;padding:5px 5px;text-align:center;">'+sel('contactType',contactType,(function(){ var _o=getSelectOpts('contactType'); if(contactType&&_o.indexOf(contactType)<0) _o=_o.concat([contactType]); return _o; })(),TYPE_COLOR)+'</td>'
@@ -16560,7 +16720,9 @@ function _rebuildContractPanel(rep){ try {
     var topB=ci>0?'border-top:2px solid #F1F5F9;':'';
 
     // tr에만 onclick (td 중복 제거)
-    h+='<tr data-rp="'+rep+'" data-cid="'+c.id+'" class="contract-table-row" style="border-bottom:0.5px solid #F1F5F9;'+topB+'" onclick="showContractDetail(this.dataset.rp,this.dataset.cid)">';
+    var _hIdx=(typeof _hidIdxOfId==='function')?_hidIdxOfId('contracts',rep,c.id):-1;
+    var _hAttr=(_hIdx>=0)?(' data-hidkind="contracts" data-hidrep="'+rep+'" data-hididx="'+_hIdx+'"'+((typeof _hidIsHidden==='function'&&_hidIsHidden((store.reps[rep]||{}).contracts[_hIdx]))?' data-hid="1"':'')):'';
+    h+='<tr data-rp="'+rep+'" data-cid="'+c.id+'" class="contract-table-row hid-host"'+_hAttr+' style="border-bottom:0.5px solid #F1F5F9;'+topB+'" onclick="showContractDetail(this.dataset.rp,this.dataset.cid)">';
     h+='<td style="'+TD+'padding:0 !important;">';
     if(hasHist){
       h+='<button onclick="event.stopPropagation();_cToggleChain(\''+chId+'\',this)" style="border:none;background:none;cursor:pointer;color:#94A3B8;width:44px;height:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0;-webkit-tap-highlight-color:transparent;">'
