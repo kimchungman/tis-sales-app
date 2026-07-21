@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260721-010 -->
+<!-- TIS-VERSION: 20260721-016 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -2385,6 +2385,10 @@ body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;ba
 .it-wrap{overflow:visible;position:relative;margin:0;}
 .it th{background:#F1F5F9;color:#475569;padding:6px 8px;text-align:center !important;font-size:10.5px;font-weight:700;letter-spacing:.02em;white-space:nowrap;border-bottom:2px solid #CBD5E1;}
 /* 등급/단가기준 select: 화살표 제거(공간 절약) + 미선택 시 회색 가이드 */
+.disc-lbl-inp{flex:1;min-width:120px;max-width:340px;border:1px solid transparent;background:transparent;border-radius:7px;padding:5px 8px;font-size:12px;font-weight:700;color:#9A3412;font-family:inherit;outline:none;transition:all .15s;}
+.disc-lbl-inp:hover{border-color:#FED7AA;background:#FFFBF5;}
+.disc-lbl-inp:focus{border-color:#F97316;background:#fff;box-shadow:0 0 0 2px rgba(249,115,22,.15);}
+.disc-lbl-inp::placeholder{color:#C2A98F;font-weight:400;}
 .it .isel{appearance:none;-webkit-appearance:none;-moz-appearance:none;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:6px;text-align:center;text-align-last:center;cursor:pointer;padding:3px 4px;font-weight:600;color:#334155;transition:border-color .12s, background .12s, box-shadow .12s;}
 .it .isel:hover{border-color:#93C5FD;background:#EFF6FF;}
 .it .isel:focus{outline:none;border-color:#3B82F6;box-shadow:0 0 0 2px rgba(59,130,246,.15);}
@@ -15851,6 +15855,12 @@ function _cdbSyncFromStore(){
     // 고객사별 실적 name 수집 (신규 추가)
     (d.clients||[]).forEach(function(cl){ if(cl.name&&cl.name.trim().length>=2) names[cl.name.trim()]=true; });
   });
+  // 견적서 고객사 수집 (정식 저장된 견적만 — 임시저장은 작성 중이라 제외)
+  try{
+    (typeof QUOTES!=='undefined'?QUOTES:[]).forEach(function(q){
+      if(q&&!q.isDraft&&q.client&&q.client.trim().length>=2) names[q.client.trim()]=true;
+    });
+  }catch(e){}
   var changed=false;
   Object.keys(names).forEach(function(n){
     // 삭제된 고객사는 자동 재등록 방지
@@ -21121,11 +21131,13 @@ function qtClosePdf(){
 // - 날짜는 견적번호에 이미 포함(SQ-XX YYMMDD-NN)되어 별도 표기 생략
 // - 프로젝트명 40자 초과 시 절단, 파일명 금지문자 치환
 function qt_pdfFileName(q){
+  // 형식: (TIS) 프로젝트명_견적서_견적번호.pdf
   q=q||{};
-  var proj=(q.proj||'').trim().replace(/[\\/:*?"<>|]/g,'_');
-  if(proj.length>40) proj=proj.slice(0,40)+'…';
+  var proj=(q.proj||'').trim().replace(/[\\/:*?"<>|\r\n\t]/g,'_').replace(/\s+/g,' ');
+  if(proj.length>60) proj=proj.slice(0,60).trim();
   var parts=['(TIS)'+(proj?' '+proj:''),'견적서'];
-  if(q.id) parts.push(q.id);
+  var id=(q.id||'').trim().replace(/[\\/:*?"<>|\r\n\t]/g,'_');
+  if(id) parts.push(id);
   return parts.join('_')+'.pdf';
 }
 function qtSavePdf(){
@@ -21225,7 +21237,7 @@ function qtRenderPreview(){
     <div style="display:flex;gap:7px;flex-shrink:0;">
       
       <button onclick="qt_savePdf()" style="display:flex;align-items:center;gap:6px;padding:0 16px;height:32px;border-radius:7px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;letter-spacing:.02em;" onmouseover="this.style.background='rgba(255,255,255,.2)'" onmouseout="this.style.background='rgba(255,255,255,.12)'">PDF 저장</button>
-      <div class="close-x" style="color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.2);background:transparent;" onclick="qt_closePdf()">✕</div>
+      <div class="close-x" style="width:32px;height:32px;min-width:32px;flex:0 0 32px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;border-radius:7px;font-size:13px;line-height:1;color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);cursor:pointer;transition:all .15s;" onmouseover="this.style.background='rgba(255,255,255,.2)'" onmouseout="this.style.background='rgba(255,255,255,.12)'" onclick="qt_closePdf()">✕</div>
     </div>
   </div>
   <div class="pdf-body-wrap">
@@ -22253,6 +22265,22 @@ function qt_fmtN(v){return Math.round(v).toLocaleString();}
 function qt_parseN(s){return parseFloat(String(s||'').replace(/,/g,'').replace(/[^0-9.]/g,''))||0;}
 
 // 인건비 계산 (수량×단가기준별 등급 단가)
+// 숫자 입력 천단위 포맷 + 커서 위치 정확 복원
+// (기존 버그: 포맷 전 인덱스를 그대로 복원 → 콤마가 끼면 커서가 왼쪽으로 밀려 입력 순서가 뒤바뀜)
+function qt_applyNumFormat(inp, formatted){
+  if(!inp) return;
+  try{
+    var caret=inp.selectionStart;
+    var before=inp.value.slice(0,caret).replace(/[^0-9]/g,'').length; // 커서 앞 숫자 개수
+    inp.value=formatted;
+    var pos=0, seen=0;
+    while(pos<formatted.length && seen<before){
+      if(/[0-9]/.test(formatted[pos])) seen++;
+      pos++;
+    }
+    inp.setSelectionRange(pos,pos);
+  }catch(e){ inp.value=formatted; }
+}
 function qt_calcMM(el){
   var tr=el.closest('tr'); if(!tr) return;
   var tds=tr.querySelectorAll('td');
@@ -22291,8 +22319,8 @@ function qt_calcLic(el){
   var cp=qt_parseN(cpInp?cpInp.value:'0');
   var pp=qt_parseN(ppInp?ppInp.value:'0');
   // 입력값 천단위 포맷
-  if(cpInp&&el===cpInp&&cp>0){var sv=cpInp.selectionStart;cpInp.value=qt_fmtN(cp);try{cpInp.setSelectionRange(sv,sv);}catch(e){}}
-  if(ppInp&&el===ppInp&&pp>0){var sv2=ppInp.selectionStart;ppInp.value=qt_fmtN(pp);try{ppInp.setSelectionRange(sv2,sv2);}catch(e){}}
+  if(cpInp&&el===cpInp&&cp>0){qt_applyNumFormat(cpInp,qt_fmtN(cp));}
+  if(ppInp&&el===ppInp&&pp>0){qt_applyNumFormat(ppInp,qt_fmtN(pp));}
   if(qtyInp&&el===qtyInp){var sv3=qtyInp.selectionStart;/* 수량은 소수점 가능하므로 포맷 안함 */}
   if(conTd&&!conTd.querySelector('input')) conTd.textContent=cp>0?qt_fmtN(qty*cp):'—';
   if(prpTd&&!prpTd.querySelector('input')) prpTd.textContent=pp>0?qt_fmtN(qty*pp):'—';
@@ -22309,7 +22337,7 @@ function qt_calcProduct(el){
   var prpTd=tds[5]||null;
   var qty=qt_parseN(qtyInp?qtyInp.value:'1')||1;
   var pp=qt_parseN(ppInp?ppInp.value:'0');
-  if(ppInp&&el===ppInp&&pp>0){var sv=ppInp.selectionStart;ppInp.value=qt_fmtN(pp);try{ppInp.setSelectionRange(sv,sv);}catch(e){}}
+  if(ppInp&&el===ppInp&&pp>0){qt_applyNumFormat(ppInp,qt_fmtN(pp));}
   if(prpTd&&!prpTd.querySelector('input')) prpTd.textContent=pp>0?qt_fmtN(qty*pp):'—';
   qt_calcTotal();
 }
@@ -22327,7 +22355,7 @@ function qt_calcMA(el){
   var base=qt_parseN(baseInp?baseInp.value:'0');
   var rate=qt_parseN(rateInp?rateInp.value:'0');
   // 구축금액 천단위
-  if(baseInp&&el===baseInp&&base>0){var sv=baseInp.selectionStart;baseInp.value=qt_fmtN(base);try{baseInp.setSelectionRange(sv,sv);}catch(e){}}
+  if(baseInp&&el===baseInp&&base>0){qt_applyNumFormat(baseInp,qt_fmtN(base));}
   if(proposeTd&&!proposeTd.querySelector('input')){
     var propose=(base>0&&rate>0)?Math.round(base*(rate/100)/12*months):0;
     proposeTd.textContent=propose>0?qt_fmtN(propose):'—';
@@ -22339,7 +22367,7 @@ function qt_calcMA(el){
 function qt_calcDiscount(el){
   var blk=el.closest('.disc-blk'); if(!blk) return;
   var v=qt_parseN(el.value);
-  if(v>0&&el===el){var sv=el.selectionStart;el.value=qt_fmtN(v);try{el.setSelectionRange(sv,sv);}catch(e){}}
+  if(v>0){qt_applyNumFormat(el,qt_fmtN(v));}
   var resEl=blk.querySelector('.disc-result');
   if(resEl) resEl.textContent=qt_fmtN(v)+'원';
   qt_calcTotal();
@@ -22483,7 +22511,7 @@ function qt_addBlock(type){
     product:{badge:'상품',bc:'#F0FDF4',tc:'#166534',
       body:'<div class="it-wrap"><table class="it" style="table-layout:fixed;width:100%;"><colgroup><col style="width:72px"><col><col style="width:40px"><col style="width:44px"><col style="width:90px"><col style="width:90px"><col style="width:28px"></colgroup><thead><tr><th class="L">구분</th><th class="L">품목</th><th>수량</th><th>단위</th><th>제안단가</th><th>제안금액</th><th></th></tr></thead><tbody id="tbprodBC"><tr><td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" placeholder="품목명 입력" rows="1" style="resize:none;overflow:hidden;width:100%;"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="1" oninput="qt_calcProduct(this)"></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="개"></td><td style="text-align:right;"><input class="ii" style="text-align:right;" placeholder="0" oninput="qt_calcProduct(this)"></td><td class="prod-propose" style="text-align:right;">—</td><td style="width:32px;text-align:center;padding:2px;"><button class="del-btn" onclick="qt_delRow(this)">×</button></td></tr></tbody></table></div><span class="add-r" onclick="qt_addCommonRow(\'tbprodBC\')">＋ 행 추가</span>'},
     custom:{badge:'기타',bc:'#F8FAFC',tc:'#475569',body:qt_getCustomBody(QT_BC)},
-    discount:{badge:'특별 할인',bc:'#FFF7ED',tc:'var(--red)',body:'<div class="disc-blk"><div class="disc-blk-t">특별 할인</div><div class="disc-row"><span class="disc-lbl">할인 금액</span><input class="disc-fi" placeholder="예: 15,600,000" oninput="qt_calcDiscount(this)" style="max-width:180px;"><span style="font-size:11px;color:var(--muted);">원</span><span class="disc-result" style="margin-left:10px;">0원</span></div></div>'}
+    discount:{badge:'특별 할인',bc:'#FFF7ED',tc:'var(--red)',body:'<div class="disc-blk"><div class="disc-blk-t">특별 할인</div><div class="disc-row"><input class="disc-lbl-inp" value="할인 금액" placeholder="할인 항목명 (예: 장기계약 특별할인)" title="PDF·최종검토에 표시될 문구입니다"><input class="disc-fi" placeholder="예: 15,600,000" oninput="qt_calcDiscount(this)" style="max-width:180px;"><span style="font-size:11px;color:var(--muted);">원</span><span class="disc-result" style="margin-left:10px;">0원</span></div></div>'}
   };
   var cfg=cfgs[type]||cfgs.custom;
   var div=document.createElement('div');
@@ -22560,9 +22588,9 @@ function qt_openPdf(type,quoteId){
   d.repPhone=(QT_SETTINGS.phones&&QT_SETTINGS.phones[_pdfRep])||(_pdfRep===SESSION_REP.name?SESSION_REP.phone:'');
   window.PDF_DATA=d;
   window.PDF_DISC_AMT=d.discAmt;
-  window._qt_pdf_q={client:d.client,id:d.no};
-  var fname='(TIS) '+(d.client||'').replace(/\s/g,'')+'_'+(d.proj||'').replace(/\s/g,'')+'_견적서_'+(d.no||'');
-  document.getElementById('pdfFname').textContent=fname;
+  window._qt_pdf_q={client:d.client,id:d.no,proj:d.proj};
+  var fname=qt_pdfFileName(window._qt_pdf_q);
+  var _fnEl=document.getElementById('pdfFname'); if(_fnEl) _fnEl.textContent=fname;
   // MA 전용 레이아웃은 새 디자인 시안 확정 시 적용 예정 — 현재는 전 유형 동적 빌더 사용 (계약기간 줄 포함)
   var _pdfHtml=qt_buildDevPdf();
   document.getElementById('pdfContent').innerHTML=_pdfHtml; // 저장용 원본 보관(숨김)
@@ -22726,6 +22754,7 @@ function qt_buildDevPdf(){
   var phone=D.repPhone||D.phone||SESSION_REP.phone||'';
   var _rNm=D.repName||SESSION_REP.name, _rTt=D.repTitle||SESSION_REP.title, _rEm=D.repEmail||SESSION_REP.email;
   var discAmt=D.discAmt||0; // forEach에서 DOM 실시간 값으로 덮어씌워짐
+  var discLabel='Special D.C'; // 사용자가 할인 항목명을 수정하면 그 문구로 대체
   var finalAmt=D.finalAmt||0;
   var totalPropose=(D.totalPropose||finalAmt+discAmt);
   var recvVal=D.recv||'귀중';
@@ -22772,7 +22801,10 @@ function qt_buildDevPdf(){
     var badge=ib.querySelector('.ib-badge');
     var badgeTxt=badge?badge.textContent.trim():'';
     if(badgeTxt==='특별 할인'){
-      // 할인금액 읽기
+      // 할인 항목명(사용자 편집) + 할인금액 읽기
+      var _dLbl=ib.querySelector('.disc-lbl-inp');
+      var _dLblTxt=_dLbl?(_dLbl.value||'').trim():'';
+      if(_dLblTxt&&_dLblTxt!=='할인 금액') discLabel=_dLblTxt;
       var discInp=ib.querySelector('.disc-fi');
       if(discInp){
         var dv=parseFloat((discInp.value||'').replace(/,/g,'').replace(/[^0-9.]/g,''))||0;
@@ -22876,10 +22908,7 @@ function qt_buildDevPdf(){
   // 마지막 블록과 동일한 colgroup 생성
     // 합계/제안금액 - 마지막 블록과 동일한 colgroup 사용
   var summaryHtml='<table style="width:100%;border-collapse:collapse;font-size:9px;margin-bottom:14px;table-layout:fixed;">'+lastCg;
-  if(discAmt>0){
-    summaryHtml+='<tr><td colspan="'+(lastColCount-1)+'" style="'+tdS+'border-color:#D1D5DB;font-weight:600;color:#000;">Special D.C</td>';
-    summaryHtml+='<td style="'+tdR+'border-color:#D1D5DB;font-weight:700;color:#DC2626;">'+discAmt.toLocaleString()+'</td></tr>';
-  }
+  // 순서: 합계 → 특별할인 → 제안 금액
   summaryHtml+='<tr style="background-color:#F1F5F9 !important;-webkit-print-color-adjust:exact;">';
   var _sumLbl='합 &nbsp; 계';
   if(dataBlockCount>=2){
@@ -22888,6 +22917,10 @@ function qt_buildDevPdf(){
   }
   summaryHtml+='<td colspan="'+(lastColCount-1)+'" style="'+tdS+'font-weight:700;border-color:#B0B8C4;">'+_sumLbl+'</td>';
   summaryHtml+='<td style="'+tdR+'font-weight:700;border-color:#B0B8C4;">'+totalPropose.toLocaleString()+'</td></tr>';
+  if(discAmt>0){
+    summaryHtml+='<tr><td colspan="'+(lastColCount-1)+'" style="'+tdS+'border-color:#D1D5DB;font-weight:600;color:#000;">'+discLabel+'</td>';
+    summaryHtml+='<td style="'+tdR+'border-color:#D1D5DB;font-weight:700;color:#DC2626;">'+discAmt.toLocaleString()+'</td></tr>';
+  }
   summaryHtml+='<tr style="background-color:#3B4A6B !important;-webkit-print-color-adjust:exact;">';
   summaryHtml+='<td colspan="'+(lastColCount-1)+'" style="'+tdS+'font-weight:800;color:#fff;font-size:10px;border-color:#3B4A6B;">제안 금액 (VAT별도)</td>';
   summaryHtml+='<td style="'+tdR+'font-weight:800;color:#fff;font-size:10px;border-color:#3B4A6B;">'+finalAmt.toLocaleString()+'</td></tr>';
@@ -23492,9 +23525,12 @@ function qt_renderPreview(){
       var discInp=ib.querySelector('.disc-fi');
       var discAmt=parseFloat((discInp?discInp.value:'0').replace(/,/g,''))||0;
       if(discAmt>0){
-        html+='<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:6px;padding:8px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">';
-        html+='<span style="font-weight:600;color:#C2410C;">특별 할인</span>';
-        html+='<span style="font-weight:700;color:#DC2626;">- '+discAmt.toLocaleString()+' 원</span></div>';
+        var _dl=ib.querySelector('.disc-lbl-inp');
+        var _dlTxt=(_dl&&(_dl.value||'').trim())||'할인 금액';
+        html+='<div style="background:linear-gradient(90deg,#FFF7ED,#FFFBF5);border:1px solid #FED7AA;border-radius:8px;padding:10px 14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:12px;">';
+        html+='<span style="display:inline-flex;align-items:center;gap:7px;min-width:0;"><span style="font-size:10px;font-weight:800;color:#fff;background:#F97316;border-radius:4px;padding:2px 7px;flex-shrink:0;">특별 할인</span>'
+             +'<span style="font-weight:600;color:#9A3412;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+_dlTxt.replace(/</g,'&lt;')+'</span></span>';
+        html+='<span style="font-weight:800;color:#DC2626;font-size:13px;white-space:nowrap;">'+discAmt.toLocaleString()+' 원</span></div>';
       }
       return;
     }
