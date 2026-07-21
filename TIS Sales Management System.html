@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260721-021 -->
+<!-- TIS-VERSION: 20260721-022 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -2707,7 +2707,7 @@ body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;ba
 /* 바디 */
 .cdb-body{display:flex;flex:1;overflow:hidden;}
 .cdb-info{width:220px;flex-shrink:0;border-right:1px solid #F1F5F9;overflow-y:auto;padding:12px 14px;}
-.cdb-st{font-size:10px;font-weight:700;color:#94A3B8;letter-spacing:.07em;text-transform:uppercase;margin-bottom:7px;margin-top:14px;}
+.cdb-st{font-size:11.5px;font-weight:700;color:#0F172A;letter-spacing:0;margin-bottom:7px;margin-top:14px;}
 .cdb-st:first-child{margin-top:0;}
 .cdb-cc{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:9px;padding:9px 11px;margin-bottom:7px;position:relative;}
 .cdb-cc-r{display:flex;align-items:center;gap:5px;margin-bottom:3px;}
@@ -2766,7 +2766,7 @@ body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;ba
 .cdb-kl{font-size:10px;color:#94A3B8;margin-top:3px;font-weight:500;}
 .cdb-body{display:flex;flex:1;overflow:hidden;background:#F8FAFC;}
 .cdb-info{width:270px;flex-shrink:0;border-right:1px solid #E8EFFF;overflow-y:auto;padding:16px;background:#fff;}
-.cdb-st{font-size:10px;font-weight:700;color:#94A3B8;letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px;margin-top:16px;padding-bottom:6px;border-bottom:1px solid #F1F5F9;}
+.cdb-st{font-size:11.5px;font-weight:700;color:#0F172A;letter-spacing:0;margin-bottom:8px;margin-top:16px;padding-bottom:6px;border-bottom:1px solid #F1F5F9;}
 .cdb-st:first-child{margin-top:0;}
 .cdb-cc{background:#F8FAFF;border:1px solid #E8EFFF;border-radius:10px;padding:10px 12px;margin-bottom:8px;position:relative;transition:box-shadow .15s;}
 .cdb-cc:hover{box-shadow:0 2px 8px rgba(79,127,255,.1);}
@@ -15258,10 +15258,10 @@ function _cdbRenderDetail(id){
     +'</div>'
     +'<div class="cdb-body">'
       +'<div class="cdb-info">'
-        +'<div class="cdb-st">다른 표기 (별칭)</div>'
+        +'<div class="cdb-st">다른 표기(별칭)</div>'
         +'<div style="font-size:10.5px;color:var(--muted);line-height:1.5;margin:-2px 0 7px;">법인명·약칭 등 다른 이름으로 입력된 견적·활동도 이 고객사로 모입니다.</div>'
         +'<div id="cdb-alias-wrap" style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:4px;">'+_cdbAliasChips(item)+'</div>'
-        +'<div class="cdb-st" style="margin-top:14px;">담당자 (고객사 측)</div>'+ccHTML
+        +'<div class="cdb-st" style="margin-top:14px;">담당자(고객사 측)</div>'+ccHTML
         +'<div class="cdb-st" style="margin-top:14px;">비고</div>'
         +'<textarea class="cdb-note" placeholder="고객사 관련 메모를 입력하세요..." onchange="_cdbSaveNote(\''+id+'\',this.value)">'+_cdbEsc(item.note||'')+'</textarea>'
       +'</div>'
