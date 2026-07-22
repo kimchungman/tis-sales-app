@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260721-031 -->
+<!-- TIS-VERSION: 20260721-033 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -735,10 +735,10 @@ label,th{color:var(--muted);}
 .hid-restore:hover,.hid-chip:hover{background:#DBEAFE;}
 .hid-restore{position:absolute;right:6px;top:50%;transform:translateY(-50%);z-index:5;opacity:1;}
 .hid-chip.on{background:#2563EB;border-color:#2563EB;color:#fff;}
-.hid-btn.hid-offset{right:40px;}
-.hid-restore.hid-offset{right:40px;}
+.hid-btn.hid-offset{right:36px;}
+.hid-restore.hid-offset{right:36px;}
 /* 접점기록: 접점 내용 입력영역을 숨김 버튼만큼 좁혀 겹침 방지 */
-tr[data-hidkind="visitLog"] .content-cell{padding-right:46px !important;}
+tr[data-hidkind="visitLog"] .content-cell{padding-right:34px !important;}
 /* 계약: 맨 오른쪽 연필 칸 자리에 숨김/복구 버튼 배치 */
 tr[data-hidkind="contracts"] .hid-btn,tr[data-hidkind="contracts"] .hid-restore{right:6px;}
 @media (max-width:640px){ .hid-btn{opacity:1;} }
@@ -23065,8 +23065,14 @@ function qt_calcColPcts(visibleThs){
 }
 function qt_buildDevPdf(){
   var D=window.PDF_DATA||{};
-  var phone=D.repPhone||D.phone||SESSION_REP.phone||'';
-  var _rNm=D.repName||SESSION_REP.name, _rTt=D.repTitle||SESSION_REP.title, _rEm=D.repEmail||SESSION_REP.email;
+  // 담당자 정보는 '그 견적의 담당자' 기준. 값이 없으면 비워둔다.
+  // (접속자 정보로 대체하면 남의 견적 PDF에 내 연락처가 찍히는 사고가 발생)
+  var _isMine=(D.repName&&typeof SESSION_REP!=='undefined'&&D.repName===SESSION_REP.name);
+  var _selfPhone=_isMine?(SESSION_REP.phone||''):'';
+  var _selfTitle=_isMine?(SESSION_REP.title||''):'';
+  var _selfEmail=_isMine?(SESSION_REP.email||''):'';
+  var phone=D.repPhone||D.phone||_selfPhone||'';
+  var _rNm=D.repName||SESSION_REP.name, _rTt=D.repTitle||_selfTitle, _rEm=D.repEmail||_selfEmail;
   var discAmt=D.discAmt||0; // forEach에서 DOM 실시간 값으로 덮어씌워짐
   var discLabel='Special D.C'; // 사용자가 할인 항목명을 수정하면 그 문구로 대체
   var finalAmt=D.finalAmt||0;
