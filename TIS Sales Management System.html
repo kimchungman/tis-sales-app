@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260721-030 -->
+<!-- TIS-VERSION: 20260721-031 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -737,6 +737,10 @@ label,th{color:var(--muted);}
 .hid-chip.on{background:#2563EB;border-color:#2563EB;color:#fff;}
 .hid-btn.hid-offset{right:40px;}
 .hid-restore.hid-offset{right:40px;}
+/* 접점기록: 접점 내용 입력영역을 숨김 버튼만큼 좁혀 겹침 방지 */
+tr[data-hidkind="visitLog"] .content-cell{padding-right:46px !important;}
+/* 계약: 맨 오른쪽 연필 칸 자리에 숨김/복구 버튼 배치 */
+tr[data-hidkind="contracts"] .hid-btn,tr[data-hidkind="contracts"] .hid-restore{right:6px;}
 @media (max-width:640px){ .hid-btn{opacity:1;} }
 /* ── 테마 버튼 ── */
 .theme-btn{display:flex;align-items:center;gap:10px;padding:10px 14px;
@@ -7192,7 +7196,7 @@ function _hidIsHidden(it){ return !!(it&&it._hidden===true); }
 function _hidBtnHtml(kind,rep,idx,hidden){
   if(!_hidCanEdit(rep)) return '';
   // 행 우측에 삭제(×) 버튼이 있는 목록은 그 왼쪽에 배치 (겹침 방지)
-  var offsetCls=(kind==='visitLog'||kind==='contracts')?' hid-offset':'';
+  var offsetCls=(kind==='visitLog')?' hid-offset':'';
   var oc="event.stopPropagation();_hidSet('"+kind+"','"+String(rep).replace(/'/g,"\\'")+"',"+idx+","+(hidden?'false':'true')+")";
   if(hidden) return '<button class="hid-restore'+offsetCls+'" onclick="'+oc+'" title="다시 표시">↩ 복구</button>';
   return '<button class="hid-btn'+offsetCls+'" onclick="'+oc+'" title="목록에서 숨기기" aria-label="숨기기">&#128065;</button>';
@@ -16761,7 +16765,7 @@ function _rebuildContractPanel(rep){ try {
     h+='<td style="'+TD+'font-size:11px;color:#64748B;">'+(hasMgt&&c.managementEndDate||'—')+'</td>';
     h+='<td style="'+TD+'">'+_cMgtDdayBadge(c)+'</td>';
     h+='<td style="'+TD+'">'+_cStatusBadge(c.status)+'</td>';
-    if(canEdit)h+='<td style="'+TD+'"><span style="color:#CBD5E1;font-size:14px;">&#9998;</span></td>';
+    if(canEdit)h+='<td style="'+TD+'width:34px;"></td>'; // 우측 여유칸: 숨김/복구 버튼 자리
     h+='</tr>';
 
     if(hasHist){
