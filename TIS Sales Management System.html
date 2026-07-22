@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260721-029 -->
+<!-- TIS-VERSION: 20260721-030 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -735,6 +735,8 @@ label,th{color:var(--muted);}
 .hid-restore:hover,.hid-chip:hover{background:#DBEAFE;}
 .hid-restore{position:absolute;right:6px;top:50%;transform:translateY(-50%);z-index:5;opacity:1;}
 .hid-chip.on{background:#2563EB;border-color:#2563EB;color:#fff;}
+.hid-btn.hid-offset{right:40px;}
+.hid-restore.hid-offset{right:40px;}
 @media (max-width:640px){ .hid-btn{opacity:1;} }
 /* ── 테마 버튼 ── */
 .theme-btn{display:flex;align-items:center;gap:10px;padding:10px 14px;
@@ -7189,9 +7191,11 @@ function _hidIsHidden(it){ return !!(it&&it._hidden===true); }
 // 행에 붙일 버튼 HTML (절대배치 → 기존 레이아웃 불변)
 function _hidBtnHtml(kind,rep,idx,hidden){
   if(!_hidCanEdit(rep)) return '';
+  // 행 우측에 삭제(×) 버튼이 있는 목록은 그 왼쪽에 배치 (겹침 방지)
+  var offsetCls=(kind==='visitLog'||kind==='contracts')?' hid-offset':'';
   var oc="event.stopPropagation();_hidSet('"+kind+"','"+String(rep).replace(/'/g,"\\'")+"',"+idx+","+(hidden?'false':'true')+")";
-  if(hidden) return '<button class="hid-restore" onclick="'+oc+'" title="다시 표시">↩ 복구</button>';
-  return '<button class="hid-btn" onclick="'+oc+'" title="목록에서 숨기기" aria-label="숨기기">&#128065;</button>';
+  if(hidden) return '<button class="hid-restore'+offsetCls+'" onclick="'+oc+'" title="다시 표시">↩ 복구</button>';
+  return '<button class="hid-btn'+offsetCls+'" onclick="'+oc+'" title="목록에서 숨기기" aria-label="숨기기">&#128065;</button>';
 }
 function _hidRowAttrs(kind,rep,idx,it){
   return ' class-hid-host data-hidkind="'+kind+'" data-hidrep="'+String(rep).replace(/"/g,'&quot;')+'" data-hididx="'+idx+'"'
@@ -7216,7 +7220,8 @@ function _hidSet(kind,rep,idx,hide){
     if(typeof showToast==='function') showToast(hide?'👁 항목을 숨겼습니다. (숨김 목록에서 복구 가능)':'↩ 항목을 복구했습니다.');
   };
   if(hide&&typeof appConfirm==='function'){
-    appConfirm('이 항목을 숨기시겠습니까?\n목록에서만 보이지 않으며, 데이터와 집계·고객사 이력은 그대로 유지됩니다.', run);
+    appConfirm('이 항목을 숨기시겠습니까?\n목록에서만 보이지 않으며, 데이터와 집계·고객사 이력은 그대로 유지됩니다.', run,
+      {title:'항목 숨기기', icon:'\uD83D\uDC41\uFE0F', okText:'숨기기'});
   } else { run(); }
 }
 // 저장 + SP 동기화 (관리자가 타 담당자 항목을 숨겨도 그 담당자에게 반영)
@@ -7260,10 +7265,25 @@ function _hidUpdateChips(){
     });
     Object.keys(groups).forEach(function(key){
       var g=groups[key];
-      var card=g.host.closest('.sec-card')||g.host.closest('.rep-sec')||g.host.parentNode;
+      // 계약 등 테이블형: tbody가 host → 테이블 상위 패널에서 헤더를 찾고, 없으면 전용 바를 만든다
+      var card=g.host.closest('.sec-card')||g.host.closest('.vt-panel')||g.host.closest('[id^="cpl-"]')||g.host.closest('.rep-sec')||g.host.parentNode;
       if(!card) return;
+      if(!card.querySelector('.sec-head')&&!card.querySelector('.vt-head')){
+        var barId='hidbar-'+g.kind+'-'+(g.host.id||'x');
+        var bar=document.getElementById(barId);
+        if(!bar){
+          bar=document.createElement('div');
+          bar.id=barId; bar.className='sec-head hid-bar';
+          bar.style.cssText='display:flex;justify-content:flex-end;align-items:center;padding:6px 4px 8px;border:none;background:transparent;';
+          var anchorEl=g.host.closest('table')||g.host;
+          if(anchorEl&&anchorEl.parentNode) anchorEl.parentNode.insertBefore(bar, anchorEl);
+        }
+        card=bar.parentNode; // 아래 헤더 탐색이 이 바를 찾도록
+      }
       var head=card.querySelector('.sec-head')||card.querySelector('.vt-head')||card.firstElementChild;
       if(!head) return;
+      // 칩은 제목(h3/헤더 첫 요소) 안쪽에 붙임 → space-between 레이아웃의 기존 버튼 위치가 밀리지 않음
+      var slot=head.querySelector('h3')||head.firstElementChild||head;
       var id='hidchip-'+g.kind+'-'+(g.host.id||'x');
       var chip=document.getElementById(id);
       if(g.hidden<=0){ if(chip) chip.remove(); if(g.host.classList) g.host.classList.remove('hid-show'); return; }
@@ -7277,7 +7297,7 @@ function _hidUpdateChips(){
           var on=g.host.classList.toggle('hid-show');
           chip.classList.toggle('on',on);
         });
-        head.appendChild(chip);
+        slot.appendChild(chip);
       }
       chip.innerHTML='&#128065; 숨김 '+g.hidden;
     });
