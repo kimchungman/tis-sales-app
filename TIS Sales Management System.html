@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260721-038 -->
+<!-- TIS-VERSION: 20260722-006 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -207,7 +207,7 @@ function renderSelectOptsSettings(){
     });
     h+='</div></details>';
   });
-  el.innerHTML=h;
+  el.innerHTML=h; _ctRestoreScroll(_scWrap,_scEl,_scTop,_scPage);
 }
 // prompt 없는 인라인 추가: + 클릭 → 입력칸 → Enter/체크 확정, Esc 취소
 function soShowAddInput(field){
@@ -5157,7 +5157,7 @@ window._startSessionWatchdog = function(){
   }, 300);
 };
 let authCfg = { adminPw: '13579',
-  chartType: 'combo', guestPw: '', repPws: {}, repPerms: {}, repEmails: {}, repTitles: {}, hiddenReps: [], cdbHiddenReps: [], teamReps: {'솔루션영업팀':['전성현','허인수','김충만','최원진'],'그룹지원팀':[]}, teamColors: {'솔루션영업팀':['#1E5FBE','#00A882','#C05000','#7B2FBE'],'그룹지원팀':[]} };
+  chartType: 'combo', guestPw: '', repPws: {}, repPerms: {}, repEmails: {}, repTitles: {}, hiddenReps: [], hiddenTeams: [], cdbHiddenReps: [], teamReps: {'솔루션영업팀':['전성현','허인수','김충만','최원진'],'그룹지원팀':[]}, teamColors: {'솔루션영업팀':['#1E5FBE','#00A882','#C05000','#7B2FBE'],'그룹지원팀':[]} };
 
 function loadAuthCfg(){
   const saved = localStorage.getItem('weekly_auth');
@@ -5211,10 +5211,36 @@ function syncTeamData(){
   });
 }
 
+// ── 숨김 담당자/팀 판정 (관리자 설정 → SP 공유 → 전 사용자 동일 적용) ──
+function _isTeamHidden(team){
+  try{ return !!(authCfg&&authCfg.hiddenTeams&&authCfg.hiddenTeams.indexOf(team)>=0); }catch(e){ return false; }
+}
+function _isRepHidden(rep){
+  try{
+    if(authCfg&&authCfg.hiddenReps&&authCfg.hiddenReps.indexOf(rep)>=0) return true;
+    // 숨긴 팀 소속이면 담당자도 숨김 (데이터·집계 전부 제외)
+    if(authCfg&&authCfg.hiddenTeams&&authCfg.hiddenTeams.length){
+      for(var i=0;i<authCfg.hiddenTeams.length;i++){
+        var t=authCfg.hiddenTeams[i];
+        if((TEAM_REPS[t]||[]).indexOf(rep)>=0) return true;
+      }
+    }
+  }catch(e){}
+  return false;
+}
+function _visibleReps(list){
+  return (list||[]).filter(function(r){ return r&&!_isRepHidden(r); });
+}
+function _visibleTeams(){
+  return (TEAMS||[]).filter(function(t){ return !_isTeamHidden(t); });
+}
+window._isRepHidden=_isRepHidden; window._isTeamHidden=_isTeamHidden;
+window._visibleReps=_visibleReps; window._visibleTeams=_visibleTeams;
+
 // 현재 팀 기준으로 REPS 업데이트
 function applyCurrentTeam(team){
   currentTeam = team || currentTeam;
-  const reps = TEAM_REPS[currentTeam] || [];
+  const reps = _visibleReps(TEAM_REPS[currentTeam] || []); // 숨김 담당자 제외 → 전 메뉴 일괄 반영
   REPS.length = 0;
   reps.forEach(r=>REPS.push(r));
   REP_COLORS.length = 0;
@@ -6322,7 +6348,8 @@ function renderInputTeamTabs(){/* 통합탭으로 대체됨 */}
 
 
 function getDashReps(){
-  const teamsFilter = currentDashTeam==='all' ? TEAMS : [currentDashTeam];
+  const _vt=(typeof _visibleTeams==='function')?_visibleTeams():TEAMS;
+  const teamsFilter = currentDashTeam==='all' ? _vt : [currentDashTeam];
   const all=[];
   teamsFilter.forEach(function(t){
     var teamReps = TEAM_REPS[t]||[];
@@ -6338,7 +6365,7 @@ function getDashReps(){
       }
     });
   });
-  return all;
+  return (typeof _visibleReps==='function')?_visibleReps(all):all;
 }
 
 function renderDashboard(){try{
@@ -7310,6 +7337,12 @@ function _hidUpdateChips(){
 // 렌더 이후 자동 설치 (여러 경로 대응)
 function _hidInstall(){
   try{
+    // 변경이 없으면 DOM을 건드리지 않음 (주기 실행이 스크롤·레이아웃을 흔드는 것 방지)
+    var _pending=document.querySelectorAll('[data-hidkind]:not(.hid-host), [data-hidkind]:not(:has(.hid-btn)):not(:has(.hid-restore))');
+    var _need=false;
+    try{ _need=_pending.length>0; }catch(e){ _need=true; }
+    if(!_need&&window._hidLastCount===document.querySelectorAll('[data-hidkind]').length) return;
+    window._hidLastCount=document.querySelectorAll('[data-hidkind]').length;
     document.querySelectorAll('[data-hidkind]').forEach(function(row){
       row.classList.add('hid-host');
       if(row.querySelector('.hid-btn,.hid-restore')) return;
@@ -7323,7 +7356,7 @@ function _hidInstall(){
   }catch(e){ console.warn('[hid] install',e); }
 }
 window._hidSet=_hidSet; window._hidInstall=_hidInstall;
-setInterval(function(){ try{ _hidInstall(); }catch(e){} }, 1200); // 각 목록 재렌더 후 자동 반영
+setInterval(function(){ try{ _hidInstall(); }catch(e){} }, 2500); // 각 목록 재렌더 후 자동 반영 (주기 완화: 불필요한 DOM 조작 최소화)
 function cRow(rep,ci,cl){
   cl=cl||{};
   var dotCls=cl.wk!==false?'wk-dot-filled':'wk-dot-empty-ring';
@@ -9421,8 +9454,34 @@ function toggleHideRep(rep){
   }
   saveAuthCfg();
   renderRepManage();
-  // 사이드바 담당자 버튼도 갱신
-  if(typeof buildRepBtns==='function') buildRepBtns();
+  _refreshAfterHide();
+}
+// 담당자/팀 숨김 변경 → 전 메뉴·집계 즉시 반영
+function _refreshAfterHide(){
+  try{ if(typeof applyCurrentTeam==='function') applyCurrentTeam(currentTeam); }catch(e){}
+  try{ if(typeof buildRepBtns==='function') buildRepBtns(); }catch(e){}
+  try{ if(typeof buildRepInputs==='function') buildRepInputs(); }catch(e){}
+  try{ if(typeof renderDashboard==='function') renderDashboard(); }catch(e){}
+  try{ if(typeof renderPipeline==='function') renderPipeline(); }catch(e){}
+  try{ if(typeof renderIssues==='function') renderIssues(); }catch(e){}
+  try{ if(typeof _wkRenderAll==='function') _wkRenderAll(); }catch(e){}
+  try{ if(typeof _cdbRenderList==='function') _cdbRenderList(); }catch(e){}
+  try{ if(typeof buildExpPreview==='function') buildExpPreview(); }catch(e){}
+}
+// ═══ 팀 숨김 토글 (소속 담당자·데이터 전부 제외) ═══
+function toggleHideTeam(team){
+  if(!authCfg.hiddenTeams) authCfg.hiddenTeams=[];
+  var idx=authCfg.hiddenTeams.indexOf(team);
+  if(idx>=0){
+    authCfg.hiddenTeams.splice(idx,1);
+    showToast('👁️ '+team+' 표시로 변경되었습니다.');
+  } else {
+    authCfg.hiddenTeams.push(team);
+    showToast('🚫 '+team+' 숨김 — 소속 담당자와 실적이 모든 메뉴에서 제외됩니다.');
+  }
+  saveAuthCfg();
+  renderRepManage();
+  _refreshAfterHide();
 }
 
 function renameRepInTeam(team, idx, newName){
@@ -10466,7 +10525,7 @@ function _getClientNames(){
       if(cl.name) names.push(cl.name);
       (cl.aliases||[]).forEach(function(a){ if(a) names.push(a); }); // 별칭도 후보에 포함
     });
-    Object.keys(store.reps||{}).forEach(function(rep){
+    Object.keys(store.reps||{}).filter(function(_r){ return typeof _isRepHidden!=='function'||!_isRepHidden(_r); }).forEach(function(rep){
       var d=store.reps[rep]; if(!d) return;
       (d.clients||[]).forEach(function(cl){ if(cl.name) names.push(cl.name); });
       (d.activities||[]).forEach(function(a){ if(a.client) names.push(a.client); });
@@ -11377,10 +11436,13 @@ function renderRepManage(){
     var teamReps=TEAM_REPS[team]||[];
     var teamColors=TEAM_COLORS[team]||[];
     var icon=teamIcons[ti]||'▪';
-    rows+='<tr style="background:#F1F5F9;"><td colspan="8" style="padding:8px 12px;">';
-    rows+='<div style="display:flex;align-items:center;justify-content:space-between;">';
+    var _tHidden=!!(authCfg.hiddenTeams&&authCfg.hiddenTeams.indexOf(team)>=0);
+    rows+='<tr style="background:#F1F5F9;'+(_tHidden?'opacity:.62;':'')+'"><td colspan="8" style="padding:8px 12px;">';
+    rows+='<div style="display:flex;align-items:center;gap:8px;">';
     rows+='<span style="font-weight:700;font-size:12px;color:#0A1628;">'+icon+' '+team+'</span>';
-    rows+='<button onclick="addRepToTeam(this.dataset.team)" data-team="'+team+'" style="padding:4px 12px;background:#0A1628;color:white;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;">+ 추가</button>';
+    if(_tHidden) rows+='<span style="font-size:10px;font-weight:700;color:#64748B;background:#E2E8F0;border-radius:5px;padding:2px 7px;">숨김</span>';
+    rows+='<button onclick="addRepToTeam(this.dataset.team)" data-team="'+team+'" style="padding:4px 12px;background:#0A1628;color:white;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;">+ 담당자 추가</button>';
+    rows+='<button onclick="toggleHideTeam(this.dataset.team)" data-team="'+team+'" title="'+(_tHidden?'이 팀을 다시 표시':'이 팀과 소속 담당자·실적을 모든 메뉴에서 숨김')+'" style="padding:4px 10px;background:#fff;color:'+(_tHidden?'#2563EB':'#64748B')+';border:1px solid '+(_tHidden?'#BFDBFE':'#E2E8F0')+';border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;">'+(_tHidden?'↩ 팀 표시':'🚫 팀 숨김')+'</button>';
     rows+='</div></td></tr>';
     if(!teamReps.length){
       rows+='<tr><td colspan="8" style="padding:8px 16px;color:#94A3B8;font-size:12px;text-align:center;">담당자 없음</td></tr>';
@@ -12933,6 +12995,29 @@ async function _loadHistDate(date) {
 var _accessLogFilter = 'today';
 var _accessLogData   = [];
 
+// ── 최종 활동 시각 기록 ──
+// 접속 시각만 보면 "아침에 열어두고 종일 방치"와 "방금 작업"이 구분되지 않음.
+// 실제 저장(=업무 행위)이 일어날 때 lastActive를 남기고, 접속현황에 "최근 활동"으로 표시.
+var _lastActiveSentAt=0;
+async function _touchLastActive(){
+  try{
+    if(!window._isSPReady||typeof session==='undefined'||!session||!session.role) return;
+    var now=Date.now();
+    if(now-_lastActiveSentAt < 10*60*1000) return; // 10분 스로틀 (SP 부하 방지)
+    _lastActiveSentAt=now;
+    var who=(session.rep||session.guestName||'');
+    var acc=(window._msAccount||session.email||who||'unknown');
+    var d=new Date();
+    await _spSaveItem('accessLog','active_'+d.toISOString().split('T')[0]+'_'+acc, {
+      msAccount:acc, selectedRep:who,
+      title:(typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[who])||'',
+      action:'활동', isGuest:(session.role==='guest'),
+      timestamp:d.toISOString(), lastActive:true
+    });
+  }catch(e){}
+}
+window._touchLastActive=_touchLastActive;
+
 // 접속 시 로그 기록
 async function _recordAccessLog(msAccount, selectedRep, action, isGuest) {
   if (!window._isSPReady) return;
@@ -13032,6 +13117,9 @@ function _renderAccessLog() {
           // isGuest 플래그 우선, 없으면 TEAM_REPS 미등록 여부로 판단
           var _iG = log.isGuest === true || (log.selectedRep && _aR.length>0 && _aR.indexOf(log.selectedRep)<0);
           var _gDispName = _safeRepDisplayName(log.selectedRep)||'-';
+          // 게스트도 등록 담당자 직책을 함께 표시 (이름 + 직책 + 게스트)
+          var _gTitle = log.title || (typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[log.selectedRep])||'';
+          if(_gTitle && _gDispName.indexOf(_gTitle)<0) _gDispName = _gDispName+' '+_gTitle;
           if(_iG) return '<span style="display:inline-flex;align-items:center;gap:5px;"><span style="font-weight:700;color:#4f7fff;">&#128065; '+_gDispName+'</span><span style="font-size:10px;font-weight:700;color:#4f7fff;background:rgba(79,127,255,0.12);border:1px solid rgba(79,127,255,0.35);border-radius:20px;padding:1px 8px;">게스트</span></span>';
           var _dispName = _safeRepDisplayName(log.selectedRep)||'-';
           return '<span style="font-weight:600;color:'+(isSame?'#198038':'#DA1E28')+'">'+ _dispName +'</span>'+(isSame?'':' <span style="font-size:10px;color:#DA1E28;">⚠️불일치</span>');
@@ -13982,7 +14070,7 @@ function renderOverdueIssues(el){
   if(!el) return;
   var today=new Date();today.setHours(0,0,0,0);
   var ov=[];
-  Object.keys(store.reps||{}).forEach(function(rep){
+  Object.keys(store.reps||{}).filter(function(_r){ return typeof _isRepHidden!=='function'||!_isRepHidden(_r); }).forEach(function(rep){
     (store.reps[rep].issuesList||[]).forEach(function(iss){
       if(!iss.dueDate||iss.status==='closed') return;
       var d=new Date(iss.dueDate);d.setHours(0,0,0,0);
@@ -14083,6 +14171,7 @@ async function _spLoadAllVisitLogs(){
 }
 
 async function _spSaveMyRep(){
+  try{ if(typeof _touchLastActive==='function') _touchLastActive(); }catch(e){}
   if(!window._isSPReady || !session || !session.rep) return;
   if(session.role==='guest') return; // 게스트는 rep_data 저장 불가
   var date=document.getElementById('mtg-date')?(document.getElementById('mtg-date')||{value:''}).value:'';
@@ -14467,7 +14556,7 @@ async function _spSyncOtherReps(){
   // 동기화 완료 후 _repSavedHashes 초기화 (접속 시 자동 저장 방지)
   // 실제 변경된 rep만 저장되도록 현재 상태로 해시 갱신
   if(typeof _repSavedHashes !== 'undefined'){
-    Object.keys(store.reps||{}).forEach(function(rep){
+    Object.keys(store.reps||{}).filter(function(_r){ return typeof _isRepHidden!=='function'||!_isRepHidden(_r); }).forEach(function(rep){
       try{ _repSavedHashes[rep] = JSON.stringify(store.reps[rep]||{}); }catch(e){}
     });
   }
@@ -14481,13 +14570,13 @@ async function _spSyncOtherReps(){
   }
   // 동기화 후 전체 담당자 actual/forecast 재계산
   try{
-    Object.keys(store.reps||{}).forEach(function(rep){
+    Object.keys(store.reps||{}).filter(function(_r){ return typeof _isRepHidden!=='function'||!_isRepHidden(_r); }).forEach(function(rep){
       if(typeof refreshActualForecast==='function') refreshActualForecast(rep);
     });
   }catch(e){}
   // 동기화 후 전체 담당자 actual/forecast 재계산
   try{
-    Object.keys(store.reps||{}).forEach(function(rep){
+    Object.keys(store.reps||{}).filter(function(_r){ return typeof _isRepHidden!=='function'||!_isRepHidden(_r); }).forEach(function(rep){
       if(typeof refreshActualForecast==='function') refreshActualForecast(rep);
     });
   }catch(e){}
@@ -15215,7 +15304,7 @@ function _cdbRename(id, newName){
     }
   }
   // 전체 데이터 업데이트 (견적서는 원본 표기 유지 — 별칭으로 자동 매칭됨)
-  Object.keys(store.reps||{}).forEach(function(rep){
+  Object.keys(store.reps||{}).filter(function(_r){ return typeof _isRepHidden!=='function'||!_isRepHidden(_r); }).forEach(function(rep){
     var d=store.reps[rep]; if(!d) return;
     (d.activities||[]).forEach(function(a){ if(a.client===oldName) a.client=newName; });
     (d.issuesList||[]).forEach(function(iss){ if(iss.client===oldName) iss.client=newName; });
@@ -15236,7 +15325,7 @@ function _cdbGetHistory(name,typeFilter){
   if(typeof TEAM_REPS!=='undefined')
     Object.values(TEAM_REPS).forEach(function(a){(a||[]).forEach(function(r){_vReps[r]=true;});});
   function _isValidRep(r){ return !Object.keys(_vReps).length || _vReps[r]; }
-  Object.keys(store.reps||{}).forEach(function(rep){
+  Object.keys(store.reps||{}).filter(function(_r){ return typeof _isRepHidden!=='function'||!_isRepHidden(_r); }).forEach(function(rep){
     if(!_isValidRep(rep)) return;
     var d=store.reps[rep]; if(!d) return;
     if(!typeFilter||typeFilter==='계약'||typeFilter==='all')
@@ -15282,7 +15371,7 @@ function _cdbGetReps(name){
   if(typeof TEAM_REPS!=='undefined')
     Object.values(TEAM_REPS).forEach(function(a){(a||[]).forEach(function(r){_vReps[r]=true;});});
   function _isValidRep(r){ return !Object.keys(_vReps).length || _vReps[r]; }
-  Object.keys(store.reps||{}).forEach(function(rep){
+  Object.keys(store.reps||{}).filter(function(_r){ return typeof _isRepHidden!=='function'||!_isRepHidden(_r); }).forEach(function(rep){
     if(!_isValidRep(rep)) return;
     var d=store.reps[rep]; if(!d) return;
     var srcs=[];
@@ -15303,7 +15392,7 @@ function _cdbGetKPI(name){
   if(typeof TEAM_REPS!=='undefined')
     Object.values(TEAM_REPS).forEach(function(a){(a||[]).forEach(function(r){_vReps[r]=true;});});
   function _isValidRep(r){ return !Object.keys(_vReps).length || _vReps[r]; }
-  Object.keys(store.reps||{}).forEach(function(rep){
+  Object.keys(store.reps||{}).filter(function(_r){ return typeof _isRepHidden!=='function'||!_isRepHidden(_r); }).forEach(function(rep){
     if(!_isValidRep(rep)) return;
     var d=store.reps[rep]; if(!d) return;
     (d.contracts||[]).forEach(function(c){ if(c.client===name){ kpi.contracts++; kpi.amount+=(Number(c.amount)||0); }});
@@ -15360,7 +15449,7 @@ function _cdbRenderList(q){
       +(hasInfo?'<span class="cdb-bdg cdb-bok">완성</span>':'<span class="cdb-bdg cdb-bw">미완성</span>')
       +'</div>';
   });
-  el.innerHTML=h;
+  el.innerHTML=h; _ctRestoreScroll(_scWrap,_scEl,_scTop,_scPage);
   if(pos&&window._restoreScroll) window._restoreScroll(el,pos);
   else if(pos) requestAnimationFrame(function(){requestAnimationFrame(function(){el.scrollTop=pos;});});
 }
@@ -16082,7 +16171,7 @@ function _cdbAddAC(val){
     h+='<div style="padding:8px 12px;cursor:pointer;" onmousedown="event.preventDefault()" onclick="_cdbDoAdd(\''+val.replace(/'/g,"\\'")+'\')"><span style="font-size:11px;color:#4f7fff;font-weight:500;">＋ &nbsp;"'+_cdbEsc(val)+'" 새 고객사로 추가</span></div>';
   }
   h+='</div>';
-  el.innerHTML=h;
+  el.innerHTML=h; _ctRestoreScroll(_scWrap,_scEl,_scTop,_scPage);
 }
 function _cdbDoAdd(name){
   var inp=document.getElementById('_cdb_add_inp');
@@ -16148,7 +16237,7 @@ function _cdbACNoOp(){}
 // ── 기존 store에서 고객사 자동 수집 (최초 1회) ──
 function _cdbSyncFromStore(){
   var names={};
-  Object.keys(store.reps||{}).forEach(function(rep){
+  Object.keys(store.reps||{}).filter(function(_r){ return typeof _isRepHidden!=='function'||!_isRepHidden(_r); }).forEach(function(rep){
     var d=store.reps[rep]; if(!d) return;
     (d.contracts||[]).forEach(function(c){ if(c.client&&c.client.trim().length>=2) names[c.client.trim()]=true; });
     (d.activities||[]).forEach(function(a){ if(a.client&&a.client.trim().length>=2) names[a.client.trim()]=true; });
@@ -16583,7 +16672,26 @@ function _sortContractChain(arr){
   return sorted;
 }
 
+function _ctRestoreScroll(wrap,el,top,pageTop){
+  try{
+    var apply=function(){
+      var w=wrap||(el?(el.querySelector('.scroll-list-wrap')||el.closest('.scroll-list-wrap')):null);
+      if(w&&top) w.scrollTop=top;
+      else if(el&&top) el.scrollTop=top;
+      var se=document.scrollingElement||document.documentElement;
+      if(pageTop&&Math.abs(se.scrollTop-pageTop)>2) se.scrollTop=pageTop;
+    };
+    apply();
+    requestAnimationFrame(apply);
+    setTimeout(apply,60);
+  }catch(e){}
+}
 function _rebuildContractPanel(rep){ try {
+  // 스크롤 위치 보존 (재렌더 시 목록이 맨 위로 튀는 현상 방지)
+  var _scEl=document.getElementById('cpl-'+rep);
+  var _scWrap=_scEl?(_scEl.querySelector('.scroll-list-wrap')||_scEl.closest('.scroll-list-wrap')):null;
+  var _scTop=_scWrap?_scWrap.scrollTop:(_scEl?_scEl.scrollTop:0);
+  var _scPage=(document.scrollingElement||document.documentElement).scrollTop;
   // rep 이름으로 store.reps의 실제 키 찾기 (직책 불일치 대응)
   var _repActualKey=rep;
   if(store.reps&&!store.reps[rep]){
@@ -16666,8 +16774,8 @@ function _rebuildContractPanel(rep){ try {
   if(canEdit)h+='<button data-rp="'+rep+'" onclick="_cShowNewContract(this.dataset.rp)" class="add-btn" style="cursor:pointer;">&#xFF0B; 신규 계약 등록</button>';
   h+='</div>';
   if(filteredC.length!==contracts.length)h+='<div style="font-size:11px;color:#4f7fff;margin-bottom:8px;">필터: '+filteredC.length+'건 표시</div>';
-  if(contracts.length===0){h+='<div style="text-align:center;padding:48px;color:#94A3B8;font-size:13px;border:1.5px dashed #E2E8F0;border-radius:12px;">등록된 계약이 없습니다.</div>';el.innerHTML=h;return;}
-  if(filteredC.length===0){h+='<div style="text-align:center;padding:40px;color:#94A3B8;font-size:13px;border:1.5px dashed #E2E8F0;border-radius:10px;">조건에 맞는 계약이 없습니다.</div>';el.innerHTML=h;return;}
+  if(contracts.length===0){h+='<div style="text-align:center;padding:48px;color:#94A3B8;font-size:13px;border:1.5px dashed #E2E8F0;border-radius:12px;">등록된 계약이 없습니다.</div>';el.innerHTML=h; _ctRestoreScroll(_scWrap,_scEl,_scTop,_scPage);return;}
+  if(filteredC.length===0){h+='<div style="text-align:center;padding:40px;color:#94A3B8;font-size:13px;border:1.5px dashed #E2E8F0;border-radius:10px;">조건에 맞는 계약이 없습니다.</div>';el.innerHTML=h; _ctRestoreScroll(_scWrap,_scEl,_scTop,_scPage);return;}
   // 고객사 그룹핑
   // rootId 체인 그룹핑: 최신 계약만 표시, 화살표로 이력 펼침
   var chains={};var chainOrder=[];
@@ -16807,7 +16915,7 @@ function _rebuildContractPanel(rep){ try {
   });
   h+='</tbody></table></div>';
   var _cSt=window._saveScroll?window._saveScroll(el):0;
-  el.innerHTML=h;
+  el.innerHTML=h; _ctRestoreScroll(_scWrap,_scEl,_scTop,_scPage);
   if(_cSt>0&&window._restoreScroll)window._restoreScroll(el,_cSt);
   } catch(e){ console.error('[rebuildContract ERR]',e&&e.message,e&&e.stack); if(typeof showToast==='function')showToast('계약렌더오류: '+(e&&e.message||e),'error'); }
 }
@@ -16959,11 +17067,11 @@ function renderContractDashboard(){
     if(typeof TEAMS==='undefined'||!TEAMS||!TEAMS.length)return;
     var ttabs=document.getElementById('contract-team-tabs');
     if(ttabs){
-      var tlist=[{k:'all',l:'사업개발부 전체'}].concat(TEAMS.map(function(t){return{k:t,l:t};}));
+      var tlist=[{k:'all',l:'사업개발부 전체'}].concat(((typeof _visibleTeams==='function')?_visibleTeams():TEAMS).map(function(t){return{k:t,l:t};}));
       ttabs.innerHTML=tlist.map(function(t){var a=_cDashTeam===t.k;return '<button onclick="_cDashTeam=\''+t.k+'\';renderContractDashboard();" style="padding:6px 16px;border-radius:20px;font-size:12px;font-weight:'+(a?'700':'500')+';border:none;background:'+(a?'#4f7fff':'transparent')+';color:'+(a?'#fff':'#94A3B8')+';cursor:pointer;">'+t.l+'</button>';}).join('');
     }
-    var teams=_cDashTeam==='all'?TEAMS:[_cDashTeam];
-    var reps=[];teams.forEach(function(t){(TEAM_REPS[t]||[]).forEach(function(r){if(reps.indexOf(r)<0)reps.push(r);});});
+    var teams=_cDashTeam==='all'?((typeof _visibleTeams==='function')?_visibleTeams():TEAMS):[_cDashTeam];
+    var reps=[];teams.forEach(function(t){((typeof _visibleReps==='function')?_visibleReps(TEAM_REPS[t]||[]):(TEAM_REPS[t]||[])).forEach(function(r){if(reps.indexOf(r)<0)reps.push(r);});});
     var all=[];reps.forEach(function(r){_getContracts(r).forEach(function(c){all.push(Object.assign({},c,{_rep:r}));});});
     var filtered=_cApplyFilters(all);
     var body=document.getElementById('contract-dashboard-body');
@@ -18601,9 +18709,23 @@ function _wkRenderContractList(){
       var d=con.endDate?new Date(con.endDate):null;
       if(!d||isNaN(d.getTime())) return;
       var diff=Math.round((d-today)/86400000);
+      // 계약은 종료됐지만 관리기간(하자/유지보수)이 남아 있으면 '관리 종료일' 기준으로 판단
+      var _mgtType=con.managementType||'';
+      var _mgtEnd=con.managementEndDate||'';
+      var _basis='계약';
+      if(_mgtEnd&&_mgtType&&_mgtType!=='해당없음'){
+        var md=new Date(_mgtEnd);
+        if(!isNaN(md.getTime())){
+          md.setHours(0,0,0,0);
+          var mdiff=Math.round((md-today)/86400000);
+          if(diff<0&&mdiff>=diff){ diff=mdiff; _basis=_mgtType; } // 계약 만료 후 관리기간 진행 중
+          else if(mdiff<diff){ diff=mdiff; _basis=_mgtType; }     // 관리 종료가 더 임박
+        }
+      }
       // 만료 임박(60일 이내) + 이미 만료됐으나 종료 처리되지 않은 계약(누락 방지)
       if(diff<=60){
-        contracts.push({rep:rep,client:con.client||'',contractType:con.contractType||'',project:con.projectName||'',endDate:con.endDate||'',diff:diff});
+        contracts.push({rep:rep,client:con.client||'',contractType:con.contractType||'',project:con.projectName||'',
+          endDate:(_basis==='계약')?(con.endDate||''):(_mgtEnd||con.endDate||''),diff:diff,basis:_basis});
       }
     });
   });
@@ -18625,6 +18747,7 @@ function _wkRenderContractList(){
     var _bg=_i%2===1?'background:#FAFBFC;':'';
     var diff=con.diff;
     var diffStr=diff<0?('D+'+Math.abs(diff)):(diff===0?'D-day':'D-'+diff);
+    var _basisTag=(con.basis&&con.basis!=='계약')?('<span style="font-size:9px;font-weight:700;color:#B45309;background:#FFFBEB;border:1px solid #FDE68A;border-radius:4px;padding:0 4px;margin-left:4px;white-space:nowrap;">'+con.basis+'</span>'):'';
     var diffColor=diff<0?'background:#DC2626;color:#fff;font-weight:800;'
       :diff<=7?'background:#FEE2E2;color:#DC2626;'
       :diff<=30?'background:#FEF3C7;color:#D97706;':'background:#F1F5F9;color:#1E293B;';
@@ -18632,7 +18755,7 @@ function _wkRenderContractList(){
       +_wkRepBadge(con.rep)
       +'<span class="wk-cli" style="text-align:center;display:block;">'+_wkEsc(con.client)+'</span>'
       +'<span style="font-size:10px;color:#64748B;text-align:center;padding:0 4px;">'+_wkEsc(con.contractType||'')+'</span>'
-      +'<span class="wk-cont" style="font-size:11px;">'+_wkEsc(con.project||con.client)+'</span>'
+      +'<span class="wk-cont" style="font-size:11px;">'+_wkEsc(con.project||con.client)+_basisTag+'</span>'
       +'<span class="wk-dchip" style="'+diffColor+'">'+diffStr+'</span>'
       +'</div>';
   }).join('');
@@ -18701,7 +18824,7 @@ function _wkRenderPrevSection(){
     h+='</div>';
   });
   h+='</div>';
-  el.innerHTML=h;
+  el.innerHTML=h; _ctRestoreScroll(_scWrap,_scEl,_scTop,_scPage);
 }
 
 // ── 회의록 통합 카드 ──────
@@ -20275,6 +20398,7 @@ window._initWeeklyPage=async function(){
 function _wkGetActiveReps(){
   var reps=_wkFilteredReps();
   if(!reps.length) reps=(typeof REPS!=='undefined'?REPS:[]);
+  if(typeof _visibleReps==='function') reps=_visibleReps(reps); // 숨김 담당자/팀 제외
   if(_wk.activeRep!=='all') return reps.filter(function(r){return r===_wk.activeRep;});
   return reps;
 }
@@ -22259,12 +22383,35 @@ document.addEventListener('input',function(e){
 var QUOTES = []; // 빈 배열로 시작, _qtShowPage에서 SP/캐시 로드
 
 // ── 견적번호 자동생성 ──
+// 한글 이름 → 영문 이니셜 (초성 로마자). 예: 김충만→CM, 최원진→WJ, 허인수→IS, 전성현→SH
+function qt_nameInitials(name){
+  name=String(name||'').replace(/[（(\[【].*$/,'').trim();
+  if(!name) return 'XX';
+  var CHO_ALL=['G','GG','N','D','DD','R','M','B','BB','S','SS','','J','JJ','C','K','T','P','H'];
+  // 초성이 'ㅇ'(무음)이면 모음 발음으로 표기: 원→W, 인→I, 영→Y, 우→U …
+  var JUNG=['A','A','Y','Y','E','E','Y','Y','O','W','W','O','Y','U','W','W','W','Y','E','E','I'];
+  function initOf(ch){
+    var code=ch.charCodeAt(0);
+    if(code>=0xAC00&&code<=0xD7A3){
+      var off=code-0xAC00;
+      var ci=Math.floor(off/588);
+      var vi=Math.floor((off%588)/28);
+      var L=CHO_ALL[ci]||'';
+      if(!L) L=JUNG[vi]||''; // ㅇ 초성 → 모음 기준
+      return L.charAt(0)||'';
+    }
+    if(/[A-Za-z]/.test(ch)) return ch.toUpperCase();
+    return '';
+  }
+  var given=name.length>=2?name.slice(1):name; // 성 제외한 이름
+  var out='';
+  for(var i=0;i<given.length&&out.length<2;i++){ out+=initOf(given.charAt(i)); }
+  if(out.length<2){ out=(initOf(name.charAt(0))+out).slice(0,2); }
+  return (out||'XX').slice(0,2);
+}
 function qt_genQuoteNo(){
-  var rep=SESSION_REP.name||'CM';
-  var initials=rep.replace(/[가-힣]/g,function(ch){
-    var map={'김':'K','이':'L','박':'P','최':'C','정':'J','강':'KA','조':'J','윤':'Y','장':'JA','임':'I'};
-    return map[ch]||ch;
-  }).toUpperCase().replace(/[^A-Z]/g,'').slice(0,2)||'CM';
+  var rep=SESSION_REP.name||'';
+  var initials=qt_nameInitials(rep);
   var now=new Date();
   var yy=String(now.getFullYear()).slice(2);
   var mm=String(now.getMonth()+1).padStart(2,'0');
@@ -23433,6 +23580,30 @@ function qt_openModal(mode,quoteId){
     }
   }
   window._qt_readonly=_readonly;
+  // 조회 전용: 모든 입력요소를 실제로 잠금 (저장 버튼만 숨기면 값이 바뀐 채 남아 혼동 발생)
+  setTimeout(function(){
+    try{
+      var wm=document.getElementById('writeModal'); if(!wm) return;
+      wm.querySelectorAll('input,textarea,select,button.isel').forEach(function(el){
+        if(el.closest('#pdfOv')) return;
+        if(_readonly){
+          if(el.tagName==='SELECT'){ el.disabled=true; }
+          else { el.readOnly=true; el.setAttribute('data-ro','1'); }
+          el.style.cursor='default';
+        } else if(el.getAttribute('data-ro')==='1'||el.disabled){
+          if(el.tagName==='SELECT') el.disabled=false; else el.readOnly=false;
+          el.removeAttribute('data-ro'); el.style.cursor='';
+        }
+      });
+      // 유형 카드·행 추가·블록 삭제 등 편집 동작 차단
+      wm.querySelectorAll('.tsc,.add-r,.del-btn,.ib-del,.qt-rz,#blockArea .chips .chip').forEach(function(el){
+        el.style.pointerEvents=_readonly?'none':'';
+        el.style.opacity=_readonly?'.55':'';
+      });
+      var ba=document.getElementById('blockArea');
+      if(ba){ ba.querySelectorAll('[contenteditable]').forEach(function(el){ el.setAttribute('contenteditable', _readonly?'false':'true'); }); }
+    }catch(e){}
+  },80);
   // 타 담당자/게스트 조회 모드: 저장·임시저장·삭제 버튼 숨김 (요청 7)
   var _saveBtn=document.getElementById('saveQtBtn')||document.querySelector('#writeModal .modal-ft .btn-pri');
   var _delBtn=document.getElementById('deleteBtn');
