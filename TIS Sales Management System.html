@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260722-006 -->
+<!-- TIS-VERSION: 20260722-010 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -207,7 +207,7 @@ function renderSelectOptsSettings(){
     });
     h+='</div></details>';
   });
-  el.innerHTML=h; _ctRestoreScroll(_scWrap,_scEl,_scTop,_scPage);
+  el.innerHTML=h;
 }
 // prompt 없는 인라인 추가: + 클릭 → 입력칸 → Enter/체크 확정, Esc 취소
 function soShowAddInput(field){
@@ -5892,13 +5892,19 @@ function _buildTeamTabs(containerId, pageKey, onSelect) {
   var cur = _tabState[pageKey] || 'all';
   var tabs = [];
 
-  // 페이지별 탭 구성
+  // 페이지별 탭 구성 (숨김 처리된 팀은 모든 메뉴의 탭에서 제외)
+  var _tl=(typeof _visibleTeams==='function')?_visibleTeams():TEAMS.slice();
   if (pageKey === 'input') {
     // 영업진행현황: 팀 탭만 (전체 없음, 자기 팀부터)
-    tabs = TEAMS.slice();
+    tabs = _tl.slice();
   } else {
     // 나머지: 전체 + 팀탭
-    tabs = ['all'].concat(TEAMS.slice());
+    tabs = ['all'].concat(_tl.slice());
+  }
+  // 현재 선택된 탭이 숨김 팀이면 첫 탭으로 되돌림
+  if (cur !== 'all' && _tl.indexOf(cur) < 0 && !(session&&session.team===cur)) {
+    cur = tabs[0] || 'all';
+    _tabState[pageKey] = cur;
   }
 
   // ★ HTML 생성 전에 신규팀 탭 추가 (이전 코드는 HTML 생성 후라 버튼 미생성 버그)
@@ -6612,8 +6618,8 @@ function renderDashIssues(){
   var isAll=(typeof currentDashTeam==='undefined'||currentDashTeam==='all');
   var html='';
   if(isAll){
-    TEAMS.forEach(function(team){
-      var reps=(TEAM_REPS[team]||[]);
+    ((typeof _visibleTeams==='function')?_visibleTeams():TEAMS).forEach(function(team){
+      var reps=((typeof _visibleReps==='function')?_visibleReps(TEAM_REPS[team]||[]):(TEAM_REPS[team]||[]));
       var teamIssues=(store.issues||[]).filter(function(i){return reps.indexOf(i.rep)>=0;});
       if(!teamIssues.length) return;
       html+='<div style="margin-bottom:14px;"><div style="font-size:12px;font-weight:700;color:#0A1628;background:#EFF6FF;padding:6px 12px;border-radius:8px;margin-bottom:8px;">📂 '+team+'</div>';
@@ -6772,7 +6778,7 @@ function renderRepChart(){
       // 팀별 매출 비중 도넛
       var labels=[],data=[],colors=[];
       var teamPalette=['#1E5FBE','#00A882','#C05000','#7B2FBE','#C0392B','#8E44AD','#16A085','#D35400'];
-      TEAMS.forEach(function(team,ti){
+      ((typeof _visibleTeams==='function')?_visibleTeams():TEAMS).forEach(function(team,ti){
         var reps=(TEAM_REPS[team]||[]).filter(function(r){return store.reps[r];});
         var total=reps.reduce(function(s,r){
           return s+(store.reps[r].actual||[]).reduce(function(a,b){return a+(b||0);},0);
@@ -7890,7 +7896,7 @@ function renderPipeTeamTabs(){/* 통합탭으로 대체됨 */}
 function getIssueReps(){
   if(_currentIssueTeam === 'all'){
     var all = [];
-    TEAMS.forEach(function(t){ (TEAM_REPS[t]||[]).forEach(function(r){ if(all.indexOf(r)<0&&store.reps[r]) all.push(r); }); });
+    ((typeof _visibleTeams==='function')?_visibleTeams():TEAMS).forEach(function(t){ ((typeof _visibleReps==='function')?_visibleReps(TEAM_REPS[t]||[]):(TEAM_REPS[t]||[])).forEach(function(r){ if(all.indexOf(r)<0&&store.reps[r]) all.push(r); }); });
     return all;
   }
   return (TEAM_REPS[_currentIssueTeam]||[]).filter(function(r){ return store.reps[r]; });
@@ -7899,7 +7905,7 @@ function getIssueReps(){
 function getPipeReps(){
   if(_currentPipeTeam === 'all'){
     var all = [];
-    TEAMS.forEach(function(t){ (TEAM_REPS[t]||[]).forEach(function(r){ if(all.indexOf(r)<0&&store.reps[r]) all.push(r); }); });
+    ((typeof _visibleTeams==='function')?_visibleTeams():TEAMS).forEach(function(t){ ((typeof _visibleReps==='function')?_visibleReps(TEAM_REPS[t]||[]):(TEAM_REPS[t]||[])).forEach(function(r){ if(all.indexOf(r)<0&&store.reps[r]) all.push(r); }); });
     return all;
   }
   return (TEAM_REPS[_currentPipeTeam]||[]).filter(function(r){ return store.reps[r]; });
@@ -7948,7 +7954,7 @@ function extractIssues(){
   store.issues=[];
   // 전체 담당자에서 이슈 수집 (팀 필터 제거)
   var _allIssReps=[];
-  TEAMS.forEach(function(t){(TEAM_REPS[t]||[]).forEach(function(r){if(_allIssReps.indexOf(r)<0&&store.reps[r])_allIssReps.push(r);});});
+  ((typeof _visibleTeams==='function')?_visibleTeams():TEAMS).forEach(function(t){((typeof _visibleReps==='function')?_visibleReps(TEAM_REPS[t]||[]):(TEAM_REPS[t]||[])).forEach(function(r){if(_allIssReps.indexOf(r)<0&&store.reps[r])_allIssReps.push(r);});});
   _allIssReps.forEach((rep,ri)=>{
 
     // ── 고객사별 이슈 ──
@@ -8966,12 +8972,12 @@ function getActiveReps(){
   // 관리자 또는 게스트: 현재 팀 기준 (팀탭 선택에 따라)
   if(session.role==='admin'){
     const all=[];
-    TEAMS.forEach(function(t){ (TEAM_REPS[t]||[]).forEach(function(r){ if(all.indexOf(r)<0&&store.reps[r]) all.push(r); }); });
+    ((typeof _visibleTeams==='function')?_visibleTeams():TEAMS).forEach(function(t){ ((typeof _visibleReps==='function')?_visibleReps(TEAM_REPS[t]||[]):(TEAM_REPS[t]||[])).forEach(function(r){ if(all.indexOf(r)<0&&store.reps[r]) all.push(r); }); });
     return all;
   }
   // 게스트: 전체
   const all2=[];
-  TEAMS.forEach(function(t){ (TEAM_REPS[t]||[]).forEach(function(r){ if(all2.indexOf(r)<0&&store.reps[r]) all2.push(r); }); });
+  ((typeof _visibleTeams==='function')?_visibleTeams():TEAMS).forEach(function(t){ ((typeof _visibleReps==='function')?_visibleReps(TEAM_REPS[t]||[]):(TEAM_REPS[t]||[])).forEach(function(r){ if(all2.indexOf(r)<0&&store.reps[r]) all2.push(r); }); });
   return all2;
 }
 
@@ -8984,7 +8990,7 @@ function renderAuthTeamBtns(){
   if(titleEl) titleEl.textContent = divName + ' · 팀 선택';
   // 팀 색상 (TEAM_COLORS 첫번째 색상 사용)
   const defaultColors = ['#4f7fff','#00A882','#F97316','#A855F7'];
-  container.innerHTML = TEAMS.map((team,i)=>{
+  container.innerHTML = ((typeof _visibleTeams==='function')?_visibleTeams():TEAMS).map((team,i)=>{
     // 팀 색상
     const color = (typeof TEAM_COLORS!=='undefined'&&TEAM_COLORS[team]&&TEAM_COLORS[team][0]) || defaultColors[i%defaultColors.length];
     // 팀 약자: 각 단어 첫글자 (최대 2자)
@@ -9108,7 +9114,7 @@ function _applyGuestReadOnly(){
 function buildRepBtns(){
   const list = document.getElementById('rep-btn-list');
   if(!list) return;
-  list.innerHTML = REPS.filter(rep=>!authCfg.hiddenReps||authCfg.hiddenReps.indexOf(rep)<0).map((rep,i)=>{
+  list.innerHTML = REPS.filter(rep=>(typeof _isRepHidden!=='function')?(!authCfg.hiddenReps||authCfg.hiddenReps.indexOf(rep)<0):!_isRepHidden(rep)).map((rep,i)=>{
     const color = REP_COLORS[i]||'#1E5FBE';
     const hasPw = !!authCfg.repPws[rep];
     const dispName = getRepDisplayName(rep);
@@ -15449,7 +15455,7 @@ function _cdbRenderList(q){
       +(hasInfo?'<span class="cdb-bdg cdb-bok">완성</span>':'<span class="cdb-bdg cdb-bw">미완성</span>')
       +'</div>';
   });
-  el.innerHTML=h; _ctRestoreScroll(_scWrap,_scEl,_scTop,_scPage);
+  el.innerHTML=h;
   if(pos&&window._restoreScroll) window._restoreScroll(el,pos);
   else if(pos) requestAnimationFrame(function(){requestAnimationFrame(function(){el.scrollTop=pos;});});
 }
@@ -16171,7 +16177,7 @@ function _cdbAddAC(val){
     h+='<div style="padding:8px 12px;cursor:pointer;" onmousedown="event.preventDefault()" onclick="_cdbDoAdd(\''+val.replace(/'/g,"\\'")+'\')"><span style="font-size:11px;color:#4f7fff;font-weight:500;">＋ &nbsp;"'+_cdbEsc(val)+'" 새 고객사로 추가</span></div>';
   }
   h+='</div>';
-  el.innerHTML=h; _ctRestoreScroll(_scWrap,_scEl,_scTop,_scPage);
+  el.innerHTML=h;
 }
 function _cdbDoAdd(name){
   var inp=document.getElementById('_cdb_add_inp');
@@ -18013,7 +18019,7 @@ function _wkFilteredReps(){
     // TEAM_REPS가 비어있으면 REPS 폴백
     return allFromTeams.length>0?allFromTeams:((typeof REPS!=='undefined'&&REPS)?REPS:[]);
   }
-  return (typeof TEAM_REPS!=='undefined'&&TEAM_REPS[_wk.activeTeam])||[];
+  return (typeof _visibleReps==='function')?_visibleReps((typeof TEAM_REPS!=='undefined'&&TEAM_REPS[_wk.activeTeam])||[]):((typeof TEAM_REPS!=='undefined'&&TEAM_REPS[_wk.activeTeam])||[]);
 }
 
 function _wkDisplayName(rep){
@@ -18824,7 +18830,7 @@ function _wkRenderPrevSection(){
     h+='</div>';
   });
   h+='</div>';
-  el.innerHTML=h; _ctRestoreScroll(_scWrap,_scEl,_scTop,_scPage);
+  el.innerHTML=h;
 }
 
 // ── 회의록 통합 카드 ──────
