@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260721-033 -->
+<!-- TIS-VERSION: 20260721-034 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -21657,6 +21657,11 @@ function qtRenderPreview(){
           <div class="fg"><label class="flbl">휴대전화 <span style="color:var(--red);">*</span></label><input class="fi" id="myPhone" placeholder="010-0000-0000" style="font-size:11px;padding:5px 8px;"></div>
         </div>
         <div style="font-size:9.5px;color:var(--sub);margin-top:5px;">이름·직급·이메일은 앱 계정에서 자동 가져옵니다.</div>
+        <div id="admPhoneWrap" style="display:none;margin-top:12px;padding-top:11px;border-top:1px dashed var(--border);">
+          <div style="font-size:10.5px;font-weight:700;color:var(--text);margin-bottom:3px;">팀원 휴대전화 <span style="font-size:9.5px;font-weight:400;color:var(--sub);">(관리자 전용)</span></div>
+          <div style="font-size:9.5px;color:var(--sub);margin-bottom:7px;line-height:1.5;">미입력 담당자의 견적서 PDF에는 연락처가 비어 나갑니다. 여기서 대신 입력할 수 있습니다.</div>
+          <div id="admPhoneList" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:190px;overflow-y:auto;padding-right:2px;"></div>
+        </div>
       </div>
       <div class="sg">
         <div class="sg-t"><span class="sg-t-icon" style="background:#FEF2F2;"><svg width="10" height="10" fill="none" stroke="#DC2626" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg></span>기본 조건 문구</div>
@@ -23994,6 +23999,16 @@ async function qt_saveSetting(){
     }catch(e){ /* SP 조회 실패 시 로컬 맵 기준으로 진행 (본인 키만 갱신하므로 추가 유실 없음) */ }
   }
   if(_curRep) QT_SETTINGS.phones[_curRep]=(document.getElementById('myPhone')||{}).value||'';
+  // 관리자: 팀원 휴대전화 일괄 저장 (미입력은 기존값 유지, 값이 있으면 갱신)
+  try{
+    if(typeof session!=='undefined'&&session&&session.role==='admin'){
+      document.querySelectorAll('.qt-adm-phone').forEach(function(inp){
+        var r=inp.getAttribute('data-rep'); if(!r) return;
+        var v=(inp.value||'').trim();
+        if(v) QT_SETTINGS.phones[r]=v; else delete QT_SETTINGS.phones[r];
+      });
+    }
+  }catch(e){ console.warn('[qt] 팀원 연락처 저장',e); }
   // (공유 QT_SETTINGS.phone 기록 중단 — 담당자별 phones 맵만 사용)
   QT_SETTINGS.coName=(document.getElementById('coName')||{}).value||'';
   QT_SETTINGS.coCeo=(document.getElementById('coCeo')||{}).value||'';
@@ -24077,6 +24092,7 @@ function qt_fillSettingUI(){
   var phoneEl=document.getElementById('myPhone');
   var emailEl=document.getElementById('myEmail');
   if(phoneEl) phoneEl.value=(QT_SETTINGS.phones&&QT_SETTINGS.phones[SESSION_REP.name])||'';
+  if(typeof qt_renderAdminPhones==='function') try{ qt_renderAdminPhones(); }catch(e){}
   var _cn=document.getElementById('coName'); if(_cn&&QT_SETTINGS.coName) _cn.value=QT_SETTINGS.coName;
   var _cc=document.getElementById('coCeo'); if(_cc&&QT_SETTINGS.coCeo) _cc.value=QT_SETTINGS.coCeo;
   var _ca=document.getElementById('coAddr'); if(_ca&&QT_SETTINGS.coAddr) _ca.value=QT_SETTINGS.coAddr;
@@ -24092,6 +24108,33 @@ function qt_fillSettingUI(){
   }
 }
 
+// 관리자: 팀원 휴대전화 일괄 입력 (견적서 PDF 담당자 연락처용)
+function qt_renderAdminPhones(){
+  var wrap=document.getElementById('admPhoneWrap');
+  var list=document.getElementById('admPhoneList');
+  if(!wrap||!list) return;
+  var isAdm=(typeof session!=='undefined'&&session&&session.role==='admin');
+  wrap.style.display=isAdm?'block':'none';
+  if(!isAdm) return;
+  var reps=[];
+  try{
+    if(typeof store!=='undefined'&&store.reps) reps=Object.keys(store.reps);
+    if(typeof TEAM_REPS==='object'&&TEAM_REPS){
+      Object.keys(TEAM_REPS).forEach(function(t){
+        (TEAM_REPS[t]||[]).forEach(function(r){ if(reps.indexOf(r)<0) reps.push(r); });
+      });
+    }
+  }catch(e){}
+  reps=reps.filter(function(r){ return r&&r!==SESSION_REP.name; }).sort();
+  if(!reps.length){ list.innerHTML='<div style="font-size:10px;color:var(--sub);">등록된 팀원이 없습니다.</div>'; return; }
+  list.innerHTML=reps.map(function(r){
+    var v=(QT_SETTINGS.phones&&QT_SETTINGS.phones[r])||'';
+    var safe=r.replace(/"/g,'&quot;');
+    return '<div class="fg"><label class="flbl" style="display:flex;align-items:center;gap:4px;">'+safe
+      +(v?'':' <span style="font-size:9px;color:#DC2626;font-weight:700;">미입력</span>')+'</label>'
+      +'<input class="fi qt-adm-phone" data-rep="'+safe+'" value="'+v.replace(/"/g,'&quot;')+'" placeholder="010-0000-0000" style="font-size:11px;padding:5px 8px;"></div>';
+  }).join('');
+}
 function qt_openSetting(){
   var m=document.getElementById('settingModal');
   if(m) m.classList.remove('hidden');
@@ -24103,6 +24146,7 @@ function qt_openSetting(){
   var td=document.getElementById('repTitleDisp'); if(td) td.value=rt;
   var ed=document.getElementById('repEmailDisp'); if(ed) ed.value=re;
   var ph=document.getElementById('myPhone');      if(ph) ph.value=(QT_SETTINGS.phones&&QT_SETTINGS.phones[rn])||'';
+  if(typeof qt_renderAdminPhones==='function') try{ qt_renderAdminPhones(); }catch(e){}
   qt_fillSettingUI();
   qt_condInitDraft();
   // 단가 입력 천단위 콤마 자동 포맷 (1회 바인딩)
