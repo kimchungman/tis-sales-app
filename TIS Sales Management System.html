@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260721-034 -->
+<!-- TIS-VERSION: 20260721-035 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -24116,24 +24116,53 @@ function qt_renderAdminPhones(){
   var isAdm=(typeof session!=='undefined'&&session&&session.role==='admin');
   wrap.style.display=isAdm?'block':'none';
   if(!isAdm) return;
+  // 조직 관리에 등록된 영업담당자만 (게스트·테스트 계정 제외). 담당자 추가 시 자동 반영됨
   var reps=[];
   try{
-    if(typeof store!=='undefined'&&store.reps) reps=Object.keys(store.reps);
     if(typeof TEAM_REPS==='object'&&TEAM_REPS){
-      Object.keys(TEAM_REPS).forEach(function(t){
-        (TEAM_REPS[t]||[]).forEach(function(r){ if(reps.indexOf(r)<0) reps.push(r); });
+      var _teams=(typeof TEAMS!=='undefined'&&TEAMS&&TEAMS.length)?TEAMS:Object.keys(TEAM_REPS);
+      _teams.forEach(function(t){
+        (TEAM_REPS[t]||[]).forEach(function(r){ if(r&&reps.indexOf(r)<0) reps.push(r); });
       });
     }
   }catch(e){}
   reps=reps.filter(function(r){ return r&&r!==SESSION_REP.name; }).sort();
-  if(!reps.length){ list.innerHTML='<div style="font-size:10px;color:var(--sub);">등록된 팀원이 없습니다.</div>'; return; }
-  list.innerHTML=reps.map(function(r){
+  if(!reps.length){ list.innerHTML='<div style="font-size:10px;color:var(--sub);">조직 관리에 등록된 담당자가 없습니다.</div>'; return; }
+  var h=reps.map(function(r){
     var v=(QT_SETTINGS.phones&&QT_SETTINGS.phones[r])||'';
     var safe=r.replace(/"/g,'&quot;');
     return '<div class="fg"><label class="flbl" style="display:flex;align-items:center;gap:4px;">'+safe
       +(v?'':' <span style="font-size:9px;color:#DC2626;font-weight:700;">미입력</span>')+'</label>'
       +'<input class="fi qt-adm-phone" data-rep="'+safe+'" value="'+v.replace(/"/g,'&quot;')+'" placeholder="010-0000-0000" style="font-size:11px;padding:5px 8px;"></div>';
   }).join('');
+  // 등록 담당자가 아닌데 번호만 남아 있는 항목(퇴사·게스트·테스트 계정) → 정리 버튼 제공
+  var orphans=Object.keys(QT_SETTINGS.phones||{}).filter(function(k){
+    return k&&k!==SESSION_REP.name&&reps.indexOf(k)<0;
+  });
+  if(orphans.length){
+    h+='<div style="grid-column:1/-1;margin-top:6px;padding:7px 9px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:7px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
+      +'<span style="font-size:9.5px;color:#92400E;flex:1;min-width:150px;">등록되지 않은 담당자의 번호가 남아 있습니다: '+orphans.join(', ')+'</span>'
+      +'<button type="button" onclick="qt_cleanOrphanPhones()" style="height:24px;padding:0 10px;border-radius:6px;border:1px solid #FCA5A5;background:#fff;color:#DC2626;font-size:10.5px;font-weight:700;cursor:pointer;font-family:inherit;">정리하기</button></div>';
+  }
+  list.innerHTML=h;
+}
+// 미등록 담당자의 잔여 연락처 삭제
+function qt_cleanOrphanPhones(){
+  var reps=[];
+  try{
+    var _teams=(typeof TEAMS!=='undefined'&&TEAMS&&TEAMS.length)?TEAMS:Object.keys(TEAM_REPS||{});
+    _teams.forEach(function(t){ (TEAM_REPS[t]||[]).forEach(function(r){ if(r) reps.push(r); }); });
+  }catch(e){}
+  var orphans=Object.keys(QT_SETTINGS.phones||{}).filter(function(k){
+    return k&&k!==SESSION_REP.name&&reps.indexOf(k)<0;
+  });
+  if(!orphans.length) return;
+  appConfirm('등록되지 않은 담당자 '+orphans.length+'명의 연락처를 삭제하시겠습니까?\n'+orphans.join(', '), function(){
+    orphans.forEach(function(k){ delete QT_SETTINGS.phones[k]; });
+    if(typeof qt_saveSetting==='function'){ try{ qt_saveSetting(); }catch(e){} }
+    qt_renderAdminPhones();
+    if(typeof showToast==='function') showToast('✅ 미등록 담당자 연락처를 정리했습니다.');
+  },{title:'연락처 정리',icon:'🧹',okText:'삭제'});
 }
 function qt_openSetting(){
   var m=document.getElementById('settingModal');
