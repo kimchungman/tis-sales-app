@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260721-035 -->
+<!-- TIS-VERSION: 20260721-036 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -24005,7 +24005,7 @@ async function qt_saveSetting(){
       document.querySelectorAll('.qt-adm-phone').forEach(function(inp){
         var r=inp.getAttribute('data-rep'); if(!r) return;
         var v=(inp.value||'').trim();
-        if(v) QT_SETTINGS.phones[r]=v; else delete QT_SETTINGS.phones[r];
+        if(v) QT_SETTINGS.phones[r]=v; // 빈칸은 기존값 유지 (삭제는 '정리하기'로만 — 동시 편집 시 유실 방지)
       });
     }
   }catch(e){ console.warn('[qt] 팀원 연락처 저장',e); }
