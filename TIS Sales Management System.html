@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260721-036 -->
+<!-- TIS-VERSION: 20260721-037 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -15499,7 +15499,7 @@ function _cdbHTab(el,type,id){
   var hList=document.getElementById('cdb-hlist'); if(!hList) return;
   var pos=hList.scrollTop||0;
   hList.innerHTML=hist.length?hist.map(function(h){
-    return '<div class="cdb-hi"><div class="cdb-hd" style="background:'+(typeColor[h.type]||'#94A3B8')+';"></div><div class="cdb-hw"><div>'+TB(h.type)+'<span style="font-size:12px;color:#0F172A;">'+_cdbEsc(_cdbStrip(h.text))+(h.sub?'<div style="color:#475569;font-size:11px;margin-top:3px;line-height:1.5;">'+_renderRich(h.sub)+'</div>':'')+'</span></div><div style="font-size:10px;color:#64748B;margin-top:2px;">'+(h.rep?_cdbEsc(h.rep)+' · ':'')+_cdbEsc(h.date||'')+'</div></div></div>';
+    return '<div class="cdb-hi"><div class="cdb-hd" style="background:'+(typeColor[h.type]||'#94A3B8')+';"></div><div class="cdb-hw"><div>'+TB(h.type)+'<span style="font-size:12px;color:#0F172A;">'+_cdbEsc(_cdbStrip(h.text))+(h.sub?'<div style="color:#0F172A;font-size:11.5px;margin-top:3px;line-height:1.55;">'+_renderRich(h.sub)+'</div>':'')+'</span></div><div style="font-size:10px;color:#64748B;margin-top:2px;">'+(h.rep?_cdbEsc(h.rep)+' · ':'')+_cdbEsc(h.date||'')+'</div></div></div>';
   }).join(''):'<div style="padding:20px;text-align:center;color:#94A3B8;font-size:12px;">이력이 없습니다.</div>';
   requestAnimationFrame(function(){ hList.scrollTop=pos; });
 }
