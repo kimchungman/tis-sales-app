@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260722-012 -->
+<!-- TIS-VERSION: 20260722-013 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -16436,7 +16436,7 @@ window.showContractDetail=function(rep,cid){ try {
     +'<div style="font-size:17px;font-weight:700;color:#0F172A;margin-bottom:2px;">'+(c.client||'고객사 미입력')+'</div>'
     +'<div style="font-size:13px;color:#64748B;">'+(c.projectName||'프로젝트명 미입력')+'</div>'
     +'</div>'
-    +'<button onclick="document.getElementById(\'_cdm\').remove()" style="border:none;background:#F8FAFC;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:18px;color:#94A3B8;flex-shrink:0;display:flex;align-items:center;justify-content:center;">×</button>'
+    +'<button onclick="document.getElementById(\'_cdm\')&&(window._cdmClose?window._cdmClose():document.getElementById(\'_cdm\').remove())" style="border:none;background:#F8FAFC;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:18px;color:#94A3B8;flex-shrink:0;display:flex;align-items:center;justify-content:center;">×</button>'
     +'</div>'
 
     // BODY
@@ -16494,7 +16494,26 @@ window.showContractDetail=function(rep,cid){ try {
     +'</div></div>';
 
   document.body.insertAdjacentHTML('beforeend',html2);
-  document.getElementById('_cdm').addEventListener('click',function(e){if(e.target===this)this.remove()});
+  (function(){
+    var _m=document.getElementById('_cdm');
+    if(!_m) return;
+    _m.addEventListener('click',function(e){ if(e.target===this) _cdmClose(); });
+    // ESC로 닫기 (열릴 때 등록 → 닫힐 때 해제)
+    function _onEsc(ev){
+      if(ev.key!=='Escape'&&ev.keyCode!==27) return;
+      // 이 팝업 위에 다른 팝업(갱신 등록 등)이 떠 있으면 그쪽이 우선
+      if(document.getElementById('_crm')||document.getElementById('_cnm')) return;
+      ev.stopPropagation();
+      _cdmClose();
+    }
+    function _cdmClose(){
+      document.removeEventListener('keydown',_onEsc,true);
+      var el=document.getElementById('_cdm');
+      if(el) el.remove();
+    }
+    window._cdmClose=_cdmClose;
+    document.addEventListener('keydown',_onEsc,true);
+  })();
   }catch(e){console.error('[showContractDetail ERR]',e&&e.message,e&&e.stack);if(typeof showToast==='function')showToast('팝업오류: '+(e&&e.message||e),'error');}
 };
 
