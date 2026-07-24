@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260722-014 -->
+<!-- TIS-VERSION: 20260722-015 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -729,12 +729,15 @@ label,th{color:var(--muted);}
 .hid-btn:hover{border-color:#CBD5E1;color:#475569;background:#F8FAFC;}
 .hid-btn:focus-visible{outline:2px solid #4f7fff;outline-offset:1px;opacity:1;}
 /* 복구 버튼 = 숨김 칩 동일 디자인 (통일감) */
-.hid-restore,.hid-chip{display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 10px;border-radius:7px;
+.hid-restore{display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 10px;border-radius:7px;
   border:1px solid #BFDBFE;background:#EFF6FF;color:#2563EB;font-size:11px;font-weight:700;
   cursor:pointer;font-family:inherit;transition:background .12s;white-space:nowrap;}
-.hid-restore:hover,.hid-chip:hover{background:#DBEAFE;}
+.hid-restore:hover{background:#DBEAFE;}
+/* 숨김 칩: 추가 버튼(.add-btn)과 동일 디자인, 활성 시 실선 강조 */
+.hid-chip{white-space:nowrap;}
+.hid-chip.on{background:var(--primary-b,#DBEAFE);border-style:solid;}
 .hid-restore{position:absolute;right:6px;top:50%;transform:translateY(-50%);z-index:5;opacity:1;}
-.hid-chip.on{background:#2563EB;border-color:#2563EB;color:#fff;}
+
 .hid-btn.hid-offset{right:36px;}
 .hid-restore.hid-restore-ico{width:26px;height:26px;padding:0;justify-content:center;font-size:13px;right:6px;}
 .hid-restore.hid-offset{right:36px;}
@@ -7309,53 +7312,40 @@ function _hidUpdateChips(){
     Object.keys(groups).forEach(function(key){
       var g=groups[key];
       var id='hidchip-'+g.kind+'-'+(g.host.id||'x');
-      var barId='hidbar-'+g.kind+'-'+(g.host.id||'x');
-      // ★ 숨긴 항목이 없으면 칩/바를 만들지 않고, 남아 있으면 제거 (빈 여백 생성·깜빡임 방지)
+      // 숨긴 항목 없으면 칩 제거 (여백·깜빡임 방지)
       if(g.hidden<=0){
         var oldChip=document.getElementById(id); if(oldChip) oldChip.remove();
-        var oldBar=document.getElementById(barId); if(oldBar) oldBar.remove();
         if(g.host.classList) g.host.classList.remove('hid-show');
         return;
       }
-      // 계약 등 테이블형: tbody가 host → 테이블 상위 패널에서 헤더를 찾고, 없으면 전용 바를 만든다
-      var card=g.host.closest('.sec-card')||g.host.closest('.vt-panel')||g.host.closest('[id^="cpl-"]')||g.host.closest('.rep-sec')||g.host.parentNode;
-      if(!card) return;
-      if(!card.querySelector('.sec-head')&&!card.querySelector('.vt-head')){
-        var bar=document.getElementById(barId);
-        if(!bar){
-          bar=document.createElement('div');
-          bar.id=barId; bar.className='sec-head hid-bar';
-          // 절대 배치 → 문서 흐름을 차지하지 않아 표가 밀리거나 스크롤이 튀지 않음
-          bar.style.cssText='position:absolute;top:-2px;right:2px;z-index:6;display:flex;align-items:center;padding:0;border:none;background:transparent;';
-          var anchorEl=g.host.closest('table')||g.host;
-          var holder=(anchorEl&&anchorEl.parentNode)?anchorEl.parentNode:null;
-          if(holder){
-            var pos=(window.getComputedStyle?window.getComputedStyle(holder).position:'');
-            if(!pos||pos==='static') holder.style.position='relative';
-            holder.appendChild(bar);
-          }
-        }
-        if(!bar||!bar.parentNode) return;
-        card=bar.parentNode;
-      }
-      var head=card.querySelector('.sec-head')||card.querySelector('.vt-head')||card.firstElementChild;
-      if(!head) return;
-      // 칩은 제목(h3/헤더 첫 요소) 안쪽에 붙임 → space-between 레이아웃의 기존 버튼 위치가 밀리지 않음
-      var slot=head.querySelector('h3')||head.firstElementChild||head;
+      // 배치 기준: 각 섹션의 '＋ 추가' 계열 버튼 바로 왼쪽 (같은 줄, 같은 디자인)
+      var scope=g.host.closest('.sec-card')||g.host.closest('.vt-panel')||g.host.closest('[id^="cpl-"]')
+        ||g.host.closest('[id^="vpanel-"]')||g.host.closest('.rep-sec')||g.host.parentNode;
+      if(!scope) return;
+      var addBtn=scope.querySelector('.add-btn');
       var chip=document.getElementById(id);
       if(!chip){
         chip=document.createElement('button');
-        chip.id=id; chip.className='hid-chip'; chip.type='button';
+        chip.id=id; chip.type='button'; chip.className='add-btn hid-chip';
         chip.title='숨긴 항목 보기 / 접기';
-        chip.style.marginLeft='8px';
         chip.addEventListener('click',function(e){
           e.preventDefault(); e.stopPropagation();
           var on=g.host.classList.toggle('hid-show');
           chip.classList.toggle('on',on);
         });
-        slot.appendChild(chip);
       }
-      chip.innerHTML='&#128065; 숨김 '+g.hidden;
+      // 위치 보정: 추가 버튼이 있으면 그 앞, 없으면 섹션 헤더 우측
+      if(addBtn){
+        if(chip.nextElementSibling!==addBtn||chip.parentNode!==addBtn.parentNode){
+          addBtn.parentNode.insertBefore(chip, addBtn);
+          chip.style.marginRight='6px';
+        }
+      } else {
+        var head=scope.querySelector('.sec-head')||scope.querySelector('.vt-head');
+        if(head&&chip.parentNode!==head){ head.appendChild(chip); chip.style.marginLeft='auto'; }
+        else if(!head&&!chip.parentNode){ return; }
+      }
+      chip.textContent='숨김 '+g.hidden;
     });
   }catch(e){ console.warn('[hid] chip',e); }
 }
