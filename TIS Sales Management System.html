@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260722-013 -->
+<!-- TIS-VERSION: 20260722-014 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -7308,28 +7308,41 @@ function _hidUpdateChips(){
     });
     Object.keys(groups).forEach(function(key){
       var g=groups[key];
+      var id='hidchip-'+g.kind+'-'+(g.host.id||'x');
+      var barId='hidbar-'+g.kind+'-'+(g.host.id||'x');
+      // ★ 숨긴 항목이 없으면 칩/바를 만들지 않고, 남아 있으면 제거 (빈 여백 생성·깜빡임 방지)
+      if(g.hidden<=0){
+        var oldChip=document.getElementById(id); if(oldChip) oldChip.remove();
+        var oldBar=document.getElementById(barId); if(oldBar) oldBar.remove();
+        if(g.host.classList) g.host.classList.remove('hid-show');
+        return;
+      }
       // 계약 등 테이블형: tbody가 host → 테이블 상위 패널에서 헤더를 찾고, 없으면 전용 바를 만든다
       var card=g.host.closest('.sec-card')||g.host.closest('.vt-panel')||g.host.closest('[id^="cpl-"]')||g.host.closest('.rep-sec')||g.host.parentNode;
       if(!card) return;
       if(!card.querySelector('.sec-head')&&!card.querySelector('.vt-head')){
-        var barId='hidbar-'+g.kind+'-'+(g.host.id||'x');
         var bar=document.getElementById(barId);
         if(!bar){
           bar=document.createElement('div');
           bar.id=barId; bar.className='sec-head hid-bar';
-          bar.style.cssText='display:flex;justify-content:flex-end;align-items:center;padding:6px 4px 8px;border:none;background:transparent;';
+          // 절대 배치 → 문서 흐름을 차지하지 않아 표가 밀리거나 스크롤이 튀지 않음
+          bar.style.cssText='position:absolute;top:-2px;right:2px;z-index:6;display:flex;align-items:center;padding:0;border:none;background:transparent;';
           var anchorEl=g.host.closest('table')||g.host;
-          if(anchorEl&&anchorEl.parentNode) anchorEl.parentNode.insertBefore(bar, anchorEl);
+          var holder=(anchorEl&&anchorEl.parentNode)?anchorEl.parentNode:null;
+          if(holder){
+            var pos=(window.getComputedStyle?window.getComputedStyle(holder).position:'');
+            if(!pos||pos==='static') holder.style.position='relative';
+            holder.appendChild(bar);
+          }
         }
-        card=bar.parentNode; // 아래 헤더 탐색이 이 바를 찾도록
+        if(!bar||!bar.parentNode) return;
+        card=bar.parentNode;
       }
       var head=card.querySelector('.sec-head')||card.querySelector('.vt-head')||card.firstElementChild;
       if(!head) return;
       // 칩은 제목(h3/헤더 첫 요소) 안쪽에 붙임 → space-between 레이아웃의 기존 버튼 위치가 밀리지 않음
       var slot=head.querySelector('h3')||head.firstElementChild||head;
-      var id='hidchip-'+g.kind+'-'+(g.host.id||'x');
       var chip=document.getElementById(id);
-      if(g.hidden<=0){ if(chip) chip.remove(); if(g.host.classList) g.host.classList.remove('hid-show'); return; }
       if(!chip){
         chip=document.createElement('button');
         chip.id=id; chip.className='hid-chip'; chip.type='button';
