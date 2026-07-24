@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260722-010 -->
+<!-- TIS-VERSION: 20260722-012 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -736,6 +736,7 @@ label,th{color:var(--muted);}
 .hid-restore{position:absolute;right:6px;top:50%;transform:translateY(-50%);z-index:5;opacity:1;}
 .hid-chip.on{background:#2563EB;border-color:#2563EB;color:#fff;}
 .hid-btn.hid-offset{right:36px;}
+.hid-restore.hid-restore-ico{width:26px;height:26px;padding:0;justify-content:center;font-size:13px;right:6px;}
 .hid-restore.hid-offset{right:36px;}
 /* 접점기록: 접점 내용 입력영역을 숨김 버튼만큼 좁혀 겹침 방지 */
 tr[data-hidkind="visitLog"] .content-cell{padding-right:34px !important;}
@@ -3693,6 +3694,7 @@ window._updateSidebarActive=function(pageId){
     dashboard:'snav-dashboard', weekly:'snav-weekly', clients:'snav-clients',
     input:'snav-input', contract:'snav-contract', visits:'snav-visits',
     pipeline:'snav-pipeline', issues:'snav-issues', personal:'snav-personal',
+    quotation:'snav-quotation',
     settings:'snav-settings', accesslog:'snav-accesslog', export:'snav-export'
   };
   var targetId=mapping[pageId];
@@ -7231,7 +7233,11 @@ function _hidBtnHtml(kind,rep,idx,hidden){
   // 행 우측에 삭제(×) 버튼이 있는 목록은 그 왼쪽에 배치 (겹침 방지)
   var offsetCls=(kind==='visitLog')?' hid-offset':'';
   var oc="event.stopPropagation();_hidSet('"+kind+"','"+String(rep).replace(/'/g,"\\'")+"',"+idx+","+(hidden?'false':'true')+")";
-  if(hidden) return '<button class="hid-restore'+offsetCls+'" onclick="'+oc+'" title="다시 표시">↩ 복구</button>';
+  // 계약은 우측 여유칸이 좁아 아이콘형 복구 버튼 사용 (상태 열과 겹침 방지)
+  if(hidden){
+    if(kind==='contracts') return '<button class="hid-restore hid-restore-ico" onclick="'+oc+'" title="다시 표시(복구)">&#8617;</button>';
+    return '<button class="hid-restore'+offsetCls+'" onclick="'+oc+'" title="다시 표시">↩ 복구</button>';
+  }
   return '<button class="hid-btn'+offsetCls+'" onclick="'+oc+'" title="목록에서 숨기기" aria-label="숨기기">&#128065;</button>';
 }
 function _hidRowAttrs(kind,rep,idx,it){
@@ -17349,13 +17355,16 @@ function _cTimelineView(cs){
       if(!mp)return;
       var cpOk=(it.tab==='contract'&&cp&&cp.style.display==='block');
       var vpOk=(it.tab==='visit'&&vp&&vp.style.display==='block');
+      // 이미 의도한 탭이 표시 중이면 아무것도 하지 않음 (반복 복구가 스크롤을 위로 되돌리던 원인)
+      if(cpOk||vpOk){ window._activeVTab={rep:it.rep,tab:it.tab}; window._intendedVTab=null; return; }
       if(!cpOk&&!vpOk){
         var now=Date.now();
         if(now-_lastFix<1000)return; // 1초에 최대 1회
         _lastFix=now;
         // 스크롤 보존
-        var _scrollEl=cp?cp.querySelector('[style*="overflow"]'):null;
+        var _scrollEl=cp?(cp.querySelector('.scroll-list-wrap')||cp.querySelector('[style*="overflow"]')):null;
         var _scrollTop=_scrollEl?_scrollEl.scrollTop:0;
+        var _pageTop=(document.scrollingElement||document.documentElement).scrollTop;
         // mp만 숨기고 cp 보이기 (lazyLoad 없이 직접)
         if(mp)mp.style.display='none';
         if(vp)vp.style.display='none';
@@ -17367,6 +17376,8 @@ function _cTimelineView(cs){
         window._activeVTab={rep:it.rep,tab:it.tab};
         // 스크롤 복원
         if(_scrollEl&&_scrollTop>0)_scrollEl.scrollTop=_scrollTop;
+        var _se=document.scrollingElement||document.documentElement;
+        if(_pageTop&&Math.abs(_se.scrollTop-_pageTop)>2) _se.scrollTop=_pageTop;
         // 버튼 활성화
         var TEAL='#0EA5A0';
         ['vtab-main-','vtab-visit-','vtab-contract-'].forEach(function(pfx){
@@ -17377,7 +17388,7 @@ function _cTimelineView(cs){
         if(ab){ab.style.color=TEAL;ab.style.borderBottomColor=TEAL;ab.style.fontWeight='700';}
       }
     }catch(e){}
-  },300);
+  },1000);
 })();
 </script>
 <script>
@@ -17963,7 +17974,9 @@ function _wkGenContractNotifs(){
 function _wkBuildTeamTabs(){
   var el=document.getElementById('wk-team-tabs');
   if(!el) return;
-  var teams=(typeof TEAMS!=='undefined'&&TEAMS&&TEAMS.length)?TEAMS:[];
+  var teams=(typeof _visibleTeams==='function')?_visibleTeams():((typeof TEAMS!=='undefined'&&TEAMS&&TEAMS.length)?TEAMS:[]);
+  // 숨긴 팀을 보고 있었다면 전체로 되돌림
+  if(_wk.activeTeam!=='all'&&teams.indexOf(_wk.activeTeam)<0) _wk.activeTeam='all';
   var tabs=['all'].concat(teams);
   var html='';
   tabs.forEach(function(t){
