@@ -733,6 +733,9 @@ label,th{color:var(--muted);}
   border:1px solid #BFDBFE;background:#EFF6FF;color:#2563EB;font-size:11px;font-weight:700;
   cursor:pointer;font-family:inherit;transition:background .12s;white-space:nowrap;}
 .hid-restore:hover{background:#DBEAFE;}
+/* 숨김 칩+추가 버튼 묶음: 부모(.sec-head 등)의 justify-content:space-between이
+   두 요소를 갈라놓지 않도록 하나의 flex 단위로 고정 (칩은 항상 추가 버튼 바로 왼쪽) */
+.hid-chip-wrap{display:inline-flex;align-items:center;gap:6px;}
 /* 숨김 칩: 추가 버튼(.add-btn)과 동일 디자인, 활성 시 실선 강조 */
 .hid-chip{white-space:nowrap;}
 .hid-chip.on{background:var(--primary-b,#DBEAFE);border-style:solid;}
@@ -7236,10 +7239,9 @@ function _hidBtnHtml(kind,rep,idx,hidden){
   // 행 우측에 삭제(×) 버튼이 있는 목록은 그 왼쪽에 배치 (겹침 방지)
   var offsetCls=(kind==='visitLog')?' hid-offset':'';
   var oc="event.stopPropagation();_hidSet('"+kind+"','"+String(rep).replace(/'/g,"\\'")+"',"+idx+","+(hidden?'false':'true')+")";
-  // 계약은 우측 여유칸이 좁아 아이콘형 복구 버튼 사용 (상태 열과 겹침 방지)
+  // 복구 버튼 디자인 전 구간 통일: 계약관리와 동일한 아이콘형 사용 (겹침 방지 offset은 kind별 유지)
   if(hidden){
-    if(kind==='contracts') return '<button class="hid-restore hid-restore-ico" onclick="'+oc+'" title="다시 표시(복구)">&#8617;</button>';
-    return '<button class="hid-restore'+offsetCls+'" onclick="'+oc+'" title="다시 표시">↩ 복구</button>';
+    return '<button class="hid-restore hid-restore-ico'+offsetCls+'" onclick="'+oc+'" title="다시 표시(복구)">&#8617;</button>';
   }
   return '<button class="hid-btn'+offsetCls+'" onclick="'+oc+'" title="목록에서 숨기기" aria-label="숨기기">&#128065;</button>';
 }
@@ -7322,7 +7324,9 @@ function _hidUpdateChips(){
       var scope=g.host.closest('.sec-card')||g.host.closest('.vt-panel')||g.host.closest('[id^="cpl-"]')
         ||g.host.closest('[id^="vpanel-"]')||g.host.closest('.rep-sec')||g.host.parentNode;
       if(!scope) return;
-      var addBtn=scope.querySelector('.add-btn');
+      // 칩 자신도 .add-btn 클래스를 공유하므로(동일 디자인), 재실행 시 칩을 실제
+      // 추가 버튼으로 오인하지 않도록 .hid-chip은 제외하고 탐색
+      var addBtn=scope.querySelector('.add-btn:not(.hid-chip)');
       var chip=document.getElementById(id);
       if(!chip){
         chip=document.createElement('button');
@@ -7334,12 +7338,23 @@ function _hidUpdateChips(){
           chip.classList.toggle('on',on);
         });
       }
-      // 위치 보정: 추가 버튼이 있으면 그 앞, 없으면 섹션 헤더 우측
+      // 위치 보정: 추가 버튼이 있으면 그 바로 왼쪽에 밀착 배치
+      // 주의: 헤더 영역(.sec-head 등)은 justify-content:space-between이라
+      // 칩을 addBtn의 형제로 단순 삽입하면 두 요소 사이가 아니라 셋으로 균등 분배되어
+      // "이상한 위치"(중앙 등)에 떠 보이는 문제가 발생함.
+      // → addBtn을 전용 wrap(inline-flex)으로 감싸고 그 안에서만 배치해 space-between 영향을 받지 않게 함.
       if(addBtn){
-        if(chip.nextElementSibling!==addBtn||chip.parentNode!==addBtn.parentNode){
-          addBtn.parentNode.insertBefore(chip, addBtn);
-          chip.style.marginRight='6px';
+        var wrap=addBtn.parentNode;
+        if(!wrap||!wrap.classList||!wrap.classList.contains('hid-chip-wrap')){
+          wrap=document.createElement('span');
+          wrap.className='hid-chip-wrap';
+          addBtn.parentNode.insertBefore(wrap, addBtn);
+          wrap.appendChild(addBtn);
         }
+        if(chip.parentNode!==wrap||chip.nextElementSibling!==addBtn){
+          wrap.insertBefore(chip, addBtn);
+        }
+        chip.style.marginRight='';
       } else {
         var head=scope.querySelector('.sec-head')||scope.querySelector('.vt-head');
         if(head&&chip.parentNode!==head){ head.appendChild(chip); chip.style.marginLeft='auto'; }
