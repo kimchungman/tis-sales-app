@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260727-006 -->
+<!-- v20260727-006 변경사항: 병합(rowspan) 셀 렌더링 방식을 근본적으로 교체. table-cell의 rowspan+vertical-align 조합은 어떤 정렬 방식(middle/percentage-height/JS px보정)을 써도 html2canvas가 계속 텍스트를 깨뜨리는 것으로 확인되어, 셀 안 텍스트는 화면에서 숨기고(자리는 유지) 그 위에 절대좌표로 배치한 일반 div를 따로 그려서 표시하는 방식(qt_renderMergeOverlays)으로 전환함. html2canvas는 표 셀 특수 렌더링 경로가 아닌 일반 절대배치 블록은 문제없이 그리므로 이 문제를 근본적으로 우회함. 미리보기·PDF저장 모두 동일 함수 사용. -->
 <!-- TIS-VERSION: 20260727-005 -->
 <!-- v20260727-005 변경사항: 병합(rowspan) 셀 중앙정렬을 height:100%(퍼센트, 엔진별로 신뢰 불가 — 미리보기에서도 위쪽 정렬로 보이던 원인) 대신, 실제 렌더된 td 높이를 JS로 측정해 내부 div에 px로 직접 고정하는 방식(qt_fixMergedCellHeights)으로 교체. 미리보기·인쇄·PDF저장 세 경로 모두 동일 함수를 호출하도록 통일해서 항상 같은 결과가 나오게 함. 인건비/라이선스/상품/기타 등 모든 유형에 동일 적용. -->
 <!-- TIS-VERSION: 20260727-004 -->
