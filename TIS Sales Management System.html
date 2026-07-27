@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260722-015 -->
+<!-- TIS-VERSION: 20260722-016 -->
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -16706,12 +16706,24 @@ function _sortContractChain(arr){
   return sorted;
 }
 
-function _ctRestoreScroll(wrap,el,top,pageTop){
+// 내용이 동일하면 DOM을 교체하지 않는다 (재렌더 반복 → 스크롤 리셋 원천 차단)
+function _ctApplyHtml(el,h,scEl,scTop,pageTop){
+  try{
+    if(!el) return;
+    if(el._ctLastH===h) return;   // ★ 변경 없음 → innerHTML 유지 → 스크롤 그대로
+    el._ctLastH=h;
+    el.innerHTML=h;
+    _ctRestoreScroll(null,scEl||el,scTop,pageTop);
+  }catch(e){ try{ el.innerHTML=h; }catch(e2){} }
+}
+// 스크롤 복원: 반드시 '지금 살아있는' 요소를 다시 찾아 적용 (옛 참조는 이미 분리되어 무효)
+function _ctRestoreScroll(_unused,el,top,pageTop){
   try{
     var apply=function(){
-      var w=wrap||(el?(el.querySelector('.scroll-list-wrap')||el.closest('.scroll-list-wrap')):null);
-      if(w&&top) w.scrollTop=top;
-      else if(el&&top) el.scrollTop=top;
+      if(top&&el){
+        var w=el.querySelector('.scroll-list-wrap')||el.closest('.scroll-list-wrap');
+        if(w) w.scrollTop=top; else el.scrollTop=top;
+      }
       var se=document.scrollingElement||document.documentElement;
       if(pageTop&&Math.abs(se.scrollTop-pageTop)>2) se.scrollTop=pageTop;
     };
@@ -16808,8 +16820,8 @@ function _rebuildContractPanel(rep){ try {
   if(canEdit)h+='<button data-rp="'+rep+'" onclick="_cShowNewContract(this.dataset.rp)" class="add-btn" style="cursor:pointer;">&#xFF0B; 신규 계약 등록</button>';
   h+='</div>';
   if(filteredC.length!==contracts.length)h+='<div style="font-size:11px;color:#4f7fff;margin-bottom:8px;">필터: '+filteredC.length+'건 표시</div>';
-  if(contracts.length===0){h+='<div style="text-align:center;padding:48px;color:#94A3B8;font-size:13px;border:1.5px dashed #E2E8F0;border-radius:12px;">등록된 계약이 없습니다.</div>';el.innerHTML=h; _ctRestoreScroll(_scWrap,_scEl,_scTop,_scPage);return;}
-  if(filteredC.length===0){h+='<div style="text-align:center;padding:40px;color:#94A3B8;font-size:13px;border:1.5px dashed #E2E8F0;border-radius:10px;">조건에 맞는 계약이 없습니다.</div>';el.innerHTML=h; _ctRestoreScroll(_scWrap,_scEl,_scTop,_scPage);return;}
+  if(contracts.length===0){h+='<div style="text-align:center;padding:48px;color:#94A3B8;font-size:13px;border:1.5px dashed #E2E8F0;border-radius:12px;">등록된 계약이 없습니다.</div>';_ctApplyHtml(el,h,_scEl,_scTop,_scPage);return;}
+  if(filteredC.length===0){h+='<div style="text-align:center;padding:40px;color:#94A3B8;font-size:13px;border:1.5px dashed #E2E8F0;border-radius:10px;">조건에 맞는 계약이 없습니다.</div>';_ctApplyHtml(el,h,_scEl,_scTop,_scPage);return;}
   // 고객사 그룹핑
   // rootId 체인 그룹핑: 최신 계약만 표시, 화살표로 이력 펼침
   var chains={};var chainOrder=[];
@@ -16949,7 +16961,7 @@ function _rebuildContractPanel(rep){ try {
   });
   h+='</tbody></table></div>';
   var _cSt=window._saveScroll?window._saveScroll(el):0;
-  el.innerHTML=h; _ctRestoreScroll(_scWrap,_scEl,_scTop,_scPage);
+  _ctApplyHtml(el,h,_scEl,_scTop,_scPage);
   if(_cSt>0&&window._restoreScroll)window._restoreScroll(el,_cSt);
   } catch(e){ console.error('[rebuildContract ERR]',e&&e.message,e&&e.stack); if(typeof showToast==='function')showToast('계약렌더오류: '+(e&&e.message||e),'error'); }
 }
