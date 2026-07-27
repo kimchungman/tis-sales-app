@@ -21735,8 +21735,8 @@ function qtSavePdf(){
   });
 }
 function _qtSavePdfRun(_fdoc,_fr,wrap,fname,saveBtn){
-  // 병합(rowspan) 셀 내부 div 높이를 실제 렌더된 td 높이로 고정 (미리보기와 동일한 중앙정렬 보장)
-  if(typeof qt_fixMergedCellHeights==='function') qt_fixMergedCellHeights(wrap);
+  // 병합(rowspan) 셀 텍스트를 절대배치 오버레이로 그려서 표시 (미리보기와 동일한 방식/결과 보장)
+  if(typeof qt_renderMergeOverlays==='function') qt_renderMergeOverlays(wrap);
   // 다중 페이지: A4 높이(1123px) 기준이되, 표 행(병합 그룹 포함)이 잘리지 않도록 절단선을 보정
   var a4H=1123, a4W=794;
   var totalH=Math.max(wrap.scrollHeight, a4H);
@@ -23296,10 +23296,11 @@ function qt_openPdf(type,quoteId){
     _doc.open();
     _doc.write('<!DOCTYPE html><html><head><meta charset="utf-8"><style>'+_css+'</style></head><body><div id="pdfOv"><div class="pdf-page">'+_pdfHtml+'</div></div></body></html>');
     _doc.close();
-    // 내용 높이에 맞춰 iframe 높이 조정 + 병합 셀 중앙정렬 높이 보정
+    // 내용 높이에 맞춰 iframe 높이 조정 + 병합 셀 오버레이 렌더
     setTimeout(function(){
       try{
-        qt_fixMergedCellHeights(_doc.body);
+        var _pg=_doc.querySelector('.pdf-page');
+        qt_renderMergeOverlays(_pg||_doc.body);
         var h=_doc.querySelector('.pdf-page').scrollHeight;
         _fr.style.height=Math.max(h+20,1143)+'px';
       }catch(e){}
@@ -23432,20 +23433,38 @@ function qt_calcColPcts(visibleThs){
     return (w/total*100).toFixed(2);
   });
 }
-// 병합(rowspan) 셀 안의 중앙정렬용 div에 실제 렌더된 높이를 px로 명시 설정.
-// (percentage height(100%)는 브라우저/엔진마다 계산이 달라 신뢰할 수 없고,
-//  td 자체에 vertical-align:middle을 쓰면 html2canvas(PDF 저장)가 좌표를 잘못 계산해
-//  텍스트가 겹치거나 깨지는 버그가 있어 — td는 top 정렬 + 내부 div 높이를 직접 재서 고정하는 방식으로 대체)
-function qt_fixMergedCellHeights(root){
+// 병합(rowspan) 셀 텍스트 렌더링: table-cell의 rowspan+vertical-align 조합은
+// (percentage height 방식이든, top정렬+JS 높이보정 방식이든) html2canvas가 계속 깨뜨리는 것으로 확인됨.
+// → 아예 표 셀 안에는 텍스트를 숨겨서 자리만 차지하게 하고, 그 위에 "절대좌표로 배치한 일반 div"를
+//   따로 그려서 보여주는 방식으로 전환. html2canvas는 표 셀 자체의 특수 렌더링 경로가 아니라
+//   일반 절대배치 블록은 문제없이 그리므로, 이 문제를 근본적으로 우회함.
+function qt_renderMergeOverlays(root){
   if(!root) return;
   try{
-    root.querySelectorAll('td[rowspan]').forEach(function(td){
-      var h=td.getBoundingClientRect().height;
-      if(!h) return;
-      var div=td.querySelector('.qt-merge-fill');
-      if(div) div.style.height=Math.round(h)+'px';
+    var doc=root.ownerDocument||document;
+    var win=doc.defaultView||window;
+    if(win.getComputedStyle(root).position==='static') root.style.position='relative';
+    // 재실행(재계산) 대비 기존 오버레이 제거
+    root.querySelectorAll(':scope > .qt-merge-overlay').forEach(function(o){ o.remove(); });
+    var hostRect=root.getBoundingClientRect();
+    root.querySelectorAll('td.qt-merge-cell').forEach(function(td){
+      var span=td.querySelector('.qt-merge-txt');
+      if(!span) return;
+      var r=td.getBoundingClientRect();
+      var al=td.getAttribute('data-mal')||'center';
+      var jc=(al==='left')?'flex-start':(al==='right')?'flex-end':'center';
+      span.style.visibility='hidden'; // 자리는 그대로 차지(표 레이아웃 유지), 화면엔 오버레이가 대신 보임
+      var ov=doc.createElement('div');
+      ov.className='qt-merge-overlay';
+      ov.style.cssText='position:absolute;left:'+(r.left-hostRect.left)+'px;top:'+(r.top-hostRect.top)+'px;'
+        +'width:'+r.width+'px;height:'+r.height+'px;box-sizing:border-box;'
+        +'display:flex;align-items:center;justify-content:'+jc+';text-align:'+al+';'
+        +'font-size:8.5px;color:#000;padding:5px 6px;'
+        +'white-space:pre-line;word-break:break-all;pointer-events:none;';
+      ov.textContent=span.textContent;
+      root.appendChild(ov);
     });
-  }catch(e){}
+  }catch(e){ console.warn('[PDF] 병합 셀 오버레이 렌더 실패',e); }
 }
 function qt_buildDevPdf(){
   var D=window.PDF_DATA||{};
@@ -23588,23 +23607,23 @@ function qt_buildDevPdf(){
         var rsAttr=(cell&&cell.rowspan>1)?(' rowspan="'+cell.rowspan+'"'):'';
         // 역할/구분 등 텍스트 열은 줄바꿈 허용(잘림 방지, 요청 5-3), 그 외는 한 줄 유지
         var wrapS=(al==='left'||t==='구분'||badgeTxt==='기타')?'white-space:pre-line;word-break:break-all;':'overflow:hidden;white-space:nowrap;text-overflow:ellipsis;';
-        // ⚠ rowspan(병합) 셀에 vertical-align:middle을 쓰면 html2canvas(PDF 저장)가
-        //   세로 중앙 정렬 좌표를 잘못 계산해 텍스트가 겹쳐 찍히거나 깨져 보이는 버그가 있음.
-        //   → 병합된 셀만 td는 top 정렬로 두고, 내부 flex div가 채워서 중앙 정렬을 대신함.
+        // ⚠ rowspan(병합) 셀은 table-cell 자체의 세로정렬(vertical-align:middle이든, JS로 높이 보정한
+        //   flex div든) 어떤 방식을 써도 html2canvas가 렌더링을 깨뜨리는 것으로 확인됨.
+        //   → 셀 안 텍스트는 화면에서 숨기고(visibility:hidden, 자리는 차지) qt_renderMergeOverlays가
+        //     그 위에 절대배치 div로 따로 그려서 보여줌 (표 셀 렌더링 경로 자체를 회피).
         var isMerged=!!(cell&&cell.rowspan>1);
         var cellContent=txt;
         var tdExtra;
+        var mergeAttr='';
         if(isMerged){
-          var jc=(al==='left')?'flex-start':(al==='right')?'flex-end':'center';
-          // height는 아직 모름(rowspan 대상 행들이 다 그려져야 알 수 있음) → qt_fixMergedCellHeights가
-          // 렌더 직후 td의 실제 높이를 재서 이 div에 px로 명시 설정함 (퍼센트 높이는 엔진별로 신뢰 불가)
-          cellContent='<div class="qt-merge-fill" style="display:flex;align-items:center;justify-content:'+jc+';text-align:'+al+';'+wrapS+'">'+txt+'</div>';
-          tdExtra='vertical-align:top;';
+          cellContent='<span class="qt-merge-txt" style="'+wrapS+'">'+txt+'</span>';
+          tdExtra='vertical-align:top;'+wrapS;
+          mergeAttr=' class="qt-merge-cell" data-mal="'+al+'"';
         } else {
           cellContent=txt;
           tdExtra='vertical-align:middle;'+wrapS;
         }
-        blocksHtml+='<td'+rsAttr+' style="'+narrowTdPad+'border:1px solid #D1D5DB;font-size:8.5px;color:#000;text-align:'+al+';'+tdExtra+'">'+cellContent+'</td>';
+        blocksHtml+='<td'+rsAttr+mergeAttr+' style="'+narrowTdPad+'border:1px solid #D1D5DB;font-size:8.5px;color:#000;text-align:'+al+';'+tdExtra+'">'+cellContent+'</td>';
       });
       blocksHtml+='</tr>';
     });
