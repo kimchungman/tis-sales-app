@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260727-004 -->
+<!-- v20260727-004 변경사항: 병합(rowspan)된 셀 텍스트가 PDF 저장(html2canvas) 시 겹쳐 찍히거나 깨져 보이던 진짜 원인 수정. html2canvas가 rowspan 셀의 vertical-align:middle 세로중앙 좌표를 잘못 계산하는 알려진 제약이 있어, 병합 셀만 td를 top 정렬로 두고 내부 flex div로 중앙정렬을 대신 구현함 (지난 페이지분할/절단선 수정들은 이 문제의 실제 원인이 아니었음 — 이번 건이 진짜 원인) -->
+<!-- TIS-VERSION: 20260727-003 -->
+<!-- v20260727-003 변경사항: 견적서 PDF 인쇄(Ctrl+P) 시 화면 확인용 버전 뱃지(qtPdfVerBadge)가 실제 인쇄물에 같이 찍히던 문제 수정 -->
 <!-- TIS-VERSION: 20260727-002 -->
 <!-- v20260727-002 변경사항: (1) 견적서 PDF 인쇄(Ctrl+P) 시 실제로는 1페이지 분량인데도 min-height 고정값의 미세한 반올림 오차로 빈 2페이지가 추가되던 문제 수정 (2) PDF 저장(html2canvas) 시 로고 이미지 등 레이아웃이 완전히 자리잡은 후 페이지 절단선을 계산하도록 안정화 지연 추가 + 경계 판정에 안전 여유(3px)를 둬서 병합(rowspan) 셀이 페이지 경계에서 잘리는 문제 재보강 -->
 <!-- TIS-VERSION: 20260727-001 -->
@@ -1893,6 +1897,7 @@ table.dt thead th { font-size: 13px !important; }
 .page-fade{animation:pageFadeIn 0.2s ease forwards;}
 @media print{
   .sidebar,.topbar,#banner-bar,#print-btn,#refresh-btn,#hist-btn,#access-count-btn,#mtg-date,.add-btn{display:none!important;}
+  #qtPdfVerBadge{display:none!important;}
   body,html{margin:0!important;background:white!important;}
   .main{margin-left:0!important;width:100%!important;}
   .page{display:none!important;}.page.active{display:block!important;}
@@ -2646,6 +2651,7 @@ body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;ba
 /* ── 인쇄 ── */
 @media print {
   .sidebar,.topbar,.fbar,.pdf-tb,.pdf-ov > .pdf-tb{display:none!important;}
+  #qtPdfVerBadge{display:none!important;}
   .pdf-ov{position:static!important;background:none!important;display:block!important;}
   .pdf-body-wrap{padding:0!important;background:none!important;overflow:visible!important;}
   .pdf-page{box-shadow:none!important;width:100%!important;margin:0!important;}
@@ -2667,6 +2673,7 @@ body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;ba
     height: auto !important;
   }
   .pdf-tb { display: none !important; }
+  #qtPdfVerBadge { display: none !important; }
   .pdf-body-wrap {
     overflow: visible !important;
     padding: 0 !important;
@@ -23561,7 +23568,21 @@ function qt_buildDevPdf(){
         var rsAttr=(cell&&cell.rowspan>1)?(' rowspan="'+cell.rowspan+'"'):'';
         // 역할/구분 등 텍스트 열은 줄바꿈 허용(잘림 방지, 요청 5-3), 그 외는 한 줄 유지
         var wrapS=(al==='left'||t==='구분'||badgeTxt==='기타')?'white-space:pre-line;word-break:break-all;':'overflow:hidden;white-space:nowrap;text-overflow:ellipsis;';
-        blocksHtml+='<td'+rsAttr+' style="'+narrowTdPad+'border:1px solid #D1D5DB;font-size:8.5px;color:#000;text-align:'+al+';vertical-align:middle;'+wrapS+'">'+txt+'</td>';
+        // ⚠ rowspan(병합) 셀에 vertical-align:middle을 쓰면 html2canvas(PDF 저장)가
+        //   세로 중앙 정렬 좌표를 잘못 계산해 텍스트가 겹쳐 찍히거나 깨져 보이는 버그가 있음.
+        //   → 병합된 셀만 td는 top 정렬로 두고, 내부 flex div가 채워서 중앙 정렬을 대신함.
+        var isMerged=!!(cell&&cell.rowspan>1);
+        var cellContent=txt;
+        var tdExtra;
+        if(isMerged){
+          var jc=(al==='left')?'flex-start':(al==='right')?'flex-end':'center';
+          cellContent='<div style="height:100%;display:flex;align-items:center;justify-content:'+jc+';text-align:'+al+';'+wrapS+'">'+txt+'</div>';
+          tdExtra='vertical-align:top;';
+        } else {
+          cellContent=txt;
+          tdExtra='vertical-align:middle;'+wrapS;
+        }
+        blocksHtml+='<td'+rsAttr+' style="'+narrowTdPad+'border:1px solid #D1D5DB;font-size:8.5px;color:#000;text-align:'+al+';'+tdExtra+'">'+cellContent+'</td>';
       });
       blocksHtml+='</tr>';
     });
@@ -25381,6 +25402,7 @@ body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;ba
 /* ── 인쇄 ── */
 @media print {
   .sidebar,.topbar,.fbar,.pdf-tb,.pdf-ov > .pdf-tb{display:none!important;}
+  #qtPdfVerBadge{display:none!important;}
   .pdf-ov{position:static!important;background:none!important;display:block!important;}
   .pdf-body-wrap{padding:0!important;background:none!important;overflow:visible!important;}
   .pdf-page{box-shadow:none!important;width:100%!important;margin:0!important;}
@@ -25402,6 +25424,7 @@ body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;ba
     height: auto !important;
   }
   .pdf-tb { display: none !important; }
+  #qtPdfVerBadge { display: none !important; }
   .pdf-body-wrap {
     overflow: visible !important;
     padding: 0 !important;
