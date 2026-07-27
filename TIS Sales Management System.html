@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260727-007 -->
+<!-- v20260727-007 변경사항: 견적서 PDF의 모든 표(항목표/합계표/거래조건표) 테두리 색상을 통일(밝은 배경 셀 #CBD5E1 하나, 남색 배경 헤더·최종금액 행은 반투명 흰색 하나로 정리 — 기존 #D1D5DB/#B0B8C4/#4A5568/#3B4A6B/#E5E7EB 등 뒤섞여 있던 회색톤 통합). 모든 표의 좌우 바깥 테두리 제거(위아래 가로선+열 사이 세로선만 유지하는 미니멀 스타일), 대금지급/일반/기타조건 표도 동일 적용. 미리보기·인쇄(Ctrl+P)·PDF저장 세 경로가 같은 스타일시트를 공유하므로 한 번의 수정으로 세 곳 모두 동일하게 반영됨. -->
 <!-- TIS-VERSION: 20260727-006 -->
 <!-- v20260727-006 변경사항: 병합(rowspan) 셀 렌더링 방식을 근본적으로 교체. table-cell의 rowspan+vertical-align 조합은 어떤 정렬 방식(middle/percentage-height/JS px보정)을 써도 html2canvas가 계속 텍스트를 깨뜨리는 것으로 확인되어, 셀 안 텍스트는 화면에서 숨기고(자리는 유지) 그 위에 절대좌표로 배치한 일반 div를 따로 그려서 표시하는 방식(qt_renderMergeOverlays)으로 전환함. html2canvas는 표 셀 특수 렌더링 경로가 아닌 일반 절대배치 블록은 문제없이 그리므로 이 문제를 근본적으로 우회함. 미리보기·PDF저장 모두 동일 함수 사용. -->
 <!-- TIS-VERSION: 20260727-005 -->
@@ -23501,12 +23503,18 @@ function qt_buildDevPdf(){
   var blockIdx=0;
   var lastCg='<colgroup><col></colgroup>';
 
-  var thS='padding:6px 8px;border:1px solid #4A5568;background-color:#3B4A6B !important;color:#fff !important;font-size:9px;font-weight:700;text-align:center !important;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact;';
-  var thL='padding:6px 8px;border:1px solid #4A5568;background-color:#3B4A6B !important;color:#fff !important;font-size:9px;font-weight:700;text-align:center !important;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact;';
-  var thR='padding:6px 8px;border:1px solid #4A5568;background-color:#3B4A6B !important;color:#fff !important;font-size:9px;font-weight:700;text-align:center !important;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact;';
-  var tdS='padding:5px 7px;border:1px solid #D1D5DB;font-size:8.5px;color:#000;text-align:center;vertical-align:middle;';
-  var tdL='padding:5px 7px;border:1px solid #D1D5DB;font-size:8.5px;color:#000;text-align:left;vertical-align:middle;';
-  var tdR='padding:5px 7px;border:1px solid #D1D5DB;font-size:8.5px;color:#000;text-align:right;vertical-align:middle;';
+  // ── 테두리 색상 통일 체계 ──
+  // 기존엔 표마다 #D1D5DB/#B0B8C4/#4A5568/#3B4A6B/#E5E7EB 등 회색톤이 제각각이었음.
+  // 밝은 배경 셀은 연한 회색 하나(BC)로, 남색 배경(헤더·최종금액 행) 셀은 배경과 어우러지는
+  // 반투명 흰색 하나(BC_DK)로 통일. 표 전체에 동일하게 사용.
+  var BC='#CBD5E1';
+  var BC_DK='rgba(255,255,255,.28)';
+  var thS='padding:6px 8px;border:1px solid '+BC_DK+';background-color:#3B4A6B !important;color:#fff !important;font-size:9px;font-weight:700;text-align:center !important;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact;';
+  var thL='padding:6px 8px;border:1px solid '+BC_DK+';background-color:#3B4A6B !important;color:#fff !important;font-size:9px;font-weight:700;text-align:center !important;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact;';
+  var thR='padding:6px 8px;border:1px solid '+BC_DK+';background-color:#3B4A6B !important;color:#fff !important;font-size:9px;font-weight:700;text-align:center !important;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact;';
+  var tdS='padding:5px 7px;border:1px solid '+BC+';font-size:8.5px;color:#000;text-align:center;vertical-align:middle;';
+  var tdL='padding:5px 7px;border:1px solid '+BC+';font-size:8.5px;color:#000;text-align:left;vertical-align:middle;';
+  var tdR='padding:5px 7px;border:1px solid '+BC+';font-size:8.5px;color:#000;text-align:right;vertical-align:middle;';
 
   var allIbs=Array.from(document.querySelectorAll('#blockArea .ib'));
   // 데이터 블록 수 (할인 블록·열 없는 블록 제외) — 1개면 소계 생략, 2개↑면 소계 ①②+합계 합산표기
@@ -23565,7 +23573,7 @@ function qt_buildDevPdf(){
 
     lastCg=cg;
     // 전체폭 100% → 조건 영역(대금지급/일반/기타)과 오른쪽 라인 일치
-    blocksHtml+='<table style="width:100%;border-collapse:collapse;table-layout:fixed;margin-bottom:0;">'+cg;
+    blocksHtml+='<table class="qt-doc-tbl" style="width:100%;border-collapse:collapse;table-layout:fixed;margin-bottom:0;">'+cg;
     blocksHtml+='<thead><tr>';
     visibleThs.forEach(function(th){
       var t=th.textContent.trim();
@@ -23625,7 +23633,7 @@ function qt_buildDevPdf(){
           cellContent=txt;
           tdExtra='vertical-align:middle;'+wrapS;
         }
-        blocksHtml+='<td'+rsAttr+mergeAttr+' style="'+narrowTdPad+'border:1px solid #D1D5DB;font-size:8.5px;color:#000;text-align:'+al+';'+tdExtra+'">'+cellContent+'</td>';
+        blocksHtml+='<td'+rsAttr+mergeAttr+' style="'+narrowTdPad+'border:1px solid '+BC+';font-size:8.5px;color:#000;text-align:'+al+';'+tdExtra+'">'+cellContent+'</td>';
       });
       blocksHtml+='</tr>';
     });
@@ -23635,8 +23643,8 @@ function qt_buildDevPdf(){
     if(dataBlockCount>=2){
       var subNum=subNums[blockIdx]||'';
       blocksHtml+='<tr style="background:#EEF2F7;">';
-      blocksHtml+='<td colspan="'+(lastColCount-1)+'" style="'+tdR+'font-weight:700;color:#000;border-color:#B0B8C4;background:#EEF2F7;">소 &nbsp; 계 &nbsp;'+subNum+'</td>';
-      blocksHtml+='<td style="'+tdR+'font-weight:700;color:#000;border-color:#B0B8C4;background:#EEF2F7;">'+subAmt.toLocaleString()+'</td>';
+      blocksHtml+='<td colspan="'+(lastColCount-1)+'" style="'+tdR+'font-weight:700;color:#000;border-color:'+BC+';background:#EEF2F7;">소 &nbsp; 계 &nbsp;'+subNum+'</td>';
+      blocksHtml+='<td style="'+tdR+'font-weight:700;color:#000;border-color:'+BC+';background:#EEF2F7;">'+subAmt.toLocaleString()+'</td>';
       blocksHtml+='</tr>';
     }
     blocksHtml+='</tbody></table>';
@@ -23648,7 +23656,7 @@ function qt_buildDevPdf(){
   if(discAmt>0 && totalPropose>0) finalAmt=totalPropose-discAmt;
   // 마지막 블록과 동일한 colgroup 생성
     // 합계/제안금액 - 마지막 블록과 동일한 colgroup 사용
-  var summaryHtml='<table style="width:100%;border-collapse:collapse;font-size:9px;margin-bottom:14px;table-layout:fixed;">'+lastCg;
+  var summaryHtml='<table class="qt-doc-tbl" style="width:100%;border-collapse:collapse;font-size:9px;margin-bottom:14px;table-layout:fixed;">'+lastCg;
   // 순서: 합계 → 특별할인 → 제안 금액
   summaryHtml+='<tr style="background-color:#F1F5F9 !important;-webkit-print-color-adjust:exact;">';
   var _sumLbl='합 &nbsp; 계';
@@ -23656,15 +23664,15 @@ function qt_buildDevPdf(){
     var _nums=['①','②','③','④','⑤','⑥','⑦','⑧'].slice(0,dataBlockCount).join('+');
     _sumLbl+=' &nbsp;('+_nums+')';
   }
-  summaryHtml+='<td colspan="'+(lastColCount-1)+'" style="'+tdS+'font-weight:700;border-color:#B0B8C4;">'+_sumLbl+'</td>';
-  summaryHtml+='<td style="'+tdR+'font-weight:700;border-color:#B0B8C4;">'+totalPropose.toLocaleString()+'</td></tr>';
+  summaryHtml+='<td colspan="'+(lastColCount-1)+'" style="'+tdS+'font-weight:700;border-color:'+BC+';">'+_sumLbl+'</td>';
+  summaryHtml+='<td style="'+tdR+'font-weight:700;border-color:'+BC+';">'+totalPropose.toLocaleString()+'</td></tr>';
   if(discAmt>0){
-    summaryHtml+='<tr><td colspan="'+(lastColCount-1)+'" style="'+tdS+'border-color:#D1D5DB;font-weight:600;color:#000;">'+discLabel+'</td>';
-    summaryHtml+='<td style="'+tdR+'border-color:#D1D5DB;font-weight:700;color:#DC2626;">'+discAmt.toLocaleString()+'</td></tr>';
+    summaryHtml+='<tr><td colspan="'+(lastColCount-1)+'" style="'+tdS+'border-color:'+BC+';font-weight:600;color:#000;">'+discLabel+'</td>';
+    summaryHtml+='<td style="'+tdR+'border-color:'+BC+';font-weight:700;color:#DC2626;">'+discAmt.toLocaleString()+'</td></tr>';
   }
   summaryHtml+='<tr style="background-color:#3B4A6B !important;-webkit-print-color-adjust:exact;">';
-  summaryHtml+='<td colspan="'+(lastColCount-1)+'" style="'+tdS+'font-weight:800;color:#fff;font-size:10px;border-color:#3B4A6B;">제안 금액 (VAT별도)</td>';
-  summaryHtml+='<td style="'+tdR+'font-weight:800;color:#fff;font-size:10px;border-color:#3B4A6B;">'+finalAmt.toLocaleString()+'</td></tr>';
+  summaryHtml+='<td colspan="'+(lastColCount-1)+'" style="'+tdS+'font-weight:800;color:#fff;font-size:10px;border-color:'+BC_DK+';">제안 금액 (VAT별도)</td>';
+  summaryHtml+='<td style="'+tdR+'font-weight:800;color:#fff;font-size:10px;border-color:'+BC_DK+';">'+finalAmt.toLocaleString()+'</td></tr>';
   summaryHtml+='</table>';
 
   var h='';
@@ -23722,9 +23730,9 @@ function qt_buildDevPdf(){
   h+=summaryHtml;
 
   // ── 거래조건 ──
-  var condLbl='width:56px;background-color:#F3F4F6 !important;border:1px solid #D1D5DB;padding:6px 8px;text-align:center;font-weight:700;font-size:8.5px;color:#000;vertical-align:middle;line-height:1.8;-webkit-print-color-adjust:exact;';
-  var condTd='padding:6px 10px;border:1px solid #D1D5DB;font-size:8.5px;color:#000;line-height:2.0;vertical-align:middle;white-space:pre-line;';
-  h+='<table style="width:100%;border-collapse:collapse;margin-bottom:0;">';
+  var condLbl='width:56px;background-color:#F3F4F6 !important;border:1px solid '+BC+';padding:6px 8px;text-align:center;font-weight:700;font-size:8.5px;color:#000;vertical-align:middle;line-height:1.8;-webkit-print-color-adjust:exact;';
+  var condTd='padding:6px 10px;border:1px solid '+BC+';font-size:8.5px;color:#000;line-height:2.0;vertical-align:middle;white-space:pre-line;';
+  h+='<table class="qt-doc-tbl" style="width:100%;border-collapse:collapse;margin-bottom:0;">';
   h+='<tr><td style="'+condLbl+'">대금<br>지급<br>조건</td><td style="'+condTd+'">'+paymentVal+'</td></tr>';
   h+='<tr><td style="'+condLbl+'">일반<br>조건</td><td style="'+condTd+'">'+condVal+'</td></tr>';
   if(otherCondVal){
@@ -25080,6 +25088,10 @@ window._qtShowPage=function(){
   --r:12px;--rs:8px;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
+/* 견적서 표 좌우 바깥 테두리 제거(미니멀 레저 스타일) — 위/아래 가로선과 열 사이 세로 구분선은 유지 */
+table.qt-doc-tbl{border-left:none;border-right:none;}
+table.qt-doc-tbl td:first-child,table.qt-doc-tbl th:first-child{border-left:none !important;}
+table.qt-doc-tbl td:last-child,table.qt-doc-tbl th:last-child{border-right:none !important;}
 body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);font-size:13px;min-height:100vh;}
 .app{display:flex;height:100vh;overflow:hidden;}
 
