@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260727-005 -->
+<!-- v20260727-005 변경사항: 병합(rowspan) 셀 중앙정렬을 height:100%(퍼센트, 엔진별로 신뢰 불가 — 미리보기에서도 위쪽 정렬로 보이던 원인) 대신, 실제 렌더된 td 높이를 JS로 측정해 내부 div에 px로 직접 고정하는 방식(qt_fixMergedCellHeights)으로 교체. 미리보기·인쇄·PDF저장 세 경로 모두 동일 함수를 호출하도록 통일해서 항상 같은 결과가 나오게 함. 인건비/라이선스/상품/기타 등 모든 유형에 동일 적용. -->
 <!-- TIS-VERSION: 20260727-004 -->
 <!-- v20260727-004 변경사항: 병합(rowspan)된 셀 텍스트가 PDF 저장(html2canvas) 시 겹쳐 찍히거나 깨져 보이던 진짜 원인 수정. html2canvas가 rowspan 셀의 vertical-align:middle 세로중앙 좌표를 잘못 계산하는 알려진 제약이 있어, 병합 셀만 td를 top 정렬로 두고 내부 flex div로 중앙정렬을 대신 구현함 (지난 페이지분할/절단선 수정들은 이 문제의 실제 원인이 아니었음 — 이번 건이 진짜 원인) -->
 <!-- TIS-VERSION: 20260727-003 -->
@@ -21733,6 +21735,8 @@ function qtSavePdf(){
   });
 }
 function _qtSavePdfRun(_fdoc,_fr,wrap,fname,saveBtn){
+  // 병합(rowspan) 셀 내부 div 높이를 실제 렌더된 td 높이로 고정 (미리보기와 동일한 중앙정렬 보장)
+  if(typeof qt_fixMergedCellHeights==='function') qt_fixMergedCellHeights(wrap);
   // 다중 페이지: A4 높이(1123px) 기준이되, 표 행(병합 그룹 포함)이 잘리지 않도록 절단선을 보정
   var a4H=1123, a4W=794;
   var totalH=Math.max(wrap.scrollHeight, a4H);
@@ -23292,9 +23296,10 @@ function qt_openPdf(type,quoteId){
     _doc.open();
     _doc.write('<!DOCTYPE html><html><head><meta charset="utf-8"><style>'+_css+'</style></head><body><div id="pdfOv"><div class="pdf-page">'+_pdfHtml+'</div></div></body></html>');
     _doc.close();
-    // 내용 높이에 맞춰 iframe 높이 조정
+    // 내용 높이에 맞춰 iframe 높이 조정 + 병합 셀 중앙정렬 높이 보정
     setTimeout(function(){
       try{
+        qt_fixMergedCellHeights(_doc.body);
         var h=_doc.querySelector('.pdf-page').scrollHeight;
         _fr.style.height=Math.max(h+20,1143)+'px';
       }catch(e){}
@@ -23426,6 +23431,21 @@ function qt_calcColPcts(visibleThs){
     var w=KNOWN[t]!==undefined?KNOWN[t]:flexW;
     return (w/total*100).toFixed(2);
   });
+}
+// 병합(rowspan) 셀 안의 중앙정렬용 div에 실제 렌더된 높이를 px로 명시 설정.
+// (percentage height(100%)는 브라우저/엔진마다 계산이 달라 신뢰할 수 없고,
+//  td 자체에 vertical-align:middle을 쓰면 html2canvas(PDF 저장)가 좌표를 잘못 계산해
+//  텍스트가 겹치거나 깨지는 버그가 있어 — td는 top 정렬 + 내부 div 높이를 직접 재서 고정하는 방식으로 대체)
+function qt_fixMergedCellHeights(root){
+  if(!root) return;
+  try{
+    root.querySelectorAll('td[rowspan]').forEach(function(td){
+      var h=td.getBoundingClientRect().height;
+      if(!h) return;
+      var div=td.querySelector('.qt-merge-fill');
+      if(div) div.style.height=Math.round(h)+'px';
+    });
+  }catch(e){}
 }
 function qt_buildDevPdf(){
   var D=window.PDF_DATA||{};
@@ -23576,7 +23596,9 @@ function qt_buildDevPdf(){
         var tdExtra;
         if(isMerged){
           var jc=(al==='left')?'flex-start':(al==='right')?'flex-end':'center';
-          cellContent='<div style="height:100%;display:flex;align-items:center;justify-content:'+jc+';text-align:'+al+';'+wrapS+'">'+txt+'</div>';
+          // height는 아직 모름(rowspan 대상 행들이 다 그려져야 알 수 있음) → qt_fixMergedCellHeights가
+          // 렌더 직후 td의 실제 높이를 재서 이 div에 px로 명시 설정함 (퍼센트 높이는 엔진별로 신뢰 불가)
+          cellContent='<div class="qt-merge-fill" style="display:flex;align-items:center;justify-content:'+jc+';text-align:'+al+';'+wrapS+'">'+txt+'</div>';
           tdExtra='vertical-align:top;';
         } else {
           cellContent=txt;
