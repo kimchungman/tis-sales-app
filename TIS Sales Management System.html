@@ -1,7 +1,11 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260722-016 -->
+<!-- TIS-VERSION: 20260727-002 -->
+<!-- v20260727-002 변경사항: (1) 견적서 PDF 인쇄(Ctrl+P) 시 실제로는 1페이지 분량인데도 min-height 고정값의 미세한 반올림 오차로 빈 2페이지가 추가되던 문제 수정 (2) PDF 저장(html2canvas) 시 로고 이미지 등 레이아웃이 완전히 자리잡은 후 페이지 절단선을 계산하도록 안정화 지연 추가 + 경계 판정에 안전 여유(3px)를 둬서 병합(rowspan) 셀이 페이지 경계에서 잘리는 문제 재보강 -->
+<!-- TIS-VERSION: 20260727-001 -->
+<!-- v20260727-001 변경사항: (1) 숨김 N 칩을 추가버튼 바로 왼쪽에 고정 배치(계약관리/고객접점기록/매출·프로젝트현황), 복구버튼 디자인 통일 (2) 인건비 소비자단가/소비자가/제안단가/제안금액 4칸 수동 수정 가능 (3) 기타유형 셀 textarea 전환(엔터 줄바꿈) + 숫자 자동 콤마 (4) PDF 저장 시 표 행/병합(rowspan) 그룹이 페이지 경계에서 잘리지 않도록 절단선 보정 -->
+
 <script>
 
 // ── 스크롤 위치 보존 헬퍼 ──
@@ -2675,6 +2679,12 @@ body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;ba
     margin: 0 !important;
     max-width: 100% !important;
     width: 100% !important;
+    /* 화면 미리보기용 min-height(1123px=A4 전체 높이)를 인쇄에서는 강제로 풀어줌.
+       내용이 실제로는 1페이지 분량인데도 min-height가 정확히 페이지 높이와 같아서
+       아주 미세한 반올림 오차만 생겨도 남는 부분이 통째로 2페이지(거의 빈 페이지)로
+       밀려나가는 문제가 있었음. */
+    min-height: auto !important;
+    height: auto !important;
   }
   /* 색상 강제 출력 */
   * {
@@ -21673,13 +21683,14 @@ function qt_pdfSafeBreaks(wrap, totalH, a4H){
   var breaks=[0];
   var cursor=0;
   var guard=0;
+  var EPS=3; // 측정 반올림 오차 대비 안전 여유(px)
   while(cursor<totalH-1&&guard++<500){
     var ideal=cursor+a4H;
     if(ideal>=totalH){ breaks.push(totalH); break; }
     var safe=ideal;
     for(var k=0;k<blocks.length;k++){
       var b=blocks[k];
-      if(b.top<ideal&&b.bottom>ideal){ safe=b.top; break; } // 블록 중간을 지나면 → 그 블록 시작 전으로 절단선을 당김
+      if(b.top<ideal+EPS&&b.bottom>ideal-EPS){ safe=b.top; break; } // 블록이 경계에 걸치면(여유 포함) → 그 블록 시작 전으로 절단선을 당김
     }
     if(safe<=cursor) safe=ideal; // 블록 자체가 한 페이지보다 커서 더 당길 곳이 없으면 부득이 원래 지점에서 절단
     breaks.push(safe);
@@ -21701,11 +21712,25 @@ function qtSavePdf(){
   wrap.style.cssText='position:fixed;left:-9999px;top:0;width:794px;background:#fff;overflow:visible;';
   wrap.innerHTML=targetEl.innerHTML;
   _fdoc.body.appendChild(wrap);
+  // 로고 이미지 등 레이아웃에 영향 주는 요소가 아직 자리잡기 전에 절단선을 계산하면
+  // 이후 실제 페이지 렌더 시점의 레이아웃과 어긋나 병합 셀이 경계에 걸릴 수 있음
+  // → 폰트 로딩 완료 + 두 번의 애니메이션 프레임(레이아웃 완전 반영) 이후에 계산 시작
+  var _fwin=_fdoc.defaultView||window;
+  var _fontsReady=(_fdoc.fonts&&_fdoc.fonts.ready)?_fdoc.fonts.ready:Promise.resolve();
+  _fontsReady.catch(function(){}).then(function(){
+    _fwin.requestAnimationFrame(function(){
+      _fwin.requestAnimationFrame(function(){
+        _qtSavePdfRun(_fdoc,_fr,wrap,fname,saveBtn);
+      });
+    });
+  });
+}
+function _qtSavePdfRun(_fdoc,_fr,wrap,fname,saveBtn){
   // 다중 페이지: A4 높이(1123px) 기준이되, 표 행(병합 그룹 포함)이 잘리지 않도록 절단선을 보정
   var a4H=1123, a4W=794;
   var totalH=Math.max(wrap.scrollHeight, a4H);
   var breakPoints;
-  try{ breakPoints=qt_pdfSafeBreaks(wrap, totalH, a4H); }catch(e){ breakPoints=null; }
+  try{ breakPoints=qt_pdfSafeBreaks(wrap, totalH, a4H); }catch(e){ console.warn('[PDF] 절단선 계산 실패, 균등분할로 대체',e); breakPoints=null; }
   if(!breakPoints||breakPoints.length<2){
     // 안전망: 계산 실패 시 기존 방식(균등 분할)으로 폴백
     breakPoints=[0]; var c=0;
@@ -25389,6 +25414,12 @@ body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;ba
     margin: 0 !important;
     max-width: 100% !important;
     width: 100% !important;
+    /* 화면 미리보기용 min-height(1123px=A4 전체 높이)를 인쇄에서는 강제로 풀어줌.
+       내용이 실제로는 1페이지 분량인데도 min-height가 정확히 페이지 높이와 같아서
+       아주 미세한 반올림 오차만 생겨도 남는 부분이 통째로 2페이지(거의 빈 페이지)로
+       밀려나가는 문제가 있었음. */
+    min-height: auto !important;
+    height: auto !important;
   }
   /* 색상 강제 출력 */
   * {
