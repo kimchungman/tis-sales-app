@@ -21642,6 +21642,51 @@ function qt_pdfFileName(q){
   if(id) parts.push(id);
   return parts.join('_')+'.pdf';
 }
+// 페이지 경계가 표의 행(특히 rowspan으로 병합된 행 그룹) 중간을 지나가지 않도록
+// "쪼개면 안 되는 블록" 기준으로 안전한 절단선을 계산.
+// (기존엔 무조건 1123px마다 잘랐기 때문에, 미리보기 HTML에서는 이어져 보이던 병합 셀이
+//  실제 PDF 저장 시 캡처 경계에 걸리면 중간이 잘린 채로 두 페이지에 나뉘어 찍혔음)
+function qt_pdfSafeBreaks(wrap, totalH, a4H){
+  var wrapTop=wrap.getBoundingClientRect().top;
+  var blocks=[];
+  wrap.querySelectorAll('table').forEach(function(tbl){
+    Array.from(tbl.querySelectorAll('tbody')).forEach(function(tbody){
+      var trs=Array.from(tbody.children).filter(function(el){return el.tagName==='TR';});
+      var i=0;
+      while(i<trs.length){
+        var tr=trs[i];
+        var maxSpan=1;
+        Array.from(tr.children).forEach(function(td){
+          var rs=parseInt(td.getAttribute('rowspan'))||1;
+          if(rs>maxSpan) maxSpan=rs;
+        });
+        var groupEnd=Math.min(i+maxSpan,trs.length)-1;
+        var top=trs[i].getBoundingClientRect().top-wrapTop;
+        var bottom=trs[groupEnd].getBoundingClientRect().bottom-wrapTop;
+        blocks.push({top:top,bottom:bottom});
+        i=groupEnd+1;
+      }
+    });
+  });
+  blocks.sort(function(a,b){return a.top-b.top;});
+
+  var breaks=[0];
+  var cursor=0;
+  var guard=0;
+  while(cursor<totalH-1&&guard++<500){
+    var ideal=cursor+a4H;
+    if(ideal>=totalH){ breaks.push(totalH); break; }
+    var safe=ideal;
+    for(var k=0;k<blocks.length;k++){
+      var b=blocks[k];
+      if(b.top<ideal&&b.bottom>ideal){ safe=b.top; break; } // 블록 중간을 지나면 → 그 블록 시작 전으로 절단선을 당김
+    }
+    if(safe<=cursor) safe=ideal; // 블록 자체가 한 페이지보다 커서 더 당길 곳이 없으면 부득이 원래 지점에서 절단
+    breaks.push(safe);
+    cursor=safe;
+  }
+  return breaks;
+}
 function qtSavePdf(){
   var targetEl=document.getElementById('pdfContent');
   if(!targetEl||!targetEl.innerHTML.trim()){alert('PDF 내용이 없습니다.');return;}
@@ -21656,27 +21701,39 @@ function qtSavePdf(){
   wrap.style.cssText='position:fixed;left:-9999px;top:0;width:794px;background:#fff;overflow:visible;';
   wrap.innerHTML=targetEl.innerHTML;
   _fdoc.body.appendChild(wrap);
-  // 다중 페이지: A4 높이(1123px)씩 잘라서 각 페이지 생성
+  // 다중 페이지: A4 높이(1123px) 기준이되, 표 행(병합 그룹 포함)이 잘리지 않도록 절단선을 보정
   var a4H=1123, a4W=794;
   var totalH=Math.max(wrap.scrollHeight, a4H);
-  var pageCount=Math.ceil(totalH/a4H);
+  var breakPoints;
+  try{ breakPoints=qt_pdfSafeBreaks(wrap, totalH, a4H); }catch(e){ breakPoints=null; }
+  if(!breakPoints||breakPoints.length<2){
+    // 안전망: 계산 실패 시 기존 방식(균등 분할)으로 폴백
+    breakPoints=[0]; var c=0;
+    while(c<totalH){ var nx=Math.min(c+a4H,totalH); breakPoints.push(nx); c=nx; }
+  }
+  var pageCount=breakPoints.length-1;
   var pdf=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   var pdfW=210, pdfH=297;
   var pagesDone=0;
   function renderPage(pageIdx){
+    var startY=breakPoints[pageIdx], endY=breakPoints[pageIdx+1];
+    var sliceH=Math.max(1, Math.round(endY-startY));
     var clipDiv=_fdoc.createElement('div');
-    clipDiv.style.cssText='position:fixed;left:-9999px;top:0;width:'+a4W+'px;height:'+a4H+'px;overflow:hidden;background:#fff;';
+    clipDiv.style.cssText='position:fixed;left:-9999px;top:0;width:'+a4W+'px;height:'+sliceH+'px;overflow:hidden;background:#fff;';
     var innerDiv=_fdoc.createElement('div');
-    innerDiv.style.cssText='position:absolute;top:'+(-pageIdx*a4H)+'px;width:'+a4W+'px;';
+    innerDiv.style.cssText='position:absolute;top:'+(-startY)+'px;width:'+a4W+'px;';
     innerDiv.innerHTML=wrap.innerHTML;
     clipDiv.appendChild(innerDiv);
     _fdoc.body.appendChild(clipDiv);
-    html2canvas(clipDiv,{scale:2,useCORS:true,allowTaint:true,backgroundColor:'#ffffff',width:a4W,height:a4H,logging:false})
+    html2canvas(clipDiv,{scale:2,useCORS:true,allowTaint:true,backgroundColor:'#ffffff',width:a4W,height:sliceH,logging:false})
       .then(function(canvas){
         _fdoc.body.removeChild(clipDiv);
         var imgData=canvas.toDataURL('image/png');
         if(pageIdx>0) pdf.addPage();
-        pdf.addImage(imgData,'PNG',0,0,pdfW,pdfH);
+        // 절단선을 당겨 이 페이지의 실제 내용 높이가 a4H보다 작아진 만큼, 이미지 높이도 비례 축소
+        // (남는 공간은 페이지 하단 여백으로 남음 — 억지로 늘려 찍지 않음)
+        var imgH=pdfH*(sliceH/a4H);
+        pdf.addImage(imgData,'PNG',0,0,pdfW,imgH);
         pagesDone++;
         if(pagesDone<pageCount) renderPage(pagesDone);
         else{
