@@ -23478,7 +23478,7 @@ function qt_buildDevPdf(){
         var narrowTdPad=(t==='수량'||t==='단위'||t==='등급')?'padding:5px 3px;':'padding:5px 6px;';
         var rsAttr=(cell&&cell.rowspan>1)?(' rowspan="'+cell.rowspan+'"'):'';
         // 역할/구분 등 텍스트 열은 줄바꿈 허용(잘림 방지, 요청 5-3), 그 외는 한 줄 유지
-        var wrapS=(al==='left'||t==='구분')?'white-space:pre-line;word-break:break-all;':'overflow:hidden;white-space:nowrap;text-overflow:ellipsis;';
+        var wrapS=(al==='left'||t==='구분'||badgeTxt==='기타')?'white-space:pre-line;word-break:break-all;':'overflow:hidden;white-space:nowrap;text-overflow:ellipsis;';
         blocksHtml+='<td'+rsAttr+' style="'+narrowTdPad+'border:1px solid #D1D5DB;font-size:8.5px;color:#000;text-align:'+al+';vertical-align:middle;'+wrapS+'">'+txt+'</td>';
       });
       blocksHtml+='</tr>';
