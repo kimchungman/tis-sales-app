@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260728-013 -->
+<!-- TIS-VERSION: 20260728-014 -->
+<!-- v20260728-014 변경사항: (1) 견적서 PDF의 합계가 맞지 않던 문제 수정 — 각 유형의 '소계'는 편집 화면의 현재 값에서 실시간 계산하는데, 맨 아래 '합 계'와 '제안 금액'은 저장 시점에 기록해둔 값(PDF_DATA)을 그대로 쓰고 있었음. 그래서 금액을 수정하거나 유형을 새로 추가하면 위의 소계와 아래 합계가 서로 다른 값이 됐음. 이제 합계·제안금액도 소계와 동일하게 화면의 현재 값에서 계산하도록 통일(특별할인 차감도 동일 기준 적용). 미리보기·인쇄·PDF저장이 모두 같은 계산 결과를 사용함. (2) PDF 저장 시 파일명이 자동 지정되지 않던 문제 수정 — 저장 대화상자의 기본 파일명은 최상위 문서 제목을 따라가는데 iframe 제목만 바꾸고 있었음. 인쇄 직전 최상위 문서 제목을 견적서 파일명으로 바꾸고 인쇄가 끝나면 원래 제목으로 되돌리도록 처리(형식: (TIS) 프로젝트명_견적서_견적번호). 실측 검증: 소계① 600,000 + 소계② 300,000 → 합계 900,000, 특별할인 200,000 차감 → 제안금액 700,000 정확 출력 확인. -->
 <!-- v20260728-013 변경사항: PDF 저장 결과가 미리보기와 다르던 근본 원인 제거. 기존 'PDF 저장'은 html2canvas(브라우저 렌더링을 자바스크립트로 흉내내는 라이브러리)로 화면을 이미지로 캡처해 PDF를 만드는 방식이라, 미리보기(브라우저가 직접 그림)와 결과가 원리적으로 같을 수 없었음. 특히 표의 border-collapse(인접 셀 선 합치기) 처리가 부정확해 셀마다 선을 따로 그리는 바람에 선이 2배로 굵어지고, 행을 추가한 부분의 선이 누락되는 문제가 반복됐음(실측: html2canvas는 25개 경계선 중 24개가 정상의 2배 두께로 렌더링됨). → PDF 저장을 브라우저 기본 인쇄 엔진(미리보기를 그리는 것과 동일한 엔진)으로 전환. 이제 미리보기와 저장 결과가 원리적으로 100% 동일함(실측: 25행 전체 경계선 누락 없이 균일한 얇은 선으로 출력). 저장 시 인쇄 대화상자에서 'PDF로 저장'을 선택하면 되며, 기본 파일명이 견적서 이름으로 자동 지정되도록 처리(아웃룩 등에 첨부할 때 파일명이 임의 문자열로 나오던 문제도 함께 해결). -->
 <!-- v20260728-012 변경사항: 지난 수정이 인건비에만 적용됐던 문제 해결 — 라이선스/유지보수(MA)/상품/기타/특별할인 전 유형 일괄 정비. (1) 라이선스(소비자가·제안금액), 유지보수(제안금액), 상품(제안금액)의 금액 칸을 인건비와 동일하게 직접 수정 가능한 입력칸으로 변경. 자동계산은 그대로 동작하고, 사용자가 그 칸을 직접 고치면 협의 금액으로 존중해 덮어쓰지 않음(qt_setAmtCell 공용 처리). (2) 총합계가 틀리던 원인 수정 — 합계 계산이 input만 읽고 textarea는 못 읽어서, 기타 유형에 입력한 금액이 합계에 반영되지 않았음(이전에 기타 유형 셀을 여러 줄 입력용으로 바꾸면서 생긴 문제). input·textarea 모두 읽도록 수정. (3) 기존에 저장된 견적 자동 업그레이드 범위를 전 유형으로 확대 — 예전 형식의 라이선스/유지보수/상품 금액 칸도 열 때 자동으로 수정 가능하게 변환(기존 금액값 보존). 실제 Chromium 브라우저로 전 유형의 신규 작성·기존 견적 열기·자동계산·수동수정·합계 정확도(혼합 유형, 기타 유형 포함, 특별할인 차감)까지 전부 수치로 검증 완료. -->
 <!-- v20260727-011 변경사항: 이미 저장해둔 기존 견적에는 그동안의 개선이 적용되지 않던 문제 해결. 견적은 저장 당시의 화면 구조를 그대로 보관했다가 복원하는 방식이라, 이후에 개선된 입력 방식이 기존 견적에는 자동 반영되지 않았음(확인 결과 기존 견적의 인건비 금액칸은 여전히 수정 불가한 텍스트였고 수량을 바꿔도 재계산되지 않았음). 견적을 열 때 예전 형식을 최신 형식으로 자동 변환하는 처리(qt_migrateLegacyBlocks) 추가: (1) 인건비 금액 4칸(소비자단가/소비자가/제안단가/제안금액)을 수정 가능한 입력칸으로 변환 — 기존 금액값은 그대로 보존 (2) 기타 유형 셀을 여러 줄(엔터) 입력 가능한 형태로 변환. 기존 견적 열기→금액 수정→수량 변경 재계산, 기타 유형 줄바꿈·숫자 콤마, 그리고 최신 형식 견적에 부작용이 없는지(회귀)까지 실제 Chromium 브라우저로 전부 검증 완료. -->
@@ -23633,6 +23634,7 @@ function qt_buildDevPdf(){
     });
     return hasCol;
   }).length;
+  var pdfLiveTotal=0; // 편집 화면의 현재 값 기준 합계 (저장된 스냅샷과 어긋나지 않도록)
   var blockIdx=0;
   allIbs.forEach(function(ib){
     var badge=ib.querySelector('.ib-badge');
@@ -23752,12 +23754,16 @@ function qt_buildDevPdf(){
       blocksHtml+='</tr>';
     }
     blocksHtml+='</tbody></table>';
+    pdfLiveTotal+=subAmt; // 화면의 실제 값으로 합계 누적(소계와 항상 일치시키기 위함)
     blockIdx++;
   });
 
   // 합계/할인/최종
   // discAmt 반영한 finalAmt 재계산
-  if(discAmt>0 && totalPropose>0) finalAmt=totalPropose-discAmt;
+  // ⚠ 합계는 반드시 화면의 현재 값에서 계산한다. 예전에는 저장 시점 스냅샷(PDF_DATA)을 썼기 때문에
+  //   금액을 수정하거나 유형을 새로 추가하면 위의 소계와 아래 합계가 서로 다른 값이 되는 문제가 있었음.
+  totalPropose=pdfLiveTotal;
+  finalAmt=totalPropose-discAmt;
   // 마지막 블록과 동일한 colgroup 생성
     // 합계/제안금액 - 마지막 블록과 동일한 colgroup 사용
   var summaryHtml='<table class="qt-doc-tbl" style="width:100%;border-collapse:collapse;font-size:9px;margin-bottom:14px;table-layout:fixed;">'+lastCg;
@@ -24535,15 +24541,31 @@ function qt_savePdf(){
     return;
   }
   // 저장 대화상자의 기본 파일명이 견적서 이름이 되도록 문서 제목을 지정
+  // 저장 대화상자의 기본 파일명은 "문서 제목"을 따라간다.
+  // iframe만 인쇄해도 브라우저는 최상위 문서의 제목을 파일명으로 쓰는 경우가 많으므로
+  // 최상위 문서 제목까지 함께 바꾼 뒤 인쇄하고, 끝나면 원래 제목으로 되돌린다.
+  var prevTitle=document.title;
+  var fname='견적서';
   try{
     var q=window._qt_pdf_q||{};
-    var fname=(typeof qt_pdfFileName==='function'?qt_pdfFileName(q):'견적서')||'견적서';
-    fdoc.title=String(fname).replace(/\.pdf$/i,'');
+    fname=(typeof qt_pdfFileName==='function'?qt_pdfFileName(q):'견적서')||'견적서';
+    fname=String(fname).replace(/\.pdf$/i,'');
   }catch(e){}
+  var restored=false;
+  function _restoreTitle(){
+    if(restored) return; restored=true;
+    try{ document.title=prevTitle; }catch(e){}
+    try{ fr.contentWindow.removeEventListener('afterprint', _restoreTitle); }catch(e){}
+  }
+  try{ document.title=fname; }catch(e){}
+  try{ fdoc.title=fname; }catch(e){}
   try{
+    try{ fr.contentWindow.addEventListener('afterprint', _restoreTitle); }catch(e){}
     fr.contentWindow.focus();
     fr.contentWindow.print(); // 인쇄 대화상자에서 "PDF로 저장" 선택
+    setTimeout(_restoreTitle, 60000); // 안전망: 대화상자를 오래 열어둬도 결국 복구
   }catch(e){
+    _restoreTitle();
     alert('PDF 저장 실행에 실패했습니다: '+e.message);
   }
 }
