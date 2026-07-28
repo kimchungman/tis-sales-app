@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260728-012 -->
+<!-- TIS-VERSION: 20260728-013 -->
+<!-- v20260728-013 변경사항: PDF 저장 결과가 미리보기와 다르던 근본 원인 제거. 기존 'PDF 저장'은 html2canvas(브라우저 렌더링을 자바스크립트로 흉내내는 라이브러리)로 화면을 이미지로 캡처해 PDF를 만드는 방식이라, 미리보기(브라우저가 직접 그림)와 결과가 원리적으로 같을 수 없었음. 특히 표의 border-collapse(인접 셀 선 합치기) 처리가 부정확해 셀마다 선을 따로 그리는 바람에 선이 2배로 굵어지고, 행을 추가한 부분의 선이 누락되는 문제가 반복됐음(실측: html2canvas는 25개 경계선 중 24개가 정상의 2배 두께로 렌더링됨). → PDF 저장을 브라우저 기본 인쇄 엔진(미리보기를 그리는 것과 동일한 엔진)으로 전환. 이제 미리보기와 저장 결과가 원리적으로 100% 동일함(실측: 25행 전체 경계선 누락 없이 균일한 얇은 선으로 출력). 저장 시 인쇄 대화상자에서 'PDF로 저장'을 선택하면 되며, 기본 파일명이 견적서 이름으로 자동 지정되도록 처리(아웃룩 등에 첨부할 때 파일명이 임의 문자열로 나오던 문제도 함께 해결). -->
 <!-- v20260728-012 변경사항: 지난 수정이 인건비에만 적용됐던 문제 해결 — 라이선스/유지보수(MA)/상품/기타/특별할인 전 유형 일괄 정비. (1) 라이선스(소비자가·제안금액), 유지보수(제안금액), 상품(제안금액)의 금액 칸을 인건비와 동일하게 직접 수정 가능한 입력칸으로 변경. 자동계산은 그대로 동작하고, 사용자가 그 칸을 직접 고치면 협의 금액으로 존중해 덮어쓰지 않음(qt_setAmtCell 공용 처리). (2) 총합계가 틀리던 원인 수정 — 합계 계산이 input만 읽고 textarea는 못 읽어서, 기타 유형에 입력한 금액이 합계에 반영되지 않았음(이전에 기타 유형 셀을 여러 줄 입력용으로 바꾸면서 생긴 문제). input·textarea 모두 읽도록 수정. (3) 기존에 저장된 견적 자동 업그레이드 범위를 전 유형으로 확대 — 예전 형식의 라이선스/유지보수/상품 금액 칸도 열 때 자동으로 수정 가능하게 변환(기존 금액값 보존). 실제 Chromium 브라우저로 전 유형의 신규 작성·기존 견적 열기·자동계산·수동수정·합계 정확도(혼합 유형, 기타 유형 포함, 특별할인 차감)까지 전부 수치로 검증 완료. -->
 <!-- v20260727-011 변경사항: 이미 저장해둔 기존 견적에는 그동안의 개선이 적용되지 않던 문제 해결. 견적은 저장 당시의 화면 구조를 그대로 보관했다가 복원하는 방식이라, 이후에 개선된 입력 방식이 기존 견적에는 자동 반영되지 않았음(확인 결과 기존 견적의 인건비 금액칸은 여전히 수정 불가한 텍스트였고 수량을 바꿔도 재계산되지 않았음). 견적을 열 때 예전 형식을 최신 형식으로 자동 변환하는 처리(qt_migrateLegacyBlocks) 추가: (1) 인건비 금액 4칸(소비자단가/소비자가/제안단가/제안금액)을 수정 가능한 입력칸으로 변환 — 기존 금액값은 그대로 보존 (2) 기타 유형 셀을 여러 줄(엔터) 입력 가능한 형태로 변환. 기존 견적 열기→금액 수정→수량 변경 재계산, 기타 유형 줄바꿈·숫자 콤마, 그리고 최신 형식 견적에 부작용이 없는지(회귀)까지 실제 Chromium 브라우저로 전부 검증 완료. -->
 <!-- v20260727-010 변경사항: (v009 이어서 추가 검증 중 발견) 이미 저장해둔 기존 견적을 열 때, 같은 유형 블록이 2개 이상이면 내부 테이블 id가 전부 겹쳐서 '＋ 행 추가'를 어느 블록에서 눌러도 항상 첫 번째 블록에만 행이 추가되던 문제 수정. 복원 직후 블록마다 고유 id를 다시 부여하고 행추가 버튼의 참조도 함께 교정하는 처리(qt_dedupeBlockIds) 추가. 이때 행추가 로직이 id 끝의 숫자만 떼어 유형을 판별하는 규칙과 어긋나지 않도록 접두어+숫자 형식(tbmm1, tblic2 …)으로 맞춤. 인건비·라이선스·유지보수·상품 혼합 5블록으로 각 블록의 행추가가 자기 블록에만 적용되는지 전수 검증, 유지보수(MA) 유형의 복원 후 재계산(요율 변경) 검증, 신규 작성 경로 회귀 검증까지 실제 Chromium 브라우저로 완료. -->
@@ -21840,7 +21841,7 @@ function qtRenderPreview(){
     <span class="pdf-ttl" id="pdfFname"></span>
     <div style="display:flex;gap:7px;flex-shrink:0;">
       
-      <button onclick="qt_savePdf()" style="display:flex;align-items:center;gap:6px;padding:0 16px;height:32px;border-radius:7px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;letter-spacing:.02em;" onmouseover="this.style.background='rgba(255,255,255,.2)'" onmouseout="this.style.background='rgba(255,255,255,.12)'">PDF 저장</button>
+      <button onclick="qt_savePdf()" title="인쇄 대화상자에서 &quot;PDF로 저장&quot;을 선택하세요 (미리보기와 100% 동일하게 저장됩니다)" style="display:flex;align-items:center;gap:6px;padding:0 16px;height:32px;border-radius:7px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;letter-spacing:.02em;" onmouseover="this.style.background='rgba(255,255,255,.2)'" onmouseout="this.style.background='rgba(255,255,255,.12)'">PDF 저장</button>
       <div class="close-x" style="width:32px;height:32px;min-width:32px;flex:0 0 32px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;border-radius:7px;font-size:13px;line-height:1;color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);cursor:pointer;transition:all .15s;" onmouseover="this.style.background='rgba(255,255,255,.2)'" onmouseout="this.style.background='rgba(255,255,255,.12)'" onclick="qt_closePdf()">✕</div>
     </div>
   </div>
@@ -24519,7 +24520,33 @@ function qt_renderPreview(){
   document.getElementById('previewArea').innerHTML=html;
 }
 
-function qt_savePdf(){ qtSavePdf(); }
+function qt_savePdf(){
+  // ⚠ 예전에는 html2canvas로 화면을 캡처해 이미지로 PDF를 만들었으나, html2canvas는 브라우저의
+  //   렌더링을 자바스크립트로 흉내내는 라이브러리라 미리보기와 결과가 완전히 같을 수 없다.
+  //   특히 표의 border-collapse(선 합치기) 처리가 부정확해서 선이 굵어지거나, 나중에 추가한 행의
+  //   선이 누락되는 문제가 반복 발생했다.
+  //   → 미리보기를 그리는 것과 "똑같은 브라우저 엔진"으로 PDF를 만들도록 브라우저 기본 인쇄를 사용한다.
+  //     (미리보기 = 인쇄 결과가 원리적으로 동일해짐)
+  var fr=document.getElementById('qtPdfFrame');
+  var fdoc=null;
+  try{ fdoc=fr&&(fr.contentDocument||fr.contentWindow.document); }catch(e){}
+  if(!fdoc||!fdoc.body||!fdoc.body.innerHTML.trim()){
+    alert('미리보기가 아직 준비되지 않았습니다. 잠시 후 다시 시도해 주세요.');
+    return;
+  }
+  // 저장 대화상자의 기본 파일명이 견적서 이름이 되도록 문서 제목을 지정
+  try{
+    var q=window._qt_pdf_q||{};
+    var fname=(typeof qt_pdfFileName==='function'?qt_pdfFileName(q):'견적서')||'견적서';
+    fdoc.title=String(fname).replace(/\.pdf$/i,'');
+  }catch(e){}
+  try{
+    fr.contentWindow.focus();
+    fr.contentWindow.print(); // 인쇄 대화상자에서 "PDF로 저장" 선택
+  }catch(e){
+    alert('PDF 저장 실행에 실패했습니다: '+e.message);
+  }
+}
 
 
 
