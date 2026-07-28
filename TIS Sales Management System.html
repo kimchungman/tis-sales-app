@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- TIS-VERSION: 20260727-010 -->
+<!-- TIS-VERSION: 20260727-011 -->
+<!-- v20260727-011 변경사항: 이미 저장해둔 기존 견적에는 그동안의 개선이 적용되지 않던 문제 해결. 견적은 저장 당시의 화면 구조를 그대로 보관했다가 복원하는 방식이라, 이후에 개선된 입력 방식이 기존 견적에는 자동 반영되지 않았음(확인 결과 기존 견적의 인건비 금액칸은 여전히 수정 불가한 텍스트였고 수량을 바꿔도 재계산되지 않았음). 견적을 열 때 예전 형식을 최신 형식으로 자동 변환하는 처리(qt_migrateLegacyBlocks) 추가: (1) 인건비 금액 4칸(소비자단가/소비자가/제안단가/제안금액)을 수정 가능한 입력칸으로 변환 — 기존 금액값은 그대로 보존 (2) 기타 유형 셀을 여러 줄(엔터) 입력 가능한 형태로 변환. 기존 견적 열기→금액 수정→수량 변경 재계산, 기타 유형 줄바꿈·숫자 콤마, 그리고 최신 형식 견적에 부작용이 없는지(회귀)까지 실제 Chromium 브라우저로 전부 검증 완료. -->
 <!-- v20260727-010 변경사항: (v009 이어서 추가 검증 중 발견) 이미 저장해둔 기존 견적을 열 때, 같은 유형 블록이 2개 이상이면 내부 테이블 id가 전부 겹쳐서 '＋ 행 추가'를 어느 블록에서 눌러도 항상 첫 번째 블록에만 행이 추가되던 문제 수정. 복원 직후 블록마다 고유 id를 다시 부여하고 행추가 버튼의 참조도 함께 교정하는 처리(qt_dedupeBlockIds) 추가. 이때 행추가 로직이 id 끝의 숫자만 떼어 유형을 판별하는 규칙과 어긋나지 않도록 접두어+숫자 형식(tbmm1, tblic2 …)으로 맞춤. 인건비·라이선스·유지보수·상품 혼합 5블록으로 각 블록의 행추가가 자기 블록에만 적용되는지 전수 검증, 유지보수(MA) 유형의 복원 후 재계산(요율 변경) 검증, 신규 작성 경로 회귀 검증까지 실제 Chromium 브라우저로 완료. -->
 <!-- v20260727-009 변경사항: 저장된 견적을 다시 열어 수정하려 할 때, 인건비 유형에서 수량/금액을 바꿔도 재계산이 안 되고 금액 수정도 먹통이던 문제의 진짜 원인 수정. 원인은 새 블록 추가 시 걸어두는 "50ms 뒤 초기계산" 타이머가, 견적을 불러올 때도 그대로 걸려서 복원이 끝난 직후 뒤늦게 실행되며 방금 복원한 금액(수동 수정분 포함)을 등급표 기본값(대부분 0)으로 덮어써버렸던 것 — 그 결과 단가가 0이 되어 이후 수량을 바꿔도 재계산 조건을 통과하지 못해 아무 반응이 없었던 것. 견적 복원 시엔 이 초기화 타이머를 아예 걸지 않도록 수정(qt_addBlock에 skipInit 옵션 추가). 덤으로 인건비/라이선스/유지보수/상품 블록의 내부 tbody id가 같은 유형을 여러 개 추가하면 전부 동일한 값으로 겹치던 문제(치환 규칙 오탈자)도 함께 수정 — 이제 블록마다 고유 id 부여. 실제 Chromium 브라우저로 저장→복원→금액 유지→재계산→다중 블록 독립성까지 전 과정 직접 시뮬레이션해 수치로 검증 완료. -->
 <!-- v20260727-008 변경사항: (1) 견적항목(모든 유형: 인건비/라이선스/유지보수/상품/기타)의 구분·역할·품목 등 textarea가, 견적을 다시 열었을 때 여러 줄 입력이 한 줄로 눌려 잘리던 문제 수정 — 원인은 견적항목 탭이 화면에 숨겨진(display:none) 상태에서 높이를 계산해 항상 0에 가깝게 측정됐던 것. 조건·비고 탭과 동일하게, 견적항목 탭에 실제로 진입하는 시점에 모든 textarea 높이를 재계산하도록 수정. (2) 열너비 조절 두 가지 문제 수정: ① 같은 유형 블록을 여러 개 추가했을 때 하나의 너비를 조절하면 같은 유형의 다른 블록들도 같이 바뀌던 동기화 로직 제거 — 이제 블록마다 완전히 독립적으로 조절됨. ② 저장된 견적을 다시 열면 조절 손잡이(핸들)는 보이는데 클릭해도 안 움직이던 문제 수정 — 복원된 손잡이는 HTML만 복사되고 클릭 이벤트는 안 딸려오는 빈 껍데기였던 것을, 항상 새로 만들어 붙이도록 변경. 실제 Chromium 브라우저(Playwright)로 드래그 동작·복원 후 동작·textarea 높이 재계산을 모두 직접 시뮬레이션해 검증 완료. -->
@@ -23161,6 +23162,45 @@ function qt_initColResize(){
 // 예전 버전으로 저장된 견적은 블록마다 tbody id가 'tbmmBC'처럼 동일하게 굳어 있어,
 // 같은 유형 블록이 2개 이상이면 id가 겹침 → '＋ 행 추가'가 항상 첫 번째 블록에만 행을 추가하는 문제 발생.
 // 복원 직후 블록별로 고유 id를 다시 부여하고, 그 블록의 행추가 버튼이 참조하는 id도 같이 교정한다.
+// ── 예전 형식으로 저장된 견적을 최신 형식으로 자동 업그레이드 ──
+// 견적은 저장 당시의 HTML을 그대로 보관했다가 복원하는 구조라, 그 이후에 개선된 입력 방식은
+// 기존 견적에 자동으로 적용되지 않는다. 복원 직후 아래 두 가지를 최신 형식으로 변환한다.
+//  (1) 인건비: 금액 4칸(소비자단가/소비자가/제안단가/제안금액)이 수정 불가한 '텍스트'로 굳어 있던 것 → 입력칸으로 변환
+//  (2) 기타: 셀이 한 줄짜리 input이라 엔터(줄바꿈)가 안 되던 것 → 여러 줄 가능한 textarea로 변환
+// 표시되던 값은 그대로 옮기므로 금액이 바뀌거나 사라지지 않는다.
+function qt_migrateLegacyBlocks(){
+  try{
+    // (1) 인건비 금액 칸: td 안에 input이 없으면(=옛 텍스트 형식) input으로 교체
+    document.querySelectorAll('#blockArea td.gc, #blockArea td.gca, #blockArea td.gp, #blockArea td.gpa').forEach(function(td){
+      if(td.querySelector('input')) return; // 이미 최신 형식
+      var val=(td.textContent||'').trim();
+      if(val==='—') val='';
+      td.style.textAlign='right';
+      td.style.padding='2px';
+      var inp=document.createElement('input');
+      inp.className='ii amt-inp';
+      inp.setAttribute('style','text-align:right;width:100%;');
+      inp.setAttribute('placeholder','0');
+      inp.setAttribute('oninput','qt_calcMM(this)');
+      inp.value=val;
+      td.textContent='';
+      td.appendChild(inp);
+    });
+    // (2) 기타 유형 셀: 한 줄 input → 여러 줄 textarea
+    document.querySelectorAll('#blockArea table.cust-tbl tbody td > input.ii').forEach(function(inp){
+      var td=inp.parentNode;
+      var ta=document.createElement('textarea');
+      ta.className=inp.className;
+      ta.setAttribute('rows','1');
+      ta.setAttribute('placeholder', inp.getAttribute('placeholder')||'입력');
+      ta.setAttribute('style','resize:none;overflow:hidden;width:100%;');
+      ta.setAttribute('oninput','qt_calcCustom(this)');
+      ta.value=inp.value;
+      td.replaceChild(ta, inp);
+      if(typeof qt_autoH==='function') qt_autoH(ta);
+    });
+  }catch(e){ console.warn('[견적] 기존 견적 형식 업그레이드 중 문제', e); }
+}
 function qt_dedupeBlockIds(){
   var seq=0;
   document.querySelectorAll('#blockArea .ib').forEach(function(ib){
@@ -24064,6 +24104,7 @@ function _qt_fillModalFromData(q,mode){
         lastBlk.querySelectorAll('textarea').forEach(function(ta){ if(typeof qt_autoH==='function') qt_autoH(ta); });
       }
     });
+    qt_migrateLegacyBlocks(); // 예전 형식 저장분을 최신 입력 형식으로 업그레이드 (금액 수정/줄바꿈 가능하게)
     qt_dedupeBlockIds(); // 기존 저장분의 tbody id 중복 해소 (행 추가가 엉뚱한 블록에 붙는 문제 방지)
     qt_initColResize(); // 조절 핸들 부착 (복원된 견적별 colgroup은 그대로 존중)
     qt_normalizeAlign(); // 금액 열 우측 정렬 보정
