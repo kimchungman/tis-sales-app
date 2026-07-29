@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-024 -->
+<!-- v20260728-024 변경사항: 접속현황 팝업에서 게스트 직책이 나오면 "게스트" 표시가 사라지던 문제 수정(예: 강규승 사업부장 → "사업부장"만 보이고 게스트인지 구분 안 됨). 담당자와 동일하게 이름 옆에 같은 폰트로 직책을 붙여 표시하고("강규승 사업부장"), 게스트임을 나타내는 배지는 직책 유무와 무관하게 항상 별도로 표시하도록 수정. -->
 <!-- TIS-VERSION: 20260728-023 -->
 <!-- v20260728-023 변경사항: 배포(CDN) 반영 여부를 바로 확인할 수 있도록 상단바에 버전 배지 상시 노출 추가. 지금까지는 견적서 PDF 미리보기 화면에서만 버전을 확인할 수 있어서, 코드 수정이 실제로 배포됐는지 확인하려면 견적서까지 들어가야 했음 — 로그인 화면 포함 앱 어디서나 상단 "SP 연결됨" 배지 옆에 v20260728-XXX 형태로 항상 표시되도록 함. -->
 <!-- TIS-VERSION: 20260728-022 -->
@@ -10245,9 +10247,13 @@ function updateAccessDisplay(){
   if(!listEl) return;
 
   function makeRow(entry, opacity){
-    var _guestLabel = (entry.title&&entry.type==='guest') ? entry.title : '게스트';
+    // ⚠ 예전에는 배지 하나로 "직책" 또는 "게스트" 둘 중 하나만 보여줘서, 직책이 확인되는 순간
+    //   게스트라는 표시 자체가 사라졌음(강규승 사업부장 → "사업부장"만 보이고 게스트인지 안 보임).
+    //   → 담당자와 동일하게 이름 옆에 같은 폰트로 직책을 붙이고, 게스트 배지는 직책 유무와
+    //   상관없이 항상 별도로 표시한다.
+    var _dispName = entry.name + (entry.type==='guest' && entry.title ? ' '+entry.title : '');
     var badge = (entry.type==='guest')
-      ? '<span style="font-size:10px;color:#94A3B8;border:1px solid #E2E8F0;border-radius:4px;padding:1px 5px;margin-left:4px;">'+_guestLabel+'</span>'
+      ? '<span style="font-size:10px;color:#94A3B8;border:1px solid #E2E8F0;border-radius:4px;padding:1px 5px;margin-left:4px;">게스트</span>'
       : (entry.type==='admin')
       ? '<span style="font-size:10px;color:#7C3AED;border:1px solid #DDD6FE;border-radius:4px;padding:1px 5px;margin-left:4px;">관리자</span>'
       : '';
@@ -10259,7 +10265,7 @@ function updateAccessDisplay(){
       : '<span style="color:#94A3B8;font-size:11px;">'+entry.time+'</span>';
     return '<div style="display:flex;align-items:center;padding:7px 14px;border-bottom:1px solid #F1F5F9;opacity:'+(opacity||1)+';">'
       + dot
-      + '<span style="font-weight:600;font-size:12px;flex:1;">'+entry.name+badge+'</span>'
+      + '<span style="font-weight:600;font-size:12px;flex:1;">'+_dispName+badge+'</span>'
       + timeStr
       + '</div>';
   }
