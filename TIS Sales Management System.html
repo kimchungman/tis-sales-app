@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-023 -->
+<!-- v20260728-023 변경사항: 배포(CDN) 반영 여부를 바로 확인할 수 있도록 상단바에 버전 배지 상시 노출 추가. 지금까지는 견적서 PDF 미리보기 화면에서만 버전을 확인할 수 있어서, 코드 수정이 실제로 배포됐는지 확인하려면 견적서까지 들어가야 했음 — 로그인 화면 포함 앱 어디서나 상단 "SP 연결됨" 배지 옆에 v20260728-XXX 형태로 항상 표시되도록 함. -->
 <!-- TIS-VERSION: 20260728-022 -->
 <!-- v20260728-022 변경사항: 접속현황(상단 팝업)에서 등록된 게스트도 직책 없이 이름만 나오던 문제의 진짜 근본 원인 발견·수정. v020에서 접속이력 탭(_renderAccessLog)에는 직책 조회 로직을 넣었지만, 상단 접속현황 팝업(updateAccessDisplay)은 건드리지 않았음 — 이 팝업의 makeRow 함수는 entry.title 값을 읽어서 배지에 표시하는데, 정작 userMap 항목을 만드는 자리에서 title 필드 자체를 한 번도 채운 적이 없어 항상 undefined였음. 즉 데이터가 있어도 애초에 표시될 수 없는 구조였음. 접속이력 탭과 동일한 조회 순서(①기록값 → ②등록 담당자 직책표 → ③게스트 허용목록 이메일/이름 대조)로 title을 채우도록 수정. -->
 <!-- TIS-VERSION: 20260728-021 -->
@@ -3894,6 +3896,8 @@ window._updateSidebarByRole=function(){
   <!-- SP 상태 -->
   <div id="sp-status" style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;white-space:nowrap;flex-shrink:0;"></div>
   <span id="sp-status-badge" style="display:none;"></span>
+  <!-- 배포 버전 배지 (CDN 반영 여부 확인용) -->
+  <span id="tis-ver-badge" style="font-size:9.5px;color:#CBD5E1;white-space:nowrap;flex-shrink:0;margin-left:2px;font-family:Consolas,monospace;" title="현재 배포된 앱 버전 - 캐시/CDN이 최신 수정을 반영했는지 확인할 때 사용"></span>
 
   <!-- 자동저장 -->
   <span id="save-indicator" style="font-size:11px;color:#94A3B8;white-space:nowrap;flex-shrink:0;margin-left:4px;"></span>
@@ -15061,6 +15065,15 @@ async function _connectSP(app, account){
 
 // 페이지 로드 시 (redirect 복귀 처리)
 document.addEventListener('DOMContentLoaded', function(){
+  // 배포 버전 배지 채우기 (CDN/캐시 반영 여부를 바로 확인할 수 있도록 상단바에 상시 노출)
+  try{
+    var _vEl = document.getElementById('tis-ver-badge');
+    if(_vEl){
+      var _vm = document.documentElement.innerHTML.match(/TIS-VERSION: ([\d-]+)/);
+      window._TIS_VER = _vm ? _vm[1] : '?';
+      _vEl.textContent = 'v' + window._TIS_VER;
+    }
+  }catch(e){}
   _getMSAL().then(async function(app){
     var rr=null;
     try{ rr=await app.handleRedirectPromise(); }catch(e){}
