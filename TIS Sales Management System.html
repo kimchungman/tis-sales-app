@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-026 -->
+<!-- v20260728-026 변경사항: 상단바 디자인을 접속현황/알림/새로고침 아이콘 버튼과 통일. (1) "SP 연결됨" 알약 배지를 없애고 동일한 30x30 아이콘 버튼 + 상태 점(연결:초록/연결중:주황/미연결:빨강)으로 교체. (2) 배포 버전 텍스트를 화면에서 없애고, SP 상태 아이콘에 마우스를 올렸을 때 툴팁으로만 확인 가능하도록 변경(배포 확인 기능 자체는 유지). (3) "자동저장됨" 텍스트도 같은 스타일의 아이콘 버튼으로 교체 - 점 색상으로 저장 성공/실패를 표시하고 저장 시각은 툴팁에 담음. 저장 성공 표시는 4초 후 옅어져서 상시 강조하지 않음. -->
+<!-- TIS-VERSION: 20260728-025 -->
+<!-- v20260728-025 변경사항: 통합 대시보드 "사업개발부 전체" 탭에서 숨김 처리한 팀/담당자의 정보(이름·실적)가 계속 노출되던 문제 수정. 팀 탭 자체는 정상적으로 숨겨졌지만(_visibleTeams 적용됨), 담당자별 실적 카드(renderRepSummary)는 '전체' 탭일 때 숨긴 팀까지 포함한 TEAMS 전체를 그대로 순회했고, 개별 담당자 숨김(authCfg.hiddenReps)도 걸러내지 않고 TEAM_REPS를 그대로 사용했음 — 이 두 필터 누락이 근본 원인. 대시보드 이슈 목록(팀 선택 시)과 담당자별 매출 차트(도넛/막대)도 동일한 문제가 있어 함께 수정. 이제 모든 대시보드 섹션이 다른 메뉴와 동일하게 _visibleTeams/_visibleReps를 거치도록 통일. -->
 <!-- TIS-VERSION: 20260728-024 -->
 <!-- v20260728-024 변경사항: 접속현황 팝업에서 게스트 직책이 나오면 "게스트" 표시가 사라지던 문제 수정(예: 강규승 사업부장 → "사업부장"만 보이고 게스트인지 구분 안 됨). 담당자와 동일하게 이름 옆에 같은 폰트로 직책을 붙여 표시하고("강규승 사업부장"), 게스트임을 나타내는 배지는 직책 유무와 무관하게 항상 별도로 표시하도록 수정. -->
 <!-- TIS-VERSION: 20260728-023 -->
@@ -3895,14 +3899,36 @@ window._updateSidebarByRole=function(){
     <div id="pg-sub" style="font-size:10.5px;color:#94A3B8;white-space:nowrap;"></div>
   </div>
 
-  <!-- SP 상태 -->
-  <div id="sp-status" style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;white-space:nowrap;flex-shrink:0;"></div>
-  <span id="sp-status-badge" style="display:none;"></span>
-  <!-- 배포 버전 배지 (CDN 반영 여부 확인용) -->
-  <span id="tis-ver-badge" style="font-size:9.5px;color:#CBD5E1;white-space:nowrap;flex-shrink:0;margin-left:2px;font-family:Consolas,monospace;" title="현재 배포된 앱 버전 - 캐시/CDN이 최신 수정을 반영했는지 확인할 때 사용"></span>
+  <!-- SP 상태 (다른 아이콘 버튼과 통일된 디자인) -->
+  <div style="position:relative;flex-shrink:0;">
+    <button id="sp-status" title="SP 연결 상태 확인 중"
+      style="width:30px;height:30px;border-radius:6px;border:none!important;background:transparent!important;
+      display:flex;align-items:center;justify-content:center;cursor:default;
+      color:#64748B;transition:background .12s,color .12s;position:relative;overflow:visible;
+      box-shadow:none!important;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10Z"/>
+      </svg>
+      <span id="sp-status-dot" style="position:absolute;top:5px;right:5px;width:7px;height:7px;border-radius:50%;background:#94A3B8;border:2px solid #fff;transition:background .15s;"></span>
+    </button>
+    <span id="sp-status-badge" style="display:none;"></span>
+  </div>
 
-  <!-- 자동저장 -->
-  <span id="save-indicator" style="font-size:11px;color:#94A3B8;white-space:nowrap;flex-shrink:0;margin-left:4px;"></span>
+  <!-- 자동저장 (다른 아이콘 버튼과 통일된 디자인) -->
+  <div style="position:relative;flex-shrink:0;">
+    <button id="save-indicator" title="자동저장"
+      style="width:30px;height:30px;border-radius:6px;border:none!important;background:transparent!important;
+      display:flex;align-items:center;justify-content:center;cursor:default;
+      color:#64748B;transition:background .12s,color .12s;position:relative;overflow:visible;
+      box-shadow:none!important;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/>
+        <path d="M17 21v-8H7v8"/>
+        <path d="M7 3v5h8"/>
+      </svg>
+      <span id="save-indicator-dot" style="position:absolute;top:5px;right:5px;width:7px;height:7px;border-radius:50%;background:transparent;border:2px solid #fff;transition:background .15s;"></span>
+    </button>
+  </div>
 
   <!-- 숨김 요소 (JS 내부 참조용) -->
   <input type="date" id="mtg-date" style="position:absolute;visibility:hidden;pointer-events:none;">
@@ -6625,14 +6651,18 @@ function renderRepSummary(){
   if(typeof currentDashTeam!=='undefined'&&currentDashTeam!=='all'){
     teamsToShow=[currentDashTeam];
   } else {
-    teamsToShow=TEAMS.slice();
+    // ⚠ 예전에는 TEAMS.slice()로 숨긴 팀까지 포함한 전체 팀을 그대로 순회해서,
+    //   팀 탭 자체는 숨겨졌지만 이 카드 목록에는 숨긴 팀 소속 담당자가 그대로 노출됐음.
+    teamsToShow=(typeof _visibleTeams==='function')?_visibleTeams():TEAMS.slice();
   }
   var icons=[];
   var teamBgColors=['#EFF6FF','#F0FDF4','#FFF7ED','#FDF4FF','#FFF1F2','#F0FDFA'];
   var teamBorderColors=['#BFDBFE','#A7F3D0','#FED7AA','#E9D5FF','#FECDD3','#A7F3D0'];
   var html='';
   teamsToShow.forEach(function(team, ti){
-    var reps=(TEAM_REPS[team]||[]).filter(function(r){return store.reps[r];});
+    // ⚠ TEAM_REPS[team]을 필터링 없이 그대로 썼던 부분 - 팀 자체는 안 숨겼지만
+    //   개별적으로 숨김 처리된 담당자(authCfg.hiddenReps)까지 카드에 나타났던 원인.
+    var reps=((typeof _visibleReps==='function')?_visibleReps(TEAM_REPS[team]||[]):(TEAM_REPS[team]||[])).filter(function(r){return store.reps[r];});
     if(!reps.length) return;
     var bg=teamBgColors[ti%teamBgColors.length];
     var border=teamBorderColors[ti%teamBorderColors.length];
@@ -6688,7 +6718,7 @@ function renderDashIssues(){
       html+='</div>';
     });
   } else {
-    var reps=(TEAM_REPS[currentDashTeam]||[]).filter(function(r){return store.reps[r];});
+    var reps=((typeof _visibleReps==='function')?_visibleReps(TEAM_REPS[currentDashTeam]||[]):(TEAM_REPS[currentDashTeam]||[])).filter(function(r){return store.reps[r];});
     reps.forEach(function(rep){
       var repIssues=(store.issues||[]).filter(function(i){return i.rep===rep;});
       if(!repIssues.length) return;
@@ -6835,7 +6865,7 @@ function renderRepChart(){
       var labels=[],data=[],colors=[];
       var teamPalette=['#1E5FBE','#00A882','#C05000','#7B2FBE','#C0392B','#8E44AD','#16A085','#D35400'];
       ((typeof _visibleTeams==='function')?_visibleTeams():TEAMS).forEach(function(team,ti){
-        var reps=(TEAM_REPS[team]||[]).filter(function(r){return store.reps[r];});
+        var reps=((typeof _visibleReps==='function')?_visibleReps(TEAM_REPS[team]||[]):(TEAM_REPS[team]||[])).filter(function(r){return store.reps[r];});
         var total=reps.reduce(function(s,r){
           return s+(store.reps[r].actual||[]).reduce(function(a,b){return a+(b||0);},0);
         },0);
@@ -6886,8 +6916,7 @@ function renderRepChart(){
     } else {
       // 담당자별 막대
       var team=currentDashTeam;
-      var reps=(TEAM_REPS[team]||[]).filter(function(r){return store.reps[r];});
-      var repLabels=reps;
+      var reps=((typeof _visibleReps==='function')?_visibleReps(TEAM_REPS[team]||[]):(TEAM_REPS[team]||[])).filter(function(r){return store.reps[r];});
       var planData=reps.map(function(r){return (store.reps[r].plan||[]).reduce(function(a,b){return a+(b||0);},0);});
       var actData=reps.map(function(r){return (store.reps[r].actual||[]).reduce(function(a,b){return a+(b||0);},0);});
 
@@ -11498,12 +11527,19 @@ function autoSave(){
 
 function updateSaveIndicator(success){
   const el = document.getElementById('save-indicator');
+  const dot = document.getElementById('save-indicator-dot');
   if(!el) return;
   const now = new Date();
   const timeStr = now.getHours()+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
-  el.innerHTML = success
-    ? `<span style="color:#00C9A7;">● 자동저장됨 ${timeStr}</span>`
-    : `<span style="color:#E84545;">● 저장 실패</span>`;
+  if(dot) dot.style.background = success ? '#22C55E' : '#EF4444';
+  el.title = success ? ('자동저장됨 '+timeStr) : '저장 실패';
+  // 저장 성공 표시는 잠시 후 옅어지도록(다른 아이콘처럼 상시 강조하지 않음)
+  if(success){
+    if(window._saveDotFadeTimer) clearTimeout(window._saveDotFadeTimer);
+    window._saveDotFadeTimer = setTimeout(function(){
+      if(dot) dot.style.background = 'transparent';
+    }, 4000);
+  }
 }
 
 function showToast(msg, type='info'){
@@ -11865,12 +11901,19 @@ function _setSPStatus(state) {
     error:      '#DA1E2840',
     offline:    '#DA1E2840'
   }[state] || '#DA1E2840';
+  var dotCol = {
+    connecting: '#F59E0B',
+    connected:  '#22C55E',
+    error:      '#EF4444',
+    offline:    '#EF4444'
+  }[state] || '#EF4444';
   var el = document.getElementById('sp-status');
+  var dot = document.getElementById('sp-status-dot');
+  if(dot) dot.style.background = dotCol;
   if(el){
-    el.textContent = label;
-    el.style.color = textCol;
-    el.style.background = bgCol;
-    el.style.border = '1px solid '+borderCol;
+    // 버전은 화면에 상시 노출하지 않고, 툴팁(마우스 오버)에서만 확인 - 배포 확인이 필요할 때만 사용
+    var _verSuffix = window._TIS_VER ? (' · v'+window._TIS_VER) : '';
+    el.title = label + _verSuffix;
   }
   // 구 badge 호환
   var bdg = document.getElementById('sp-status-badge');
@@ -15071,14 +15114,10 @@ async function _connectSP(app, account){
 
 // 페이지 로드 시 (redirect 복귀 처리)
 document.addEventListener('DOMContentLoaded', function(){
-  // 배포 버전 배지 채우기 (CDN/캐시 반영 여부를 바로 확인할 수 있도록 상단바에 상시 노출)
+  // 배포 버전 계산 (화면에 상시 노출하지 않고, SP 상태 아이콘 툴팁에서 필요할 때 확인)
   try{
-    var _vEl = document.getElementById('tis-ver-badge');
-    if(_vEl){
-      var _vm = document.documentElement.innerHTML.match(/TIS-VERSION: ([\d-]+)/);
-      window._TIS_VER = _vm ? _vm[1] : '?';
-      _vEl.textContent = 'v' + window._TIS_VER;
-    }
+    var _vm = document.documentElement.innerHTML.match(/TIS-VERSION: ([\d-]+)/);
+    window._TIS_VER = _vm ? _vm[1] : '?';
   }catch(e){}
   _getMSAL().then(async function(app){
     var rr=null;
