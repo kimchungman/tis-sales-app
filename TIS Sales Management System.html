@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-029 -->
+<!-- v20260728-029 변경사항: 상단바에서 SP 상태 아이콘과 접속현황/알림/새로고침 사이에 있던 세로 구분선 제거. SP 아이콘이 이제 나머지 3개와 완전히 동일한 디자인(크기·hover·간격)이라, 구분선이 있으면 오히려 같은 종류를 억지로 나눠놓은 것처럼 보여서 하나의 아이콘 그룹으로 통일. -->
 <!-- TIS-VERSION: 20260728-028 -->
 <!-- v20260728-028 변경사항: v025에서 대시보드 숨김 필터를 고치던 중 실수로 repLabels 변수 선언 줄을 함께 지워버려서, 통합 대시보드 팀 탭의 "담당자별 매출 비중" 막대 차트가 아예 렌더링되지 않던 회귀 버그 수정(변수 미정의로 렌더 함수가 중간에 조용히 실패했음). 겸사겸사 차트 제목도 항상 "팀별 매출 비중"으로 고정돼 있던 것을, 전체 탭에서는 "팀별 매출 비중"(도넛), 특정 팀 탭에서는 "담당자별 매출 비중"(막대)으로 탭에 맞게 바뀌도록 수정. -->
 <!-- TIS-VERSION: 20260728-027 -->
@@ -3922,8 +3924,7 @@ window._updateSidebarByRole=function(){
   <input type="date" id="mtg-date" style="position:absolute;visibility:hidden;pointer-events:none;">
   <button id="print-btn" onclick="window.print()" style="position:absolute;visibility:hidden;pointer-events:none;"></button>
 
-  <!-- 구분선 -->
-  <div class="tb-sep"></div>
+  <!-- 구분선 제거됨 - SP 상태 아이콘이 다른 아이콘과 통일된 디자인이라 하나의 그룹으로 배치 -->
 
   <!-- 접속현황 버튼 (관리자만 표시) -->
   <div style="position:relative;flex-shrink:0;">
