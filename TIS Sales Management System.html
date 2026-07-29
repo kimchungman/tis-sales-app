@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-022 -->
+<!-- v20260728-022 변경사항: 접속현황(상단 팝업)에서 등록된 게스트도 직책 없이 이름만 나오던 문제의 진짜 근본 원인 발견·수정. v020에서 접속이력 탭(_renderAccessLog)에는 직책 조회 로직을 넣었지만, 상단 접속현황 팝업(updateAccessDisplay)은 건드리지 않았음 — 이 팝업의 makeRow 함수는 entry.title 값을 읽어서 배지에 표시하는데, 정작 userMap 항목을 만드는 자리에서 title 필드 자체를 한 번도 채운 적이 없어 항상 undefined였음. 즉 데이터가 있어도 애초에 표시될 수 없는 구조였음. 접속이력 탭과 동일한 조회 순서(①기록값 → ②등록 담당자 직책표 → ③게스트 허용목록 이메일/이름 대조)로 title을 채우도록 수정. -->
 <!-- TIS-VERSION: 20260728-021 -->
 <!-- v20260728-021 변경사항: (1) 게스트 접속이력이 SharePoint에 저장되지 않던 진짜 원인 발견·수정 — v019/v018에서 다룬 '연결 전 대기열' 케이스는 실제로는 문제가 아니었음(호출 시점에 이미 연결 완료 상태였음). 진짜 원인은 _spSaveItem이 게스트 세션에서 403 오류를 받으면 콘솔 경고조차 없이 무조건 조용히 종료(return)하도록 되어 있던 코드였음 — 저장이 실패해도 호출자는 성공한 줄 알고 넘어갔음. 이제 게스트 403도 반드시 경고를 남기고, 저장 성공/실패(true/false)를 호출자에게 정확히 알리도록 수정. _recordAccessLog는 실패 시 이를 확인해 재시도 대기열에 넣도록 개선(추가 안전망). ⚠ 403이 실제 SharePoint 리스트 권한 문제라면 게스트 계정에 쓰기 권한을 부여해야 근본 해결됨 — 이제 콘솔에 명확한 원인이 남으므로 다음 재현 시 F12 콘솔에서 정확한 오류를 확인 가능. (2) 게스트 직책이 표시되지 않던 문제 수정 — MS 로그인 후 SharePoint 연결(_connectSP)은 로그인창을 막지 않으려고 리스트 GUID 조회(_initSP)를 백그라운드로만 실행하고 기다리지 않는데, 게스트 화면 렌더 함수는 이 백그라운드 작업이 끝나기도 전에 곧장 화면을 그려 guestAllowList가 비어있는 상태로 이메일 매칭을 시도했음 → 매칭 실패로 직책 미표시. 이제 SP 연결이 준비될 때까지 최대 8초 대기 후 목록을 로드하고 화면을 그리도록 수정. -->
 <!-- TIS-VERSION: 20260728-020 -->
@@ -10182,12 +10184,30 @@ function updateAccessDisplay(){
       // displayKey: 게스트는 이름, 담당자는 REPS_ALL 기준 정규화
       var displayKey = _isGuestEntry ? ('guest_'+(rep||msAcc||'unknown')) : (_matchedRep || rep || msAcc || 'unknown');
       var type = _isGuestEntry ? 'guest' : (isRepUser ? 'rep' : (isAdminUser ? 'admin' : 'guest'));
+      // ⚠ 예전에는 이 자리에서 title 필드를 아예 만들지 않아서, makeRow가 entry.title을 읽어도
+      //   항상 undefined였음 → 등록된 게스트라도 직책이 절대 표시될 수 없었던 근본 원인.
+      //   → _renderAccessLog(접속이력 탭)와 동일한 조회 순서로 title을 채운다:
+      //      ①기록에 저장된 값 → ②등록 담당자 직책표 → ③게스트 허용목록(이메일/이름 대조, 옛 기록 보완용)
+      var _title = entry.title || '';
+      if(!_title && _isGuestEntry){
+        _title = (typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[rep]) || '';
+        if(!_title){
+          try{
+            var _al2 = (typeof authCfg!=='undefined'&&authCfg.guestAllowList)||[];
+            var _em2 = (msAcc||'').toLowerCase().trim();
+            var _hit2 = _em2 ? _al2.find(function(g){ return (g.email||'').toLowerCase().trim()===_em2; }) : null;
+            if(!_hit2 && rep) _hit2 = _al2.find(function(g){ return (g.name||'').trim()===rep.trim(); });
+            _title = (_hit2&&_hit2.title)||'';
+          }catch(e){}
+        }
+      }
       if(!userMap[displayKey] || ts > userMap[displayKey].ts){
         userMap[displayKey] = {
           name: _isGuestEntry ? (rep||msAcc||'알수없음') : (_matchedRep ? (typeof getRepDisplayName==='function' ? getRepDisplayName(_matchedRep) : _matchedRep) : (rep || (msAcc?msAcc.split('@')[0]:'알수없음'))),
           time: toKST(ts),
           ts: ts,
-          type: type
+          type: type,
+          title: _title
         };
       }
     });
