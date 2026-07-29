@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-028 -->
+<!-- v20260728-028 변경사항: v025에서 대시보드 숨김 필터를 고치던 중 실수로 repLabels 변수 선언 줄을 함께 지워버려서, 통합 대시보드 팀 탭의 "담당자별 매출 비중" 막대 차트가 아예 렌더링되지 않던 회귀 버그 수정(변수 미정의로 렌더 함수가 중간에 조용히 실패했음). 겸사겸사 차트 제목도 항상 "팀별 매출 비중"으로 고정돼 있던 것을, 전체 탭에서는 "팀별 매출 비중"(도넛), 특정 팀 탭에서는 "담당자별 매출 비중"(막대)으로 탭에 맞게 바뀌도록 수정. -->
 <!-- TIS-VERSION: 20260728-027 -->
 <!-- v20260728-027 변경사항: SP 연결 상태와 자동저장 표시를 접속현황 버튼과 동일한 디자인의 아이콘 하나로 통합. 연결됨일 때 점 색상을 접속현황 점과 동일한 파란색(#2563EB)으로 통일, 커서와 hover 효과도 접속현황 버튼과 동일하게 맞춤(cursor:pointer). 마우스를 올리면 툴팁으로 연결 상태·마지막 자동저장 시각·배포 버전을 한 번에 확인 가능. 저장 실패 시에는 연결 상태와 무관하게 점이 빨간색으로 바뀌어 바로 눈에 띄도록 함. 재연결/오류 시 상태를 갱신하던 구 함수(_setBar)가 옛날 알약 배지 스타일로 아이콘을 덮어쓰던 충돌도 함께 수정. -->
 <!-- TIS-VERSION: 20260728-026 -->
@@ -6843,6 +6845,8 @@ function renderRepChart(){
     var cfEl=document.getElementById('ch-filter');
     var cfVal=cfEl?cfEl.value:'all';
     var isAll=(cfVal==='all')&&(typeof currentDashTeam==='undefined'||currentDashTeam==='all');
+    var _titleEl=document.getElementById('rep-chart-title');
+    if(_titleEl) _titleEl.textContent = isAll ? '팀별 매출 비중' : '담당자별 매출 비중';
     // 특정 담당자 선택 시 해당 담당자 데이터만
     // filterRep 제거 (팀별 비중은 ch-filter 무시)
 
@@ -6903,6 +6907,7 @@ function renderRepChart(){
       // 담당자별 막대
       var team=currentDashTeam;
       var reps=((typeof _visibleReps==='function')?_visibleReps(TEAM_REPS[team]||[]):(TEAM_REPS[team]||[])).filter(function(r){return store.reps[r];});
+      var repLabels=reps;
       var planData=reps.map(function(r){return (store.reps[r].plan||[]).reduce(function(a,b){return a+(b||0);},0);});
       var actData=reps.map(function(r){return (store.reps[r].actual||[]).reduce(function(a,b){return a+(b||0);},0);});
 
