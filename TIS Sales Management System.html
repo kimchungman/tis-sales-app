@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-027 -->
+<!-- v20260728-027 변경사항: SP 연결 상태와 자동저장 표시를 접속현황 버튼과 동일한 디자인의 아이콘 하나로 통합. 연결됨일 때 점 색상을 접속현황 점과 동일한 파란색(#2563EB)으로 통일, 커서와 hover 효과도 접속현황 버튼과 동일하게 맞춤(cursor:pointer). 마우스를 올리면 툴팁으로 연결 상태·마지막 자동저장 시각·배포 버전을 한 번에 확인 가능. 저장 실패 시에는 연결 상태와 무관하게 점이 빨간색으로 바뀌어 바로 눈에 띄도록 함. 재연결/오류 시 상태를 갱신하던 구 함수(_setBar)가 옛날 알약 배지 스타일로 아이콘을 덮어쓰던 충돌도 함께 수정. -->
 <!-- TIS-VERSION: 20260728-026 -->
 <!-- v20260728-026 변경사항: 상단바 디자인을 접속현황/알림/새로고침 아이콘 버튼과 통일. (1) "SP 연결됨" 알약 배지를 없애고 동일한 30x30 아이콘 버튼 + 상태 점(연결:초록/연결중:주황/미연결:빨강)으로 교체. (2) 배포 버전 텍스트를 화면에서 없애고, SP 상태 아이콘에 마우스를 올렸을 때 툴팁으로만 확인 가능하도록 변경(배포 확인 기능 자체는 유지). (3) "자동저장됨" 텍스트도 같은 스타일의 아이콘 버튼으로 교체 - 점 색상으로 저장 성공/실패를 표시하고 저장 시각은 툴팁에 담음. 저장 성공 표시는 4초 후 옅어져서 상시 강조하지 않음. -->
 <!-- TIS-VERSION: 20260728-025 -->
@@ -3899,35 +3901,19 @@ window._updateSidebarByRole=function(){
     <div id="pg-sub" style="font-size:10.5px;color:#94A3B8;white-space:nowrap;"></div>
   </div>
 
-  <!-- SP 상태 (다른 아이콘 버튼과 통일된 디자인) -->
+  <!-- SP 연결 + 자동저장 통합 (접속현황 버튼과 동일한 디자인/동작) -->
   <div style="position:relative;flex-shrink:0;">
     <button id="sp-status" title="SP 연결 상태 확인 중"
       style="width:30px;height:30px;border-radius:6px;border:none!important;background:transparent!important;
-      display:flex;align-items:center;justify-content:center;cursor:default;
+      display:flex;align-items:center;justify-content:center;cursor:pointer;
       color:#64748B;transition:background .12s,color .12s;position:relative;overflow:visible;
       box-shadow:none!important;">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10Z"/>
       </svg>
-      <span id="sp-status-dot" style="position:absolute;top:5px;right:5px;width:7px;height:7px;border-radius:50%;background:#94A3B8;border:2px solid #fff;transition:background .15s;"></span>
+      <span id="sp-status-dot" style="position:absolute !important;top:2px !important;right:2px !important;width:7px !important;height:7px !important;min-width:7px !important;padding:0 !important;border-radius:50% !important;background:#94A3B8 !important;border:1.5px solid #fff !important;transition:background .15s;"></span>
     </button>
     <span id="sp-status-badge" style="display:none;"></span>
-  </div>
-
-  <!-- 자동저장 (다른 아이콘 버튼과 통일된 디자인) -->
-  <div style="position:relative;flex-shrink:0;">
-    <button id="save-indicator" title="자동저장"
-      style="width:30px;height:30px;border-radius:6px;border:none!important;background:transparent!important;
-      display:flex;align-items:center;justify-content:center;cursor:default;
-      color:#64748B;transition:background .12s,color .12s;position:relative;overflow:visible;
-      box-shadow:none!important;">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/>
-        <path d="M17 21v-8H7v8"/>
-        <path d="M7 3v5h8"/>
-      </svg>
-      <span id="save-indicator-dot" style="position:absolute;top:5px;right:5px;width:7px;height:7px;border-radius:50%;background:transparent;border:2px solid #fff;transition:background .15s;"></span>
-    </button>
   </div>
 
   <!-- 숨김 요소 (JS 내부 참조용) -->
@@ -11526,19 +11512,22 @@ function autoSave(){
 }
 
 function updateSaveIndicator(success){
-  const el = document.getElementById('save-indicator');
-  const dot = document.getElementById('save-indicator-dot');
-  if(!el) return;
   const now = new Date();
   const timeStr = now.getHours()+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
-  if(dot) dot.style.background = success ? '#22C55E' : '#EF4444';
-  el.title = success ? ('자동저장됨 '+timeStr) : '저장 실패';
-  // 저장 성공 표시는 잠시 후 옅어지도록(다른 아이콘처럼 상시 강조하지 않음)
-  if(success){
-    if(window._saveDotFadeTimer) clearTimeout(window._saveDotFadeTimer);
-    window._saveDotFadeTimer = setTimeout(function(){
-      if(dot) dot.style.background = 'transparent';
-    }, 4000);
+  window._topSaveOk = success;
+  window._topSaveTime = success ? timeStr : window._topSaveTime;
+  if(typeof _renderTopStatus==='function') _renderTopStatus();
+  // 저장 실패 표시는 다음 저장 성공 시까지 유지, 성공 표시는 특별히 유지할 필요 없어
+  // 저장 실패였던 경우에만 일정 시간 후 실패 상태를 해제(재시도로 회복되는 경우 대비)
+  if(!success){
+    if(window._saveFailFadeTimer) clearTimeout(window._saveFailFadeTimer);
+    window._saveFailFadeTimer = setTimeout(function(){
+      window._topSaveOk = true;
+      if(typeof _renderTopStatus==='function') _renderTopStatus();
+    }, 8000);
+  } else if(window._saveFailFadeTimer){
+    clearTimeout(window._saveFailFadeTimer);
+    window._saveFailFadeTimer = null;
   }
 }
 
@@ -11889,32 +11878,21 @@ function _setSPStatus(state) {
       if(_validNow && typeof closeAuth==='function') closeAuth();
     }
   }
+  window._topSPState = state;
   var bgCol = {
     connecting: '#FFF8E1',
     connected:  '#DEFBE6',
     error:      '#FFF0F0',
     offline:    '#FFF0F0'
   }[state] || '#FFF0F0';
-  var borderCol = {
-    connecting: '#F59E0B40',
-    connected:  '#19803840',
-    error:      '#DA1E2840',
-    offline:    '#DA1E2840'
-  }[state] || '#DA1E2840';
   var dotCol = {
     connecting: '#F59E0B',
-    connected:  '#22C55E',
+    connected:  '#2563EB',
     error:      '#EF4444',
     offline:    '#EF4444'
   }[state] || '#EF4444';
-  var el = document.getElementById('sp-status');
-  var dot = document.getElementById('sp-status-dot');
-  if(dot) dot.style.background = dotCol;
-  if(el){
-    // 버전은 화면에 상시 노출하지 않고, 툴팁(마우스 오버)에서만 확인 - 배포 확인이 필요할 때만 사용
-    var _verSuffix = window._TIS_VER ? (' · v'+window._TIS_VER) : '';
-    el.title = label + _verSuffix;
-  }
+  window._topSPDotCol = dotCol;
+  if(typeof _renderTopStatus==='function') _renderTopStatus();
   // 구 badge 호환
   var bdg = document.getElementById('sp-status-badge');
   if(bdg){
@@ -11922,6 +11900,31 @@ function _setSPStatus(state) {
     bdg.style.color = textCol;
     bdg.style.background = bgCol;
   }
+}
+
+// SP 연결 + 자동저장 통합 표시 (점 색상 + 툴팁 텍스트)
+function _renderTopStatus(){
+  var el = document.getElementById('sp-status');
+  var dot = document.getElementById('sp-status-dot');
+  if(!el) return;
+  var spLabel = {
+    connecting: '⏳ 연결 중',
+    connected:  '🟢 SP 연결됨',
+    error:      '🔴 SP 미연결',
+    offline:    '🔴 SP 미연결'
+  }[window._topSPState] || '🔴 SP 미연결';
+  // 저장 실패는 연결 상태와 무관하게 점을 빨간색으로 덮어써서 바로 눈에 띄게 함
+  var dotCol = (window._topSaveOk===false) ? '#EF4444' : (window._topSPDotCol||'#94A3B8');
+  if(dot) dot.style.background = dotCol;
+  var parts = [spLabel];
+  if(window._topSaveOk===false){
+    parts.push('저장 실패');
+  } else if(window._topSaveTime){
+    parts.push('자동저장 '+window._topSaveTime);
+  }
+  if(window._TIS_VER) parts.push('v'+window._TIS_VER);
+  if(window._topSPErrMsg) parts.push(window._topSPErrMsg);
+  el.title = parts.join(' · ');
 }
 
 // ── MSAL 토큰 획득 (팝업 로그인) ───
@@ -15022,17 +15025,19 @@ function renderAccessStat(range){
 var SP_SCOPE = 'https://tis21.sharepoint.com/.default';
 
 function _setBar(state, msg){
-  var el = document.getElementById('sp-status');
-  if(!el) return;
-  var styles = {
-    connecting:'background:#FEF9C3;color:#92400E;border-color:#FCD34D',
-    connected:'background:#DCFCE7;color:#166534;border-color:#86EFAC',
-    error:'background:#FEE2E2;color:#991B1B;border-color:#FCA5A5',
-    offline:'background:#F1F5F9;color:#94A3B8;border-color:#E2E8F0'
-  };
-  var texts = {connecting:'⬤ 연결 중...',connected:'⬤ 연결됨',error:'⬤ 오류',offline:'⬤ 미연결'};
-  el.textContent = (texts[state]||'⬤ 미연결')+(msg?' ('+msg.slice(0,20)+')':'');
-  el.style.cssText = 'display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;border:1.5px solid;'+(styles[state]||styles.offline);
+  // ⚠ 예전에는 여기서 el.textContent/style.cssText를 직접 덮어써서, 새 아이콘 버튼 디자인이
+  //   재연결·오류 상황마다 옛날 알약(pill) 배지 텍스트로 되돌아가는 버그가 있었음.
+  //   → _setSPStatus와 동일한 공용 상태(window._topSPState)를 갱신하고 _renderTopStatus로만 반영한다.
+  var mapped = {connecting:'connecting', connected:'connected', error:'error', offline:'offline'}[state] || 'offline';
+  window._topSPState = mapped;
+  window._topSPDotCol = {connecting:'#F59E0B', connected:'#2563EB', error:'#EF4444', offline:'#EF4444'}[mapped];
+  if(msg && typeof _renderTopStatus==='function'){
+    // 오류 메시지가 있으면 툴팁에 짧게 덧붙임
+    window._topSPErrMsg = msg.slice(0,40);
+  } else {
+    window._topSPErrMsg = '';
+  }
+  if(typeof _renderTopStatus==='function') _renderTopStatus();
 }
 
 var _msalP = null;
