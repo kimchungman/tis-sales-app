@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-020 -->
+<!-- v20260728-020 변경사항: 예전에 접속한 게스트 기록에도 직책이 표시되도록 보완. 접속 당시 직책을 함께 저장하지 않던 시절의 기록은 직책 정보가 없어 이름만 나왔는데, 게스트 허용목록에 등록된 사람이면 MS계정 이메일(이메일이 없는 옛 기록은 이름)로 대조해 현재 등록된 직책을 끌어와 표시하도록 함. 조회 순서: 기록에 저장된 값 → 등록 담당자 직책표 → 게스트 허용목록. -->
 <!-- TIS-VERSION: 20260728-019 -->
 <!-- v20260728-019 변경사항: (1) 게스트 접속 이력이 저장되지 않던 문제 수정 — 접속기록 함수가 SharePoint 연결 전이면 아무것도 하지 않고 종료해버려, 로그인창이 닫히는 시점에 기록을 시도하는 게스트 접속은 기록이 통째로 사라졌음. 연결 전이면 대기열에 넣어두었다가 연결되는 즉시 자동 저장하도록 변경(60초 내 연결 실패 시 콘솔 경고 후 정리). (2) 같은 시각에 '정상'과 '불일치'가 동시에 뜨던 문제 수정 — 담당자 이름이 곳에 따라 '김충만' 또는 '김충만 책임'처럼 직책이 붙어 저장되는데, 직책이 붙은 쪽은 이메일 조회에 실패해 검사를 건너뛰고 무조건 정상으로, 순수 이름 쪽만 실제 비교되어 불일치로 표시됐음. 등록 담당자 명단과 대조해 순수 이름으로 정규화한 뒤 조회하도록 수정. (3) 탑바 접속현황에서 등록된 담당자의 직책이 표시되지 않던 문제 수정 — 같은 원인(직책 붙은 이름으로 직책표를 조회해 실패)이라 정규화된 이름으로 조회하도록 함께 수정. -->
 <!-- v20260728-018 변경사항: 접속이력 저장 실패 시 오류를 조용히 무시하던 처리를 콘솔 경고로 변경(게스트 이력이 SharePoint에 저장되지 않아도 아무 표시가 없어 원인 파악이 불가능했음). -->
@@ -13261,7 +13263,24 @@ function _renderAccessLog() {
           var _iG = log.isGuest === true || (log.selectedRep && _aR.length>0 && _aR.indexOf(log.selectedRep)<0);
           var _gDispName = _safeRepDisplayName(log.selectedRep)||'-';
           // 게스트도 등록 담당자 직책을 함께 표시 (이름 + 직책 + 게스트)
-          var _gTitle = log.title || (typeof authCfg!=='undefined'&&authCfg.repTitles&&(authCfg.repTitles[_repKey]||authCfg.repTitles[log.selectedRep]))||'';
+          // 직책 조회 순서: ①기록에 저장된 값 → ②등록 담당자 직책표 → ③게스트 허용목록(MS계정 이메일로 대조)
+          // ③은 예전 기록 보완용: 접속 당시 직책을 함께 저장하지 않던 시절의 게스트 기록도
+          //    허용목록에 등록되어 있으면 현재 등록된 직책을 끌어와 표시한다.
+          var _gTitle = log.title
+            || (typeof authCfg!=='undefined'&&authCfg.repTitles&&(authCfg.repTitles[_repKey]||authCfg.repTitles[log.selectedRep]))
+            || (function(){
+                 try{
+                   var _al=(typeof authCfg!=='undefined'&&authCfg.guestAllowList)||[];
+                   if(!_al.length) return '';
+                   var _em=(log.msAccount||'').toLowerCase().trim();
+                   var _nm=(log.selectedRep||'').trim();
+                   var _hit=null;
+                   if(_em) _hit=_al.find(function(g){ return (g.email||'').toLowerCase().trim()===_em; });
+                   if(!_hit&&_nm) _hit=_al.find(function(g){ return (g.name||'').trim()===_nm; }); // 이메일이 없던 기록 대비
+                   return (_hit&&_hit.title)||'';
+                 }catch(e){ return ''; }
+               })()
+            || '';
           if(_gTitle && _gDispName.indexOf(_gTitle)<0) _gDispName = _gDispName+' '+_gTitle;
           if(_iG) return '<span style="display:inline-flex;align-items:center;gap:5px;"><span style="font-weight:700;color:#4f7fff;">&#128065; '+_gDispName+'</span><span style="font-size:10px;font-weight:700;color:#4f7fff;background:rgba(79,127,255,0.12);border:1px solid rgba(79,127,255,0.35);border-radius:20px;padding:1px 8px;">게스트</span></span>';
           var _dispName = _safeRepDisplayName(log.selectedRep)||'-';
