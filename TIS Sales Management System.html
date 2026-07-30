@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-034 -->
+<!-- v20260728-034 변경사항: 이메일 알림 기능 전체 구현. (1) MSAL에 Mail.Send 스코프 추가 + Graph API 발송 함수(_graphSendMail)로 위임된 권한(로그인한 본인 계정)으로 메일 발송. (2) 이벤트 6개 실제 연결: 멘션/답변/새이슈등록/지난주미답변이월/계약만료예정·임박/계약신규등록(신설). (3) 계약 만료 로직 개선 - D+ 기한초과 시 알림이 사라지던 버그 수정, 예정→임박 상태전환 시점에만 1회 이메일 발송하도록 authCfg.contractEmailSent로 추적. (4) 계약 기한초과 주간 리마인드 신설 - 관리자설정에서 지정한 요일에 주 1회만 발송, 화면(계약관리) 실시간 표시와는 분리. (5) 관리자설정에 "알림" 탭 신설: 이벤트별 on/off 토글 + 참조(CC) 수신자, 계약 기한초과 요일 선택, 관리자 공지 발송(대상: 전체/특정팀/개별 선택, 미리보기, 나에게 테스트발송, 실제발송, SharePoint 기반 발송이력 20건 표시). 모든 이벤트 기본값은 OFF - 하나씩 검증 후 순차적으로 켜는 것을 권장. -->
 <!-- TIS-VERSION: 20260728-033 -->
 <!-- v20260728-033 변경사항: "새 이슈 등록" 알림과 "지난주 미답변 이월" 알림이 함수(_wkNotifyNewIssue, _wkCheckCarryOver)만 정의되어 있고 실제로 호출하는 곳이 코드 전체에 단 한 군데도 없어서 한 번도 발송된 적이 없었던 문제 수정. 이슈 신규 등록 시(수정 아닌 경우, 상태가 Open일 때) _wkNotifyNewIssue를 실제로 호출해 팀장에게 알림이 가도록 연결. 로그인 직후 _wkCheckCarryOver를 호출해 월요일에 지난주 미답변 항목 알림이 실제로 발송되도록 연결. -->
 <!-- TIS-VERSION: 20260728-032 -->
@@ -4392,6 +4394,7 @@ window._updateSidebarByRole=function(){
       <button data-stab="기본설정" onclick="switchSettingsTab('기본설정')" style="padding:8px 14px;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:#0A1628;color:white;">📅 기본설정</button>
       <button data-stab="조직관리" onclick="switchSettingsTab('조직관리')" style="padding:8px 14px;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:transparent;color:#64748B;">👥 조직관리</button>
       <button data-stab="공지설정" onclick="switchSettingsTab('공지설정')" style="padding:8px 14px;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:transparent;color:#64748B;">📢 공지설정</button>
+      <button data-stab="알림" onclick="switchSettingsTab('알림')" style="padding:8px 14px;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:transparent;color:#64748B;">🔔 알림</button>
       <button data-stab="테마" onclick="switchSettingsTab('테마')" style="padding:8px 14px;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:transparent;color:#64748B;">🎨 테마</button>
     </div>
     <div id="stab-pane-기본설정" style="display:block;">
@@ -4875,7 +4878,76 @@ window._updateSidebarByRole=function(){
       </div>
     </div>
     </div>
-    
+
+    <div id="stab-pane-알림" style="display:none;">
+      <div class="sec-card">
+        <div class="sec-head"><h3>이벤트 알림</h3></div>
+        <div class="sec-body">
+          <p style="font-size:12px;color:var(--muted);margin:0 0 14px;">이벤트가 발생하면 담당자 본인 계정으로 이메일이 자동 발송됩니다. 처음 켤 때는 하나씩 검증하며 순차적으로 켜는 것을 권장합니다.</p>
+          <div id="email-notif-rows"></div>
+        </div>
+      </div>
+
+      <div class="sec-card">
+        <div class="sec-head"><h3>계약 기한초과 리마인드</h3></div>
+        <div class="sec-body">
+          <p style="font-size:12px;color:var(--muted);margin:0 0 12px;">계약관리 화면은 항상 실시간으로 정확한 기한초과(D+) 상태를 보여줍니다. 아래 요일에는 아직 처리되지 않은 기한초과 계약을 담당자에게 주 1회 이메일로 리마인드합니다. (위 "계약 만료 예정/임박" 알림이 꺼져 있으면 이 리마인드도 함께 꺼집니다)</p>
+          <select id="cfg-overdue-day" onchange="_saveOverdueDay(this.value)" style="border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;font-family:inherit;background:white;">
+            <option value="1">매주 월요일</option>
+            <option value="2">매주 화요일</option>
+            <option value="3">매주 수요일</option>
+            <option value="4">매주 목요일</option>
+            <option value="5">매주 금요일</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="sec-card">
+        <div class="sec-head"><h3>관리자 공지 발송</h3></div>
+        <div class="sec-body">
+          <div style="margin-bottom:14px;">
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:8px;">발송 대상</label>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;">
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="radio" name="ann-target" value="all" checked onchange="_annTargetChange()"> 전체 담당자</label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="radio" name="ann-target" value="team" onchange="_annTargetChange()"> 특정 팀</label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="radio" name="ann-target" value="pick" onchange="_annTargetChange()"> 개별 선택</label>
+            </div>
+            <div id="ann-target-team" style="display:none;margin-top:10px;">
+              <select id="ann-team-sel" style="border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:13px;font-family:inherit;background:white;min-width:200px;"></select>
+            </div>
+            <div id="ann-target-pick" style="display:none;margin-top:10px;">
+              <div id="ann-pick-list" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+            </div>
+          </div>
+          <div style="margin-bottom:12px;">
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px;">제목</label>
+            <input id="ann-subject" type="text" placeholder="예: 5월 정기 워크샵 안내" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;">
+          </div>
+          <div style="margin-bottom:14px;">
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px;">본문</label>
+            <div style="display:flex;gap:4px;padding:6px 8px;background:#F8FAFC;border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;">
+              <button type="button" onclick="document.getElementById('ann-editor').focus();document.execCommand('bold')" style="width:28px;height:28px;border:1px solid var(--border);border-radius:5px;background:white;cursor:pointer;font-weight:800;font-size:13px;font-family:inherit;">B</button>
+              <button type="button" onclick="document.getElementById('ann-editor').focus();document.execCommand('italic')" style="width:28px;height:28px;border:1px solid var(--border);border-radius:5px;background:white;cursor:pointer;font-style:italic;font-size:13px;font-family:inherit;">I</button>
+              <button type="button" onclick="document.getElementById('ann-editor').focus();document.execCommand('underline')" style="width:28px;height:28px;border:1px solid var(--border);border-radius:5px;background:white;cursor:pointer;text-decoration:underline;font-size:13px;font-family:inherit;">U</button>
+            </div>
+            <div id="ann-editor" contenteditable="true" style="min-height:120px;max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:0 0 8px 8px;padding:12px;font-size:13px;font-family:inherit;line-height:1.7;outline:none;background:white;"></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button onclick="_annPreview()" style="padding:8px 16px;border:1px solid var(--border);border-radius:8px;background:#F1F5F9;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">👁 미리보기</button>
+            <button onclick="_annTestSend()" style="padding:8px 16px;border:1px solid var(--border);border-radius:8px;background:#F1F5F9;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">✉ 나에게 테스트 발송</button>
+            <button onclick="_annSend()" class="btn btn-primary" style="font-size:12px;">📤 발송</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec-card">
+        <div class="sec-head"><h3>발송 이력</h3></div>
+        <div class="sec-body">
+          <div id="email-log-list" style="font-size:12px;color:var(--muted);">불러오는 중...</div>
+        </div>
+      </div>
+    </div>
+
     <div id="stab-pane-테마" style="display:none;">
       <div class="sec-card">
       <div class="sec-head"><h3>SharePoint 동기화</h3></div>
@@ -5261,7 +5333,20 @@ window._startSessionWatchdog = function(){
   }, 300);
 };
 let authCfg = { adminPw: '13579',
-  chartType: 'combo', guestPw: '', repPws: {}, repPerms: {}, repEmails: {}, repTitles: {}, hiddenReps: [], hiddenTeams: [], cdbHiddenReps: [], teamReps: {'솔루션영업팀':['전성현','허인수','김충만','최원진'],'그룹지원팀':[]}, teamColors: {'솔루션영업팀':['#1E5FBE','#00A882','#C05000','#7B2FBE'],'그룹지원팀':[]} };
+  chartType: 'combo', guestPw: '', repPws: {}, repPerms: {}, repEmails: {}, repTitles: {}, hiddenReps: [], hiddenTeams: [], cdbHiddenReps: [], teamReps: {'솔루션영업팀':['전성현','허인수','김충만','최원진'],'그룹지원팀':[]}, teamColors: {'솔루션영업팀':['#1E5FBE','#00A882','#C05000','#7B2FBE'],'그룹지원팀':[]},
+  // 이메일 알림 설정 (모두 기본 OFF - 관리자가 검증 후 하나씩 켜는 것을 권장)
+  emailNotif: {
+    mention:     {on:false, cc:''},
+    reply:       {on:false, cc:''},
+    issue:       {on:false, cc:''},
+    carryover:   {on:false, cc:''},
+    contract:    {on:false, cc:''},
+    contractNew: {on:false, cc:''},
+    overdueDay:  1   // 1=월 2=화 3=수 4=목 5=금 - 계약 기한초과 리마인드 발송 요일
+  },
+  // 계약 알림 상태전환 이메일 중복방지 추적 (10초마다 재계산되는 in-app 알림과 달리, 이메일은 상태가 바뀔 때만 1회 발송)
+  contractEmailSent: {} // {notifId: 'upcoming'|'urgent'|'overdue-YYYY-MM-DD'}
+};
 
 function loadAuthCfg(){
   const saved = localStorage.getItem('weekly_auth');
@@ -5455,6 +5540,196 @@ function deleteGuestAllow(idx){
   renderGuestAllowList();
   showToast('✅ 삭제되었습니다.');
   });
+}
+
+// ══════════ 알림 탭 (이메일 알림 설정 + 관리자 공지 발송) ══════════
+var _EMAIL_EVENTS=[
+  {key:'mention',     label:'멘션',              desc:'회의록에서 @언급됐을 때',                  recv:'언급된 사람'},
+  {key:'reply',       label:'답변',              desc:'내가 쓴 회의록 글에 답변이 달렸을 때',       recv:'원글 작성자'},
+  {key:'issue',       label:'새 이슈 등록',       desc:'팀원이 새 이슈를 등록했을 때',              recv:'해당 팀 팀장'},
+  {key:'carryover',   label:'지난주 미답변 이월', desc:'매주 월요일, 지난주 미답변 항목이 있을 때', recv:'본인'},
+  {key:'contract',    label:'계약 만료 예정/임박', desc:'만료 D-31, D-7 시점 전환 시 (기한초과 리마인드는 아래 별도 설정)', recv:'계약 담당자'},
+  {key:'contractNew', label:'계약 신규 등록',     desc:'새 계약이 등록됐을 때',                     recv:'해당 팀 팀장'}
+];
+function _emailEventRowHtml(ev){
+  var cfg=(authCfg.emailNotif&&authCfg.emailNotif[ev.key])||{on:false,cc:''};
+  var on=!!cfg.on;
+  return '<div style="display:flex;align-items:flex-start;gap:14px;padding:14px 0;border-bottom:1px solid #F1F5F9;">'
+    +'<label style="position:relative;display:inline-block;width:40px;height:22px;flex-shrink:0;margin-top:2px;cursor:pointer;">'
+      +'<input type="checkbox" '+(on?'checked':'')+' onchange="_toggleEmailEvent(\''+ev.key+'\',this.checked)" style="opacity:0;width:0;height:0;position:absolute;">'
+      +'<span style="position:absolute;inset:0;background:'+(on?'#0F172A':'#E2E8F0')+';border-radius:22px;transition:.15s;"></span>'
+      +'<span style="position:absolute;top:3px;left:'+(on?'21px':'3px')+';width:16px;height:16px;background:#fff;border-radius:50%;transition:.15s;box-shadow:0 1px 2px rgba(0,0,0,.15);"></span>'
+    +'</label>'
+    +'<div style="flex:1;min-width:0;">'
+      +'<div style="font-size:13px;font-weight:700;color:#0F172A;">'+_wkEsc(ev.label)+'</div>'
+      +'<div style="font-size:11.5px;color:#94A3B8;margin-top:2px;">'+_wkEsc(ev.desc)+' · 수신자: '+_wkEsc(ev.recv)+'</div>'
+      +(on?('<input type="text" placeholder="참조(CC) 이메일 추가 (쉼표로 구분, 선택)" value="'+_wkEsc(cfg.cc||'')+'" onblur="_updateEmailCc(\''+ev.key+'\',this.value)" style="margin-top:8px;width:100%;max-width:420px;border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;font-family:inherit;">'):'')
+    +'</div>'
+  +'</div>';
+}
+function renderEmailNotifSettings(){
+  var el=document.getElementById('email-notif-rows');
+  if(!el) return;
+  if(!authCfg.emailNotif) authCfg.emailNotif={overdueDay:1};
+  el.innerHTML=_EMAIL_EVENTS.map(_emailEventRowHtml).join('');
+  var daySel=document.getElementById('cfg-overdue-day');
+  if(daySel) daySel.value=String((authCfg.emailNotif&&authCfg.emailNotif.overdueDay)||1);
+}
+function _toggleEmailEvent(key,checked){
+  if(!authCfg.emailNotif) authCfg.emailNotif={};
+  if(!authCfg.emailNotif[key]) authCfg.emailNotif[key]={on:false,cc:''};
+  authCfg.emailNotif[key].on=!!checked;
+  if(typeof saveAuthCfg==='function') saveAuthCfg();
+  renderEmailNotifSettings();
+  if(typeof showToast==='function') showToast(checked?'✅ 알림을 켰습니다.':'⏸ 알림을 껐습니다.');
+}
+function _updateEmailCc(key,val){
+  if(!authCfg.emailNotif) authCfg.emailNotif={};
+  if(!authCfg.emailNotif[key]) authCfg.emailNotif[key]={on:false,cc:''};
+  authCfg.emailNotif[key].cc=val;
+  if(typeof saveAuthCfg==='function') saveAuthCfg();
+}
+function _saveOverdueDay(val){
+  if(!authCfg.emailNotif) authCfg.emailNotif={};
+  authCfg.emailNotif.overdueDay=parseInt(val,10)||1;
+  if(typeof saveAuthCfg==='function') saveAuthCfg();
+  if(typeof showToast==='function') showToast('✅ 저장됐습니다.');
+}
+
+// ── 관리자 공지 발송: 대상 선택 ──
+function _annTargetChange(){
+  var sel=document.querySelector('input[name="ann-target"]:checked');
+  var val=sel?sel.value:'all';
+  var teamBox=document.getElementById('ann-target-team');
+  var pickBox=document.getElementById('ann-target-pick');
+  if(teamBox) teamBox.style.display = val==='team'?'block':'none';
+  if(pickBox) pickBox.style.display = val==='pick'?'block':'none';
+  if(val==='team') _annFillTeamSelect();
+  if(val==='pick') _annFillPickList();
+}
+function _annFillTeamSelect(){
+  var sel=document.getElementById('ann-team-sel');
+  if(!sel) return;
+  var teams=(typeof _visibleTeams==='function')?_visibleTeams():((typeof TEAMS!=='undefined')?TEAMS:[]);
+  sel.innerHTML=teams.map(function(t){return '<option value="'+_wkEsc(t)+'">'+_wkEsc(t)+'</option>';}).join('');
+}
+function _annFillPickList(){
+  var el=document.getElementById('ann-pick-list');
+  if(!el) return;
+  var reps=(typeof REPS!=='undefined')?REPS:[];
+  if(typeof _visibleReps==='function') reps=_visibleReps(reps);
+  el.innerHTML=reps.map(function(r){
+    return '<label style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--border);border-radius:20px;font-size:12px;cursor:pointer;background:white;"><input type="checkbox" value="'+_wkEsc(r)+'" class="ann-pick-cb"> '+_wkEsc(r)+'</label>';
+  }).join('');
+}
+function _annResolveRecipients(){
+  var sel=document.querySelector('input[name="ann-target"]:checked');
+  var val=sel?sel.value:'all';
+  var reps=[];
+  if(val==='all'){
+    reps=(typeof REPS!=='undefined')?REPS.slice():[];
+    if(typeof _visibleReps==='function') reps=_visibleReps(reps);
+  } else if(val==='team'){
+    var t=(document.getElementById('ann-team-sel')||{}).value;
+    reps=(typeof TEAM_REPS!=='undefined'&&TEAM_REPS[t])?TEAM_REPS[t].slice():[];
+    if(typeof _visibleReps==='function') reps=_visibleReps(reps);
+  } else {
+    document.querySelectorAll('.ann-pick-cb:checked').forEach(function(cb){ reps.push(cb.value); });
+  }
+  var emails=[];
+  reps.forEach(function(r){ var e=_wkRepEmail(r); if(e && emails.indexOf(e)<0) emails.push(e); });
+  return {reps:reps, emails:emails};
+}
+
+// ── 관리자 공지 발송: 이메일 템플릿 ──
+function _buildAnnouncementEmailHtml(subject, bodyHtml, testTag){
+  var F="'Malgun Gothic',Arial,sans-serif";
+  return '<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"></head>'
+    +'<body style="margin:0;padding:0;background:#F1F5F9;">'
+    +'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F1F5F9;padding:32px 16px;"><tr><td align="center">'
+    +'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;">'
+    +'<tr><td style="background:#0F172A;padding:20px 32px;"><span style="font-family:'+F+';font-size:14px;font-weight:700;color:#FFFFFF;">TIS 영업관리시스템</span></td></tr>'
+    +'<tr><td style="padding:40px 32px 0;font-family:'+F+';font-size:12px;font-weight:700;color:#7C3AED;letter-spacing:.04em;">'+(testTag?'테스트 발송':'공지사항')+'</td></tr>'
+    +'<tr><td style="padding:10px 32px 24px;font-family:'+F+';font-size:19px;font-weight:700;color:#0F172A;line-height:1.4;">'+_wkMailEsc(subject)+'</td></tr>'
+    +'<tr><td style="padding:0 32px 36px;font-family:'+F+';font-size:14px;color:#334155;line-height:1.8;">'+bodyHtml+'</td></tr>'
+    +'<tr><td style="padding:20px 32px;background:#F8FAFC;border-top:1px solid #E2E8F0;"><span style="font-family:'+F+';font-size:11px;color:#94A3B8;line-height:1.6;">이 메일은 TIS 영업관리시스템 관리자가 발송한 공지입니다.</span></td></tr>'
+    +'</table></td></tr></table></body></html>';
+}
+function _annPreview(){
+  var subject=(document.getElementById('ann-subject')||{}).value||'(제목 없음)';
+  var body=(document.getElementById('ann-editor')||{}).innerHTML||'';
+  var html=_buildAnnouncementEmailHtml(subject, body);
+  var old=document.getElementById('ann-preview-modal'); if(old) old.remove();
+  var div=document.createElement('div');
+  div.id='ann-preview-modal';
+  div.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  div.innerHTML='<div style="background:#fff;border-radius:14px;max-width:680px;width:100%;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;">'
+    +'<div style="padding:14px 20px;border-bottom:1px solid #E2E8F0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;"><b style="font-size:14px;">미리보기</b><button onclick="document.getElementById(\'ann-preview-modal\').remove()" style="border:none;background:none;font-size:18px;cursor:pointer;color:#94A3B8;">✕</button></div>'
+    +'<iframe id="ann-preview-frame" style="flex:1;border:none;width:100%;min-height:480px;"></iframe>'
+  +'</div>';
+  document.body.appendChild(div);
+  var fr=document.getElementById('ann-preview-frame');
+  var doc=fr.contentDocument||fr.contentWindow.document;
+  doc.open(); doc.write(html); doc.close();
+}
+async function _annTestSend(){
+  var subject=(document.getElementById('ann-subject')||{}).value||'';
+  var body=(document.getElementById('ann-editor')||{}).innerHTML||'';
+  if(!subject.trim()||!body.trim()){ if(typeof showToast==='function') showToast('제목과 본문을 입력해주세요.','warn'); return; }
+  var myEmail=(session&&session.rep&&_wkRepEmail(session.rep))||(typeof SESSION_REP!=='undefined'&&SESSION_REP.email)||'';
+  if(!myEmail){ if(typeof showToast==='function') showToast('본인 이메일이 등록되어 있지 않습니다.','warn'); return; }
+  var html=_buildAnnouncementEmailHtml(subject, body, true);
+  var ok=await _graphSendMail([myEmail], [], '[TIS영업관리][테스트] '+subject, html);
+  if(typeof showToast==='function') showToast(ok?('✅ '+myEmail+'로 테스트 메일을 발송했습니다.'):'❌ 발송 실패 - 콘솔(F12)을 확인하세요.', ok?'':'warn');
+}
+async function _annSend(){
+  var subject=(document.getElementById('ann-subject')||{}).value||'';
+  var body=(document.getElementById('ann-editor')||{}).innerHTML||'';
+  if(!subject.trim()||!body.trim()){ if(typeof showToast==='function') showToast('제목과 본문을 입력해주세요.','warn'); return; }
+  var target=_annResolveRecipients();
+  if(!target.emails.length){ if(typeof showToast==='function') showToast('수신자가 없습니다 (이메일이 등록된 담당자가 없음).','warn'); return; }
+  appConfirm(target.emails.length+'명에게 발송합니다.\n('+target.reps.join(', ')+')\n\n계속할까요?', async function(){
+    var html=_buildAnnouncementEmailHtml(subject, body);
+    var ok=await _graphSendMail(target.emails, [], '[TIS영업관리] '+subject, html);
+    if(ok){
+      if(typeof showToast==='function') showToast('✅ '+target.emails.length+'명에게 발송했습니다.');
+      await _saveEmailLog({subject:subject, targetDesc:target.reps.join(', ')||'전체', recipientCount:target.emails.length, sentBy:(session&&session.rep)||'', sentAt:new Date().toISOString()});
+      renderEmailLog();
+    } else {
+      if(typeof showToast==='function') showToast('❌ 발송 실패 - 콘솔(F12)을 확인하세요.','warn');
+    }
+  });
+}
+
+// ── 발송 이력 ──
+async function _saveEmailLog(entry){
+  if(!window._isSPReady) return;
+  var id=Date.now()+'_'+Math.random().toString(36).slice(2,8);
+  try{ await _spSaveItem('emailLog', id, entry); }catch(e){}
+}
+async function renderEmailLog(){
+  var el=document.getElementById('email-log-list');
+  if(!el) return;
+  if(!window._isSPReady){ el.innerHTML='<div style="color:#94A3B8;">SP 연결 후 확인 가능합니다.</div>'; return; }
+  try{
+    var url=_lUrl()+'?$select=Id,Title,DataType,Payload&$top=200';
+    var res=await _spFetchAll(url);
+    var logs=(res.value||[]).filter(function(item){ return item.DataType==='emailLog'; })
+      .map(function(item){ try{ return JSON.parse(item.Payload); }catch(e){ return null; } }).filter(Boolean);
+    logs.sort(function(a,b){ return (b.sentAt||'').localeCompare(a.sentAt||''); });
+    logs=logs.slice(0,20);
+    if(!logs.length){ el.innerHTML='<div style="color:#94A3B8;">발송 이력이 없습니다.</div>'; return; }
+    el.innerHTML=logs.map(function(l){
+      var dt=l.sentAt?new Date(l.sentAt):null;
+      var dtStr=dt?(dt.getFullYear()+'.'+(dt.getMonth()+1)+'.'+dt.getDate()+' '+String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0')):'';
+      return '<div style="padding:10px 0;border-bottom:1px solid #F1F5F9;">'
+        +'<div style="font-size:13px;font-weight:700;color:#0F172A;">'+_wkEsc(l.subject||'')+'</div>'
+        +'<div style="font-size:11px;color:#94A3B8;margin-top:2px;">'+dtStr+' · '+_wkEsc(l.sentBy||'')+' · 대상 '+(l.recipientCount||0)+'명 ('+_wkEsc(l.targetDesc||'')+')</div>'
+      +'</div>';
+    }).join('');
+  }catch(e){
+    el.innerHTML='<div style="color:#94A3B8;">불러오기 실패: '+_wkEsc(e.message)+'</div>';
+  }
 }
 
 // ── SP 끊김 임시 저장 ──
@@ -5737,7 +6012,11 @@ function switchSettingsTab(tab){
     if(typeof renderRepManage==='function') setTimeout(renderRepManage,50);
     if(typeof renderGuestAllowList==='function') setTimeout(renderGuestAllowList,60);
   }
-  ['기본설정','조직관리','공지설정','테마'].forEach(function(t){
+  if(tab==='알림'){
+    if(typeof renderEmailNotifSettings==='function') setTimeout(renderEmailNotifSettings,50);
+    if(typeof renderEmailLog==='function') setTimeout(renderEmailLog,60);
+  }
+  ['기본설정','조직관리','공지설정','알림','테마'].forEach(function(t){
     var el=document.getElementById('stab-pane-'+t);
     if(el) el.style.display=t===tab?'block':'none';
   });
@@ -12115,6 +12394,10 @@ async function _initSPCore() {
           if(typeof window._wkCheckCarryOver==='function'){
             try{ await window._wkCheckCarryOver(); }catch(e){}
           }
+          // 계약 기한초과 주간 리마인드 (관리자설정 요일에만 내부적으로 동작)
+          if(typeof window._wkCheckOverdueEmail==='function'){
+            try{ await window._wkCheckOverdueEmail(); }catch(e){}
+          }
         }
       }catch(e){ console.warn('[preload]',e); }
     }, 2000);
@@ -15011,6 +15294,105 @@ function renderAccessStat(range){
 <script>
 // ════ SP / MSAL ════
 var SP_SCOPE = 'https://tis21.sharepoint.com/.default';
+var MAIL_SCOPE = 'https://graph.microsoft.com/Mail.Send';
+
+// ── Graph API 메일 발송 토큰 (SharePoint와 별개 리소스라 별도로 받아야 함) ──
+async function _getMailToken(){
+  try{
+    if(window._mailToken && window._mailTokenExp && Date.now() < window._mailTokenExp - 60000){
+      return window._mailToken;
+    }
+    var app = window._msalApp;
+    if(!app) return null;
+    var accounts = app.getAllAccounts();
+    var account = accounts && accounts[0];
+    if(!account) return null;
+    var res = await app.acquireTokenSilent({scopes:[MAIL_SCOPE], account:account});
+    window._mailToken = res.accessToken;
+    window._mailTokenExp = res.expiresOn ? new Date(res.expiresOn).getTime() : (Date.now()+3000000);
+    return window._mailToken;
+  }catch(e){
+    console.warn('[Mail] 조용한 토큰 획득 실패, 대화형 시도:', e.message);
+    try{
+      var app2 = window._msalApp;
+      var res2 = await app2.acquireTokenPopup({scopes:[MAIL_SCOPE]});
+      window._mailToken = res2.accessToken;
+      window._mailTokenExp = res2.expiresOn ? new Date(res2.expiresOn).getTime() : (Date.now()+3000000);
+      return window._mailToken;
+    }catch(e2){
+      console.warn('[Mail] 대화형 토큰 획득도 실패 - 이 세션에서는 메일 발송 불가:', e2.message);
+      return null;
+    }
+  }
+}
+
+// ── Graph API 메일 발송 공용 함수 (위임된 권한: 로그인한 본인 계정으로 발송됨) ──
+async function _graphSendMail(toArr, ccArr, subject, htmlBody){
+  try{
+    var toRecipients = (toArr||[]).filter(Boolean).map(function(e){ return {emailAddress:{address:e}}; });
+    if(!toRecipients.length){ console.warn('[Mail] 수신자 없음 - 발송 취소:', subject); return false; }
+    var token = await _getMailToken();
+    if(!token){ console.warn('[Mail] 토큰 없음 - 발송 취소:', subject); return false; }
+    var ccRecipients = (ccArr||[]).filter(Boolean).map(function(e){ return {emailAddress:{address:e}}; });
+    var payload = {
+      message: {
+        subject: subject,
+        body: { contentType:'HTML', content: htmlBody },
+        toRecipients: toRecipients,
+        ccRecipients: ccRecipients
+      },
+      saveToSentItems: true
+    };
+    var res = await fetch('https://graph.microsoft.com/v1.0/me/sendMail', {
+      method:'POST',
+      headers:{ 'Authorization':'Bearer '+token, 'Content-Type':'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if(!res.ok){
+      var errText = '';
+      try{ errText = await res.text(); }catch(_e){}
+      console.warn('[Mail] 발송 실패', res.status, errText);
+      return false;
+    }
+    return true;
+  }catch(e){
+    console.warn('[Mail] 발송 중 오류:', e.message);
+    return false;
+  }
+}
+
+// ── 알림 이메일 HTML 템플릿 (일반/긴급 두 톤, 테이블 기반 - Outlook 호환) ──
+function _wkMailEsc(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function _buildNotifEmailHtml(opts){
+  opts = opts || {};
+  var urgent = !!opts.urgent;
+  var labelColor = urgent ? '#DC2626' : '#2563EB';
+  var boxBg     = urgent ? '#FEF2F2' : '#F8FAFC';
+  var boxBorder = urgent ? '#DC2626' : '#2563EB';
+  var boxColor  = urgent ? '#991B1B' : '#334155';
+  var btnBg     = urgent ? '#DC2626' : '#0F172A';
+  var F = "'Malgun Gothic',Arial,sans-serif";
+  var metaRow = opts.meta
+    ? '<tr><td style="padding:6px 32px 24px;font-family:'+F+';font-size:13px;color:#64748B;">'+_wkMailEsc(opts.meta)+'</td></tr>'
+    : '<tr><td style="padding-bottom:24px;"></td></tr>';
+  var boxRow = opts.boxText
+    ? '<tr><td style="padding:0 32px 28px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:'+boxBg+';border-radius:8px;border-left:3px solid '+boxBorder+';"><tr><td style="padding:14px 18px;font-family:'+F+';font-size:13px;color:'+boxColor+';line-height:1.6;'+(urgent?'font-weight:700;':'')+'">'+opts.boxText+'</td></tr></table></td></tr>'
+    : '';
+  return '<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"></head>'
+    +'<body style="margin:0;padding:0;background:#F1F5F9;">'
+    +'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F1F5F9;padding:32px 16px;"><tr><td align="center">'
+    +'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;">'
+    +'<tr><td style="background:#0F172A;padding:20px 32px;"><span style="font-family:'+F+';font-size:14px;font-weight:700;color:#FFFFFF;">TIS 영업관리시스템</span></td></tr>'
+    +'<tr><td style="padding:40px 32px 0;font-family:'+F+';font-size:12px;font-weight:700;color:'+labelColor+';letter-spacing:.04em;">'+_wkMailEsc(opts.label||'')+'</td></tr>'
+    +'<tr><td style="padding:10px 32px 4px;font-family:'+F+';font-size:19px;font-weight:700;color:#0F172A;line-height:1.4;">'+_wkMailEsc(opts.title||'')+'</td></tr>'
+    +metaRow
+    +boxRow
+    +'<tr><td style="padding:0 32px 36px;"><table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="background:'+btnBg+';border-radius:8px;"><a href="'+(opts.ctaUrl||'#')+'" style="display:inline-block;padding:12px 28px;font-family:'+F+';font-size:14px;font-weight:700;color:#FFFFFF;text-decoration:none;">'+_wkMailEsc(opts.ctaText||'앱에서 확인하기')+'</a></td></tr></table></td></tr>'
+    +'<tr><td style="padding:20px 32px;background:#F8FAFC;border-top:1px solid #E2E8F0;"><span style="font-family:'+F+';font-size:11px;color:#94A3B8;line-height:1.6;">이 메일은 TIS 영업관리시스템에서 자동 발송되었습니다.<br>알림 수신 설정은 관리자설정 &gt; 알림 탭에서 변경할 수 있습니다.</span></td></tr>'
+    +'</table></td></tr></table></body></html>';
+}
 
 function _setBar(state, msg){
   // ⚠ 예전에는 여기서 el.textContent/style.cssText를 직접 덮어써서, 새 아이콘 버튼 디자인이
@@ -16917,6 +17299,9 @@ function saveContractFromModal(rep,cid){
     if(_rid) _chainFields.rootId=_rid;
     else if(_pid) _chainFields.rootId=_newId; // 최초 갱신이면 자신이 root
     contracts.push(Object.assign({id:_newId,createdAt:new Date().toISOString()},data,_chainFields));
+    if(typeof window._wkNotifyNewContract==='function'){
+      try{ window._wkNotifyNewContract(rep, data); }catch(e){}
+    }
   }
   closeContractModal();
   _rebuildContractPanel(rep);
@@ -18017,6 +18402,18 @@ async function _wkCreateNotifs(entry){
     items.unshift(notif);
     items=items.slice(0,50);
     await _wkSaveNotif(target, items);
+    // 이메일 발송 (관리자설정에서 켜져 있을 때만)
+    if(_wkEmailOn('mention')){
+      var _mEmail=_wkRepEmail(target);
+      if(_mEmail){
+        var _mHtml=_buildNotifEmailHtml({
+          label:'멘션', title:_wkEsc(entry.displayName||entry.rep||'')+'님이 회의록에서 회원님을 언급했습니다',
+          meta:'방금 전', boxText:_wkSanitize?_wkSanitize(text):_wkMailEsc(text.replace(/<[^>]*>/g,' ')),
+          ctaText:'앱에서 확인하기', ctaUrl:_wkAppUrl()
+        });
+        _graphSendMail([_mEmail], _wkEmailCc('mention'), '[TIS영업관리] 회의록에서 회원님을 언급했습니다 - '+(entry.displayName||entry.rep||''), _mHtml);
+      }
+    }
   }
   // 2. 답변 알림 - _wkCreateReplyNotif에서 처리
 }
@@ -18111,6 +18508,58 @@ window._wkNotifyNewIssue=async function(rep, issue){
     });
     items=items.slice(0,50);
     await _wkSaveNotif(leader, items);
+    // 이메일 발송 (관리자설정에서 켜져 있을 때만)
+    if(_wkEmailOn('issue')){
+      var _iEmail=_wkRepEmail(leader);
+      if(_iEmail){
+        var _iHtml=_buildNotifEmailHtml({
+          label:'새 이슈 등록', title:_wkEsc(_wkDisplayName(rep))+'님이 새 이슈를 등록했습니다',
+          meta:issue&&issue.client?('고객사: '+issue.client):'',
+          boxText:issue&&issue.content?_wkMailEsc(issue.content):'',
+          ctaText:'이슈 확인하기', ctaUrl:_wkAppUrl()
+        });
+        _graphSendMail([_iEmail], _wkEmailCc('issue'), '[TIS영업관리] 새 이슈 등록 - '+(issue&&issue.client?issue.client:_wkDisplayName(rep)), _iHtml);
+      }
+    }
+  }
+};
+
+// ── 계약 신규 등록 → 팀장 알림/이메일 ──────────
+window._wkNotifyNewContract=async function(rep, con){
+  if(!window._isSPReady) return;
+  var repTeam='';
+  if(typeof TEAM_REPS!=='undefined'){
+    Object.keys(TEAM_REPS).forEach(function(t){
+      if((TEAM_REPS[t]||[]).indexOf(rep)>=0) repTeam=t;
+    });
+  }
+  var leaders=_wkGetTeamLeaders(repTeam||null);
+  if(!leaders.length) leaders=_wkAllLeaders();
+  for(var i=0;i<leaders.length;i++){
+    var leader=leaders[i];
+    if(leader===rep) continue;
+    var items=await _wkLoadNotif(leader);
+    items.unshift({
+      id:_wkGenId(), type:'contractNew', read:false, urgent:false,
+      msg:'<b>'+_wkEsc(_wkDisplayName(rep))+'</b>님이 신규 계약을 등록했습니다'
+        +(con&&con.client?' — <b>'+_wkEsc(con.client)+'</b>':''),
+      targetPage:'contract', time:_wkNowStr()
+    });
+    items=items.slice(0,50);
+    await _wkSaveNotif(leader, items);
+    if(typeof _wkUpdateNotifBadge==='function') _wkUpdateNotifBadge();
+    if(_wkEmailOn('contractNew')){
+      var _nEmail=_wkRepEmail(leader);
+      if(_nEmail){
+        var _nHtml=_buildNotifEmailHtml({
+          label:'계약 신규 등록', title:_wkEsc(_wkDisplayName(rep))+'님이 신규 계약을 등록했습니다',
+          meta:(con&&con.client?'고객사: '+con.client:'')+(con&&con.amount?' · 금액: '+Number(con.amount||0).toLocaleString()+'천원':''),
+          boxText:con&&con.projectName?_wkMailEsc(con.projectName):'',
+          ctaText:'계약 확인하기', ctaUrl:_wkAppUrl()
+        });
+        _graphSendMail([_nEmail], _wkEmailCc('contractNew'), '[TIS영업관리] 신규 계약 등록 - '+(con&&con.client?con.client:_wkDisplayName(rep)), _nHtml);
+      }
+    }
   }
 };
 
@@ -18157,6 +18606,18 @@ window._wkCheckCarryOver=async function(){
     var _dN2=typeof _wkGetDeletedNotifIds==='function'?_wkGetDeletedNotifIds():{};
     _wk.notifications=(items||[]).filter(function(n){return !_dN2[n.id];});
   _wkUpdateNotifBadge();
+  // 이메일 발송 (관리자설정에서 켜져 있을 때만) - 위 sessionStorage 가드로 하루 1회 보장됨
+  if(_wkEmailOn('carryover')){
+    var _cEmail=_wkRepEmail(myRep);
+    if(_cEmail){
+      var _cHtml=_buildNotifEmailHtml({
+        label:'미답변 이월', title:'지난주 회의록에서 회원님에게 요청된 미답변 항목이 있습니다',
+        meta:'미답변 '+unanswered.length+'건', boxText:'이번 주에 답변해주세요.',
+        ctaText:'회의록 확인하기', ctaUrl:_wkAppUrl()
+      });
+      _graphSendMail([_cEmail], _wkEmailCc('carryover'), '[TIS영업관리] 지난주 미답변 항목 '+unanswered.length+'건', _cHtml);
+    }
+  }
 };
 
 async function _wkCreateReplyNotif(entry, replyRep){
@@ -18184,6 +18645,17 @@ async function _wkCreateReplyNotif(entry, replyRep){
   items.unshift(notif);
   items=items.slice(0,50);
   await _wkSaveNotif(target, items);
+  // 이메일 발송 (관리자설정에서 켜져 있을 때만)
+  if(_wkEmailOn('reply')){
+    var _rEmail=_wkRepEmail(target);
+    if(_rEmail){
+      var _rHtml=_buildNotifEmailHtml({
+        label:'답변', title:_wkEsc(_wkDisplayName(replyRep))+'님이 회원님의 회의록에 답변을 달았습니다',
+        meta:'방금 전', ctaText:'앱에서 확인하기', ctaUrl:_wkAppUrl()
+      });
+      _graphSendMail([_rEmail], _wkEmailCc('reply'), '[TIS영업관리] 회원님 글에 답변이 달렸습니다 - '+_wkDisplayName(replyRep), _rHtml);
+    }
+  }
 }
 
 // ── 계약 만료 알림 생성 ────
@@ -18231,6 +18703,9 @@ function _wkGenContractNotifs(){
   _wk.notifications=_wk.notifications.filter(function(n){return n.type!=='contract';});
 
   var _deletedIds=typeof _wkGetDeletedNotifIds==='function'?_wkGetDeletedNotifIds():{};
+  if(!authCfg.contractEmailSent) authCfg.contractEmailSent={};
+  var _emailSentMap=authCfg.contractEmailSent;
+  var _emailSentChanged=false;
 
   function _addNotif(notifId, con, targetDate, label){
     var prev=_contractReadMap[notifId]||{};
@@ -18242,16 +18717,39 @@ function _wkGenContractNotifs(){
     // 이번 주 월요일 이후 삭제/읽음 → 다음 주 재알림
     if(_dismissedAt&&_dismissedAt>=thisMondayStr) return;
     var diff=Math.round((targetDate-today)/86400000);
-    if(diff<0||diff>31) return;
-    var urgent=diff<=7;
+    // ⚠ 예전에는 diff<0(기한초과)이면 여기서 그냥 return 해서, 정작 가장 급한 상황(기한을 넘긴 계약)에서
+    //   오히려 알림이 사라지던 허점이 있었음. 이제는 기한초과도 계속 표시하고(31일 이내 예정/임박만 상한 적용),
+    //   대신 이메일 재발송(주 1회)은 별도 함수(_wkCheckOverdueEmail)에서 요일 기준으로 관리한다.
+    if(diff>31) return;
+    var state = diff<0 ? 'overdue' : (diff<=7 ? 'urgent' : 'upcoming');
+    var titleMap={upcoming:'📋 '+label+' 만료 예정', urgent:'🔴 '+label+' 만료 임박', overdue:'🔴 '+label+' 기한초과'};
+    var msgD = diff<0 ? ('D+'+(-diff)) : ('D-'+diff);
     _wk.notifications.unshift({
       id:notifId, type:'contract',
       read:_persistRead||(prev.read||false),
-      urgent:urgent,
-      title:urgent?'🔴 '+label+' 만료 임박':'📋 '+label+' 만료 예정',
-      msg:'<b>'+_wkEsc(con.client||'')+'</b> '+_wkEsc(con.projectName||con.client||'')+' '+label+' 만료 <b>D-'+diff+'일</b>'+(urgent?' ⚠️ 즉시 갱신 필요':''),
+      urgent:(state!=='upcoming'),
+      title:titleMap[state],
+      msg:'<b>'+_wkEsc(con.client||'')+'</b> '+_wkEsc(con.projectName||con.client||'')+' '+label+' 만료 <b>'+msgD+'일</b>'+(state!=='upcoming'?' ⚠️ 즉시 갱신 필요':''),
       targetPage:'contract', time:_wkNowStr()
     });
+    // ⚠ in-app 알림은 10초마다 이 함수가 재실행되므로, 그대로 이메일에 연결하면 10초마다 계속 발송될 위험이 있음.
+    //   → '예정'→'임박' 상태가 바뀌는 시점에만 1회 발송 (기한초과는 여기서 보내지 않고 별도 주간 리마인드로 처리)
+    if(state!=='overdue' && _wkEmailOn('contract') && _emailSentMap[notifId]!==state){
+      _emailSentMap[notifId]=state;
+      _emailSentChanged=true;
+      var _ceEmail=_wkRepEmail(rep);
+      if(_ceEmail){
+        var _ceHtml=_buildNotifEmailHtml({
+          urgent:(state==='urgent'),
+          label:state==='urgent'?'계약 만료 임박':'계약 만료 예정',
+          title:_wkEsc(con.client||'')+' '+label+'이 '+msgD.replace('D-','')+'일 후 만료됩니다',
+          meta:'담당자: '+_wkDisplayName(rep)+' · 만료일 '+(con.endDate||con.managementEndDate||''),
+          boxText:state==='urgent'?(msgD+'일 · 즉시 갱신 검토가 필요합니다'):(msgD+'일 남았습니다'),
+          ctaText:'계약 확인하기', ctaUrl:_wkAppUrl()
+        });
+        _graphSendMail([_ceEmail], _wkEmailCc('contract'), '[TIS영업관리] '+(state==='urgent'?'🔴 계약 만료 임박 ':'📋 계약 만료 예정 ')+msgD+' - '+(con.client||''), _ceHtml);
+      }
+    }
   }
 
   contracts.forEach(function(con){
@@ -18269,7 +18767,67 @@ function _wkGenContractNotifs(){
       _addNotif('mgt_'+con.id, con, mEndD, con.managementType);
     }
   });
+  // 상태전환 이메일을 보냈으면 추적맵 저장 (다음 재계산 때 중복발송 방지)
+  if(_emailSentChanged && typeof saveAuthCfg==='function') saveAuthCfg();
 }
+
+// ── 계약 기한초과(D+) 주간 리마인드 - 관리자설정 요일에 주 1회만, 화면 실시간 표시와는 별개 ──
+window._wkCheckOverdueEmail=async function(){
+  if(!window._isSPReady||!session||!session.rep) return;
+  if(!_wkEmailOn('contract')) return; // 계약 알림 자체가 꺼져있으면 리마인드도 스킵
+  var wantDay=(authCfg.emailNotif&&authCfg.emailNotif.overdueDay)||1;
+  var today=new Date();
+  if(today.getDay()!==wantDay) return;
+  var checkKey='wk_overduecheck_'+today.toISOString().slice(0,10);
+  if(sessionStorage.getItem(checkKey)) return;
+  sessionStorage.setItem(checkKey,'1');
+
+  var rep=session.rep;
+  var email=_wkRepEmail(rep);
+  if(!email) return;
+  var contracts=(typeof _getContracts==='function')?_getContracts(rep):[];
+  var todayMid=new Date(); todayMid.setHours(0,0,0,0);
+  var dow=todayMid.getDay();
+  var thisMonday=new Date(todayMid); thisMonday.setDate(todayMid.getDate()-(dow===0?6:dow-1));
+  var thisMondayStr=thisMonday.toISOString().slice(0,10);
+  if(!authCfg.contractEmailSent) authCfg.contractEmailSent={};
+  var sentMap=authCfg.contractEmailSent;
+  var changed=false;
+  var overdueList=[];
+
+  function _chk(notifId, dateStr, label, con){
+    if(!dateStr) return;
+    var d=new Date(dateStr); d.setHours(0,0,0,0);
+    var diff=Math.round((d-todayMid)/86400000);
+    if(diff>=0) return; // 기한초과만 대상
+    var key='overdue_'+notifId;
+    if(sentMap[key]===thisMondayStr) return; // 이번 주 이미 리마인드 보냄
+    sentMap[key]=thisMondayStr; changed=true;
+    overdueList.push({con:con, label:label, diff:diff});
+  }
+  contracts.forEach(function(con){
+    if(con.status==='종료') return;
+    _chk('contract_'+con.id, con.endDate, '계약', con);
+    if(con.managementType==='유지보수'||con.managementType==='하자기간'){
+      _chk('mgt_'+con.id, con.managementEndDate, con.managementType, con);
+    }
+  });
+  if(overdueList.length){
+    var boxLines=overdueList.map(function(o){
+      return '<b>'+_wkMailEsc(o.con.client||'')+'</b> '+_wkMailEsc(o.label)+' — D+'+(-o.diff)+'일 초과';
+    }).join('<br>');
+    var html=_buildNotifEmailHtml({
+      urgent:true, label:'계약 기한초과',
+      title:'기한을 초과한 계약이 '+overdueList.length+'건 있습니다',
+      meta:'담당자: '+_wkDisplayName(rep),
+      boxText:boxLines,
+      ctaText:'계약 확인하기', ctaUrl:_wkAppUrl()
+    });
+    await _graphSendMail([email], _wkEmailCc('contract'), '[TIS영업관리] 🔴 계약 기한초과 '+overdueList.length+'건', html);
+  }
+  if(changed && typeof saveAuthCfg==='function') saveAuthCfg();
+};
+
 // ── 복원된 렌더링 함수들
 function _wkBuildTeamTabs(){
   var el=document.getElementById('wk-team-tabs');
@@ -20730,6 +21288,26 @@ function _wkNowStr(){
 function _wkEsc(s){
   if(!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── 이메일 알림 공용 헬퍼 ──
+function _wkRepEmail(rep){
+  return (typeof authCfg!=='undefined'&&authCfg.repEmails&&authCfg.repEmails[rep])||'';
+}
+// 관리자설정에 콤마/줄바꿈으로 입력한 참조(CC) 문자열을 이메일 배열로 파싱
+function _wkParseCcList(str){
+  if(!str) return [];
+  return str.split(/[,;\n]/).map(function(s){return s.trim();}).filter(function(s){return s && s.indexOf('@')>0;});
+}
+function _wkEmailOn(key){
+  return !!(typeof authCfg!=='undefined'&&authCfg.emailNotif&&authCfg.emailNotif[key]&&authCfg.emailNotif[key].on);
+}
+function _wkEmailCc(key){
+  return _wkParseCcList((typeof authCfg!=='undefined'&&authCfg.emailNotif&&authCfg.emailNotif[key]&&authCfg.emailNotif[key].cc)||'');
+}
+// 앱 URL (버튼 링크용) - 배포된 GitHub Pages 주소를 그대로 사용
+function _wkAppUrl(){
+  try{ return window.location.origin + window.location.pathname; }catch(e){ return '#'; }
 }
 
 var _wkAllowedTags=/^(b|i|u|s|strong|em|ul|ol|li|p|br|div|span|blockquote|font)$/i;
