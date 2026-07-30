@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-032 -->
+<!-- v20260728-032 변경사항: 고객사관리 상세화면 이력 탭(전체/계약/활동/이슈/접점현황/견적) 본문 텍스트가 회색(#374151/#94A3B8)으로 흐릿하게 표시되던 것을 검은색(#0F172A)으로 변경해 가독성 개선(날짜·담당자 등 보조 메타정보는 위계 구분을 위해 그대로 유지). 겸사겸사 개별 탭 클릭 시 견적 항목의 배지/막대 색상이 누락되어 회색으로 표시되던 것도 보완. -->
+<!-- TIS-VERSION: 20260728-031 -->
+<!-- v20260728-031 변경사항: 견적서관리 PDF 미리보기 화면 좌상단에 떠 있던 버전 배지(qtPdfVerBadge) 제거. 이제 상단바 SP 상태 아이콘에 마우스를 올리면 배포 버전을 확인할 수 있어서 여기 별도로 있을 필요가 없어짐. -->
 <!-- TIS-VERSION: 20260728-030 -->
 <!-- v20260728-030 변경사항: 브라우저 기본 title 툴팁(테두리 촌스러운 네이티브 스타일)을 커스텀 툴팁으로 교체 - 어두운 배경(#1E293B) + 흰 텍스트 + 화살표의 세련된 pill 형태로, 접속현황/알림/새로고침/SP상태 아이콘 4개 전부 동일 스타일 적용. SP 아이콘 툴팁에서 이모지(🟢🔴⏳)도 제거 - 점 색상이 이미 상태를 나타내므로 중복이었음. -->
 <!-- TIS-VERSION: 20260728-029 -->
@@ -15849,7 +15853,7 @@ function _cdbRenderDetail(id){
     var repDisp=h.rep?(typeof getRepDisplayName==='function'?getRepDisplayName(h.rep):h.rep):'';
     var mainText=h.text?_renderRich(h.text):'';
     var subText=(h.sub&&h.sub!==h.text)?_renderRich(h.sub):'';
-    return '<div class="cdb-hi"><div class="cdb-hd" style="background:'+(typeColor[h.type]||'#94A3B8')+';"></div><div class="cdb-hw"><div>'+TB(h.type)+'<div style="font-size:12px;color:#374151;line-height:1.6;">'+mainText+(subText?'<div style="color:#94A3B8;font-size:11px;margin-top:3px;line-height:1.6;">'+subText+'</div>':'')+'</div></div><div style="font-size:10px;color:#94A3B8;margin-top:2px;">'+(repDisp?_cdbEsc(repDisp)+' · ':'')+_cdbEsc(h.date||'')+'</div></div></div>';
+    return '<div class="cdb-hi"><div class="cdb-hd" style="background:'+(typeColor[h.type]||'#94A3B8')+';"></div><div class="cdb-hw"><div>'+TB(h.type)+'<div style="font-size:12px;color:#0F172A;line-height:1.6;">'+mainText+(subText?'<div style="color:#0F172A;font-size:11px;margin-top:3px;line-height:1.6;">'+subText+'</div>':'')+'</div></div><div style="font-size:10px;color:#94A3B8;margin-top:2px;">'+(repDisp?_cdbEsc(repDisp)+' · ':'')+_cdbEsc(h.date||'')+'</div></div></div>';
   }).join(''):'<div style="padding:20px;text-align:center;color:#94A3B8;font-size:12px;">활동 이력이 없습니다.</div>';
 
   var amtDisp=kpi.amount>=100000?(kpi.amount/100000).toFixed(1)+'억':kpi.amount>=10000?(Math.round(kpi.amount/1000))+'천만':kpi.amount?kpi.amount.toLocaleString('ko-KR')+'천':'0';
@@ -15910,8 +15914,8 @@ function _cdbHTab(el,type,id){
   el.classList.add('cdb-htab-on');
   var item=_cdbById(id); if(!item) return;
   var hist=_cdbGetHistory(item.name,type);
-  var typeColor={'계약':'#4f7fff','활동':'#F59E0B','이슈':'#8B5CF6','방문':'#10B981','접점현황':'#10B981'};
-  function TB(t){ var m={'계약':'#EFF6FF|#4f7fff','활동':'#FFF7ED|#EA580C','이슈':'#F5F3FF|#7C3AED','방문':'#ECFDF5|#059669','접점현황':'#ECFDF5|#059669'}; var cc=(m[t]||'#F8FAFC|#64748B').split('|'); return '<span style="font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;background:'+cc[0]+';color:'+cc[1]+';margin-right:4px;">'+t+'</span>'; }
+  var typeColor={'계약':'#4f7fff','활동':'#F59E0B','이슈':'#8B5CF6','방문':'#10B981','접점현황':'#10B981','견적':'#2563EB'};
+  function TB(t){ var m={'계약':'#EFF6FF|#4f7fff','활동':'#FFF7ED|#EA580C','이슈':'#F5F3FF|#7C3AED','방문':'#ECFDF5|#059669','접점현황':'#ECFDF5|#059669','견적':'#EFF6FF|#2563EB'}; var cc=(m[t]||'#F8FAFC|#64748B').split('|'); return '<span style="font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;background:'+cc[0]+';color:'+cc[1]+';margin-right:4px;">'+t+'</span>'; }
   var hList=document.getElementById('cdb-hlist'); if(!hList) return;
   var pos=hList.scrollTop||0;
   hList.innerHTML=hist.length?hist.map(function(h){
@@ -23655,18 +23659,6 @@ function qt_openPdf(type,quoteId){
   // 원본 시안 CSS로 완전 격리 렌더 (앱 CSS 간섭 차단)
   var _fr=document.getElementById('qtPdfFrame');
   if(_fr){
-    // 버전 배지 (미리보기 화면 전용 — iframe 밖이라 인쇄물엔 미포함)
-    try{
-      if(!window._TIS_VER){ var _vm=document.documentElement.innerHTML.match(/TIS-VERSION: ([\d-]+)/); window._TIS_VER=_vm?_vm[1]:'?'; }
-      var _vb=document.getElementById('qtPdfVerBadge');
-      if(!_vb){
-        _vb=document.createElement('div');
-        _vb.id='qtPdfVerBadge';
-        _vb.style.cssText='position:absolute;top:6px;left:10px;z-index:5;font-size:10px;font-weight:700;color:#64748B;background:rgba(241,245,249,.95);border:1px solid #E2E8F0;padding:2px 8px;border-radius:6px;font-family:Consolas,monospace;pointer-events:none;';
-        if(_fr.parentElement){ _fr.parentElement.style.position='relative'; _fr.parentElement.appendChild(_vb); }
-      }
-      _vb.textContent='v'+window._TIS_VER;
-    }catch(e){}
     var _css=(document.getElementById('qtPdfCss')||{}).textContent||'';
     var _doc=_fr.contentDocument||_fr.contentWindow.document;
     _doc.open();
