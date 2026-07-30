@@ -5518,72 +5518,10 @@ const labels = {
 const store={
   clientDB:[],
   reps:{
-    '전성현':{
-      plan:[60606,163333,60606,60606,60606,71416,198787,60606,101514,68182,68182,68182],
-      actual:[60300,83027,0,0,0,0,0,0,0,0,0,0],
-      forecast:[60300,83027,60606,60606,60606,71416,198787,60606,101514,68182,68182,68182],
-      clients:[
-        {name:'대한축구협회 ITO 서비스',type:'유지보수',plan:[60606,60606,60606,60606,60606,60606,60606,60606,60606,68182,68182,68182],actual:[60300,60300,0,0,0,0,0,0,0,0,0,0],issue:''},
-        {name:'KBSA 디비전리그 유지보수',type:'유지보수',plan:[0,22727,0,0,0,0,0,0,22727,0,0,0],actual:[0,22727,0,0,0,0,0,0,0,0,0,0],issue:'4/14 우선협상대상자 선정. 계약서 차주 송부 예정.',sev:'low'},
-        {name:'한국핸드볼연맹 행정시스템',type:'개발',plan:[0,80000,0,0,0,0,120000,0,0,0,0,0],actual:[0,0,0,0,0,0,0,0,0,0,0,0],issue:''},
-        {name:'KBSA 디비전리그 고도화',type:'개발',plan:[0,0,0,0,0,0,18181,0,18181,0,0,0],actual:[0,0,0,0,0,0,0,0,0,0,0,0],issue:''}
-      ],
-      activities:[
-        {no:1,type:'신규영업',client:'핸디소프트',product:'Web mail',amount:199,prob:0.2,timing:'2026 1Q',content:'사전 규격 수신 완료. 입찰 준비 중. 코비전, 가온아이 경쟁.',sev:'mid'},
-        {no:2,type:'기존고객',client:'KFA',product:'그룹웨어',amount:90,prob:0.5,timing:'3월',content:'M365 그룹웨어 소개 완료. 업무계 시스템 업그레이드 방향으로 전환.',sev:'low'}
-      ]
-    },
-    '허인수':{
-      plan:[0,0,36000,0,40000,0,40000,60000,0,36000,60000,154000],
-      actual:[0,36000,0,0,0,0,0,0,0,0,0,0],
-      forecast:[0,36000,36000,0,40000,0,40000,60000,0,36000,60000,154000],
-      clients:[
-        {name:'주영테크 영상분석 구축',type:'개발',plan:[0,0,36000,0,0,0,0,0,0,0,0,0],actual:[0,36000,0,0,0,0,0,0,0,0,0,0],issue:'TAK 요청으로 3월→4월 계산서 발행으로 순연',sev:'mid'},
-        {name:'아이에스솔루션 키웍스 플러그인',type:'개발',plan:[0,0,0,0,40000,0,0,60000,0,0,0,40000],actual:[0,0,0,0,0,0,0,0,0,0,0,0],issue:''},
-        {name:'WA테크놀로지 PIMS 구축',type:'개발',plan:[0,0,0,0,0,0,40000,0,0,0,0,60000],actual:[0,0,0,0,0,0,0,0,0,0,0,0],issue:''}
-      ],
-      activities:[
-        {no:1,type:'신규고객',client:'아이에스솔루션(키웍스)',product:'VODA',amount:0,prob:0,timing:'TBD',content:'4/21 현장 설치 완료. 마일스톤 및 서버 설치 완료. 2주간 인식률 테스트 진행 예정.',sev:'mid'},
-        {no:2,type:'기존고객',client:'랩밴티지코리아',product:'VOA',amount:0,prob:0,timing:'TBD',content:'7/6 국제산업안전보건전시회 공동 참여 협의 중. VOA 연동 관련 지속 협의.',sev:'low'},
-        {no:3,type:'신규고객',client:'한성기업',product:'ERP',amount:0,prob:0,timing:'TBD',content:'4/16 박스 확인 솔루션 및 산업안전솔루션 제안. 4/28 김해공장 현장 실사 예정.',sev:'mid'}
-      ]
-    },
-    '김충만':{
-      plan:[7405,91405,25955,168438,7405,42447,161580,67405,248337,7405,7405,125080],
-      actual:[7561,96556,81921,2136,2136,73956,77921,65340,10315,1125,1125,65340],
-      forecast:[7561,96556,81921,168438,7405,73956,161580,67405,248337,7405,7405,125080],
-      clients:[
-        {name:'현대차증권 웹메일 유지보수',type:'유지보수',plan:[855,855,855,855,855,855,855,855,855,855,855,855],actual:[1011,1011,1011,1011,1011,1011,1011,0,0,0,0,0],issue:'계약완료'},
-        {name:'누가의료기 협업시스템',type:'유지보수',plan:[1125,1125,1125,1125,1125,1125,1125,1125,1125,1125,1125,1125],actual:[1125,1125,1125,1125,1125,1125,1125,1125,1125,1125,1125,1125],issue:'계약완료'},
-        {name:'SK하이닉스 Exchange 업그레이드',type:'개발',plan:[0,0,0,154175,0,0,154175,0,205567,0,0,0],actual:[0,0,0,0,0,0,0,0,0,0,0,0],issue:'견적 진행 중 - 26년 4분기 예산 검토',sev:'mid'},
-        {name:'우리은행 메일 발송제한',type:'개발',plan:[0,84000,0,0,0,0,0,0,0,0,0,0],actual:[0,0,0,0,0,0,0,0,0,0,0,0],issue:'사업주최 우리FIS로 변경. 3월 내 입찰 진행 중.',sev:'mid'},
-        {name:'한국요꼬가와전기 그룹웨어',type:'개발',plan:[0,0,0,0,0,0,0,0,0,0,0,0],actual:[0,0,75785,0,0,0,75785,64215,0,0,0,64215],issue:'경영계획 外 매출 - ECP for M365',sev:'low'}
-      ],
-      activities:[
-        {no:1,type:'기존고객',client:'스템코',product:'G-COM',amount:280,prob:0.8,timing:'25.2Q',content:'02/02 업무오픈. GW 속도 및 인터페이스 오류 이슈 대응 중. 2월 말 매출은 3월로 진행 예정.',sev:'high'},
-        {no:2,type:'기존고객',client:'SK하이닉스(본사)',product:'Web mail',amount:96,prob:0.6,timing:'26.1Q',content:'IP관리체계구축 구매프로세스 진행 중. 04/09 고객사 구매프로세스 절차 진행 중.',sev:'mid'},
-        {no:3,type:'신규영업',client:'우리은행',product:'Web mail',amount:143,prob:0.5,timing:'2026 4Q',content:'03/25 사업주최 우리FIS로 변경 확인. 3월 내 입찰 예정.',sev:'mid'},
-        {no:4,type:'기존고객',client:'한국요꼬가와전기',product:'ECP for M365',amount:280,prob:0.7,timing:'26.1Q',content:'04/13 내부 품의 진행중. 1,2차 구분하여 견적 요청.',sev:'low'}
-      ]
-    },
-    '최원진':{
-      plan:[349865.9,201785.9,110385.9,165785.9,423185.9,155385.9,270965.9,81785.9,272285.9,74285.9,74285.9,77885.9],
-      actual:[191441.3,163840,10000,0,0,0,0,0,0,0,0,0],
-      forecast:[191441.3,163840,10000,165785.9,423185.9,155385.9,270965.9,81785.9,272285.9,74285.9,74285.9,77885.9],
-      clients:[
-        {name:'형지엘리트 학생복 유지보수',type:'유지보수',plan:[19386.8,19386.8,19386.8,19386.8,19386.8,19386.8,19386.8,19386.8,19386.8,19386.8,19386.8,19386.8],actual:[19386.8,0,0,0,0,0,0,0,0,0,0,0],issue:''},
-        {name:'이녹스첨단소재 MES 유지보수',type:'유지보수',plan:[16693.5,16693.5,16693.5,16693.5,16693.5,16693.5,16693.5,16693.5,16693.5,16693.5,16693.5,16693.5],actual:[16693.5,0,0,0,0,0,0,0,0,0,0,0],issue:''},
-        {name:'한국프로축구연맹 통합유지보수',type:'유지보수',plan:[42900,0,0,0,42900,0,0,0,42900,0,0,0],actual:[46300,0,0,0,0,0,0,0,0,0,0,0],issue:''},
-        {name:'새한 SQ인증 개발',type:'개발',plan:[84000,0,0,84000,0,0,0,0,112000,0,0,0],actual:[0,163840,0,0,0,0,0,0,0,0,0,0],issue:'4월 2주 계약금 세금계산서 발행 예정',sev:'low'},
-        {name:'사카타코리아 ERP 구축',type:'개발',plan:[0,120000,0,0,120000,0,160000,0,0,0,0,0],actual:[0,0,0,0,0,0,0,0,0,0,0,0],issue:''}
-      ],
-      activities:[
-        {no:1,type:'기존고객',client:'새한',product:'Xfusion MES',amount:546,prob:0.95,timing:'26년 4월',content:'SQ 인증 개발 진행중. 4월 2주 계약금 세금계산서 발행 예정.',sev:'low'},
-        {no:2,type:'기존고객',client:'레프코리아',product:'Xfusion ERP',amount:10,prob:0.8,timing:'26년 5월',content:'최종 협의 완료. 5월 18일 Kick Off 예정.',sev:'low'},
-        {no:3,type:'기존고객',client:'KT&G',product:'Xfusion MES',amount:50,prob:0.3,timing:'26년 5월',content:'외부 WAS 및 로케이션 관리 시스템 구축. KT&G 내부 의사결정 진행 중.',sev:'mid'},
-        {no:4,type:'기존고객',client:'팜에이트',product:'Xfusion MES',amount:200,prob:0.3,timing:'26년 9월',content:'담당자 퇴사로 업무 지연. 후임자 컨텍 진행 예정.',sev:'high'}
-      ]
-    }
+    '전성현':{plan:[0,0,0,0,0,0,0,0,0,0,0,0],actual:[0,0,0,0,0,0,0,0,0,0,0,0],forecast:[0,0,0,0,0,0,0,0,0,0,0,0],clients:[],activities:[]},
+    '허인수':{plan:[0,0,0,0,0,0,0,0,0,0,0,0],actual:[0,0,0,0,0,0,0,0,0,0,0,0],forecast:[0,0,0,0,0,0,0,0,0,0,0,0],clients:[],activities:[]},
+    '김충만':{plan:[0,0,0,0,0,0,0,0,0,0,0,0],actual:[0,0,0,0,0,0,0,0,0,0,0,0],forecast:[0,0,0,0,0,0,0,0,0,0,0,0],clients:[],activities:[]},
+    '최원진':{plan:[0,0,0,0,0,0,0,0,0,0,0,0],actual:[0,0,0,0,0,0,0,0,0,0,0,0],forecast:[0,0,0,0,0,0,0,0,0,0,0,0],clients:[],activities:[]}
   },
   issues:[]
 };
@@ -24146,73 +24084,6 @@ function qt_buildDevPdf(){
   h+='</div>';
   return h;
 }
-
-function qt_buildMaPdf(){
-  var D=window.PDF_DATA||{};
-  var phone=D.repPhone||D.phone||SESSION_REP.phone||''; var _rNm=D.repName||SESSION_REP.name, _rTt=D.repTitle||SESSION_REP.title, _rEm=D.repEmail||SESSION_REP.email;
-  return `<div class="q-bar1"></div><div class="q-bar2"></div>
-<div class="q-wrap">
-<div class="q-top">
-  <div>${qt_getLogoHtml()}</div>
-  <div class="q-co"><div class="q-co-name">${QT_SETTINGS.coName||'티에이케이정보시스템 주식회사'}</div>${QT_SETTINGS.coAddr||'서울특별시 강서구 마곡동로10길 7'}<br>대표이사 ${QT_SETTINGS.coCeo||'강 기 원'} (직인생략)</div>
-</div>
-<div class="q-ttl-sec"><div class="q-ttl-main">견 적 서</div><div class="q-ttl-en">Q U O T A T I O N</div></div>
-<div class="q-info">
-  <div class="q-ic"><div class="q-ic-lbl">수 신</div><div class="q-ic-val">${D.recv||''}</div></div>
-  <div class="q-ic"><div class="q-ic-lbl">견적 No.</div><div class="q-ic-val">${D.no||''}</div></div>
-  <div class="q-ic"><div class="q-ic-lbl">참 조</div><div class="q-ic-val">${D.ref||''}</div></div>
-  <div class="q-ic"><div class="q-ic-lbl">견적 일자</div><div class="q-ic-val">${D.date||''}</div></div>
-  <div class="q-ic"><div class="q-ic-lbl">발 신</div><div class="q-ic-val">${D.sender||''}</div></div>
-  <div class="q-ic"><div class="q-ic-lbl">유효기간</div><div class="q-ic-val">${D.validity||''}</div></div>
-  ${(D.maStart&&D.maEnd)?('<div class="q-ic"><div class="q-ic-lbl">계약 기간</div><div class="q-ic-val"><b>'+D.maStart.replace(/-/g,'.')+' ~ '+D.maEnd.replace(/-/g,'.')+' ('+(D.maMonths||'')+'개월)</b></div></div>'):''}
-</div>
-<div class="q-amt-hero">
-  <div><div class="q-amt-lbl">견적 금액 (VAT 별도)</div><div class="q-amt-kr">일금 삼천팔백육십오만원정</div></div>
-  <div class="q-amt-val">₩ 38,650,000</div>
-</div>
-<p class="q-intro" style="font-size:9.5px!important;">아래와 같이 견적합니다. &nbsp;&nbsp; <strong>프로젝트명</strong>&nbsp; 스템코 2026년 G-COM 유지보수</p>
-<table class="q-tbl">
-  <thead><tr>
-    <th class="L" style="width:78px;">구분</th><th class="L">품목 / 비고</th>
-    <th style="text-align:center;width:38px;">수량</th><th style="width:34px;">단위</th>
-    <th style="width:84px;">소비자단가</th><th style="width:96px;">소비자가</th>
-    <th style="width:76px;">제안단가</th><th style="width:90px;">제안금액</th>
-  </tr></thead>
-  <tbody>
-    <tr class="qtr-sec"><td colspan="8">MA 공수 &nbsp;<span style="font-weight:400;font-size:8px;opacity:.7;">(소계 ①)</span></td></tr>
-    <tr><td>G-COM Helpdesk</td><td class="L">G-COM Helpdesk (1,000유저 대상)<br><span style="color:#94A3B8;font-size:8px;">- AAE(계정관리), Intune(IOS) 범위제외</span></td><td>2</td><td>MM</td><td>24,011,147</td><td>48,022,294</td><td>13,700,000</td><td>27,400,000</td></tr>
-    <tr class="qtr-sub"><td colspan="5" style="text-align:right;">소 계 ①</td><td></td><td></td><td>27,400,000</td></tr>
-    <tr class="qtr-sec"><td colspan="8">정액 항목 &nbsp;<span style="font-weight:400;font-size:8px;opacity:.7;">(소계 ②)</span></td></tr>
-    <tr><td>ADC 사용료</td><td class="L">ADC 사용료(1~3월)<br><span style="color:#94A3B8;font-size:8px;">- 1월 사용료 무상제공</span></td><td>1,000</td><td>유저</td><td>-</td><td>-</td><td>-</td><td>11,250,000</td></tr>
-    <tr class="qtr-sub"><td colspan="5" style="text-align:right;">소 계 ②</td><td></td><td></td><td>11,250,000</td></tr>
-    <tr class="qtr-sub2"><td colspan="6" style="text-align:right;">소계 합산 ①+②</td><td></td><td>38,650,000</td></tr>
-    <tr class="qtr-acc"><td colspan="7" style="text-align:right;letter-spacing:.02em;">최 종 제 안 금 액 &nbsp;(VAT 별도)</td><td>₩ 38,650,000</td></tr>
-  </tbody>
-</table>
-<table style="width:100%;border-collapse:collapse;font-size:9.5px;margin:8px 0 11px;">
-  <tr><td colspan="2" style="border:1px solid #E5E7EB;padding:5px 8px;text-align:right;background:#F8FAFC;font-weight:700;">연간 유지보수 제안가 (VAT별도)</td><td style="border:1px solid #E5E7EB;padding:5px 8px;text-align:right;font-weight:800;color:#1D4ED8;width:100px;">38,650,000</td></tr>
-  <tr><td colspan="2" style="border:1px solid #E5E7EB;padding:5px 8px;text-align:right;background:#F8FAFC;">월별(1~2회차) 유지보수료 (VAT별도)</td><td style="border:1px solid #E5E7EB;padding:5px 8px;text-align:right;">7,908,000</td></tr>
-  <tr><td colspan="2" style="border:1px solid #E5E7EB;padding:5px 8px;text-align:right;background:#F8FAFC;">월별(3~12회차) 유지보수료 (VAT별도)</td><td style="border:1px solid #E5E7EB;padding:5px 8px;text-align:right;">2,283,400</td></tr>
-</table>
-<table class="q-cond">
-  <tr><td class="ql">대금<br>지급조건</td><td>매월 세금계산서 발행 후 익월 말 현금 결제</td></tr>
-  <tr><td class="ql">일반<br>조건</td><td>1. 본 견적은 스템코 2026년 G-COM 유지보수 프로젝트를 기반으로 산정한 견적입니다.<br>2. 유지보수 기간 : 2026.02.01 ~ 2027.01.31(12개월) &nbsp;&nbsp; 3. Application 시스템에 대한 유지보수<br>4. HW 및 MS 제품에 대한 유지보수는 제외 &nbsp;&nbsp; 5. 차감개발공수 유지보수 기간 종료 후 이월 불가<br>6. 본 견적은 비상주 유지보수 기준</td></tr>
-  <tr><td class="ql">기타<br>조건</td><td>1. 추가 요구사항의 경우 세부 협의 후 추가 공수 산정 필요</td></tr>
-</table>
-<div class="q-sign">
-  <div class="q-sign-box">
-    <div class="q-sign-ttl">담당자 확인</div>
-    <div class="q-sign-row"><span>담당자</span><span class="q-sign-val">${_rNm} ${_rTt}</span></div>
-    <div class="q-sign-row"><span>연락처</span><span class="q-sign-val">${phone}</span></div>
-    <div class="q-sign-row"><span>이메일</span><span class="q-sign-val">${_rEm}</span></div>
-    <div class="q-stamp">직인<br>생략</div>
-  </div>
-</div>
-<div class="q-foot">
-  <div class="q-foot-l">${QT_SETTINGS.coName||'티에이케이정보시스템㈜'} &nbsp;|&nbsp; ${QT_SETTINGS.coAddr||'서울특별시 강서구 마곡동로10길 7'} &nbsp;|&nbsp; ${_rNm} ${_rTt} (${phone} / ${_rEm})</div>
-  <div class="q-foot-r">SQ-CM260130-01</div>
-</div>
-</div>`;}
 
 function qt_openModal(mode,quoteId){
   window._qt_current_mode=mode||'new';
