@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-033 -->
+<!-- v20260728-033 변경사항: "새 이슈 등록" 알림과 "지난주 미답변 이월" 알림이 함수(_wkNotifyNewIssue, _wkCheckCarryOver)만 정의되어 있고 실제로 호출하는 곳이 코드 전체에 단 한 군데도 없어서 한 번도 발송된 적이 없었던 문제 수정. 이슈 신규 등록 시(수정 아닌 경우, 상태가 Open일 때) _wkNotifyNewIssue를 실제로 호출해 팀장에게 알림이 가도록 연결. 로그인 직후 _wkCheckCarryOver를 호출해 월요일에 지난주 미답변 항목 알림이 실제로 발송되도록 연결. -->
 <!-- TIS-VERSION: 20260728-032 -->
 <!-- v20260728-032 변경사항: 고객사관리 상세화면 이력 탭(전체/계약/활동/이슈/접점현황/견적) 본문 텍스트가 회색(#374151/#94A3B8)으로 흐릿하게 표시되던 것을 검은색(#0F172A)으로 변경해 가독성 개선(날짜·담당자 등 보조 메타정보는 위계 구분을 위해 그대로 유지). 겸사겸사 개별 탭 클릭 시 견적 항목의 배지/막대 색상이 누락되어 회색으로 표시되던 것도 보완. -->
 <!-- TIS-VERSION: 20260728-031 -->
@@ -11325,6 +11327,11 @@ function _ipSaveIssue(){
     store.reps[rep].issuesList[ii]=obj;
   } else {
     store.reps[rep].issuesList.push(obj);
+    // ⚠ 신규 이슈 등록 → 팀장 알림 (기존에는 _wkNotifyNewIssue가 정의만 되어있고
+    //   실제로 호출하는 곳이 없어서 이 알림이 한 번도 발송된 적이 없었음)
+    if(obj.status!=='Closed'&&typeof window._wkNotifyNewIssue==='function'){
+      try{ window._wkNotifyNewIssue(rep, obj); }catch(e){}
+    }
   }
   if(typeof _cdbSyncFromStore==='function') _cdbSyncFromStore();
   if(typeof extractIssues==='function') extractIssues();
@@ -12164,6 +12171,11 @@ async function _initSPCore() {
           // 재생성 후 SP 저장
           if(window._isSPReady&&session&&session.rep&&typeof _wkSaveNotif==='function'){
             try{ await _wkSaveNotif(session.rep, window._wk.notifications); }catch(e){}
+          }
+          // ⚠ 지난주 미답변 이월 알림 - 기존에는 _wkCheckCarryOver가 정의만 되어있고
+          //   실제로 호출하는 곳이 없어서 한 번도 발송된 적이 없었음 (월요일에만 내부적으로 동작)
+          if(typeof window._wkCheckCarryOver==='function'){
+            try{ await window._wkCheckCarryOver(); }catch(e){}
           }
         }
       }catch(e){ console.warn('[preload]',e); }
