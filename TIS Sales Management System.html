@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-035 -->
+<!-- v20260728-035 변경사항: (1) 하자기간 계약의 '계약'(endDate) 알림이 만료일이 지나도 계속 D+로 카운트되던 버그 수정 - 계약관리 화면(_cContractDdayBadge)과 동일하게 유지보수 유형만 D+ 지속(갱신시그널), 하자기간/해당없음은 만료 후 종료 취급(단, 하자기간 자체의 관리종료일 기준 알림은 정상적으로 계속 D+ 카운트). 기한초과 주간 리마인드도 동일 규칙 적용. (2) 발송이력 저장 실패를 조용히 삼키던 문제 수정 - 콘솔 경고 추가. (3) 발송이력 목록에 스크롤 컨테이너 적용(최대높이 320px) - 이력이 많아져도 페이지가 계속 늘어나지 않음, 재시도 버튼 추가. (4) 관리자 공지 발송에 "추가 수신자(수동 입력)" 필드 신설 - 시스템에 등록 안 된 이메일도 콤마로 구분해 추가 가능. (5) 알림 탭의 이벤트 토글/발송대상 렌더링이 혹시 안 보이는 문제에 대비해 방어적 예외처리+콘솔 진단 로그 추가, 탭 진입 시 여러 시점(50/200/600ms)에 재시도 렌더링. -->
 <!-- TIS-VERSION: 20260728-034 -->
 <!-- v20260728-034 변경사항: 이메일 알림 기능 전체 구현. (1) MSAL에 Mail.Send 스코프 추가 + Graph API 발송 함수(_graphSendMail)로 위임된 권한(로그인한 본인 계정)으로 메일 발송. (2) 이벤트 6개 실제 연결: 멘션/답변/새이슈등록/지난주미답변이월/계약만료예정·임박/계약신규등록(신설). (3) 계약 만료 로직 개선 - D+ 기한초과 시 알림이 사라지던 버그 수정, 예정→임박 상태전환 시점에만 1회 이메일 발송하도록 authCfg.contractEmailSent로 추적. (4) 계약 기한초과 주간 리마인드 신설 - 관리자설정에서 지정한 요일에 주 1회만 발송, 화면(계약관리) 실시간 표시와는 분리. (5) 관리자설정에 "알림" 탭 신설: 이벤트별 on/off 토글 + 참조(CC) 수신자, 계약 기한초과 요일 선택, 관리자 공지 발송(대상: 전체/특정팀/개별 선택, 미리보기, 나에게 테스트발송, 실제발송, SharePoint 기반 발송이력 20건 표시). 모든 이벤트 기본값은 OFF - 하나씩 검증 후 순차적으로 켜는 것을 권장. -->
 <!-- TIS-VERSION: 20260728-033 -->
@@ -4918,6 +4920,10 @@ window._updateSidebarByRole=function(){
             <div id="ann-target-pick" style="display:none;margin-top:10px;">
               <div id="ann-pick-list" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
             </div>
+            <div style="margin-top:12px;">
+              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px;">추가 수신자 (수동 입력, 선택) <span style="color:#CBD5E1;">— 시스템에 등록되지 않은 이메일도 콤마로 구분해 추가할 수 있습니다</span></label>
+              <input id="ann-manual-emails" type="text" placeholder="예: guest@company.com, partner@abc.com" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;font-family:inherit;">
+            </div>
           </div>
           <div style="margin-bottom:12px;">
             <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px;">제목</label>
@@ -5568,12 +5574,22 @@ function _emailEventRowHtml(ev){
   +'</div>';
 }
 function renderEmailNotifSettings(){
-  var el=document.getElementById('email-notif-rows');
-  if(!el) return;
-  if(!authCfg.emailNotif) authCfg.emailNotif={overdueDay:1};
-  el.innerHTML=_EMAIL_EVENTS.map(_emailEventRowHtml).join('');
-  var daySel=document.getElementById('cfg-overdue-day');
-  if(daySel) daySel.value=String((authCfg.emailNotif&&authCfg.emailNotif.overdueDay)||1);
+  try{
+    var el=document.getElementById('email-notif-rows');
+    if(!el) return;
+    // authCfg.emailNotif가 없거나 손상된 경우(배열/문자열 등) 기본값으로 복구
+    if(!authCfg.emailNotif || typeof authCfg.emailNotif!=='object' || Array.isArray(authCfg.emailNotif)){
+      console.warn('[알림설정] authCfg.emailNotif가 비정상 상태라 기본값으로 복구합니다.');
+      authCfg.emailNotif={overdueDay:1};
+    }
+    el.innerHTML=_EMAIL_EVENTS.map(_emailEventRowHtml).join('');
+    var daySel=document.getElementById('cfg-overdue-day');
+    if(daySel) daySel.value=String((authCfg.emailNotif&&authCfg.emailNotif.overdueDay)||1);
+  }catch(e){
+    console.error('[알림설정] renderEmailNotifSettings 오류:', e);
+    var el2=document.getElementById('email-notif-rows');
+    if(el2) el2.innerHTML='<div style="color:#DC2626;font-size:12px;">렌더링 오류가 발생했습니다. F12 콘솔을 확인해주세요: '+_wkEsc(e.message)+'</div>';
+  }
 }
 function _toggleEmailEvent(key,checked){
   if(!authCfg.emailNotif) authCfg.emailNotif={};
@@ -5608,19 +5624,29 @@ function _annTargetChange(){
   if(val==='pick') _annFillPickList();
 }
 function _annFillTeamSelect(){
-  var sel=document.getElementById('ann-team-sel');
-  if(!sel) return;
-  var teams=(typeof _visibleTeams==='function')?_visibleTeams():((typeof TEAMS!=='undefined')?TEAMS:[]);
-  sel.innerHTML=teams.map(function(t){return '<option value="'+_wkEsc(t)+'">'+_wkEsc(t)+'</option>';}).join('');
+  try{
+    var sel=document.getElementById('ann-team-sel');
+    if(!sel) return;
+    var teams=(typeof _visibleTeams==='function')?_visibleTeams():((typeof TEAMS!=='undefined')?TEAMS:[]);
+    if(!teams||!teams.length) console.warn('[공지발송] 팀 목록이 비어있습니다 (TEAMS 확인 필요)');
+    sel.innerHTML=(teams||[]).map(function(t){return '<option value="'+_wkEsc(t)+'">'+_wkEsc(t)+'</option>';}).join('');
+  }catch(e){
+    console.error('[공지발송] _annFillTeamSelect 오류:', e);
+  }
 }
 function _annFillPickList(){
-  var el=document.getElementById('ann-pick-list');
-  if(!el) return;
-  var reps=(typeof REPS!=='undefined')?REPS:[];
-  if(typeof _visibleReps==='function') reps=_visibleReps(reps);
-  el.innerHTML=reps.map(function(r){
-    return '<label style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--border);border-radius:20px;font-size:12px;cursor:pointer;background:white;"><input type="checkbox" value="'+_wkEsc(r)+'" class="ann-pick-cb"> '+_wkEsc(r)+'</label>';
-  }).join('');
+  try{
+    var el=document.getElementById('ann-pick-list');
+    if(!el) return;
+    var reps=(typeof REPS!=='undefined')?REPS:[];
+    if(typeof _visibleReps==='function') reps=_visibleReps(reps);
+    if(!reps||!reps.length) console.warn('[공지발송] 담당자 목록이 비어있습니다 (REPS 확인 필요)');
+    el.innerHTML=(reps||[]).map(function(r){
+      return '<label style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--border);border-radius:20px;font-size:12px;cursor:pointer;background:white;"><input type="checkbox" value="'+_wkEsc(r)+'" class="ann-pick-cb"> '+_wkEsc(r)+'</label>';
+    }).join('');
+  }catch(e){
+    console.error('[공지발송] _annFillPickList 오류:', e);
+  }
 }
 function _annResolveRecipients(){
   var sel=document.querySelector('input[name="ann-target"]:checked');
@@ -5638,7 +5664,12 @@ function _annResolveRecipients(){
   }
   var emails=[];
   reps.forEach(function(r){ var e=_wkRepEmail(r); if(e && emails.indexOf(e)<0) emails.push(e); });
-  return {reps:reps, emails:emails};
+  // 수동 입력 이메일 병합
+  var manualStr=(document.getElementById('ann-manual-emails')||{}).value||'';
+  var manualEmails=_wkParseCcList(manualStr);
+  var manualLabels=[];
+  manualEmails.forEach(function(e){ if(emails.indexOf(e)<0){ emails.push(e); manualLabels.push(e); } });
+  return {reps:reps.concat(manualLabels), emails:emails};
 }
 
 // ── 관리자 공지 발송: 이메일 템플릿 ──
@@ -5703,32 +5734,40 @@ async function _annSend(){
 
 // ── 발송 이력 ──
 async function _saveEmailLog(entry){
-  if(!window._isSPReady) return;
+  if(!window._isSPReady){ console.warn('[EmailLog] SP 미연결 - 발송이력 저장 스킵'); return false; }
   var id=Date.now()+'_'+Math.random().toString(36).slice(2,8);
-  try{ await _spSaveItem('emailLog', id, entry); }catch(e){}
+  var ok=false;
+  try{ ok=await _spSaveItem('emailLog', id, entry); }catch(e){ console.warn('[EmailLog] 저장 실패:', e.message); return false; }
+  if(ok===false) console.warn('[EmailLog] 저장 실패 (SP 응답 실패) - id:', id);
+  return ok!==false;
 }
 async function renderEmailLog(){
   var el=document.getElementById('email-log-list');
   if(!el) return;
   if(!window._isSPReady){ el.innerHTML='<div style="color:#94A3B8;">SP 연결 후 확인 가능합니다.</div>'; return; }
+  el.innerHTML='<div style="color:#94A3B8;">불러오는 중...</div>';
   try{
     var url=_lUrl()+'?$select=Id,Title,DataType,Payload&$top=200';
     var res=await _spFetchAll(url);
     var logs=(res.value||[]).filter(function(item){ return item.DataType==='emailLog'; })
       .map(function(item){ try{ return JSON.parse(item.Payload); }catch(e){ return null; } }).filter(Boolean);
     logs.sort(function(a,b){ return (b.sentAt||'').localeCompare(a.sentAt||''); });
-    logs=logs.slice(0,20);
+    logs=logs.slice(0,30);
     if(!logs.length){ el.innerHTML='<div style="color:#94A3B8;">발송 이력이 없습니다.</div>'; return; }
-    el.innerHTML=logs.map(function(l){
-      var dt=l.sentAt?new Date(l.sentAt):null;
-      var dtStr=dt?(dt.getFullYear()+'.'+(dt.getMonth()+1)+'.'+dt.getDate()+' '+String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0')):'';
-      return '<div style="padding:10px 0;border-bottom:1px solid #F1F5F9;">'
-        +'<div style="font-size:13px;font-weight:700;color:#0F172A;">'+_wkEsc(l.subject||'')+'</div>'
-        +'<div style="font-size:11px;color:#94A3B8;margin-top:2px;">'+dtStr+' · '+_wkEsc(l.sentBy||'')+' · 대상 '+(l.recipientCount||0)+'명 ('+_wkEsc(l.targetDesc||'')+')</div>'
-      +'</div>';
-    }).join('');
+    // ⚠ 이력이 많아져도 페이지 자체가 계속 늘어나지 않도록 고정 높이 + 스크롤 컨테이너로 감쌈
+    el.innerHTML='<div style="max-height:320px;overflow-y:auto;border:1px solid #F1F5F9;border-radius:8px;padding:0 12px;">'
+      +logs.map(function(l){
+        var dt=l.sentAt?new Date(l.sentAt):null;
+        var dtStr=dt?(dt.getFullYear()+'.'+(dt.getMonth()+1)+'.'+dt.getDate()+' '+String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0')):'';
+        return '<div style="padding:10px 0;border-bottom:1px solid #F1F5F9;">'
+          +'<div style="font-size:13px;font-weight:700;color:#0F172A;">'+_wkEsc(l.subject||'')+'</div>'
+          +'<div style="font-size:11px;color:#94A3B8;margin-top:2px;">'+dtStr+' · '+_wkEsc(l.sentBy||'')+' · 대상 '+(l.recipientCount||0)+'명 ('+_wkEsc(l.targetDesc||'')+')</div>'
+        +'</div>';
+      }).join('')
+    +'</div>';
   }catch(e){
-    el.innerHTML='<div style="color:#94A3B8;">불러오기 실패: '+_wkEsc(e.message)+'</div>';
+    console.warn('[EmailLog] 불러오기 실패:', e.message);
+    el.innerHTML='<div style="color:#94A3B8;">불러오기 실패: '+_wkEsc(e.message)+' <button onclick="renderEmailLog()" style="margin-left:6px;border:1px solid var(--border);border-radius:6px;padding:2px 8px;background:white;cursor:pointer;font-size:11px;">재시도</button></div>';
   }
 }
 
@@ -6013,8 +6052,13 @@ function switchSettingsTab(tab){
     if(typeof renderGuestAllowList==='function') setTimeout(renderGuestAllowList,60);
   }
   if(tab==='알림'){
-    if(typeof renderEmailNotifSettings==='function') setTimeout(renderEmailNotifSettings,50);
-    if(typeof renderEmailLog==='function') setTimeout(renderEmailLog,60);
+    // ⚠ 혹시 모를 DOM 타이밍 문제에 대비해 여러 시점에 재시도 (한 번이라도 정상 렌더되면 이후 호출은 그냥 덮어쓸 뿐 무해함)
+    [50,200,600].forEach(function(ms){
+      setTimeout(function(){
+        if(typeof renderEmailNotifSettings==='function') renderEmailNotifSettings();
+        if(typeof renderEmailLog==='function') renderEmailLog();
+      }, ms);
+    });
   }
   ['기본설정','조직관리','공지설정','알림','테마'].forEach(function(t){
     var el=document.getElementById('stab-pane-'+t);
@@ -18707,7 +18751,7 @@ function _wkGenContractNotifs(){
   var _emailSentMap=authCfg.contractEmailSent;
   var _emailSentChanged=false;
 
-  function _addNotif(notifId, con, targetDate, label){
+  function _addNotif(notifId, con, targetDate, label, allowOverdue){
     var prev=_contractReadMap[notifId]||{};
     var _readDate=(_wk.contractReadIds&&_wk.contractReadIds[notifId])||null;
     var _persistRead=_readDate&&_readDate>=thisMondayStr?true:false;
@@ -18720,6 +18764,11 @@ function _wkGenContractNotifs(){
     // ⚠ 예전에는 diff<0(기한초과)이면 여기서 그냥 return 해서, 정작 가장 급한 상황(기한을 넘긴 계약)에서
     //   오히려 알림이 사라지던 허점이 있었음. 이제는 기한초과도 계속 표시하고(31일 이내 예정/임박만 상한 적용),
     //   대신 이메일 재발송(주 1회)은 별도 함수(_wkCheckOverdueEmail)에서 요일 기준으로 관리한다.
+    // ⚠ 단, 계약(endDate) 알림은 계약관리 화면의 _cContractDdayBadge와 동일한 규칙을 따라야 함:
+    //   관리유형이 '유지보수'일 때만 만료일이 지나도 D+ 계속 카운트(갱신 시그널)하고,
+    //   '하자기간'/'해당없음'인 계약은 만료일이 지나면 화면처럼 "종료" 취급 - 더 이상 알림을 만들지 않음.
+    //   (하자기간 자체의 기한초과는 별도의 관리종료일 기준 알림이 이미 담당하고 있음)
+    if(diff<0 && !allowOverdue) return;
     if(diff>31) return;
     var state = diff<0 ? 'overdue' : (diff<=7 ? 'urgent' : 'upcoming');
     var titleMap={upcoming:'📋 '+label+' 만료 예정', urgent:'🔴 '+label+' 만료 임박', overdue:'🔴 '+label+' 기한초과'};
@@ -18755,16 +18804,16 @@ function _wkGenContractNotifs(){
   contracts.forEach(function(con){
     if(con.status==='종료') return;
 
-    // 1. 계약 종료일 알림 (유형 무관)
+    // 1. 계약 종료일 알림 (유형 무관, 단 하자기간/해당없음은 만료 후 종료 취급 - 유지보수만 D+ 지속)
     if(con.endDate){
       var endD=new Date(con.endDate); endD.setHours(0,0,0,0);
-      _addNotif('contract_'+con.id, con, endD, '계약');
+      _addNotif('contract_'+con.id, con, endD, '계약', con.managementType==='유지보수');
     }
 
-    // 2. 유지보수/하자기간 관리 종료일 알림
+    // 2. 유지보수/하자기간 관리 종료일 알림 (관리기간 자체는 항상 D+ 계속 카운트)
     if(con.managementEndDate && (con.managementType==='유지보수'||con.managementType==='하자기간')){
       var mEndD=new Date(con.managementEndDate); mEndD.setHours(0,0,0,0);
-      _addNotif('mgt_'+con.id, con, mEndD, con.managementType);
+      _addNotif('mgt_'+con.id, con, mEndD, con.managementType, true);
     }
   });
   // 상태전환 이메일을 보냈으면 추적맵 저장 (다음 재계산 때 중복발송 방지)
@@ -18807,7 +18856,9 @@ window._wkCheckOverdueEmail=async function(){
   }
   contracts.forEach(function(con){
     if(con.status==='종료') return;
-    _chk('contract_'+con.id, con.endDate, '계약', con);
+    // 하자기간/해당없음 계약은 endDate가 지나면 화면(_cContractDdayBadge)에서도 '종료' 취급하므로
+    // 리마인드 대상에서 제외 - 유지보수만 계약 만료 리마인드 대상(갱신 시그널)
+    if(con.managementType==='유지보수') _chk('contract_'+con.id, con.endDate, '계약', con);
     if(con.managementType==='유지보수'||con.managementType==='하자기간'){
       _chk('mgt_'+con.id, con.managementEndDate, con.managementType, con);
     }
