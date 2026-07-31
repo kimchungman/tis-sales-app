@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-038 -->
+<!-- v20260728-038 변경사항: 이메일 템플릿 상단 헤더를 검은 바 + "TIS 영업관리시스템" 텍스트에서, 앱 사이드바와 동일한 브랜딩(파란 #2563EB TIS 아이콘 + "TIS · Business Dev." + "Workspace" 두 톤 텍스트)의 밝은 화이트 헤더로 전면 교체. 알림 이메일(_buildNotifEmailHtml)과 관리자 공지 이메일(_buildAnnouncementEmailHtml) 양쪽 다 동일하게 적용, 공용 헤더 함수(_mailBrandHeader)로 통일해 앞으로 디자인 변경 시 한 곳만 고치면 되도록 함. -->
+<!-- TIS-VERSION: 20260728-037 -->
+<!-- v20260728-037 변경사항: (1) "해당 팀 팀장" 방식 이벤트(새 이슈 등록/계약 신규 등록)를 켜면 현재 실제로 수신하게 될 사람 이름을 토글 바로 아래 실시간으로 보여줌 - 팀장으로 지정된 담당자가 없으면 빨간 경고 문구로 즉시 알려줌(전송 전에 눈으로 검증 가능). 팀장이 아무도 없을 때 조용히 아무 일도 안 하던 발송 로직에도 콘솔 경고 추가. (2) 이벤트별 참조(CC) 입력도 관리자 공지 발송과 동일한 칩(chip) 방식으로 변경 - Enter/콤마로 알약 태그화, 잘못된 형식은 거부. (3) 신규 팀/담당자 추가 시 관리자 공지 발송의 팀 선택·개별 선택, 팀장 기반 알림 수신자 해석이 코드 수정 없이 자동으로 반영됨을 실제 스크립트 실행으로 검증 완료(TEAMS/TEAM_REPS/REPS를 매번 실시간 참조하는 구조). 관리자설정 저장은 saveAuthCfg() → spSaveSettings()로 authCfg 전체가 SharePoint에 즉시 저장/동기화됨을 코드로 재확인. -->
 <!-- TIS-VERSION: 20260728-036 -->
 <!-- v20260728-036 변경사항: 알림 탭에서 이벤트 토글이 하나도 안 보이고, 공지발송의 특정팀/개별선택도 비어있던 진짜 근본 원인 발견·수정. 관리자설정 탭 코드가 있는 <script> 블록과 _wkEsc/_wkRepEmail 같은 헬퍼 함수가 있는 <script> 블록은 서로 다른 스코프였음(후자는 주간회의 시스템 전체를 감싸는 거대한 IIFE 내부) - 그래서 토글을 그리려던 순간 "_wkEsc is not defined" 에러로 렌더링이 통째로 실패했음(콘솔 진단 로그조차 같은 이유로 실행이 안 됨). 실제 파일을 jsdom으로 로드해 함수 접근성을 직접 추적해서 확정. 알림 탭 전용 로컬 헬퍼(_ntEsc/_ntRepEmail/_ntParseEmailList)를 새로 만들어 완전히 독립시켜 재발 방지. 이벤트 발송 자체(멘션/답변/이슈 등)는 같은 IIFE 안에서 서로 호출하는 구조라 원래 문제없었음. 추가로 "추가 수신자(수동 입력)"을 일반 텍스트 입력에서 칩(chip) 방식으로 변경 - 이메일 입력 후 Enter/콤마를 누르면 알약 태그로 바뀌어 제대로 추가됐는지 바로 확인 가능, 잘못된 형식은 테두리가 빨갛게 흔들리며 거부됨. -->
 <!-- TIS-VERSION: 20260728-035 -->
@@ -5567,18 +5571,54 @@ function _ntParseEmailList(str){
   if(!str) return [];
   return str.split(/[,;\n]/).map(function(s){return s.trim();}).filter(function(s){return s && s.indexOf('@')>0;});
 }
+// 팀장 조회 (다른 스크립트의 _wkGetTeamLeaders/_wkAllLeaders와 동일한 로직을 이 스코프에 독립적으로 둠 -
+//  "수신 예정자" 실시간 미리보기 표시용)
+function _ntGetTeamLeaders(team){
+  var reps=(team && typeof TEAM_REPS!=='undefined' && TEAM_REPS[team]) || (typeof REPS!=='undefined'?REPS:[]);
+  return reps.filter(function(rep){
+    var title=(authCfg.repTitles && authCfg.repTitles[rep])||'';
+    return title==='팀장';
+  });
+}
+function _ntGetAllLeaders(){
+  var all=[];
+  if(typeof TEAMS!=='undefined') TEAMS.forEach(function(t){
+    _ntGetTeamLeaders(t).forEach(function(r){ if(all.indexOf(r)<0) all.push(r); });
+  });
+  return all;
+}
 
 var _EMAIL_EVENTS=[
   {key:'mention',     label:'멘션',              desc:'회의록에서 @언급됐을 때',                  recv:'언급된 사람'},
   {key:'reply',       label:'답변',              desc:'내가 쓴 회의록 글에 답변이 달렸을 때',       recv:'원글 작성자'},
-  {key:'issue',       label:'새 이슈 등록',       desc:'팀원이 새 이슈를 등록했을 때',              recv:'해당 팀 팀장'},
+  {key:'issue',       label:'새 이슈 등록',       desc:'팀원이 새 이슈를 등록했을 때',              recv:'해당 팀 팀장', teamBased:true},
   {key:'carryover',   label:'지난주 미답변 이월', desc:'매주 월요일, 지난주 미답변 항목이 있을 때', recv:'본인'},
   {key:'contract',    label:'계약 만료 예정/임박', desc:'만료 D-31, D-7 시점 전환 시 (기한초과 리마인드는 아래 별도 설정)', recv:'계약 담당자'},
-  {key:'contractNew', label:'계약 신규 등록',     desc:'새 계약이 등록됐을 때',                     recv:'해당 팀 팀장'}
+  {key:'contractNew', label:'계약 신규 등록',     desc:'새 계약이 등록됐을 때',                     recv:'해당 팀 팀장', teamBased:true}
 ];
+// 이벤트별 참조(CC) 칩 상태 - {key: ['a@x.com', ...]}
+window._eventCcChips = window._eventCcChips || {};
 function _emailEventRowHtml(ev){
   var cfg=(authCfg.emailNotif&&authCfg.emailNotif[ev.key])||{on:false,cc:''};
   var on=!!cfg.on;
+  if(!window._eventCcChips[ev.key]) window._eventCcChips[ev.key]=_ntParseEmailList(cfg.cc||'');
+
+  // "해당 팀 팀장" 방식 이벤트는 지금 실제로 누가 받게 되는지 바로 보여줌 (팀장 미지정이면 경고 표시)
+  var preview='';
+  if(ev.teamBased && on){
+    var leaders=_ntGetAllLeaders();
+    preview='<div style="margin-top:6px;font-size:11px;'+(leaders.length?'color:#2563EB;':'color:#DC2626;font-weight:700;')+'">'
+      +(leaders.length ? ('현재 수신 예정자: '+leaders.map(_ntEsc).join(', ')) : '⚠️ 팀장으로 지정된 담당자가 없습니다 — 조직관리에서 직책을 "팀장"으로 지정해주세요. 지정 전까지는 발송되지 않습니다.')
+      +'</div>';
+  }
+
+  var ccChipsHtml=(window._eventCcChips[ev.key]||[]).map(function(email, idx){
+    return '<span style="display:inline-flex;align-items:center;gap:4px;background:#EFF6FF;color:#2563EB;border-radius:14px;padding:2px 5px 2px 9px;font-size:11px;font-weight:600;white-space:nowrap;">'
+      +_ntEsc(email)
+      +'<button type="button" onclick="event.stopPropagation();_ccRemoveChip(\''+ev.key+'\','+idx+')" style="border:none;background:none;color:#2563EB;cursor:pointer;font-size:12px;line-height:1;padding:0 2px;">×</button>'
+      +'</span>';
+  }).join('');
+
   return '<div style="display:flex;align-items:flex-start;gap:14px;padding:14px 0;border-bottom:1px solid #F1F5F9;">'
     +'<label style="position:relative;display:inline-block;width:40px;height:22px;flex-shrink:0;margin-top:2px;cursor:pointer;">'
       +'<input type="checkbox" '+(on?'checked':'')+' onchange="_toggleEmailEvent(\''+ev.key+'\',this.checked)" style="opacity:0;width:0;height:0;position:absolute;">'
@@ -5588,9 +5628,67 @@ function _emailEventRowHtml(ev){
     +'<div style="flex:1;min-width:0;">'
       +'<div style="font-size:13px;font-weight:700;color:#0F172A;">'+_ntEsc(ev.label)+'</div>'
       +'<div style="font-size:11.5px;color:#94A3B8;margin-top:2px;">'+_ntEsc(ev.desc)+' · 수신자: '+_ntEsc(ev.recv)+'</div>'
-      +(on?('<input type="text" placeholder="참조(CC) 이메일 추가 (쉼표로 구분, 선택)" value="'+_ntEsc(cfg.cc||'')+'" onblur="_updateEmailCc(\''+ev.key+'\',this.value)" style="margin-top:8px;width:100%;max-width:420px;border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;font-family:inherit;">'):'')
+      +preview
+      +(on?(
+        '<div style="margin-top:8px;max-width:420px;">'
+        +'<div style="font-size:10.5px;color:#94A3B8;margin-bottom:4px;">참조(CC) 추가 (선택)</div>'
+        +'<div id="cc-chipbox-'+ev.key+'" onclick="document.getElementById(\'cc-input-'+ev.key+'\').focus()" style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;padding:5px 7px;border:1px solid var(--border);border-radius:7px;min-height:32px;background:white;cursor:text;">'
+          +ccChipsHtml
+          +'<input id="cc-input-'+ev.key+'" type="text" placeholder="'+(ccChipsHtml?'':'이메일 입력 후 Enter 또는 콤마')+'" onkeydown="_ccKeydown(event,\''+ev.key+'\')" onblur="_ccCommit(\''+ev.key+'\')" style="border:none;outline:none;flex:1;min-width:120px;font-size:11.5px;font-family:inherit;padding:2px;background:transparent;">'
+        +'</div>'
+      +'</div>'):'')
     +'</div>'
   +'</div>';
+}
+
+// ── 이벤트별 참조(CC) 칩 입력 로직 (관리자 공지 발송의 칩 입력과 동일한 방식) ──
+function _ccTryAdd(key, raw){
+  var val=(raw||'').trim().replace(/,$/,'').trim();
+  if(!val) return false;
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)){
+    var box=document.getElementById('cc-chipbox-'+key);
+    if(box){
+      box.style.transition='transform .08s';
+      box.style.borderColor='#EF4444';
+      var seq=[-4,4,-3,3,0];
+      seq.forEach(function(x,i){ setTimeout(function(){ box.style.transform='translateX('+x+'px)'; if(i===seq.length-1) box.style.borderColor='var(--border)'; }, i*45); });
+    }
+    if(typeof showToast==='function') showToast('올바른 이메일 형식이 아닙니다: '+val,'warn');
+    return false;
+  }
+  if(!window._eventCcChips[key]) window._eventCcChips[key]=[];
+  if(window._eventCcChips[key].indexOf(val)<0) window._eventCcChips[key].push(val);
+  return true;
+}
+function _ccPersist(key){
+  if(!authCfg.emailNotif) authCfg.emailNotif={};
+  if(!authCfg.emailNotif[key]) authCfg.emailNotif[key]={on:false,cc:''};
+  authCfg.emailNotif[key].cc=(window._eventCcChips[key]||[]).join(',');
+  if(typeof saveAuthCfg==='function') saveAuthCfg();
+}
+function _ccKeydown(ev, key){
+  if(ev.key==='Enter'||ev.key===','){
+    ev.preventDefault();
+    var added=_ccTryAdd(key, ev.target.value);
+    if(added){ ev.target.value=''; _ccPersist(key); renderEmailNotifSettings(); var i=document.getElementById('cc-input-'+key); if(i) i.focus(); }
+  } else if(ev.key==='Backspace' && !ev.target.value && (window._eventCcChips[key]||[]).length){
+    window._eventCcChips[key].pop();
+    _ccPersist(key);
+    renderEmailNotifSettings();
+    var i2=document.getElementById('cc-input-'+key); if(i2) i2.focus();
+  }
+}
+function _ccCommit(key){
+  var input=document.getElementById('cc-input-'+key);
+  if(input && input.value.trim()){
+    var added=_ccTryAdd(key, input.value);
+    if(added){ _ccPersist(key); renderEmailNotifSettings(); }
+  }
+}
+function _ccRemoveChip(key, idx){
+  window._eventCcChips[key].splice(idx,1);
+  _ccPersist(key);
+  renderEmailNotifSettings();
 }
 function renderEmailNotifSettings(){
   try{
@@ -5764,8 +5862,8 @@ function _buildAnnouncementEmailHtml(subject, bodyHtml, testTag){
     +'<body style="margin:0;padding:0;background:#F1F5F9;">'
     +'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F1F5F9;padding:32px 16px;"><tr><td align="center">'
     +'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;">'
-    +'<tr><td style="background:#0F172A;padding:20px 32px;"><span style="font-family:'+F+';font-size:14px;font-weight:700;color:#FFFFFF;">TIS 영업관리시스템</span></td></tr>'
-    +'<tr><td style="padding:40px 32px 0;font-family:'+F+';font-size:12px;font-weight:700;color:#7C3AED;letter-spacing:.04em;">'+(testTag?'테스트 발송':'공지사항')+'</td></tr>'
+    +(typeof _mailBrandHeader==='function' ? _mailBrandHeader() : '<tr><td style="background:#0F172A;padding:20px 32px;"><span style="font-family:'+F+';font-size:14px;font-weight:700;color:#FFFFFF;">TIS 영업관리시스템</span></td></tr>')
+    +'<tr><td style="padding:28px 32px 0;font-family:'+F+';font-size:12px;font-weight:700;color:#7C3AED;letter-spacing:.04em;">'+(testTag?'테스트 발송':'공지사항')+'</td></tr>'
     +'<tr><td style="padding:10px 32px 24px;font-family:'+F+';font-size:19px;font-weight:700;color:#0F172A;line-height:1.4;">'+_wkMailEsc(subject)+'</td></tr>'
     +'<tr><td style="padding:0 32px 36px;font-family:'+F+';font-size:14px;color:#334155;line-height:1.8;">'+bodyHtml+'</td></tr>'
     +'<tr><td style="padding:20px 32px;background:#F8FAFC;border-top:1px solid #E2E8F0;"><span style="font-family:'+F+';font-size:11px;color:#94A3B8;line-height:1.6;">이 메일은 TIS 영업관리시스템 관리자가 발송한 공지입니다.</span></td></tr>'
@@ -15499,6 +15597,21 @@ async function _graphSendMail(toArr, ccArr, subject, htmlBody){
 function _wkMailEsc(s){
   return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
+// 앱 사이드바 로고와 동일한 브랜딩 헤더 (검은 바 대신 밝고 화이트한 톤)
+function _mailBrandHeader(){
+  var F = "'Malgun Gothic',Arial,sans-serif";
+  return '<tr><td style="background:#FFFFFF;padding:20px 32px;border-bottom:1px solid #E2E8F0;">'
+    +'<table role="presentation" cellpadding="0" cellspacing="0"><tr>'
+      +'<td style="width:32px;height:32px;background:#2563EB;border-radius:8px;text-align:center;vertical-align:middle;">'
+        +'<span style="font-family:Arial,sans-serif;font-size:11px;font-weight:900;color:#FFFFFF;letter-spacing:.02em;">TIS</span>'
+      +'</td>'
+      +'<td style="padding-left:10px;">'
+        +'<div style="font-family:'+F+';font-size:9px;color:#94A3B8;letter-spacing:.02em;">TIS · Business Dev.</div>'
+        +'<div style="font-family:'+F+';font-size:14px;font-weight:700;line-height:1.3;"><span style="color:#0F172A;">Work</span><span style="color:#2563EB;">space</span></div>'
+      +'</td>'
+    +'</tr></table>'
+  +'</td></tr>';
+}
 function _buildNotifEmailHtml(opts){
   opts = opts || {};
   var urgent = !!opts.urgent;
@@ -15518,8 +15631,8 @@ function _buildNotifEmailHtml(opts){
     +'<body style="margin:0;padding:0;background:#F1F5F9;">'
     +'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F1F5F9;padding:32px 16px;"><tr><td align="center">'
     +'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;">'
-    +'<tr><td style="background:#0F172A;padding:20px 32px;"><span style="font-family:'+F+';font-size:14px;font-weight:700;color:#FFFFFF;">TIS 영업관리시스템</span></td></tr>'
-    +'<tr><td style="padding:40px 32px 0;font-family:'+F+';font-size:12px;font-weight:700;color:'+labelColor+';letter-spacing:.04em;">'+_wkMailEsc(opts.label||'')+'</td></tr>'
+    +_mailBrandHeader()
+    +'<tr><td style="padding:28px 32px 0;font-family:'+F+';font-size:12px;font-weight:700;color:'+labelColor+';letter-spacing:.04em;">'+_wkMailEsc(opts.label||'')+'</td></tr>'
     +'<tr><td style="padding:10px 32px 4px;font-family:'+F+';font-size:19px;font-weight:700;color:#0F172A;line-height:1.4;">'+_wkMailEsc(opts.title||'')+'</td></tr>'
     +metaRow
     +boxRow
@@ -18630,6 +18743,10 @@ window._wkNotifyNewIssue=async function(rep, issue){
   var leaders=_wkGetTeamLeaders(repTeam||null);
   // 팀장이 없으면 전체 팀장
   if(!leaders.length) leaders=_wkAllLeaders();
+  if(!leaders.length){
+    console.warn('[새이슈알림] 팀장으로 지정된 담당자가 아무도 없어 알림을 보낼 대상이 없습니다. 관리자설정 > 조직관리에서 직책을 "팀장"으로 지정해주세요.');
+    return;
+  }
   for(var i=0;i<leaders.length;i++){
     var leader=leaders[i];
     if(leader===rep) continue; // 본인이 팀장이면 스킵
@@ -18669,6 +18786,10 @@ window._wkNotifyNewContract=async function(rep, con){
   }
   var leaders=_wkGetTeamLeaders(repTeam||null);
   if(!leaders.length) leaders=_wkAllLeaders();
+  if(!leaders.length){
+    console.warn('[계약신규알림] 팀장으로 지정된 담당자가 아무도 없어 알림을 보낼 대상이 없습니다. 관리자설정 > 조직관리에서 직책을 "팀장"으로 지정해주세요.');
+    return;
+  }
   for(var i=0;i<leaders.length;i++){
     var leader=leaders[i];
     if(leader===rep) continue;
