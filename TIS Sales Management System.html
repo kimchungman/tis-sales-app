@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-042 -->
+<!-- v20260728-042 변경사항: (1) 주간회의 요약에서 삭제(및 수정/답변)한 내용이 다른 메뉴 갔다가 돌아오면 되살아나던 버그의 진짜 원인 발견·수정 - _wkLogDeleteEntry/_wkLogSaveEditEntry/_wkLogSaveEditReply/_wkLogDeleteReply/_wkLogSubmitReply 다섯 개 함수 모두, 여러 담당자 항목이 섞인 배열을 그대로 필터링해서 "그 항목 작성자 한 명"의 저장 버킷에 통째로 덮어쓰고 있었음(저장 구조는 담당자별 완전히 독립된 버킷). 이 때문에 그 담당자 버킷에 다른 담당자 항목까지 섞여 들어가고 정작 삭제/수정 반영이 제대로 안 됐음. 반드시 "그 담당자 본인 항목만" 걸러서 저장하도록 다섯 곳 모두 수정 - 실제 함수를 격리 실행해 다른 담당자 항목이 더 이상 섞이지 않는 것까지 검증 완료. (2) 이슈 현황에서 담당자 필터 버튼을 한 번이라도 누르면 그 상태가 세션 내내 고정되어, 다른 메뉴 갔다가 돌아와도 계속 그 담당자 이슈만 보이던 문제 수정 - 이슈 현황 페이지에 진입할 때마다 필터를 전체 보기로 초기화하도록 함. -->
 <!-- TIS-VERSION: 20260728-041 -->
 <!-- v20260728-041 변경사항: (1) 발송이력이 관리자 공지 발송만 기록되고 멘션/답변/새이슈등록/미답변이월/계약만료/계약신규등록/계약기한초과 6개 자동 이벤트는 전혀 기록이 안 남던 문제 발견·수정 - 모든 발송이 결국 _graphSendMail 함수 하나를 거치므로 그 안에서 중앙집중식으로 발송이력을 자동 기록하도록 개편(나에게 테스트 발송은 실제 공지가 아니므로 제외). 이력에 이벤트 유형별 컬러 배지 표시. (2) 발송이력에서 관리자 공지 항목을 "재사용"할 수 있는 기능 신설 - 재사용 버튼 클릭 시 원본 제목/발송일시/수신대상을 보여주는 확인 모달이 뜨고, 불러오면 제목·본문·발송대상(전체/특정팀/개별선택+수동입력 이메일)이 작성 화면에 그대로 복원됨. 이벤트 알림(멘션 등)은 재사용 대상에서 제외(공지 작성과 데이터 구조가 달라 재사용 의미가 없음). 실제 스크립트 실행으로 전체 흐름(재사용 버튼 노출 조건, 모달 표시, 값 복원) 검증 완료. -->
 <!-- TIS-VERSION: 20260728-040 -->
@@ -6609,6 +6611,10 @@ function initInputTabs() {
 }
 
 function initIssueTabs() {
+  // ⚠ window._F(담당자/상태 필터)가 한 번 클릭되면 세션 내내 그대로 유지되고 있었음 -
+  //   페이지를 벗어났다 다시 들어와도 리셋이 안 되어서, 예전에 특정 담당자 필터를 눌렀던 적이
+  //   있으면 계속 그 담당자 이슈만 보이는 원인이 됐음. 진입할 때마다 전체 보기로 초기화한다.
+  if(typeof window._F!=='undefined') window._F={rep:null, reps:[], st:[]};
   _buildTeamTabs('issue-team-tabs', 'issues', function(team) {
     if (typeof _currentIssueTeam !== 'undefined') _currentIssueTeam = team;
     if (typeof extractIssues === 'function') extractIssues();
@@ -20487,13 +20493,21 @@ function _wkLogSaveEditEntry(id){
   var entry=entries.find(function(e){return e.id===id;});
   if(!entry) return;
   entry.text=ed.innerHTML;
-  if(typeof _wkSaveFeed==='function') _wkSaveFeed(saveKey, entry.rep, entries);
+  // ⚠ entries는 여러 담당자 항목이 섞인 배열 - 그 담당자 본인 항목만 걸러서 저장해야 함(아래 동일 패턴 전부 동일)
+  var myEntries=entries.filter(function(e){return e.rep===entry.rep;});
+  if(typeof _wkSaveFeed==='function') _wkSaveFeed(saveKey, entry.rep, myEntries);
   _wkLogRender();
 }
 
 function _wkLogDeleteEntry(id){
   appConfirm('삭제하시겠습니까?', function(){
   var repName, saveKey;
+  // ⚠ 예전에는 아래 세 탭 모두에서 여러 담당자의 항목이 섞인 배열(searchEntries/prevEntries/entries)을
+  //   그대로 필터링해서 "삭제한 항목의 작성자 한 명"의 저장 키에 통째로 덮어쓰고 있었음.
+  //   저장 구조는 rep별로 완전히 독립된 버킷이라, 이렇게 저장하면 그 담당자 버킷에 다른 담당자
+  //   항목까지 섞여 들어가고, 정작 그 담당자 자신의 진짜 항목 목록은 제대로 갱신되지 않아
+  //   화면을 벗어났다 돌아오면(다시 SP에서 불러오면) 삭제가 반영 안 된 것처럼 보였음.
+  //   → 반드시 "그 담당자 본인 항목만" 걸러서 저장해야 함(_wkDeleteEntry와 동일한 원칙).
   if(_wkLogTab_current==='search'&&_wk.weekMode==='period'){
     // 조회 탭: searchEntries에서 삭제
     var found=(_wk.searchEntries||[]).find(function(e){return e.id===id;});
@@ -20501,22 +20515,26 @@ function _wkLogDeleteEntry(id){
     repName=found.rep;
     saveKey=_wk.selectedWeekKey||_wkCurrentKey();
     _wk.searchEntries=(_wk.searchEntries||[]).filter(function(e){return e.id!==id;});
-    if(typeof _wkSaveFeed==='function') _wkSaveFeed(saveKey, repName, _wk.searchEntries);
+    var myEntries1=_wk.searchEntries.filter(function(e){return e.rep===repName;});
+    if(typeof _wkSaveFeed==='function') _wkSaveFeed(saveKey, repName, myEntries1);
   } else if(_wkLogTab_current==='prev'){
     // 지난주 탭
     var found2=(_wk.prevEntries||[]).find(function(e){return e.id===id;});
     if(!found2) return;
     repName=found2.rep;
     _wk.prevEntries=(_wk.prevEntries||[]).filter(function(e){return e.id!==id;});
-    if(typeof _wkSaveFeed==='function') _wkSaveFeed(_wkLastKey(), repName, _wk.prevEntries);
+    var myEntries2=_wk.prevEntries.filter(function(e){return e.rep===repName;});
+    if(typeof _wkSaveFeed==='function') _wkSaveFeed(_wkLastKey(), repName, myEntries2);
   } else {
     // 금주 탭
     var found3=(_wk.entries||[]).find(function(e){return e.id===id;});
     if(!found3) return;
     repName=found3.rep;
     _wk.entries=(_wk.entries||[]).filter(function(e){return e.id!==id;});
-    if(typeof _wkSaveFeed==='function') _wkSaveFeed(_wkThisKey(), repName, _wk.entries);
+    var myEntries3=_wk.entries.filter(function(e){return e.rep===repName;});
+    if(typeof _wkSaveFeed==='function') _wkSaveFeed(_wkThisKey(), repName, myEntries3);
   }
+  if(_wk) _wk.lastSaveAt=Date.now(); // 방금 저장했으니 잠시 SP 재로드로 덮어쓰기 방지
   _wkLogRender();
   });
 }
@@ -20581,7 +20599,8 @@ function _wkLogSaveEditReply(entryId,replyId){
   var reply=(entry.replies||[]).find(function(r){return r.id===replyId;});
   if(!reply) return;
   reply.text=ed.innerHTML;
-  if(typeof _wkSaveFeed==='function') _wkSaveFeed(saveKey, entry.rep, entries);
+  var myEntries2=entries.filter(function(e){return e.rep===entry.rep;});
+  if(typeof _wkSaveFeed==='function') _wkSaveFeed(saveKey, entry.rep, myEntries2);
   _wkLogRender();
 }
 
@@ -20601,7 +20620,8 @@ function _wkLogDeleteReply(entryId, replyId){
   var entry=entries.find(function(e){return e.id===entryId;});
   if(!entry) return;
   entry.replies=(entry.replies||[]).filter(function(r){return r.id!==replyId;});
-  if(typeof _wkSaveFeed==='function') _wkSaveFeed(saveKey, entry.rep, entries);
+  var myEntries3=entries.filter(function(e){return e.rep===entry.rep;});
+  if(typeof _wkSaveFeed==='function') _wkSaveFeed(saveKey, entry.rep, myEntries3);
   _wkLogRender();
   });
 }
@@ -20705,7 +20725,8 @@ async function _wkLogSubmitReply(entryId){
   var timeStr=(now.getMonth()+1)+'/'+now.getDate()+' '+(now.getHours()<10?'0':'')+now.getHours()+':'+(now.getMinutes()<10?'0':'')+now.getMinutes();
   if(!entry.replies) entry.replies=[];
   entry.replies.push({id:'r'+Date.now(),rep:myRep,displayName:myName,text:ed.innerHTML,time:timeStr});
-  if(typeof _wkSaveFeed==='function') await _wkSaveFeed(saveKey,entry.rep,entries);
+  var myEntries4=entries.filter(function(e){return e.rep===entry.rep;});
+  if(typeof _wkSaveFeed==='function') await _wkSaveFeed(saveKey,entry.rep,myEntries4);
   if(typeof _wkCreateReplyNotif==='function') await _wkCreateReplyNotif(entry,myRep);
   var form=document.getElementById('wk-reply-form-'+entryId);
   if(form) form.remove();
