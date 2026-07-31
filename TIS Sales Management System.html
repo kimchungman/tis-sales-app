@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-041 -->
+<!-- v20260728-041 변경사항: (1) 발송이력이 관리자 공지 발송만 기록되고 멘션/답변/새이슈등록/미답변이월/계약만료/계약신규등록/계약기한초과 6개 자동 이벤트는 전혀 기록이 안 남던 문제 발견·수정 - 모든 발송이 결국 _graphSendMail 함수 하나를 거치므로 그 안에서 중앙집중식으로 발송이력을 자동 기록하도록 개편(나에게 테스트 발송은 실제 공지가 아니므로 제외). 이력에 이벤트 유형별 컬러 배지 표시. (2) 발송이력에서 관리자 공지 항목을 "재사용"할 수 있는 기능 신설 - 재사용 버튼 클릭 시 원본 제목/발송일시/수신대상을 보여주는 확인 모달이 뜨고, 불러오면 제목·본문·발송대상(전체/특정팀/개별선택+수동입력 이메일)이 작성 화면에 그대로 복원됨. 이벤트 알림(멘션 등)은 재사용 대상에서 제외(공지 작성과 데이터 구조가 달라 재사용 의미가 없음). 실제 스크립트 실행으로 전체 흐름(재사용 버튼 노출 조건, 모달 표시, 값 복원) 검증 완료. -->
 <!-- TIS-VERSION: 20260728-040 -->
 <!-- v20260728-040 변경사항: "해당 팀 팀장" 방식 알림(새 이슈 등록/계약 신규 등록)의 수신자 계산에 숨김 팀/담당자 필터가 빠져있던 버그 수정 - 관리자설정에서 숨긴 팀 소속이거나 개별적으로 숨김 처리된 담당자가 팀장이어도 알림 목록에 그대로 잡히고 있었음. 알림 탭의 실시간 미리보기(_ntGetTeamLeaders/_ntGetAllLeaders)와 실제 발송 로직(_wkGetTeamLeaders/_wkAllLeaders) 양쪽 모두에 _visibleTeams/_visibleReps 필터를 적용해 통일 - 이제 미리보기에 안 보이면 실제로도 안 감이 보장됨. 실제 스크립트 실행으로 팀 숨김/담당자 개별 숨김 각각 정상 제외되는 것까지 확인 완료. -->
 <!-- TIS-VERSION: 20260728-039 -->
@@ -5899,7 +5901,8 @@ async function _annTestSend(){
   var myEmail=(session&&session.rep&&_ntRepEmail(session.rep))||(typeof SESSION_REP!=='undefined'&&SESSION_REP.email)||'';
   if(!myEmail){ if(typeof showToast==='function') showToast('본인 이메일이 등록되어 있지 않습니다.','warn'); return; }
   var html=_buildAnnouncementEmailHtml(subject, body, true);
-  var ok=await _graphSendMail([myEmail], [], '[TIS영업관리][테스트] '+subject, html);
+  // 테스트 발송은 실제 공지가 아니므로 발송이력에 남기지 않음
+  var ok=await _graphSendMail([myEmail], [], '[TIS영업관리][테스트] '+subject, html, {skipLog:true});
   if(typeof showToast==='function') showToast(ok?('✅ '+myEmail+'로 테스트 메일을 발송했습니다.'):'❌ 발송 실패 - 콘솔(F12)을 확인하세요.', ok?'':'warn');
 }
 async function _annSend(){
@@ -5908,12 +5911,27 @@ async function _annSend(){
   if(!subject.trim()||!body.trim()){ if(typeof showToast==='function') showToast('제목과 본문을 입력해주세요.','warn'); return; }
   var target=_annResolveRecipients();
   if(!target.emails.length){ if(typeof showToast==='function') showToast('수신자가 없습니다 (이메일이 등록된 담당자가 없음).','warn'); return; }
+  // 재사용 기능을 위해 대상 선택 방식 그대로 저장해둠 (전체/특정팀/개별선택 + 수동입력 이메일)
+  var targetSel=document.querySelector('input[name="ann-target"]:checked');
+  var targetMode=targetSel?targetSel.value:'all';
+  var targetTeam=(targetMode==='team')?((document.getElementById('ann-team-sel')||{}).value||''):'';
+  var targetPickReps=[];
+  if(targetMode==='pick') document.querySelectorAll('.ann-pick-cb:checked').forEach(function(cb){ targetPickReps.push(cb.value); });
   appConfirm(target.emails.length+'명에게 발송합니다.\n('+target.reps.join(', ')+')\n\n계속할까요?', async function(){
     var html=_buildAnnouncementEmailHtml(subject, body);
-    var ok=await _graphSendMail(target.emails, [], '[TIS영업관리] '+subject, html);
+    var ok=await _graphSendMail(target.emails, [], '[TIS영업관리] '+subject, html, {
+      type:'공지사항',
+      targetDesc:target.reps.join(', ')||'전체',
+      extra:{
+        bodyHtml:body,
+        targetMode:targetMode,
+        targetTeam:targetTeam,
+        targetPickReps:targetPickReps,
+        targetManualEmails:(window._annManualChips||[]).slice()
+      }
+    });
     if(ok){
       if(typeof showToast==='function') showToast('✅ '+target.emails.length+'명에게 발송했습니다.');
-      await _saveEmailLog({subject:subject, targetDesc:target.reps.join(', ')||'전체', recipientCount:target.emails.length, sentBy:(session&&session.rep)||'', sentAt:new Date().toISOString()});
       renderEmailLog();
       // 발송 완료 후 다음 작성을 위해 폼 초기화
       var subEl=document.getElementById('ann-subject'); if(subEl) subEl.value='';
@@ -5947,15 +5965,26 @@ async function renderEmailLog(){
       .map(function(item){ try{ return JSON.parse(item.Payload); }catch(e){ return null; } }).filter(Boolean);
     logs.sort(function(a,b){ return (b.sentAt||'').localeCompare(a.sentAt||''); });
     logs=logs.slice(0,30);
+    window._emailLogCache=logs; // 재사용 모달에서 참조
     if(!logs.length){ el.innerHTML='<div style="color:#94A3B8;">발송 이력이 없습니다.</div>'; return; }
+    var typeColorMap={'공지사항':'#7C3AED','멘션':'#2563EB','답변':'#2563EB','새 이슈 등록':'#EA580C','계약 신규 등록':'#059669','계약 만료':'#DC2626','계약 기한초과':'#DC2626','미답변 이월':'#64748B'};
     // ⚠ 이력이 많아져도 페이지 자체가 계속 늘어나지 않도록 고정 높이 + 스크롤 컨테이너로 감쌈
     el.innerHTML='<div style="max-height:320px;overflow-y:auto;border:1px solid #F1F5F9;border-radius:8px;padding:0 12px;">'
-      +logs.map(function(l){
+      +logs.map(function(l, idx){
         var dt=l.sentAt?new Date(l.sentAt):null;
         var dtStr=dt?(dt.getFullYear()+'.'+(dt.getMonth()+1)+'.'+dt.getDate()+' '+String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0')):'';
-        return '<div style="padding:10px 0;border-bottom:1px solid #F1F5F9;">'
-          +'<div style="font-size:13px;font-weight:700;color:#0F172A;">'+_ntEsc(l.subject||'')+'</div>'
-          +'<div style="font-size:11px;color:#94A3B8;margin-top:2px;">'+dtStr+' · '+_ntEsc(l.sentBy||'')+' · 대상 '+(l.recipientCount||0)+'명 ('+_ntEsc(l.targetDesc||'')+')</div>'
+        var typeLabel=l.type||'기타';
+        var typeColor=typeColorMap[typeLabel]||'#94A3B8';
+        var canReuse=(typeLabel==='공지사항' && l.bodyHtml!=null);
+        return '<div style="padding:10px 0;border-bottom:1px solid #F1F5F9;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">'
+          +'<div style="min-width:0;flex:1;">'
+            +'<div style="display:flex;align-items:center;gap:6px;">'
+              +'<span style="font-size:10px;font-weight:700;color:'+typeColor+';background:'+typeColor+'14;border-radius:4px;padding:1px 6px;flex-shrink:0;">'+_ntEsc(typeLabel)+'</span>'
+              +'<span style="font-size:13px;font-weight:700;color:#0F172A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+_ntEsc(l.subject||'')+'</span>'
+            +'</div>'
+            +'<div style="font-size:11px;color:#94A3B8;margin-top:2px;">'+dtStr+' · '+_ntEsc(l.sentBy||'')+' · 대상 '+(l.recipientCount||0)+'명 ('+_ntEsc(l.targetDesc||'')+')</div>'
+          +'</div>'
+          +(canReuse?('<button onclick="_emailLogReuse('+idx+')" style="flex-shrink:0;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:white;font-size:11px;font-weight:700;color:#334155;cursor:pointer;font-family:inherit;white-space:nowrap;">재사용</button>'):'')
         +'</div>';
       }).join('')
     +'</div>';
@@ -5963,6 +5992,56 @@ async function renderEmailLog(){
     console.warn('[EmailLog] 불러오기 실패:', e.message);
     el.innerHTML='<div style="color:#94A3B8;">불러오기 실패: '+_ntEsc(e.message)+' <button onclick="renderEmailLog()" style="margin-left:6px;border:1px solid var(--border);border-radius:6px;padding:2px 8px;background:white;cursor:pointer;font-size:11px;">재시도</button></div>';
   }
+}
+
+// ── 발송이력 재사용 ──
+function _emailLogReuse(idx){
+  var entry=(window._emailLogCache||[])[idx];
+  if(!entry) return;
+  var old=document.getElementById('ann-reuse-modal'); if(old) old.remove();
+  var div=document.createElement('div');
+  div.id='ann-reuse-modal';
+  div.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  var dt=entry.sentAt?new Date(entry.sentAt):null;
+  var dtStr=dt?(dt.getFullYear()+'.'+(dt.getMonth()+1)+'.'+dt.getDate()+' '+String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0')):'';
+  div.innerHTML='<div style="background:#fff;border-radius:14px;max-width:420px;width:100%;padding:24px;box-shadow:0 20px 50px rgba(15,23,42,.25);">'
+    +'<div style="font-size:15px;font-weight:700;color:#0F172A;margin-bottom:10px;">이 공지를 다시 불러올까요?</div>'
+    +'<div style="font-size:12.5px;color:#64748B;line-height:1.7;margin-bottom:14px;background:#F8FAFC;border-radius:8px;padding:12px 14px;">'
+      +'<div style="font-weight:700;color:#334155;margin-bottom:3px;">'+_ntEsc(entry.subject||'')+'</div>'
+      +dtStr+' 발송 · 수신 '+(entry.recipientCount||0)+'명 ('+_ntEsc(entry.targetDesc||'')+')'
+    +'</div>'
+    +'<div style="font-size:11.5px;color:#DC2626;margin-bottom:18px;">⚠ 불러오면 제목·수신 대상·본문이 그대로 채워지고, 지금 작성 중인 내용은 사라집니다.</div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;">'
+      +'<button onclick="document.getElementById(\'ann-reuse-modal\').remove()" style="padding:8px 16px;border:1px solid var(--border);border-radius:8px;background:white;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">취소</button>'
+      +'<button onclick="_emailLogApplyReuse('+idx+')" style="padding:8px 16px;border:none;border-radius:8px;background:#0F172A;color:white;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">불러오기</button>'
+    +'</div>'
+  +'</div>';
+  document.body.appendChild(div);
+}
+function _emailLogApplyReuse(idx){
+  var entry=(window._emailLogCache||[])[idx];
+  var modal=document.getElementById('ann-reuse-modal'); if(modal) modal.remove();
+  if(!entry) return;
+  var subEl=document.getElementById('ann-subject'); if(subEl) subEl.value=entry.subject||'';
+  var edEl=document.getElementById('ann-editor'); if(edEl) edEl.innerHTML=entry.bodyHtml||'';
+  var mode=entry.targetMode||'all';
+  var radio=document.querySelector('input[name="ann-target"][value="'+mode+'"]');
+  if(radio){ radio.checked=true; }
+  if(typeof _annTargetChange==='function') _annTargetChange();
+  setTimeout(function(){
+    if(mode==='team'){
+      var sel=document.getElementById('ann-team-sel');
+      if(sel) sel.value=entry.targetTeam||'';
+    } else if(mode==='pick'){
+      document.querySelectorAll('.ann-pick-cb').forEach(function(cb){
+        cb.checked=(entry.targetPickReps||[]).indexOf(cb.value)>=0;
+      });
+    }
+  },0);
+  window._annManualChips=(entry.targetManualEmails||[]).slice();
+  if(typeof _annRenderManualChips==='function') _annRenderManualChips();
+  if(typeof showToast==='function') showToast('✅ 이전 공지 내용을 불러왔습니다.');
+  if(subEl && subEl.scrollIntoView) subEl.scrollIntoView({behavior:'smooth', block:'center'});
 }
 
 // ── SP 끊김 임시 저장 ──
@@ -15565,7 +15644,7 @@ async function _getMailToken(){
 }
 
 // ── Graph API 메일 발송 공용 함수 (위임된 권한: 로그인한 본인 계정으로 발송됨) ──
-async function _graphSendMail(toArr, ccArr, subject, htmlBody){
+async function _graphSendMail(toArr, ccArr, subject, htmlBody, logMeta){
   try{
     var toRecipients = (toArr||[]).filter(Boolean).map(function(e){ return {emailAddress:{address:e}}; });
     if(!toRecipients.length){ console.warn('[Mail] 수신자 없음 - 발송 취소:', subject); return false; }
@@ -15591,6 +15670,21 @@ async function _graphSendMail(toArr, ccArr, subject, htmlBody){
       try{ errText = await res.text(); }catch(_e){}
       console.warn('[Mail] 발송 실패', res.status, errText);
       return false;
+    }
+    // ⚠ 예전에는 관리자 공지 발송만 발송이력에 남고, 멘션/답변/이슈/이월/계약 등 6개 자동 이벤트는
+    //   전혀 기록이 안 남고 있었음 - 모든 발송이 결국 이 함수를 거치므로 여기서 한 번에 기록한다.
+    if(typeof _saveEmailLog==='function' && !(logMeta&&logMeta.skipLog)){
+      try{
+        var _entry = Object.assign({
+          subject: subject,
+          type: (logMeta&&logMeta.type)||'기타',
+          targetDesc: (logMeta&&logMeta.targetDesc) || (toArr||[]).join(', '),
+          recipientCount: (toArr||[]).length,
+          sentBy: (typeof session!=='undefined'&&session&&session.rep)||'',
+          sentAt: new Date().toISOString()
+        }, (logMeta&&logMeta.extra)||{});
+        await _saveEmailLog(_entry);
+      }catch(_e2){ console.warn('[Mail] 발송이력 자동저장 실패:', _e2.message); }
     }
     return true;
   }catch(e){
@@ -18664,7 +18758,7 @@ async function _wkCreateNotifs(entry){
           meta:'방금 전', boxText:_wkSanitize?_wkSanitize(text):_wkMailEsc(text.replace(/<[^>]*>/g,' ')),
           ctaText:'앱에서 확인하기', ctaUrl:_wkAppUrl()
         });
-        _graphSendMail([_mEmail], _wkEmailCc('mention'), '[TIS영업관리] 회의록에서 회원님을 언급했습니다 - '+(entry.displayName||entry.rep||''), _mHtml);
+        _graphSendMail([_mEmail], _wkEmailCc('mention'), '[TIS영업관리] 회의록에서 회원님을 언급했습니다 - '+(entry.displayName||entry.rep||''), _mHtml, {type:'멘션', targetDesc:_wkDisplayName(target)});
       }
     }
   }
@@ -18777,7 +18871,7 @@ window._wkNotifyNewIssue=async function(rep, issue){
           boxText:issue&&issue.content?_wkMailEsc(issue.content):'',
           ctaText:'이슈 확인하기', ctaUrl:_wkAppUrl()
         });
-        _graphSendMail([_iEmail], _wkEmailCc('issue'), '[TIS영업관리] 새 이슈 등록 - '+(issue&&issue.client?issue.client:_wkDisplayName(rep)), _iHtml);
+        _graphSendMail([_iEmail], _wkEmailCc('issue'), '[TIS영업관리] 새 이슈 등록 - '+(issue&&issue.client?issue.client:_wkDisplayName(rep)), _iHtml, {type:'새 이슈 등록', targetDesc:_wkDisplayName(leader)});
       }
     }
   }
@@ -18820,7 +18914,7 @@ window._wkNotifyNewContract=async function(rep, con){
           boxText:con&&con.projectName?_wkMailEsc(con.projectName):'',
           ctaText:'계약 확인하기', ctaUrl:_wkAppUrl()
         });
-        _graphSendMail([_nEmail], _wkEmailCc('contractNew'), '[TIS영업관리] 신규 계약 등록 - '+(con&&con.client?con.client:_wkDisplayName(rep)), _nHtml);
+        _graphSendMail([_nEmail], _wkEmailCc('contractNew'), '[TIS영업관리] 신규 계약 등록 - '+(con&&con.client?con.client:_wkDisplayName(rep)), _nHtml, {type:'계약 신규 등록', targetDesc:_wkDisplayName(leader)});
       }
     }
   }
@@ -18878,7 +18972,7 @@ window._wkCheckCarryOver=async function(){
         meta:'미답변 '+unanswered.length+'건', boxText:'이번 주에 답변해주세요.',
         ctaText:'회의록 확인하기', ctaUrl:_wkAppUrl()
       });
-      _graphSendMail([_cEmail], _wkEmailCc('carryover'), '[TIS영업관리] 지난주 미답변 항목 '+unanswered.length+'건', _cHtml);
+      _graphSendMail([_cEmail], _wkEmailCc('carryover'), '[TIS영업관리] 지난주 미답변 항목 '+unanswered.length+'건', _cHtml, {type:'미답변 이월', targetDesc:_wkDisplayName(myRep)});
     }
   }
 };
@@ -18916,7 +19010,7 @@ async function _wkCreateReplyNotif(entry, replyRep){
         label:'답변', title:_wkEsc(_wkDisplayName(replyRep))+'님이 회원님의 회의록에 답변을 달았습니다',
         meta:'방금 전', ctaText:'앱에서 확인하기', ctaUrl:_wkAppUrl()
       });
-      _graphSendMail([_rEmail], _wkEmailCc('reply'), '[TIS영업관리] 회원님 글에 답변이 달렸습니다 - '+_wkDisplayName(replyRep), _rHtml);
+      _graphSendMail([_rEmail], _wkEmailCc('reply'), '[TIS영업관리] 회원님 글에 답변이 달렸습니다 - '+_wkDisplayName(replyRep), _rHtml, {type:'답변', targetDesc:_wkDisplayName(target)});
     }
   }
 }
@@ -19015,7 +19109,7 @@ function _wkGenContractNotifs(){
           boxText:state==='urgent'?(msgD+'일 · 즉시 갱신 검토가 필요합니다'):(msgD+'일 남았습니다'),
           ctaText:'계약 확인하기', ctaUrl:_wkAppUrl()
         });
-        _graphSendMail([_ceEmail], _wkEmailCc('contract'), '[TIS영업관리] '+(state==='urgent'?'🔴 계약 만료 임박 ':'📋 계약 만료 예정 ')+msgD+' - '+(con.client||''), _ceHtml);
+        _graphSendMail([_ceEmail], _wkEmailCc('contract'), '[TIS영업관리] '+(state==='urgent'?'🔴 계약 만료 임박 ':'📋 계약 만료 예정 ')+msgD+' - '+(con.client||''), _ceHtml, {type:'계약 만료', targetDesc:_wkDisplayName(rep)});
       }
     }
   }
@@ -19093,7 +19187,7 @@ window._wkCheckOverdueEmail=async function(){
       boxText:boxLines,
       ctaText:'계약 확인하기', ctaUrl:_wkAppUrl()
     });
-    await _graphSendMail([email], _wkEmailCc('contract'), '[TIS영업관리] 🔴 계약 기한초과 '+overdueList.length+'건', html);
+    await _graphSendMail([email], _wkEmailCc('contract'), '[TIS영업관리] 🔴 계약 기한초과 '+overdueList.length+'건', html, {type:'계약 기한초과', targetDesc:_wkDisplayName(rep)});
   }
   if(changed && typeof saveAuthCfg==='function') saveAuthCfg();
 };
