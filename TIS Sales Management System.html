@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-044 -->
+<!-- v20260728-044 변경사항: v043에서 이슈 현황의 "담당자 로그인 시 본인 팀으로 자동 필터"를 임의로 제거했던 것을 원복 - 사용자의 확인 없이 접근 제어 동작을 바꾼 것이었음. 세션 내내 필터(담당자/팀)가 고착되던 진짜 버그 수정(initIssueTabs 진입 시 리셋)은 그대로 유지, 담당자 로그인 시 본인 팀만 보이는 원래 동작은 복원. -->
 <!-- TIS-VERSION: 20260728-043 -->
 <!-- v20260728-043 변경사항: (1) 주간회의 삭제 버그(v042 수정분)를 가짜 SharePoint 백엔드까지 갖춘 완전한 end-to-end 시뮬레이션(저장→새로고침 후 재조회)으로 재검증 완료 - 삭제 후 15초 이상 지나 다시 불러와도 삭제한 항목이 재등장하지 않음을 실제 함수 실행으로 확인. (2) 이슈 현황의 팀 필터(_currentIssueTeam)도 담당자 필터와 동일하게 세션 내내 고정되던 문제 발견, 페이지 재진입 시 초기화하도록 수정. (3) 요청에 따라 이슈 현황은 관리자/담당자 구분 없이 항상 전체 오픈이슈가 보이도록 변경 - 예전엔 담당자로 접속하면 본인 팀으로 자동 필터링되던 로직 제거. -->
 <!-- TIS-VERSION: 20260728-042 -->
@@ -6775,8 +6777,10 @@ function showPage(id,navEl){
     }
   } else if(id==='issues'){
     initIssueTabs();
-    // 요청에 따라 이슈 현황은 관리자/담당자 구분 없이 항상 전체 이슈가 보이도록 함
-    // (예전엔 담당자로 접속하면 본인 팀으로 자동 필터링됐었음)
+    // 참가자: 본인 팀으로 필터
+    if(session && session.role==='rep' && session.team){
+      if(typeof _currentIssueTeam !== 'undefined') _currentIssueTeam = session.team;
+    }
     if(typeof extractIssues==='function') extractIssues();
     if(typeof renderIssues==='function') renderIssues();
   } else if(id==='pipeline'){
