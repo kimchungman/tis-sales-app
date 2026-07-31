@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-045 -->
+<!-- v20260728-045 변경사항: 주간회의 삭제가 계속 되살아나던 문제의 진짜 잔여 원인 발견·수정. v042에서 새로 발생하는 데이터 오염은 막았지만, 그 이전 버그로 인해 SharePoint에 "이미" 잘못 섞여 들어간 다른 담당자 항목(예: 최원진 버킷 안에 남아있는 김충만 항목 잔재)이 있으면 계속 화면에 나타났음 - 담당자별 버킷을 합칠 때 그 항목이 진짜 그 버킷 주인 것인지 검증 없이 그대로 합치고 있었기 때문. _wkLoadFeed(캐시/비캐시 두 경로 모두)에서 각 버킷을 합칠 때 "그 버킷 주인 담당자 항목만" 인정하도록 방어 필터 추가 - 과거에 이미 오염된 데이터가 남아있어도 화면에 다시 나타나지 않음. 오염 데이터를 인위적으로 만들어 재현 후 수정 확인까지 완료. -->
 <!-- TIS-VERSION: 20260728-044 -->
 <!-- v20260728-044 변경사항: v043에서 이슈 현황의 "담당자 로그인 시 본인 팀으로 자동 필터"를 임의로 제거했던 것을 원복 - 사용자의 확인 없이 접근 제어 동작을 바꾼 것이었음. 세션 내내 필터(담당자/팀)가 고착되던 진짜 버그 수정(initIssueTabs 진입 시 리셋)은 그대로 유지, 담당자 로그인 시 본인 팀만 보이는 원래 동작은 복원. -->
 <!-- TIS-VERSION: 20260728-043 -->
@@ -18612,7 +18614,12 @@ async function _wkLoadFeed(weekKey){
       var all=[];
       Object.keys(_repLatest).forEach(function(rep){
         var d=_repLatest[rep];
-        if(d.entries&&Array.isArray(d.entries)) all=all.concat(d.entries);
+        if(d.entries&&Array.isArray(d.entries)){
+          // ⚠ 예전 버그로 다른 담당자 항목이 이 버킷에 잘못 섞여 저장된 과거 데이터가 남아있을 수 있음.
+          //   그 버킷은 "그 버킷 주인(rep) 항목만" 인정해서, 이미 오염된 데이터가 있어도
+          //   화면(및 삭제 여부)에 영향을 주지 않도록 방어적으로 한 번 더 걸러낸다.
+          all=all.concat(d.entries.filter(function(e){ return e.rep===rep; }));
+        }
       });
       var seen={};
       all=all.filter(function(e){ if(seen[e.id]) return false; seen[e.id]=true; return true; });
@@ -18642,7 +18649,10 @@ async function _wkLoadFeed(weekKey){
     var all=[];
     Object.keys(_repLatest).forEach(function(rep){
       var d=_repLatest[rep];
-      if(d.entries&&Array.isArray(d.entries)) all=all.concat(d.entries);
+      if(d.entries&&Array.isArray(d.entries)){
+        // ⚠ 위와 동일한 방어적 필터 (비캐시 경로)
+        all=all.concat(d.entries.filter(function(e){ return e.rep===rep; }));
+      }
     });
     var seen={};
     all=all.filter(function(e){ if(seen[e.id]) return false; seen[e.id]=true; return true; });
