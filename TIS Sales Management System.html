@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-036 -->
+<!-- v20260728-036 변경사항: 알림 탭에서 이벤트 토글이 하나도 안 보이고, 공지발송의 특정팀/개별선택도 비어있던 진짜 근본 원인 발견·수정. 관리자설정 탭 코드가 있는 <script> 블록과 _wkEsc/_wkRepEmail 같은 헬퍼 함수가 있는 <script> 블록은 서로 다른 스코프였음(후자는 주간회의 시스템 전체를 감싸는 거대한 IIFE 내부) - 그래서 토글을 그리려던 순간 "_wkEsc is not defined" 에러로 렌더링이 통째로 실패했음(콘솔 진단 로그조차 같은 이유로 실행이 안 됨). 실제 파일을 jsdom으로 로드해 함수 접근성을 직접 추적해서 확정. 알림 탭 전용 로컬 헬퍼(_ntEsc/_ntRepEmail/_ntParseEmailList)를 새로 만들어 완전히 독립시켜 재발 방지. 이벤트 발송 자체(멘션/답변/이슈 등)는 같은 IIFE 안에서 서로 호출하는 구조라 원래 문제없었음. 추가로 "추가 수신자(수동 입력)"을 일반 텍스트 입력에서 칩(chip) 방식으로 변경 - 이메일 입력 후 Enter/콤마를 누르면 알약 태그로 바뀌어 제대로 추가됐는지 바로 확인 가능, 잘못된 형식은 테두리가 빨갛게 흔들리며 거부됨. -->
 <!-- TIS-VERSION: 20260728-035 -->
 <!-- v20260728-035 변경사항: (1) 하자기간 계약의 '계약'(endDate) 알림이 만료일이 지나도 계속 D+로 카운트되던 버그 수정 - 계약관리 화면(_cContractDdayBadge)과 동일하게 유지보수 유형만 D+ 지속(갱신시그널), 하자기간/해당없음은 만료 후 종료 취급(단, 하자기간 자체의 관리종료일 기준 알림은 정상적으로 계속 D+ 카운트). 기한초과 주간 리마인드도 동일 규칙 적용. (2) 발송이력 저장 실패를 조용히 삼키던 문제 수정 - 콘솔 경고 추가. (3) 발송이력 목록에 스크롤 컨테이너 적용(최대높이 320px) - 이력이 많아져도 페이지가 계속 늘어나지 않음, 재시도 버튼 추가. (4) 관리자 공지 발송에 "추가 수신자(수동 입력)" 필드 신설 - 시스템에 등록 안 된 이메일도 콤마로 구분해 추가 가능. (5) 알림 탭의 이벤트 토글/발송대상 렌더링이 혹시 안 보이는 문제에 대비해 방어적 예외처리+콘솔 진단 로그 추가, 탭 진입 시 여러 시점(50/200/600ms)에 재시도 렌더링. -->
 <!-- TIS-VERSION: 20260728-034 -->
@@ -4922,7 +4924,9 @@ window._updateSidebarByRole=function(){
             </div>
             <div style="margin-top:12px;">
               <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px;">추가 수신자 (수동 입력, 선택) <span style="color:#CBD5E1;">— 시스템에 등록되지 않은 이메일도 콤마로 구분해 추가할 수 있습니다</span></label>
-              <input id="ann-manual-emails" type="text" placeholder="예: guest@company.com, partner@abc.com" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;font-family:inherit;">
+              <div id="ann-manual-chipbox" onclick="document.getElementById('ann-manual-input').focus()" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 8px;border:1px solid var(--border);border-radius:8px;min-height:38px;background:white;cursor:text;">
+                <input id="ann-manual-input" type="text" placeholder="이메일 입력 후 Enter 또는 콤마( , )" onkeydown="_annManualKeydown(event)" onblur="_annManualCommit()" style="border:none;outline:none;flex:1;min-width:160px;font-size:12px;font-family:inherit;padding:4px;background:transparent;">
+              </div>
             </div>
           </div>
           <div style="margin-bottom:12px;">
@@ -5549,6 +5553,21 @@ function deleteGuestAllow(idx){
 }
 
 // ══════════ 알림 탭 (이메일 알림 설정 + 관리자 공지 발송) ══════════
+// ── 알림 탭 전용 로컬 헬퍼 (다른 <script> 블록의 IIFE 안에 있는 _wkEsc/_wkRepEmail과는
+//    스코프가 달라 접근 불가능했던 것이 "토글이 하나도 안 보이던" 진짜 원인이었음.
+//    이 탭 전용으로 완전히 독립된 헬퍼를 둬서 다시는 이 문제가 재발하지 않도록 함) ──
+function _ntEsc(s){
+  if(s==null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function _ntRepEmail(rep){
+  return (authCfg.repEmails && authCfg.repEmails[rep]) || '';
+}
+function _ntParseEmailList(str){
+  if(!str) return [];
+  return str.split(/[,;\n]/).map(function(s){return s.trim();}).filter(function(s){return s && s.indexOf('@')>0;});
+}
+
 var _EMAIL_EVENTS=[
   {key:'mention',     label:'멘션',              desc:'회의록에서 @언급됐을 때',                  recv:'언급된 사람'},
   {key:'reply',       label:'답변',              desc:'내가 쓴 회의록 글에 답변이 달렸을 때',       recv:'원글 작성자'},
@@ -5567,9 +5586,9 @@ function _emailEventRowHtml(ev){
       +'<span style="position:absolute;top:3px;left:'+(on?'21px':'3px')+';width:16px;height:16px;background:#fff;border-radius:50%;transition:.15s;box-shadow:0 1px 2px rgba(0,0,0,.15);"></span>'
     +'</label>'
     +'<div style="flex:1;min-width:0;">'
-      +'<div style="font-size:13px;font-weight:700;color:#0F172A;">'+_wkEsc(ev.label)+'</div>'
-      +'<div style="font-size:11.5px;color:#94A3B8;margin-top:2px;">'+_wkEsc(ev.desc)+' · 수신자: '+_wkEsc(ev.recv)+'</div>'
-      +(on?('<input type="text" placeholder="참조(CC) 이메일 추가 (쉼표로 구분, 선택)" value="'+_wkEsc(cfg.cc||'')+'" onblur="_updateEmailCc(\''+ev.key+'\',this.value)" style="margin-top:8px;width:100%;max-width:420px;border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;font-family:inherit;">'):'')
+      +'<div style="font-size:13px;font-weight:700;color:#0F172A;">'+_ntEsc(ev.label)+'</div>'
+      +'<div style="font-size:11.5px;color:#94A3B8;margin-top:2px;">'+_ntEsc(ev.desc)+' · 수신자: '+_ntEsc(ev.recv)+'</div>'
+      +(on?('<input type="text" placeholder="참조(CC) 이메일 추가 (쉼표로 구분, 선택)" value="'+_ntEsc(cfg.cc||'')+'" onblur="_updateEmailCc(\''+ev.key+'\',this.value)" style="margin-top:8px;width:100%;max-width:420px;border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;font-family:inherit;">'):'')
     +'</div>'
   +'</div>';
 }
@@ -5588,7 +5607,7 @@ function renderEmailNotifSettings(){
   }catch(e){
     console.error('[알림설정] renderEmailNotifSettings 오류:', e);
     var el2=document.getElementById('email-notif-rows');
-    if(el2) el2.innerHTML='<div style="color:#DC2626;font-size:12px;">렌더링 오류가 발생했습니다. F12 콘솔을 확인해주세요: '+_wkEsc(e.message)+'</div>';
+    if(el2) el2.innerHTML='<div style="color:#DC2626;font-size:12px;">렌더링 오류가 발생했습니다. F12 콘솔을 확인해주세요: '+_ntEsc(e.message)+'</div>';
   }
 }
 function _toggleEmailEvent(key,checked){
@@ -5612,6 +5631,72 @@ function _saveOverdueDay(val){
   if(typeof showToast==='function') showToast('✅ 저장됐습니다.');
 }
 
+// ── 추가 수신자 칩(chip) 입력 ──
+window._annManualChips = window._annManualChips || [];
+function _annRenderManualChips(){
+  var box=document.getElementById('ann-manual-chipbox');
+  if(!box) return;
+  var input=document.getElementById('ann-manual-input');
+  var chipsHtml=window._annManualChips.map(function(email, idx){
+    return '<span style="display:inline-flex;align-items:center;gap:4px;background:#EFF6FF;color:#2563EB;border-radius:14px;padding:3px 6px 3px 10px;font-size:11.5px;font-weight:600;white-space:nowrap;">'
+      +_ntEsc(email)
+      +'<button type="button" onclick="event.stopPropagation();_annRemoveManualChip('+idx+')" style="border:none;background:none;color:#2563EB;cursor:pointer;font-size:13px;line-height:1;padding:0 2px;">×</button>'
+      +'</span>';
+  }).join('');
+  // 입력창은 항상 마지막에 유지
+  box.innerHTML=chipsHtml;
+  var newInput=document.createElement('input');
+  newInput.id='ann-manual-input';
+  newInput.type='text';
+  newInput.placeholder=window._annManualChips.length?'':'이메일 입력 후 Enter 또는 콤마( , )';
+  newInput.setAttribute('onkeydown','_annManualKeydown(event)');
+  newInput.setAttribute('onblur','_annManualCommit()');
+  newInput.style.cssText='border:none;outline:none;flex:1;min-width:160px;font-size:12px;font-family:inherit;padding:4px;background:transparent;';
+  box.appendChild(newInput);
+}
+function _annTryAddChip(raw){
+  var val=(raw||'').trim().replace(/,$/,'').trim();
+  if(!val) return false;
+  // 아주 기본적인 이메일 형태 검증
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)){
+    // 형식이 아니면 살짝 흔들어서 "추가 안 됐다"는 걸 시각적으로 알려줌
+    var box=document.getElementById('ann-manual-chipbox');
+    if(box){
+      box.style.transition='transform .08s';
+      box.style.borderColor='#EF4444';
+      var seq=[-4,4,-3,3,0];
+      seq.forEach(function(x,i){ setTimeout(function(){ box.style.transform='translateX('+x+'px)'; if(i===seq.length-1) box.style.borderColor='var(--border)'; }, i*45); });
+    }
+    if(typeof showToast==='function') showToast('올바른 이메일 형식이 아닙니다: '+val,'warn');
+    return false;
+  }
+  if(window._annManualChips.indexOf(val)<0) window._annManualChips.push(val);
+  return true;
+}
+function _annManualKeydown(ev){
+  if(ev.key==='Enter'||ev.key===','){
+    ev.preventDefault();
+    var added=_annTryAddChip(ev.target.value);
+    if(added){ ev.target.value=''; _annRenderManualChips(); document.getElementById('ann-manual-input').focus(); }
+  } else if(ev.key==='Backspace' && !ev.target.value && window._annManualChips.length){
+    // 입력창이 비어있을 때 백스페이스 → 마지막 칩 삭제 (일반적인 태그 입력 UX)
+    window._annManualChips.pop();
+    _annRenderManualChips();
+    document.getElementById('ann-manual-input').focus();
+  }
+}
+function _annManualCommit(){
+  var input=document.getElementById('ann-manual-input');
+  if(input && input.value.trim()){
+    var added=_annTryAddChip(input.value);
+    if(added) _annRenderManualChips();
+  }
+}
+function _annRemoveManualChip(idx){
+  window._annManualChips.splice(idx,1);
+  _annRenderManualChips();
+}
+
 // ── 관리자 공지 발송: 대상 선택 ──
 function _annTargetChange(){
   var sel=document.querySelector('input[name="ann-target"]:checked');
@@ -5629,7 +5714,7 @@ function _annFillTeamSelect(){
     if(!sel) return;
     var teams=(typeof _visibleTeams==='function')?_visibleTeams():((typeof TEAMS!=='undefined')?TEAMS:[]);
     if(!teams||!teams.length) console.warn('[공지발송] 팀 목록이 비어있습니다 (TEAMS 확인 필요)');
-    sel.innerHTML=(teams||[]).map(function(t){return '<option value="'+_wkEsc(t)+'">'+_wkEsc(t)+'</option>';}).join('');
+    sel.innerHTML=(teams||[]).map(function(t){return '<option value="'+_ntEsc(t)+'">'+_ntEsc(t)+'</option>';}).join('');
   }catch(e){
     console.error('[공지발송] _annFillTeamSelect 오류:', e);
   }
@@ -5642,7 +5727,7 @@ function _annFillPickList(){
     if(typeof _visibleReps==='function') reps=_visibleReps(reps);
     if(!reps||!reps.length) console.warn('[공지발송] 담당자 목록이 비어있습니다 (REPS 확인 필요)');
     el.innerHTML=(reps||[]).map(function(r){
-      return '<label style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--border);border-radius:20px;font-size:12px;cursor:pointer;background:white;"><input type="checkbox" value="'+_wkEsc(r)+'" class="ann-pick-cb"> '+_wkEsc(r)+'</label>';
+      return '<label style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--border);border-radius:20px;font-size:12px;cursor:pointer;background:white;"><input type="checkbox" value="'+_ntEsc(r)+'" class="ann-pick-cb"> '+_ntEsc(r)+'</label>';
     }).join('');
   }catch(e){
     console.error('[공지발송] _annFillPickList 오류:', e);
@@ -5663,12 +5748,12 @@ function _annResolveRecipients(){
     document.querySelectorAll('.ann-pick-cb:checked').forEach(function(cb){ reps.push(cb.value); });
   }
   var emails=[];
-  reps.forEach(function(r){ var e=_wkRepEmail(r); if(e && emails.indexOf(e)<0) emails.push(e); });
-  // 수동 입력 이메일 병합
-  var manualStr=(document.getElementById('ann-manual-emails')||{}).value||'';
-  var manualEmails=_wkParseCcList(manualStr);
+  reps.forEach(function(r){ var e=_ntRepEmail(r); if(e && emails.indexOf(e)<0) emails.push(e); });
+  // 수동 입력(칩) 이메일 병합 - 아직 Enter/콤마를 안 친 입력창에 남은 값도 커밋 시도
+  var pendingInput=document.getElementById('ann-manual-input');
+  if(pendingInput && pendingInput.value.trim()) _annTryAddChip(pendingInput.value);
   var manualLabels=[];
-  manualEmails.forEach(function(e){ if(emails.indexOf(e)<0){ emails.push(e); manualLabels.push(e); } });
+  (window._annManualChips||[]).forEach(function(e){ if(emails.indexOf(e)<0){ emails.push(e); manualLabels.push(e); } });
   return {reps:reps.concat(manualLabels), emails:emails};
 }
 
@@ -5707,7 +5792,7 @@ async function _annTestSend(){
   var subject=(document.getElementById('ann-subject')||{}).value||'';
   var body=(document.getElementById('ann-editor')||{}).innerHTML||'';
   if(!subject.trim()||!body.trim()){ if(typeof showToast==='function') showToast('제목과 본문을 입력해주세요.','warn'); return; }
-  var myEmail=(session&&session.rep&&_wkRepEmail(session.rep))||(typeof SESSION_REP!=='undefined'&&SESSION_REP.email)||'';
+  var myEmail=(session&&session.rep&&_ntRepEmail(session.rep))||(typeof SESSION_REP!=='undefined'&&SESSION_REP.email)||'';
   if(!myEmail){ if(typeof showToast==='function') showToast('본인 이메일이 등록되어 있지 않습니다.','warn'); return; }
   var html=_buildAnnouncementEmailHtml(subject, body, true);
   var ok=await _graphSendMail([myEmail], [], '[TIS영업관리][테스트] '+subject, html);
@@ -5726,6 +5811,11 @@ async function _annSend(){
       if(typeof showToast==='function') showToast('✅ '+target.emails.length+'명에게 발송했습니다.');
       await _saveEmailLog({subject:subject, targetDesc:target.reps.join(', ')||'전체', recipientCount:target.emails.length, sentBy:(session&&session.rep)||'', sentAt:new Date().toISOString()});
       renderEmailLog();
+      // 발송 완료 후 다음 작성을 위해 폼 초기화
+      var subEl=document.getElementById('ann-subject'); if(subEl) subEl.value='';
+      var edEl=document.getElementById('ann-editor'); if(edEl) edEl.innerHTML='';
+      window._annManualChips=[];
+      _annRenderManualChips();
     } else {
       if(typeof showToast==='function') showToast('❌ 발송 실패 - 콘솔(F12)을 확인하세요.','warn');
     }
@@ -5760,14 +5850,14 @@ async function renderEmailLog(){
         var dt=l.sentAt?new Date(l.sentAt):null;
         var dtStr=dt?(dt.getFullYear()+'.'+(dt.getMonth()+1)+'.'+dt.getDate()+' '+String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0')):'';
         return '<div style="padding:10px 0;border-bottom:1px solid #F1F5F9;">'
-          +'<div style="font-size:13px;font-weight:700;color:#0F172A;">'+_wkEsc(l.subject||'')+'</div>'
-          +'<div style="font-size:11px;color:#94A3B8;margin-top:2px;">'+dtStr+' · '+_wkEsc(l.sentBy||'')+' · 대상 '+(l.recipientCount||0)+'명 ('+_wkEsc(l.targetDesc||'')+')</div>'
+          +'<div style="font-size:13px;font-weight:700;color:#0F172A;">'+_ntEsc(l.subject||'')+'</div>'
+          +'<div style="font-size:11px;color:#94A3B8;margin-top:2px;">'+dtStr+' · '+_ntEsc(l.sentBy||'')+' · 대상 '+(l.recipientCount||0)+'명 ('+_ntEsc(l.targetDesc||'')+')</div>'
         +'</div>';
       }).join('')
     +'</div>';
   }catch(e){
     console.warn('[EmailLog] 불러오기 실패:', e.message);
-    el.innerHTML='<div style="color:#94A3B8;">불러오기 실패: '+_wkEsc(e.message)+' <button onclick="renderEmailLog()" style="margin-left:6px;border:1px solid var(--border);border-radius:6px;padding:2px 8px;background:white;cursor:pointer;font-size:11px;">재시도</button></div>';
+    el.innerHTML='<div style="color:#94A3B8;">불러오기 실패: '+_ntEsc(e.message)+' <button onclick="renderEmailLog()" style="margin-left:6px;border:1px solid var(--border);border-radius:6px;padding:2px 8px;background:white;cursor:pointer;font-size:11px;">재시도</button></div>';
   }
 }
 
