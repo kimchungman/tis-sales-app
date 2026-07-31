@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-040 -->
+<!-- v20260728-040 변경사항: "해당 팀 팀장" 방식 알림(새 이슈 등록/계약 신규 등록)의 수신자 계산에 숨김 팀/담당자 필터가 빠져있던 버그 수정 - 관리자설정에서 숨긴 팀 소속이거나 개별적으로 숨김 처리된 담당자가 팀장이어도 알림 목록에 그대로 잡히고 있었음. 알림 탭의 실시간 미리보기(_ntGetTeamLeaders/_ntGetAllLeaders)와 실제 발송 로직(_wkGetTeamLeaders/_wkAllLeaders) 양쪽 모두에 _visibleTeams/_visibleReps 필터를 적용해 통일 - 이제 미리보기에 안 보이면 실제로도 안 감이 보장됨. 실제 스크립트 실행으로 팀 숨김/담당자 개별 숨김 각각 정상 제외되는 것까지 확인 완료. -->
 <!-- TIS-VERSION: 20260728-039 -->
 <!-- v20260728-039 변경사항: 이메일 헤더의 TIS 아이콘 안 텍스트가 vertical-align:middle만으로는 폰트 라인박스 여백 때문에 살짝 아래로 처져 보이던 문제 수정 - line-height를 셀 높이(32px)와 정확히 맞추고 inline-block+vertical-align:middle을 함께 적용하는 이메일 안전 중앙정렬 기법으로 교체(Outlook 포함 대부분 클라이언트에서 안정적으로 동작). -->
 <!-- TIS-VERSION: 20260728-038 -->
@@ -5577,6 +5579,7 @@ function _ntParseEmailList(str){
 //  "수신 예정자" 실시간 미리보기 표시용)
 function _ntGetTeamLeaders(team){
   var reps=(team && typeof TEAM_REPS!=='undefined' && TEAM_REPS[team]) || (typeof REPS!=='undefined'?REPS:[]);
+  if(typeof _visibleReps==='function') reps=_visibleReps(reps); // 숨긴 담당자 제외
   return reps.filter(function(rep){
     var title=(authCfg.repTitles && authCfg.repTitles[rep])||'';
     return title==='팀장';
@@ -5584,7 +5587,8 @@ function _ntGetTeamLeaders(team){
 }
 function _ntGetAllLeaders(){
   var all=[];
-  if(typeof TEAMS!=='undefined') TEAMS.forEach(function(t){
+  var visTeams=(typeof _visibleTeams==='function')?_visibleTeams():((typeof TEAMS!=='undefined')?TEAMS:[]); // 숨긴 팀 제외
+  visTeams.forEach(function(t){
     _ntGetTeamLeaders(t).forEach(function(r){ if(all.indexOf(r)<0) all.push(r); });
   });
   return all;
@@ -18672,6 +18676,7 @@ async function _wkCreateNotifs(entry){
 function _wkGetTeamLeaders(team){
   var reps=(team&&typeof TEAM_REPS!=='undefined'&&TEAM_REPS[team])
     ||(typeof REPS!=='undefined'?REPS:[]);
+  if(typeof _visibleReps==='function') reps=_visibleReps(reps); // 숨긴 담당자 제외
   return reps.filter(function(rep){
     var title=(typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[rep])||'';
     return title==='팀장';
@@ -18679,7 +18684,8 @@ function _wkGetTeamLeaders(team){
 }
 function _wkAllLeaders(){
   var all=[];
-  if(typeof TEAMS!=='undefined') TEAMS.forEach(function(t){
+  var visTeams=(typeof _visibleTeams==='function')?_visibleTeams():((typeof TEAMS!=='undefined')?TEAMS:[]); // 숨긴 팀 제외
+  visTeams.forEach(function(t){
     _wkGetTeamLeaders(t).forEach(function(r){ if(all.indexOf(r)<0) all.push(r); });
   });
   if(!all.length) _wkGetTeamLeaders(null).forEach(function(r){ if(all.indexOf(r)<0) all.push(r); });
