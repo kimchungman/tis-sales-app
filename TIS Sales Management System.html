@@ -1,8 +1,11 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<<<<<<< HEAD
 <!-- TIS-VERSION: 20260728-046 -->
 <!-- v20260728-046 변경사항: 앱에 하드코딩되어있던 담당자 실명(전성현/허인수/김충만/최원진), 팀명(솔루션영업팀/그룹지원팀), 회사명(티에이케이정보시스템)을 전부 익명 placeholder로 교체 - REPS/TEAM_REPS/TEAM_COLORS/currentTeam/authCfg 기본값/store.reps 객체키/CSS 선택자(#cpl-김충만 등, 이미 죽은 코드였던 .left-cell 포함)/코드 주석 예시까지 전 위치 처리. SP 연결 시 실제 데이터로 자동 대체되는 구조라 기능 영향 없음을 확인. 부수적으로 발견한 문제도 함께 수정: syncTeamData가 팀을 병합만 하고 없어진 팀은 안 지우는 기존 방식이라, placeholder 팀명이 실제 팀명과 항상 같았던 예전엔 안 드러났지만 이제는 SP 연결 후에도 빈 유령 탭으로 남을 수 있었음 - 실제 팀 데이터가 들어오면 placeholder를 자동 정리하도록 좁은 범위로 안전하게 수정. 가짜 SP 데이터로 전체 시나리오(초기 부팅/실제 데이터 도착/SP 미연결 유지) 실제 스크립트 실행 검증 완료. -->
+=======
+>>>>>>> f35381f98ac8f70c54646fca5e641042f9bd98d8
 <!-- TIS-VERSION: 20260728-045 -->
 <!-- v20260728-045 변경사항: 주간회의 삭제가 계속 되살아나던 문제의 진짜 잔여 원인 발견·수정. v042에서 새로 발생하는 데이터 오염은 막았지만, 그 이전 버그로 인해 SharePoint에 "이미" 잘못 섞여 들어간 다른 담당자 항목(예: 최원진 버킷 안에 남아있는 김충만 항목 잔재)이 있으면 계속 화면에 나타났음 - 담당자별 버킷을 합칠 때 그 항목이 진짜 그 버킷 주인 것인지 검증 없이 그대로 합치고 있었기 때문. _wkLoadFeed(캐시/비캐시 두 경로 모두)에서 각 버킷을 합칠 때 "그 버킷 주인 담당자 항목만" 인정하도록 방어 필터 추가 - 과거에 이미 오염된 데이터가 남아있어도 화면에 다시 나타나지 않음. 오염 데이터를 인위적으로 만들어 재현 후 수정 확인까지 완료. -->
 <!-- TIS-VERSION: 20260728-044 -->
@@ -5358,7 +5361,11 @@ window._startSessionWatchdog = function(){
   }, 300);
 };
 let authCfg = { adminPw: '13579',
+<<<<<<< HEAD
   chartType: 'combo', guestPw: '', repPws: {}, repPerms: {}, repEmails: {}, repTitles: {}, hiddenReps: [], hiddenTeams: [], cdbHiddenReps: [], teamReps: {'영업팀':[]}, teamColors: {'영업팀':['#1E5FBE','#00A882','#C05000','#7B2FBE']},
+=======
+  chartType: 'combo', guestPw: '', repPws: {}, repPerms: {}, repEmails: {}, repTitles: {}, hiddenReps: [], hiddenTeams: [], cdbHiddenReps: [], teamReps: {'솔루션영업팀':['전성현','허인수','김충만','최원진'],'그룹지원팀':[]}, teamColors: {'솔루션영업팀':['#1E5FBE','#00A882','#C05000','#7B2FBE'],'그룹지원팀':[]},
+>>>>>>> f35381f98ac8f70c54646fca5e641042f9bd98d8
   // 이메일 알림 설정 (모두 기본 OFF - 관리자가 검증 후 하나씩 켜는 것을 권장)
   emailNotif: {
     mention:     {on:false, cc:''},
@@ -6116,7 +6123,16 @@ const labels = {
 
 const store={
   clientDB:[],
+<<<<<<< HEAD
   reps:{},
+=======
+  reps:{
+    '전성현':{plan:[0,0,0,0,0,0,0,0,0,0,0,0],actual:[0,0,0,0,0,0,0,0,0,0,0,0],forecast:[0,0,0,0,0,0,0,0,0,0,0,0],clients:[],activities:[]},
+    '허인수':{plan:[0,0,0,0,0,0,0,0,0,0,0,0],actual:[0,0,0,0,0,0,0,0,0,0,0,0],forecast:[0,0,0,0,0,0,0,0,0,0,0,0],clients:[],activities:[]},
+    '김충만':{plan:[0,0,0,0,0,0,0,0,0,0,0,0],actual:[0,0,0,0,0,0,0,0,0,0,0,0],forecast:[0,0,0,0,0,0,0,0,0,0,0,0],clients:[],activities:[]},
+    '최원진':{plan:[0,0,0,0,0,0,0,0,0,0,0,0],actual:[0,0,0,0,0,0,0,0,0,0,0,0],forecast:[0,0,0,0,0,0,0,0,0,0,0,0],clients:[],activities:[]}
+  },
+>>>>>>> f35381f98ac8f70c54646fca5e641042f9bd98d8
   issues:[]
 };
 
@@ -13961,7 +13977,11 @@ function _renderAccessLog() {
       month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'
     }) : '-';
     var actionColor = log.action === '접속' ? '#0F62FE' : '#198038';
+<<<<<<< HEAD
     // ⚠ 저장된 담당자 값이 곳에 따라 "홍길동" 또는 "홍길동 책임"처럼 직책이 붙어 저장되어,
+=======
+    // ⚠ 저장된 담당자 값이 곳에 따라 "김충만" 또는 "김충만 책임"처럼 직책이 붙어 저장되어,
+>>>>>>> f35381f98ac8f70c54646fca5e641042f9bd98d8
     //   직책이 붙은 쪽은 이메일 조회에 실패 → 검사를 건너뛰고 무조건 "정상"으로 표시되고
     //   순수 이름 쪽만 실제 비교되어 "불일치"로 표시되면서, 같은 시각에 정상/불일치가 함께 뜨는 문제가 있었음.
     //   → 등록된 담당자 명단과 대조해 순수 이름으로 정규화한 뒤 이메일을 조회한다.
@@ -13973,7 +13993,11 @@ function _renderAccessLog() {
       var names = Object.keys(emails);
       for(var i=0;i<names.length;i++){
         var n = names[i];
+<<<<<<< HEAD
         if(raw === n || raw.indexOf(n+' ') === 0) return n;  // "홍길동 책임" → "홍길동"
+=======
+        if(raw === n || raw.indexOf(n+' ') === 0) return n;  // "김충만 책임" → "김충만"
+>>>>>>> f35381f98ac8f70c54646fca5e641042f9bd98d8
       }
       return raw;
     })();
@@ -23261,7 +23285,11 @@ function qtRenderPreview(){
       <div class="g2">
         <div class="fg"><label class="flbl">수신 (고객사명 귀중) <span style="color:var(--red);">*</span></label><div style="position:relative;"><input class="fi" id="toName" oninput="qt_syncClientFromRecv(this)" autocomplete="off"><div id="toNameDrop" style="display:none;"></div></div></div>
         <div class="fg"><label class="flbl">참조 <span style="color:var(--red);">*</span></label><input class="fi" id="ccName"></div>
+<<<<<<< HEAD
         <div class="fg"><label class="flbl">발신</label><input class="fi" id="fromName" value="회사명(주)"></div>
+=======
+        <div class="fg"><label class="flbl">발신</label><input class="fi" id="fromName" value="티에이케이정보시스템(주)"></div>
+>>>>>>> f35381f98ac8f70c54646fca5e641042f9bd98d8
         <div class="fg"><label class="flbl">담당자 (자동입력)</label><input class="fi fi-ro" id="repNameField" value="" readonly></div>
       </div>
     </div>
@@ -23755,7 +23783,11 @@ document.addEventListener('input',function(e){
 var QUOTES = []; // 빈 배열로 시작, _qtShowPage에서 SP/캐시 로드
 
 // ── 견적번호 자동생성 ──
+<<<<<<< HEAD
 // 한글 이름 → 영문 이니셜 (초성 로마자). 예: 김충만→CM (예시)
+=======
+// 한글 이름 → 영문 이니셜 (초성 로마자). 예: 김충만→CM, 최원진→WJ, 허인수→IS, 전성현→SH
+>>>>>>> f35381f98ac8f70c54646fca5e641042f9bd98d8
 function qt_nameInitials(name){
   name=String(name||'').replace(/[（(\[【].*$/,'').trim();
   if(!name) return 'XX';
@@ -25058,7 +25090,11 @@ function qt_buildDevPdf(){
   // ── 푸터 ──
   h+='<div style="margin-top:14px;padding-top:8px;border-top:1.5px solid #1E293B;text-align:center;font-size:8.5px;color:#000;">';
   var _ftContact=[]; if(phone)_ftContact.push('Mobile : '+phone); if(_rEm)_ftContact.push('E-mail : '+_rEm);
+<<<<<<< HEAD
   h+='회사명㈜ 영업팀'+(_rNm?(' &nbsp;'+_rNm+(_rTt?' '+_rTt:'')):'')+(_ftContact.length?' &nbsp;('+_ftContact.join(' / ')+')':'');
+=======
+  h+='티에이케이정보시스템㈜ 솔루션영업팀'+(_rNm?(' &nbsp;'+_rNm+(_rTt?' '+_rTt:'')):'')+(_ftContact.length?' &nbsp;('+_ftContact.join(' / ')+')':'');
+>>>>>>> f35381f98ac8f70c54646fca5e641042f9bd98d8
   h+='</div>';
   h+='</div>';
   return h;
@@ -26029,7 +26065,11 @@ function qt_saveCurrentQuote(isDraft){
     amount:finalAmt, discAmt:disc,
     recv:(document.getElementById('toName')||{}).value||'',
     ref:(document.getElementById('ccName')||{}).value||'',
+<<<<<<< HEAD
     sender:(document.getElementById('fromName')||{}).value||'회사명(주)',
+=======
+    sender:(document.getElementById('fromName')||{}).value||'티에이케이정보시스템(주)',
+>>>>>>> f35381f98ac8f70c54646fca5e641042f9bd98d8
     condChip:(function(){
       if(window._qt_t3ChipSel) return window._qt_t3ChipSel;
       try{ var _p=qid&&QUOTES.find(function(x){return x.id===qid;}); return (_p&&_p.condChip)||''; }catch(e){ return ''; }
