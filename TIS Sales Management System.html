@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-048 -->
+<!-- v20260728-048 변경사항: 견적서관리 "단가·기본값 설정"을 완전히 재설계. (1) 기존 TAK/관계사/대외 3개로 고정되어 있던 단가 구분을 관리자가 자유롭게 이름 변경·추가·삭제할 수 있는 구조로 전환, 맨 앞에 "내부단가" 카테고리 신설(삭제 불가 고정, 이름은 변경 가능) - 원가분석 기반 데이터. 등급(특급/고급/중급/초급)도 동일하게 이름 변경·추가·삭제 가능하도록 확장. (2) 카테고리는 key(내부 식별자, 고정)와 label(표시 문구, 가변)을 분리해 이름을 바꿔도 기존 저장된 단가 데이터가 100% 보존되도록 설계 - 등급은 이름변경 시 데이터를 새 이름으로 이관하는 방식으로 보존. 실제 함수 실행으로 이름변경/추가/삭제 전 과정에서 데이터 유실이 없음을 검증 완료. (3) 권한 구조 변경 - 예전엔 아무나 단가를 수정할 수 있었는데, 이제 전체 단가(내부단가 포함)는 관리자만 편집 가능, 담당자는 내부단가를 포함한 모든 값을 열람은 가능하되 수정은 불가(읽기 전용 렌더링). 담당자가 본인 정보(연락처 등)만 저장할 때 단가 데이터가 실수로 0으로 덮어써지는 치명적 버그를 검증 과정에서 발견해 즉시 수정. (4) 견적서 작성 화면(인건비 행)에 하드코딩되어 4곳에 흩어져 있던 등급/단가기준 드롭다운을 전부 동적 생성 함수로 통일 - 내부단가는 "고객 청구 금액"이 아니므로 이 드롭다운에서는 자동 제외(설정 화면에서만 관리). (5) 표 헤더 전체 중앙정렬, 대기업 제품 스타일의 미니멀한 인라인 편집 UI 적용. -->
 <!-- TIS-VERSION: 20260728-047 -->
 <!-- v20260728-047 변경사항: 주간회의 요약 상단의 이번주/지난주 탭과 회의록 섹션 내부의 이번주/지난주 탭 간 동기화가 한쪽 방향으로만 동작하던 버그 수정 - 회의록 내부 탭 클릭 시 상단 탭이 따라 움직이는 동기화(_wkLogTab → window._wkSetWeek)는 있었지만 반대 방향(상단 탭 클릭 → 회의록 내부 탭)은 아예 없었음. window._wkSetWeek에 _wkLogTab(tab, true) 호출을 추가해 양방향 동기화 완성(skipTopSync 플래그로 무한루프 방지). 실제 실행으로 상단→내부, 내부→상단 양쪽 다 정상 동기화되고 순환 호출 없이 빠르게 완료되는 것까지 확인. -->
 <!-- TIS-VERSION: 20260728-046 -->
@@ -22486,7 +22488,7 @@ function qtAddBlock(type,savedData){
   var n=nums[idx]||'';
   var cfgs={
     mm:{badge:'인건비',bc:'#EDE9FE',tc:'#5B21B6',
-      body:'<div style="overflow-x:auto;"><table class="qt-it" style="table-layout:fixed;width:100%;min-width:700px;"><colgroup><col style="width:56px"><col style="min-width:120px"><col style="width:38px"><col style="width:54px"><col style="width:70px"><col style="width:64px"><col style="width:86px"><col style="width:86px"><col style="width:86px"><col style="width:86px"><col style="width:26px"></colgroup><thead><tr><th class="L">구분</th><th class="L">투입 인력 역할</th><th>수량</th><th>단위</th><th>등급</th><th>단가기준</th><th>소비자단가</th><th>소비자가</th><th>제안단가</th><th>제안금액</th><th></th></tr></thead><tbody id="qt-tbmmBC"><tr><td class="L"><input class="qt-ii" style="text-align:center;" placeholder="구분"></td><td class="L"><textarea class="qt-ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="역할 입력"></textarea></td><td><input class="qt-ii" style="text-align:center;" value="1.0" oninput="qt_calcMM(this)"></td><td><input class="qt-ii" style="text-align:center;" value="MM"></td><td><select class="qt-isel" style="width:100%;" onchange="qt_calcMM(this)"><option>특급</option><option>고급</option><option selected>중급</option><option>초급</option></select></td><td><select class="qt-isel qt-src-sel" style="width:100%;font-size:10px;" onchange="qt_calcMM(this)"><option value="tak">TAK</option><option value="rel">관계사</option><option value="ext">대외</option></select></td><td class="qt-gc" style="text-align:right;">25,019,615</td><td class="qt-gca" style="text-align:right;">25,019,615</td><td class="qt-gp" style="text-align:right;">15,600,000</td><td class="qt-gpa" style="text-align:right;">15,600,000</td><td><button class="qt-del-btn" onclick="this.closest(\'tr\').remove();qtCalcTotal()">×</button></td></tr></tbody></table></div><span class="qt-add-r" onclick="qtAddMMRow(\'qt-tbmmBC\')">＋ 행 추가</span>'},
+      body:'<div style="overflow-x:auto;"><table class="qt-it" style="table-layout:fixed;width:100%;min-width:700px;"><colgroup><col style="width:56px"><col style="min-width:120px"><col style="width:38px"><col style="width:54px"><col style="width:70px"><col style="width:64px"><col style="width:86px"><col style="width:86px"><col style="width:86px"><col style="width:86px"><col style="width:26px"></colgroup><thead><tr><th class="L">구분</th><th class="L">투입 인력 역할</th><th>수량</th><th>단위</th><th>등급</th><th>단가기준</th><th>소비자단가</th><th>소비자가</th><th>제안단가</th><th>제안금액</th><th></th></tr></thead><tbody id="qt-tbmmBC"><tr><td class="L"><input class="qt-ii" style="text-align:center;" placeholder="구분"></td><td class="L"><textarea class="qt-ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="역할 입력"></textarea></td><td><input class="qt-ii" style="text-align:center;" value="1.0" oninput="qt_calcMM(this)"></td><td><input class="qt-ii" style="text-align:center;" value="MM"></td><td><select class="qt-isel" style="width:100%;" onchange="qt_calcMM(this)">'+qt_gradeOptionsHtml()+'</select></td><td><select class="qt-isel qt-src-sel" style="width:100%;font-size:10px;" onchange="qt_calcMM(this)">'+qt_catOptionsHtml()+'</select></td><td class="qt-gc" style="text-align:right;">25,019,615</td><td class="qt-gca" style="text-align:right;">25,019,615</td><td class="qt-gp" style="text-align:right;">15,600,000</td><td class="qt-gpa" style="text-align:right;">15,600,000</td><td><button class="qt-del-btn" onclick="this.closest(\'tr\').remove();qtCalcTotal()">×</button></td></tr></tbody></table></div><span class="qt-add-r" onclick="qtAddMMRow(\'qt-tbmmBC\')">＋ 행 추가</span>'},
     lic:{badge:'라이선스(상품)',bc:'#FFF7ED',tc:'#C2410C',
       body:'<div style="overflow-x:auto;"><table class="qt-it" style="table-layout:fixed;width:100%;"><colgroup><col style="width:68px"><col><col style="width:44px"><col style="width:36px"><col style="width:75px"><col style="width:75px"><col style="width:75px"><col style="width:75px"><col style="width:28px"></colgroup><thead><tr><th class="L">구분</th><th class="L">품목</th><th>수량</th><th>단위</th><th>소비자단가</th><th>소비자가</th><th>제안단가</th><th>제안금액</th><th></th></tr></thead><tbody id="qt-tblicBC"><tr><td class="L"><input class="qt-ii" style="text-align:center;" placeholder="구분"></td><td class="L"><textarea class="qt-ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="품목명 입력"></textarea></td><td><input class="qt-ii" style="text-align:center;" placeholder="1" oninput="qt_calcLic(this)"></td><td><input class="qt-ii" style="text-align:center;" placeholder="식"></td><td style="text-align:right;"><input class="qt-ii" style="text-align:right;" placeholder="0" oninput="qt_calcLic(this)"></td><td class="qt-lic-consumer" style="text-align:right;">—</td><td style="text-align:right;"><input class="qt-ii" style="text-align:right;" placeholder="0" oninput="qt_calcLic(this)"></td><td class="qt-lic-propose" style="text-align:right;">—</td><td><button class="qt-del-btn" onclick="this.closest(\'tr\').remove();qtCalcTotal()">×</button></td></tr></tbody></table></div><span class="qt-add-r" onclick="qtAddCommonRow(\'qt-tblicBC\')">＋ 행 추가</span>'},
     ma:{badge:'유지보수(MA)',bc:'#ECFDF5',tc:'#065F46',
@@ -22536,7 +22538,7 @@ function qtUpdateBlockNumbers(){
 function qtAddMMRow(tbid){
   var tb=document.getElementById(tbid); if(!tb)return;
   var tr=document.createElement('tr');
-  tr.innerHTML='<td class="L"><input class="qt-ii" style="text-align:center;" placeholder="구분"></td><td class="L"><textarea class="qt-ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="역할 입력"></textarea></td><td><input class="qt-ii" style="text-align:center;" value="1.0" oninput="qt_calcMM(this)"></td><td><input class="qt-ii" style="text-align:center;" value="MM"></td><td><select class="qt-isel" style="width:100%;" onchange="qt_calcMM(this)"><option>특급</option><option>고급</option><option selected>중급</option><option>초급</option></select></td><td><select class="qt-isel qt-src-sel" style="width:100%;font-size:10px;" onchange="qt_calcMM(this)"><option value="tak">TAK</option><option value="rel">관계사</option><option value="ext">대외</option></select></td><td class="qt-gc" style="text-align:right;"></td><td class="qt-gca" style="text-align:right;"></td><td class="qt-gp" style="text-align:right;"></td><td class="qt-gpa" style="text-align:right;"></td><td><button class="qt-del-btn" onclick="this.closest(\'tr\').remove();qtCalcTotal()">×</button></td>';
+  tr.innerHTML='<td class="L"><input class="qt-ii" style="text-align:center;" placeholder="구분"></td><td class="L"><textarea class="qt-ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="역할 입력"></textarea></td><td><input class="qt-ii" style="text-align:center;" value="1.0" oninput="qt_calcMM(this)"></td><td><input class="qt-ii" style="text-align:center;" value="MM"></td><td><select class="qt-isel" style="width:100%;" onchange="qt_calcMM(this)">'+qt_gradeOptionsHtml()+'</select></td><td><select class="qt-isel qt-src-sel" style="width:100%;font-size:10px;" onchange="qt_calcMM(this)">'+qt_catOptionsHtml()+'</select></td><td class="qt-gc" style="text-align:right;"></td><td class="qt-gca" style="text-align:right;"></td><td class="qt-gp" style="text-align:right;"></td><td class="qt-gpa" style="text-align:right;"></td><td><button class="qt-del-btn" onclick="this.closest(\'tr\').remove();qtCalcTotal()">×</button></td>';
   tb.appendChild(tr);
 }
 
@@ -23090,70 +23092,11 @@ function qtRenderPreview(){
 
     <!-- 개발자 등급별 단가 -->
     <div class="sg" style="margin-bottom:10px;">
-      <div class="sg-t"><span class="sg-t-icon" style="background:#F5F3FF;"><svg width="10" height="10" fill="none" stroke="#7C3AED" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></span>개발자 등급별 단가 <span style="font-size:9px;font-weight:400;color:var(--sub);text-transform:none;letter-spacing:0;">원 / MM</span></div>
-      <table style="width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed;">
-        <colgroup>
-          <col style="width:52px">
-          <col><col>
-          <col><col>
-          <col><col>
-        </colgroup>
-        <thead>
-          <tr>
-            <th style="padding:0;border:none;"></th>
-            <th colspan="2" style="padding:8px 10px;text-align:center;font-size:11px;font-weight:700;color:#1D4ED8;background:#EFF6FF;border-radius:6px 6px 0 0;border-bottom:2px solid #BFDBFE;">TAK</th>
-            <th colspan="2" style="padding:8px 10px;text-align:center;font-size:11px;font-weight:700;color:#065F46;background:#ECFDF5;border-radius:6px 6px 0 0;border-bottom:2px solid #6EE7B7;border-left:4px solid #fff;">관계사</th>
-            <th colspan="2" style="padding:8px 10px;text-align:center;font-size:11px;font-weight:700;color:#92400E;background:#FFFBEB;border-radius:6px 6px 0 0;border-bottom:2px solid #FCD34D;border-left:4px solid #fff;">대외</th>
-          </tr>
-          <tr style="background:#F8FAFC;">
-            <th style="padding:7px 8px;text-align:center;font-size:10px;font-weight:600;color:var(--sub);border-bottom:1px solid var(--border);">등급</th>
-            <th style="padding:7px 8px;text-align:center;font-size:10px;font-weight:600;color:var(--sub);border-bottom:1px solid var(--border);">소비자단가</th>
-            <th style="padding:7px 8px;text-align:center;font-size:10px;font-weight:600;color:var(--sub);border-bottom:1px solid var(--border);border-right:2px solid var(--border);">제안단가</th>
-            <th style="padding:7px 8px;text-align:center;font-size:10px;font-weight:600;color:var(--sub);border-bottom:1px solid var(--border);">소비자단가</th>
-            <th style="padding:7px 8px;text-align:center;font-size:10px;font-weight:600;color:var(--sub);border-bottom:1px solid var(--border);border-right:2px solid var(--border);">제안단가</th>
-            <th style="padding:7px 8px;text-align:center;font-size:10px;font-weight:600;color:var(--sub);border-bottom:1px solid var(--border);">소비자단가</th>
-            <th style="padding:7px 8px;text-align:center;font-size:10px;font-weight:600;color:var(--sub);border-bottom:1px solid var(--border);border-right:2px solid var(--border);">제안단가</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td style="padding:7px 8px;text-align:center;font-weight:700;color:var(--navy);font-size:11px;border-bottom:1px solid var(--border2);">특급</td>
-            <td style="padding:5px 6px;border-bottom:1px solid var(--border2);"><input class="ri" id="tak-s-0" value="28,035,714" style="width:100%;"></td>
-            <td style="padding:5px 6px;border-bottom:1px solid var(--border2);border-right:2px solid var(--border);"><input class="ri" id="tak-p-0" value="18,000,000" style="width:100%;"></td>
-            <td style="padding:5px 6px;border-bottom:1px solid var(--border2);"><input class="ri" id="rel-s-0" value="28,035,714" style="width:100%;"></td>
-            <td style="padding:5px 6px;border-bottom:1px solid var(--border2);border-right:2px solid var(--border);"><input class="ri" id="rel-p-0" value="17,000,000" style="width:100%;"></td>
-            <td style="padding:5px 6px;border-bottom:1px solid var(--border2);"><input class="ri" id="ext-s-0" value="30,000,000" style="width:100%;"></td>
-            <td style="padding:5px 6px;border-bottom:1px solid var(--border2);"><input class="ri" id="ext-p-0" value="22,000,000" style="width:100%;"></td>
-          </tr>
-          <tr>
-            <td style="padding:7px 8px;text-align:center;font-weight:700;color:var(--navy);font-size:11px;border-bottom:1px solid var(--border2);">고급</td>
-            <td style="padding:5px 6px;border-bottom:1px solid var(--border2);"><input class="ri" id="tak-s-1" value="25,019,615" style="width:100%;"></td>
-            <td style="padding:5px 6px;border-bottom:1px solid var(--border2);border-right:2px solid var(--border);"><input class="ri" id="tak-p-1" value="15,600,000" style="width:100%;"></td>
-            <td style="padding:5px 6px;border-bottom:1px solid var(--border2);"><input class="ri" id="rel-s-1" value="25,019,615" style="width:100%;"></td>
-            <td style="padding:5px 6px;border-bottom:1px solid var(--border2);border-right:2px solid var(--border);"><input class="ri" id="rel-p-1" value="14,500,000" style="width:100%;"></td>
-            <td style="padding:5px 6px;border-bottom:1px solid var(--border2);"><input class="ri" id="ext-s-1" value="27,000,000" style="width:100%;"></td>
-            <td style="padding:5px 6px;border-bottom:1px solid var(--border2);"><input class="ri" id="ext-p-1" value="19,000,000" style="width:100%;"></td>
-          </tr>
-          <tr>
-            <td style="padding:7px 8px;text-align:center;font-weight:700;color:var(--navy);font-size:11px;border-bottom:1px solid var(--border2);">중급</td>
-            <td style="padding:5px 6px;border-bottom:1px solid var(--border2);"><input class="ri" id="tak-s-2" value="20,516,667" style="width:100%;"></td>
-            <td style="padding:5px 6px;border-bottom:1px solid var(--border2);border-right:2px solid var(--border);"><input class="ri" id="tak-p-2" value="12,500,000" style="width:100%;"></td>
-            <td style="padding:5px 6px;border-bottom:1px solid var(--border2);"><input class="ri" id="rel-s-2" value="20,516,667" style="width:100%;"></td>
-            <td style="padding:5px 6px;border-bottom:1px solid var(--border2);border-right:2px solid var(--border);"><input class="ri" id="rel-p-2" value="11,500,000" style="width:100%;"></td>
-            <td style="padding:5px 6px;border-bottom:1px solid var(--border2);"><input class="ri" id="ext-s-2" value="22,000,000" style="width:100%;"></td>
-            <td style="padding:5px 6px;border-bottom:1px solid var(--border2);"><input class="ri" id="ext-p-2" value="15,000,000" style="width:100%;"></td>
-          </tr>
-          <tr>
-            <td style="padding:7px 8px;text-align:center;font-weight:700;color:var(--navy);font-size:11px;">초급</td>
-            <td style="padding:5px 6px;"><input class="ri" id="tak-s-3" value="16,960,526" style="width:100%;"></td>
-            <td style="padding:5px 6px;border-right:2px solid var(--border);"><input class="ri" id="tak-p-3" value="11,400,000" style="width:100%;"></td>
-            <td style="padding:5px 6px;"><input class="ri" id="rel-s-3" value="16,960,526" style="width:100%;"></td>
-            <td style="padding:5px 6px;border-right:2px solid var(--border);"><input class="ri" id="rel-p-3" value="10,500,000" style="width:100%;"></td>
-            <td style="padding:5px 6px;"><input class="ri" id="ext-s-3" value="18,000,000" style="width:100%;"></td>
-            <td style="padding:5px 6px;"><input class="ri" id="ext-p-3" value="13,000,000" style="width:100%;"></td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="sg-t" style="display:flex;align-items:center;justify-content:space-between;">
+        <span><span class="sg-t-icon" style="background:#F5F3FF;"><svg width="10" height="10" fill="none" stroke="#7C3AED" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></span>개발자 등급별 단가 <span style="font-size:9px;font-weight:400;color:var(--sub);text-transform:none;letter-spacing:0;">원 / MM</span></span>
+        <span id="qtPriceRoleNote" style="font-size:9.5px;font-weight:600;color:#94A3B8;"></span>
+      </div>
+      <div id="qtPriceTableWrap"></div>
     </div>
 
     <!-- 담당자 + 기본조건 -->
@@ -23379,7 +23322,41 @@ function qtRenderPreview(){
 // ═══ 견적서 관리 JS (quotation_v4 원본 기반) ═══
 var QUOTES = [];
 var QT_BC = 0;
-var QT_GRADES = {'특급':{tak:{c:28035714,p:18000000},rel:{c:28035714,p:16000000},ext:{c:28035714,p:20000000}},'고급':{tak:{c:25019615,p:15600000},rel:{c:25019615,p:14000000},ext:{c:25019615,p:18000000}},'중급':{tak:{c:20516667,p:12500000},rel:{c:20516667,p:11000000},ext:{c:20516667,p:15000000}},'초급':{tak:{c:16960526,p:11400000},rel:{c:16960526,p:10000000},ext:{c:16960526,p:13000000}}};
+var QT_GRADES = {'특급':{internal:{c:0,p:0},tak:{c:28035714,p:18000000},rel:{c:28035714,p:16000000},ext:{c:28035714,p:20000000}},'고급':{internal:{c:0,p:0},tak:{c:25019615,p:15600000},rel:{c:25019615,p:14000000},ext:{c:25019615,p:18000000}},'중급':{internal:{c:0,p:0},tak:{c:20516667,p:12500000},rel:{c:20516667,p:11000000},ext:{c:20516667,p:15000000}},'초급':{internal:{c:0,p:0},tak:{c:16960526,p:11400000},rel:{c:16960526,p:10000000},ext:{c:16960526,p:13000000}}};
+// ⚠ 단가 구분(카테고리)은 key(내부 식별자, 고정)와 label(화면 표시 문구, 관리자가 자유롭게 변경 가능)을 분리한다.
+//   라벨만 바꾸면 key는 그대로라 QT_GRADES에 저장된 기존 단가 데이터가 100% 보존됨.
+//   internal은 항상 맨 앞 고정, 삭제 불가(locked) - 이름은 바꿀 수 있음.
+var QT_PRICE_CATS = [
+  {key:'internal', label:'내부단가', locked:true},
+  {key:'tak', label:'TAK'},
+  {key:'rel', label:'관계사'},
+  {key:'ext', label:'대외'}
+];
+// 등급은 label 자체가 QT_GRADES의 키이자 이미 저장된 견적서 행에도 그대로 기록되는 값이라,
+// 이름변경 시 데이터 이관 로직(qt_renamePriceGrade)으로 처리한다 (아래 정의).
+var QT_PRICE_GRADES = ['특급','고급','중급','초급'];
+// 저장된 옛 데이터(카테고리/등급 정의가 없던 시절)를 새 구조로 보정
+function qt_migratePriceStructure(){
+  if(!Array.isArray(QT_PRICE_CATS)||!QT_PRICE_CATS.length){
+    QT_PRICE_CATS=[{key:'internal',label:'내부단가',locked:true},{key:'tak',label:'TAK'},{key:'rel',label:'관계사'},{key:'ext',label:'대외'}];
+  }
+  // internal이 없으면 맨 앞에 추가 (옛 저장 데이터 호환)
+  if(!QT_PRICE_CATS.some(function(c){return c.key==='internal';})){
+    QT_PRICE_CATS.unshift({key:'internal',label:'내부단가',locked:true});
+  }
+  if(!Array.isArray(QT_PRICE_GRADES)||!QT_PRICE_GRADES.length){
+    QT_PRICE_GRADES=Object.keys(QT_GRADES||{});
+    if(!QT_PRICE_GRADES.length) QT_PRICE_GRADES=['특급','고급','중급','초급'];
+  }
+  if(!QT_GRADES||typeof QT_GRADES!=='object') QT_GRADES={};
+  QT_PRICE_GRADES.forEach(function(g){
+    if(!QT_GRADES[g]) QT_GRADES[g]={};
+    QT_PRICE_CATS.forEach(function(c){
+      if(!QT_GRADES[g][c.key]) QT_GRADES[g][c.key]={c:0,p:0};
+    });
+  });
+}
+qt_migratePriceStructure();
 var QT_LOGO_SRC = null;
 var QT_SETTINGS = {};
 var window_qt_editing_id = null;
@@ -23436,7 +23413,7 @@ function qt_getCustomBody(bc){
 
 
 var ROW_TPL={
-  'tbmm': '<td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="투입 인력 역할"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="1.0" oninput="qt_calcMM(this)"></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="MM"></td><td style="text-align:center;"><select class="isel" style="width:100%;" onchange="qt_calcMM(this)"><option value="" selected hidden>등급</option><option>특급</option><option>고급</option><option>중급</option><option>초급</option></select></td><td style="text-align:center;"><select class="isel src-sel" style="width:100%;" onchange="qt_calcMM(this)"><option value="" selected hidden>기준</option><option value="tak">TAK</option><option value="rel">관계사</option><option value="ext">대외</option></select></td><td class="gc" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td class="gca" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td class="gp" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td class="gpa" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td><button class="del-btn" onclick="qt_delRow(this)">×</button></td>',
+  'tbmm': '<td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="투입 인력 역할"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="1.0" oninput="qt_calcMM(this)"></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="MM"></td><td style="text-align:center;"><select class="isel" style="width:100%;" onchange="qt_calcMM(this)">'+qt_gradeOptionsHtml(null,true)+'</select></td><td style="text-align:center;"><select class="isel src-sel" style="width:100%;" onchange="qt_calcMM(this)">'+qt_catOptionsHtml(null,true)+'</select></td><td class="gc" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td class="gca" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td class="gp" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td class="gpa" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td><button class="del-btn" onclick="qt_delRow(this)">×</button></td>',
   'tblic': '<td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="품목명 입력"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="1" oninput="qt_calcLic(this)"></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="식"></td><td style="text-align:right;"><input class="ii" style="text-align:right;" placeholder="0" oninput="qt_calcLic(this)"></td><td class="lic-consumer" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcLic(this)"></td><td style="text-align:right;"><input class="ii" style="text-align:right;" placeholder="0" oninput="qt_calcLic(this)"></td><td class="lic-propose" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcLic(this)"></td><td><button class="del-btn" onclick="qt_delRow(this)">×</button></td>',
   'tbma': '<td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="품목명 입력"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="12" oninput="qt_calcMA(this)"></td><td style="text-align:right;"><input class="ii" style="text-align:right;" placeholder="0" oninput="qt_calcMA(this)"></td><td style="text-align:center;padding:2px 4px;"><div style="display:flex;align-items:center;justify-content:center;"><input class="ii" style="text-align:center;flex:1;" placeholder="15" oninput="qt_calcMA(this)"><span style="font-size:11px;color:var(--text);flex-shrink:0;margin-left:2px;">%</span></div></td><td class="ma-propose" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMA(this)"></td><td><button class="del-btn" onclick="qt_delRow(this)">×</button></td>',
   'tbprod': '<td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="품목명 입력"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="1" oninput="qt_calcProduct(this)"></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="개"></td><td style="text-align:right;"><input class="ii" style="text-align:right;" placeholder="0" oninput="qt_calcProduct(this)"></td><td class="prod-propose" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcProduct(this)"></td><td><button class="del-btn" onclick="qt_delRow(this)">×</button></td>',
@@ -24098,19 +24075,45 @@ function qt_calcMaMonths(){
 
 function qt_getGradeRates(gradeName, src){
   // 단일 소스: 저장된 QT_GRADES 사용 (설정 저장 → SP → 재접속 로드까지 일관)
-  // src는 select value 기준: 'tak' | 'rel' | 'ext' (한글 표기도 허용)
-  var s=(src==='관계사'||src==='rel')?'rel':(src==='대외'||src==='ext')?'ext':'tak';
+  // ⚠ 예전에는 src를 무조건 tak/rel/ext 3개 중 하나로 강제 정규화해서, 관리자가 새로
+  //   추가한 커스텀 카테고리 키가 전부 'tak'으로 뭉개지는 버그가 될 뻔했음. 실제 키를
+  //   그대로 쓰고, 아주 오래된 한글 텍스트 값만(레거시 호환) 매핑한다.
+  var legacyMap={'관계사':'rel','대외':'ext','TAK':'tak','내부단가':'internal'};
+  var s=legacyMap[src]||src||'tak';
   var g=(typeof QT_GRADES!=='undefined'&&QT_GRADES[gradeName]&&QT_GRADES[gradeName][s])||null;
   if(g&&(g.c||g.p)) return {c:g.c||0,p:g.p||0};
-  // 폴백: 설정 모달 input (설정 화면에서 저장 전 미리계산용)
-  var gradeIdx={'특급':0,'고급':1,'중급':2,'초급':3};
-  var idx=gradeIdx[gradeName]!==undefined?gradeIdx[gradeName]:1;
-  var sEl=document.getElementById(s+'-s-'+idx);
-  var pEl=document.getElementById(s+'-p-'+idx);
+  // 폴백: 설정 모달 input (설정 화면에서 저장 전 미리계산용, 관리자 화면일 때만 실제 input 존재)
+  var idx=(typeof QT_PRICE_GRADES!=='undefined'&&QT_PRICE_GRADES.indexOf)?QT_PRICE_GRADES.indexOf(gradeName):-1;
+  if(idx<0) idx=1;
+  var sEl=document.getElementById('price-'+s+'-s-'+idx);
+  var pEl=document.getElementById('price-'+s+'-p-'+idx);
   return {
     c:sEl?parseFloat((sEl.value||'0').replace(/,/g,''))||0:0,
     p:pEl?parseFloat((pEl.value||'0').replace(/,/g,''))||0:0
   };
+}
+// 견적서 작성 화면(인건비 행)의 등급/단가기준 드롭다운을 동적 카테고리 목록에서 생성
+function qt_gradeOptionsHtml(selectedGrade, includeEmpty){
+  var grades=(typeof QT_PRICE_GRADES!=='undefined'&&QT_PRICE_GRADES.length)?QT_PRICE_GRADES:['특급','고급','중급','초급'];
+  var h=includeEmpty?'<option value="" selected hidden>등급</option>':'';
+  h+=grades.map(function(g){
+    var sel=(selectedGrade?g===selectedGrade:(!includeEmpty&&g==='중급'));
+    return '<option'+(sel?' selected':'')+'>'+_qtEsc(g)+'</option>';
+  }).join('');
+  return h;
+}
+function qt_catOptionsHtml(selectedKey, includeEmpty){
+  var cats=(typeof QT_PRICE_CATS!=='undefined'&&QT_PRICE_CATS.length)?QT_PRICE_CATS:[{key:'tak',label:'TAK'},{key:'rel',label:'관계사'},{key:'ext',label:'대외'}];
+  // ⚠ 내부단가는 "고객에게 청구할 금액"이 아니라 원가 참고용이라, 견적서 작성 시 실수로
+  //   선택되지 않도록 여기(견적 라인 단가기준 드롭다운)에서는 제외한다. 설정 화면에서만 관리.
+  var selectable=cats.filter(function(c){return c.key!=='internal';});
+  if(!selectable.length) selectable=cats;
+  var h=includeEmpty?'<option value="" selected hidden>기준</option>':'';
+  h+=selectable.map(function(c,i){
+    var sel=selectedKey?c.key===selectedKey:(!includeEmpty&&i===0);
+    return '<option value="'+_qtEsc(c.key)+'"'+(sel?' selected':'')+'>'+_qtEsc(c.label)+'</option>';
+  }).join('');
+  return h;
 }
 // 자동높이
 function qt_autoH(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}
@@ -24500,7 +24503,7 @@ function qt_addBlock(type,skipInit){
 
   var cfgs={
     mm:{badge:'인건비',bc:'#EDE9FE',tc:'#5B21B6',
-      body:'<div class="it-wrap" style="overflow-x:auto;"><table class="it" style="table-layout:fixed;min-width:760px;width:100%;"><colgroup><col style="width:72px"><col style="min-width:160px"><col style="width:40px"><col style="width:44px"><col style="width:56px"><col style="width:56px"><col style="width:78px"><col style="width:78px"><col style="width:78px"><col style="width:78px"><col style="width:28px"></colgroup><thead><tr><th class="L">구분</th><th class="L">투입 인력 역할</th><th>수량</th><th>단위</th><th>등급</th><th>단가기준</th><th>소비자단가</th><th>소비자가</th><th>제안단가</th><th>제안금액</th><th></th></tr></thead><tbody id="tbmmQT_BC"><tr><td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" placeholder="역할 및 업무 범위" rows="1" style="resize:none;overflow:hidden;width:100%;"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="1.0" oninput="qt_calcMM(this)"></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="MM"></td><td style="text-align:center;"><select class="isel" style="width:100%;" onchange="qt_calcMM(this)"><option value="" selected hidden>등급</option><option>특급</option><option>고급</option><option>중급</option><option>초급</option></select></td><td style="text-align:center;"><select class="isel src-sel" style="width:100%;" onchange="qt_calcMM(this)"><option value="" selected hidden>기준</option><option value="tak">TAK</option><option value="rel">관계사</option><option value="ext">대외</option></select></td><td class="gc" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td class="gca" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td class="gp" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td class="gpa" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td style="width:32px;text-align:center;padding:2px;"><button class="del-btn" onclick="qt_delRow(this)">×</button></td></tr></tbody></table></div><span class="add-r" onclick="qt_addMMRow(\'tbmmQT_BC\')">＋ 행 추가</span>'},
+      body:'<div class="it-wrap" style="overflow-x:auto;"><table class="it" style="table-layout:fixed;min-width:760px;width:100%;"><colgroup><col style="width:72px"><col style="min-width:160px"><col style="width:40px"><col style="width:44px"><col style="width:56px"><col style="width:56px"><col style="width:78px"><col style="width:78px"><col style="width:78px"><col style="width:78px"><col style="width:28px"></colgroup><thead><tr><th class="L">구분</th><th class="L">투입 인력 역할</th><th>수량</th><th>단위</th><th>등급</th><th>단가기준</th><th>소비자단가</th><th>소비자가</th><th>제안단가</th><th>제안금액</th><th></th></tr></thead><tbody id="tbmmQT_BC"><tr><td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" placeholder="역할 및 업무 범위" rows="1" style="resize:none;overflow:hidden;width:100%;"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="1.0" oninput="qt_calcMM(this)"></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="MM"></td><td style="text-align:center;"><select class="isel" style="width:100%;" onchange="qt_calcMM(this)">'+qt_gradeOptionsHtml(null,true)+'</select></td><td style="text-align:center;"><select class="isel src-sel" style="width:100%;" onchange="qt_calcMM(this)">'+qt_catOptionsHtml(null,true)+'</select></td><td class="gc" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td class="gca" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td class="gp" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td class="gpa" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td style="width:32px;text-align:center;padding:2px;"><button class="del-btn" onclick="qt_delRow(this)">×</button></td></tr></tbody></table></div><span class="add-r" onclick="qt_addMMRow(\'tbmmQT_BC\')">＋ 행 추가</span>'},
     lic:{badge:'라이선스(상품)',bc:'#FFF7ED',tc:'#C2410C',
       body:'<div class="it-wrap"><table class="it" style="table-layout:fixed;width:100%;"><colgroup><col style="width:72px"><col><col style="width:40px"><col style="width:44px"><col style="width:78px"><col style="width:78px"><col style="width:78px"><col style="width:78px"><col style="width:28px"></colgroup><thead><tr><th class="L">구분</th><th class="L">품목</th><th>수량</th><th>단위</th><th>소비자단가</th><th>소비자가</th><th>제안단가</th><th>제안금액</th><th></th></tr></thead><tbody id="tblicQT_BC"><tr><td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" placeholder="품목명 입력" rows="1" style="resize:none;overflow:hidden;width:100%;"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="1" oninput="qt_calcLic(this)"></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="식"></td><td style="text-align:right;"><input class="ii" style="text-align:right;" placeholder="0" oninput="qt_calcLic(this)"></td><td class="lic-consumer" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcLic(this)"></td><td style="text-align:right;"><input class="ii" style="text-align:right;" placeholder="0" oninput="qt_calcLic(this)"></td><td class="lic-propose" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcLic(this)"></td><td style="width:32px;text-align:center;padding:2px;"><button class="del-btn" onclick="qt_delRow(this)">×</button></td></tr></tbody></table></div><span class="add-r" onclick="qt_addCommonRow(\'tblicQT_BC\')">＋ 행 추가</span>'},
     ma:{badge:'유지보수(MA)',bc:'#ECFDF5',tc:'#065F46',
@@ -25727,20 +25730,21 @@ function qt_savePdf(){
 // ── 견적서 설정 저장/로드 (SP + localStorage) ──
 async function qt_saveSetting(){
   var savedAt = new Date().toISOString();
-  // 단가 읽기
-  var srcKeys=['tak','rel','ext'];
-  var gradeKeys=['특급','고급','중급','초급'];
-  var gradeIdx={'특급':0,'고급':1,'중급':2,'초급':3};
-  var newGrades={'특급':{},'고급':{},'중급':{},'초급':{}};
-  srcKeys.forEach(function(src){
-    gradeKeys.forEach(function(g,gi){
-      var ci=document.getElementById(src+'-s-'+gi);
-      var pi=document.getElementById(src+'-p-'+gi);
-      if(!newGrades[g]) newGrades[g]={};
-      newGrades[g][src]={c:ci?parseInt((ci.value||'0').replace(/,/g,''))||0:0, p:pi?parseInt((pi.value||'0').replace(/,/g,''))||0:0};
+  var isAdmin=_qtIsAdmin();
+  // 단가 읽기 - 관리자 화면에만 입력창이 존재함(담당자 화면은 읽기 전용 텍스트라 id 자체가 없음).
+  // 관리자가 아닐 때 이 로직을 타면 모든 값이 0으로 읽혀 기존 단가가 날아가므로, 관리자일 때만 반영한다.
+  if(isAdmin){
+    var newGrades={};
+    QT_PRICE_GRADES.forEach(function(g,gi){
+      newGrades[g]={};
+      QT_PRICE_CATS.forEach(function(cat){
+        var ci=document.getElementById('price-'+cat.key+'-s-'+gi);
+        var pi=document.getElementById('price-'+cat.key+'-p-'+gi);
+        newGrades[g][cat.key]={c:ci?parseInt((ci.value||'0').replace(/,/g,''))||0:0, p:pi?parseInt((pi.value||'0').replace(/,/g,''))||0:0};
+      });
     });
-  });
-  QT_GRADES = newGrades;
+    QT_GRADES = newGrades;
+  }
   // GRADES도 동기화 (원본 함수가 GRADES 직접 참조)
   // QT_GRADES가 getter/setter로 연동되므로 OK
 
@@ -25784,7 +25788,7 @@ async function qt_saveSetting(){
   delete QT_SETTINGS.defaultPayment;
   delete QT_SETTINGS.defaultGeneral;
 
-  var payload = {grades:QT_GRADES, settings:QT_SETTINGS, savedAt:savedAt};
+  var payload = {grades:QT_GRADES, settings:QT_SETTINGS, priceCats:QT_PRICE_CATS, priceGrades:QT_PRICE_GRADES, savedAt:savedAt};
   var logoPayload = {logo:QT_LOGO_SRC||null, savedAt:savedAt};
 
   // 1. localStorage 즉시 저장
@@ -25810,8 +25814,11 @@ async function qtLoadSettings(){
   if(localLoaded){
     if(localLoaded.grades) QT_GRADES=localLoaded.grades;
     if(localLoaded.settings) QT_SETTINGS=localLoaded.settings;
+    if(localLoaded.priceCats) QT_PRICE_CATS=localLoaded.priceCats;
+    if(localLoaded.priceGrades) QT_PRICE_GRADES=localLoaded.priceGrades;
   }
   try{ var logoSrc=localStorage.getItem('_qtLogo'); if(logoSrc) QT_LOGO_SRC=logoSrc; }catch(e){}
+  qt_migratePriceStructure();
 
   // 2. SP 로드 (더 최신이면 교체)
   if(window._isSPReady && typeof _spLoadItem==='function'){
@@ -25823,6 +25830,9 @@ async function qtLoadSettings(){
         if(spTs>localTs){
           if(spLoaded.grades) QT_GRADES=spLoaded.grades;
           if(spLoaded.settings) QT_SETTINGS=spLoaded.settings;
+          if(spLoaded.priceCats) QT_PRICE_CATS=spLoaded.priceCats;
+          if(spLoaded.priceGrades) QT_PRICE_GRADES=spLoaded.priceGrades;
+          qt_migratePriceStructure();
           try{ localStorage.setItem('_qtSettings',JSON.stringify(spLoaded)); }catch(e){}
         }
       }
@@ -25841,17 +25851,8 @@ async function qtLoadSettings(){
 }
 
 function qt_fillSettingUI(){
-  var srcKeys=['tak','rel','ext'];
-  var gradeKeys=['특급','고급','중급','초급'];
-  srcKeys.forEach(function(src){
-    gradeKeys.forEach(function(g,gi){
-      var ci=document.getElementById(src+'-s-'+gi);
-      var pi=document.getElementById(src+'-p-'+gi);
-      var gr=QT_GRADES[g]&&QT_GRADES[g][src]?QT_GRADES[g][src]:{c:0,p:0};
-      if(ci) ci.value=gr.c?gr.c.toLocaleString():'';
-      if(pi) pi.value=gr.p?gr.p.toLocaleString():'';
-    });
-  });
+  qt_migratePriceStructure();
+  if(typeof qt_renderPriceTable==='function') qt_renderPriceTable();
   var phoneEl=document.getElementById('myPhone');
   var emailEl=document.getElementById('myEmail');
   if(phoneEl) phoneEl.value=(QT_SETTINGS.phones&&QT_SETTINGS.phones[SESSION_REP.name])||'';
@@ -25870,6 +25871,186 @@ function qt_fillSettingUI(){
     if(rm) rm.style.display='flex';
   }
 }
+
+// ══════════ 단가 기본값 표 - 동적 렌더 (카테고리/등급 추가·삭제·이름변경) ══════════
+function _qtEsc(s){
+  if(s==null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function _qtIsAdmin(){
+  return !!(typeof session!=='undefined'&&session&&session.role==='admin');
+}
+// 단가 표는 항상 값 자체는 담당자도 볼 수 있게 렌더하고, 입력 가능 여부만 관리자 권한으로 가른다.
+function qt_renderPriceTable(){
+  var wrap=document.getElementById('qtPriceTableWrap');
+  if(!wrap) return;
+  qt_migratePriceStructure();
+  var isAdmin=_qtIsAdmin();
+  var noteEl=document.getElementById('qtPriceRoleNote');
+  if(noteEl) noteEl.textContent=isAdmin?'':'열람 전용 · 변경은 관리자만 가능';
+
+  var cats=QT_PRICE_CATS, grades=QT_PRICE_GRADES;
+
+  // 헤더 1행: 카테고리 라벨 (중앙정렬), 관리자면 편집 가능한 인풋 + 삭제버튼, 맨 끝에 +추가
+  var catColors=['#EFF6FF|#1D4ED8|#BFDBFE','#ECFDF5|#065F46|#6EE7B7','#FFFBEB|#92400E|#FCD34D','#FDF2F8|#9D174D|#FBCFE8','#F5F3FF|#6D28D9|#DDD6FE','#F0FDFA|#0F766E|#99F6E4'];
+  var head1='<th style="padding:0;border:none;"></th>'+cats.map(function(cat,ci){
+    var col=catColors[ci%catColors.length].split('|');
+    var lockBadge=cat.locked?'<span title="고정 카테고리 (삭제 불가)" style="margin-left:3px;opacity:.6;">🔒</span>':'';
+    var labelHtml=isAdmin
+      ? '<input value="'+_qtEsc(cat.label)+'" onchange="qt_renamePriceCat(\''+_qtEsc(cat.key)+'\',this.value)" style="width:100%;max-width:76px;text-align:center;background:transparent;border:1px solid transparent;border-radius:5px;font-size:11px;font-weight:700;color:'+col[1]+';padding:2px 4px;font-family:inherit;" onfocus="this.style.borderColor=\'#CBD5E1\';this.style.background=\'#fff\';" onblur="this.style.borderColor=\'transparent\';this.style.background=\'transparent\';">'
+      : '<span style="font-weight:700;color:'+col[1]+';">'+_qtEsc(cat.label)+'</span>';
+    var delBtn=(isAdmin&&!cat.locked)
+      ? '<button type="button" title="이 구분 삭제" onclick="qt_removePriceCat(\''+_qtEsc(cat.key)+'\')" style="border:none;background:none;color:'+col[1]+';opacity:.55;cursor:pointer;font-size:12px;line-height:1;margin-left:4px;padding:0;">×</button>'
+      : '';
+    return '<th colspan="2" style="padding:8px 6px;text-align:center;font-size:11px;font-weight:700;color:'+col[1]+';background:'+col[0]+';border-radius:6px 6px 0 0;border-bottom:2px solid '+col[2]+';'+(ci>0?'border-left:4px solid #fff;':'')+'"><div style="display:flex;align-items:center;justify-content:center;gap:2px;">'+labelHtml+lockBadge+delBtn+'</div></th>';
+  }).join('')
+  + (isAdmin?'<th style="padding:0;border:none;vertical-align:middle;"><button type="button" title="구분 추가" onclick="qt_addPriceCat()" style="width:24px;height:24px;border-radius:6px;border:1px dashed #CBD5E1;background:#F8FAFC;color:#64748B;cursor:pointer;font-size:13px;line-height:1;">＋</button></th>':'');
+
+  // 헤더 2행: 등급 / 소비자단가 / 제안단가 (중앙정렬)
+  var head2='<th style="padding:7px 8px;text-align:center;font-size:10px;font-weight:600;color:var(--sub);border-bottom:1px solid var(--border);">등급</th>'
+    + cats.map(function(cat,ci){
+      var isLast=ci===cats.length-1;
+      return '<th style="padding:7px 8px;text-align:center;font-size:10px;font-weight:600;color:var(--sub);border-bottom:1px solid var(--border);">소비자단가</th>'
+        +'<th style="padding:7px 8px;text-align:center;font-size:10px;font-weight:600;color:var(--sub);border-bottom:1px solid var(--border);'+(isLast?'':'border-right:2px solid var(--border);')+'">제안단가</th>';
+    }).join('')
+    + (isAdmin?'<th style="padding:0;border:none;"></th>':'');
+
+  // 바디: 등급별 행
+  var bodyRows=grades.map(function(g,gi){
+    var isLastRow=gi===grades.length-1;
+    var bb=isLastRow?'':'border-bottom:1px solid var(--border2);';
+    var gradeLabelHtml=isAdmin
+      ? '<input value="'+_qtEsc(g)+'" onchange="qt_renamePriceGrade('+gi+',this.value)" style="width:100%;text-align:center;font-weight:700;color:var(--navy);font-size:11px;background:transparent;border:1px solid transparent;border-radius:5px;padding:2px 4px;font-family:inherit;" onfocus="this.style.borderColor=\'#CBD5E1\';this.style.background=\'#fff\';" onblur="this.style.borderColor=\'transparent\';this.style.background=\'transparent\';">'
+      : '<span style="font-weight:700;color:var(--navy);">'+_qtEsc(g)+'</span>';
+    var cells=cats.map(function(cat,ci){
+      var v=(QT_GRADES[g]&&QT_GRADES[g][cat.key])||{c:0,p:0};
+      var isLastCat=ci===cats.length-1;
+      var inputOrText=function(id,val){
+        return isAdmin
+          ? '<input class="ri" id="'+id+'" value="'+_qtEsc(val?val.toLocaleString():'')+'" style="width:100%;text-align:center;">'
+          : '<span style="display:block;text-align:center;color:var(--text);">'+_qtEsc(val?val.toLocaleString():'0')+'</span>';
+      };
+      return '<td style="padding:5px 6px;'+bb+'">'+inputOrText('price-'+cat.key+'-s-'+gi, v.c)+'</td>'
+        +'<td style="padding:5px 6px;'+bb+(isLastCat?'':'border-right:2px solid var(--border);')+'">'+inputOrText('price-'+cat.key+'-p-'+gi, v.p)+'</td>';
+    }).join('');
+    var rowDelBtn=(isAdmin&&grades.length>1)
+      ? '<td style="padding:5px 4px;text-align:center;'+bb+'"><button type="button" title="이 등급 삭제" onclick="qt_removePriceGrade('+gi+')" style="border:none;background:none;color:#94A3B8;cursor:pointer;font-size:12px;line-height:1;padding:0;">×</button></td>'
+      : (isAdmin?'<td style="'+bb+'"></td>':'');
+    return '<tr><td style="padding:7px 8px;text-align:center;'+bb+'">'+gradeLabelHtml+'</td>'+cells+rowDelBtn+'</tr>';
+  }).join('');
+
+  var colCount=1+cats.length*2+(isAdmin?1:0);
+  var footerRow=isAdmin
+    ? '<tr><td colspan="'+colCount+'" style="padding:8px 4px 2px;text-align:center;"><button type="button" onclick="qt_addPriceGrade()" style="padding:5px 12px;border-radius:7px;border:1px dashed #CBD5E1;background:#F8FAFC;color:#64748B;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;">＋ 등급 추가</button></td></tr>'
+    : '';
+
+  wrap.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed;">'
+    +'<colgroup><col style="width:52px">'+cats.map(function(){return '<col><col>';}).join('')+(isAdmin?'<col style="width:26px">':'')+'</colgroup>'
+    +'<thead><tr>'+head1+'</tr><tr style="background:#F8FAFC;">'+head2+'</tr></thead>'
+    +'<tbody>'+bodyRows+footerRow+'</tbody>'
+    +'</table>';
+
+  // 숫자 입력 천단위 콤마 포맷 바인딩 (매 렌더마다 새 input이 생기므로 매번 바인딩)
+  wrap.querySelectorAll('.ri').forEach(function(inp){
+    inp.addEventListener('input', function(){
+      var v=(this.value||'').replace(/[^0-9]/g,'');
+      this.value=v?parseInt(v,10).toLocaleString():'';
+    });
+  });
+}
+
+// ── 카테고리(구분) 추가/삭제/이름변경 ──
+function _qtStashPriceInputs(){
+  // 표를 다시 그리기 전에, 현재 입력창에 있는 값을 QT_GRADES에 먼저 반영해둔다 (재렌더로 값 유실 방지)
+  if(!_qtIsAdmin()) return;
+  QT_PRICE_GRADES.forEach(function(g,gi){
+    if(!QT_GRADES[g]) QT_GRADES[g]={};
+    QT_PRICE_CATS.forEach(function(cat){
+      var ci=document.getElementById('price-'+cat.key+'-s-'+gi);
+      var pi=document.getElementById('price-'+cat.key+'-p-'+gi);
+      if(ci||pi){
+        QT_GRADES[g][cat.key]={
+          c: ci?(parseInt((ci.value||'0').replace(/,/g,''))||0):((QT_GRADES[g][cat.key]||{}).c||0),
+          p: pi?(parseInt((pi.value||'0').replace(/,/g,''))||0):((QT_GRADES[g][cat.key]||{}).p||0)
+        };
+      }
+    });
+  });
+}
+function qt_addPriceCat(){
+  if(!_qtIsAdmin()) return;
+  _qtStashPriceInputs();
+  var n=1, key;
+  do{ key='cat'+n; n++; }while(QT_PRICE_CATS.some(function(c){return c.key===key;}));
+  QT_PRICE_CATS.push({key:key, label:'새 구분'+(QT_PRICE_CATS.length)});
+  QT_PRICE_GRADES.forEach(function(g){
+    if(!QT_GRADES[g]) QT_GRADES[g]={};
+    QT_GRADES[g][key]={c:0,p:0};
+  });
+  qt_renderPriceTable();
+}
+function qt_removePriceCat(key){
+  if(!_qtIsAdmin()) return;
+  var cat=QT_PRICE_CATS.find(function(c){return c.key===key;});
+  if(!cat||cat.locked) return;
+  appConfirm('"'+cat.label+'" 구분을 삭제하시겠습니까?\n입력해두신 단가 값은 화면에서만 사라지고, 나중에 같은 이름으로 다시 추가하면 복구할 수 있습니다.', function(){
+    _qtStashPriceInputs();
+    QT_PRICE_CATS=QT_PRICE_CATS.filter(function(c){return c.key!==key;});
+    qt_renderPriceTable();
+  },{title:'구분 삭제', icon:'🗑', okText:'삭제'});
+}
+function qt_renamePriceCat(key, newLabel){
+  if(!_qtIsAdmin()) return;
+  newLabel=(newLabel||'').trim();
+  if(!newLabel) return;
+  var cat=QT_PRICE_CATS.find(function(c){return c.key===key;});
+  if(cat) cat.label=newLabel;
+  // key는 그대로 유지되므로 QT_GRADES에 저장된 기존 단가 데이터는 영향 없음
+  qt_renderPriceTable();
+}
+
+// ── 등급 추가/삭제/이름변경 ──
+function qt_addPriceGrade(){
+  if(!_qtIsAdmin()) return;
+  _qtStashPriceInputs();
+  var n=1, name;
+  do{ name='새등급'+n; n++; }while(QT_PRICE_GRADES.indexOf(name)>=0);
+  QT_PRICE_GRADES.push(name);
+  QT_GRADES[name]={};
+  QT_PRICE_CATS.forEach(function(cat){ QT_GRADES[name][cat.key]={c:0,p:0}; });
+  qt_renderPriceTable();
+}
+function qt_removePriceGrade(idx){
+  if(!_qtIsAdmin()) return;
+  if(QT_PRICE_GRADES.length<=1) return;
+  var g=QT_PRICE_GRADES[idx];
+  if(!g) return;
+  appConfirm('"'+g+'" 등급을 삭제하시겠습니까?\n이미 이 등급으로 작성된 견적서가 있다면, 그 견적서 자체는 그대로 보존되고 새 견적 작성 시 선택 목록에서만 빠집니다.', function(){
+    _qtStashPriceInputs();
+    QT_PRICE_GRADES.splice(idx,1);
+    // QT_GRADES[g] 데이터 자체는 지우지 않음 (혹시 모를 복구 대비, 목록에서만 제외)
+    qt_renderPriceTable();
+  },{title:'등급 삭제', icon:'🗑', okText:'삭제'});
+}
+function qt_renamePriceGrade(idx, newName){
+  if(!_qtIsAdmin()) return;
+  newName=(newName||'').trim();
+  if(!newName) return;
+  var oldName=QT_PRICE_GRADES[idx];
+  if(!oldName||oldName===newName) return;
+  if(QT_PRICE_GRADES.indexOf(newName)>=0){
+    if(typeof showToast==='function') showToast('이미 있는 등급 이름입니다.','warn');
+    qt_renderPriceTable();
+    return;
+  }
+  // 등급명은 QT_GRADES의 키이자 이미 작성된 견적서 행에도 값으로 저장되어 있으므로,
+  // 데이터를 새 이름으로 이관하고(보존) 옛 이름 키는 남겨둔다(과거 견적서가 참조할 수 있도록).
+  _qtStashPriceInputs();
+  QT_GRADES[newName]=QT_GRADES[oldName]?JSON.parse(JSON.stringify(QT_GRADES[oldName])):{};
+  QT_PRICE_GRADES[idx]=newName;
+  qt_renderPriceTable();
+}
+
 
 // 관리자: 팀원 휴대전화 일괄 입력 (견적서 PDF 담당자 연락처용)
 function qt_renderAdminPhones(){
