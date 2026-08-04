@@ -1,6 +1,20 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-055 -->
+<!-- v20260728-055 변경사항: v054에서 추가했던 "새로고침" 버튼 제거 - 탭 진입 시 이미 자동으로 최신 데이터가 반영되는 구조라 불필요한 군더더기였음. 버튼 제거 후에도 탭 클릭 시 자동 렌더링이 정상 동작하는지 재검증 완료. -->
+<!-- TIS-VERSION: 20260728-054 -->
+<!-- v20260728-054 변경사항: 최종검토 탭을 "미리보기 생성" 버튼을 눌러야만 내용이 보이던 것을, 탭 클릭 즉시 자동으로 기본정보·원가분석·견적항목이 전부 렌더링되도록 수정(qt_switchTab에서 t4 진입 시 자동 호출). 안내문구+생성버튼 큰 카드는 이제 불필요해져 제거하고, 견적항목 탭에서 수정 후 최신값을 다시 반영할 수 있는 작은 "새로고침" 버튼으로 축소. 실제 탭 전환 함수를 직접 호출해 세 영역 모두 자동으로 채워지는 것까지 확인 완료. -->
+<!-- TIS-VERSION: 20260728-053 -->
+<!-- v20260728-053 변경사항: (1) 최종검토 탭 순서 재구성 - 고객사/견적번호/프로젝트명 등 기본정보는 항상 맨 위 고정(qt_renderReviewHeader로 별도 분리), 그 다음 원가분석(내부 전용), 마지막에 견적 항목 상세 순서로 변경. 상위권자가 탭 열자마자 원가분석부터 바로 볼 수 있도록. (2) 인건비의 등급/MM(수량) 셀, 매입의 수량/단위 셀에 !important 중앙정렬 보강(select는 text-align-last도 함께 지정) - 전역 CSS의 table td{text-align:left !important} 규칙이 셀 자체를 왼쪽정렬로 되돌리는 것을 셀 안 입력요소 자체에서 다시 확실히 이기도록 함. 실제 실행으로 탭 순서(reviewHeaderArea>costAnalysisArea>previewArea), 기본정보 중복 없음, 정렬 스타일 적용 전부 확인 완료. -->
+<!-- TIS-VERSION: 20260728-052 -->
+<!-- v20260728-052 변경사항: 최종검토(원가분석) 화면 다듬기. (1) "금액 구성" 표에서 특별할인 행 앞에 붙던 '－' 기호 제거 - 다른 금액 행과 정렬이 안 맞던 문제, 빨간 글자색만으로 차감 의미 전달(화면·PDF 둘 다). (2) 인건비 비교표 헤더 "내부단가 원가"→"내부단가", "견적 청구가"→"견적단가"로 명칭 단순화(화면·PDF 둘 다). (3) "예상 이익"→"매출이익"으로 명칭 정정 - 계산식이 청구금액에서 인건비 내부단가 원가와 매입원가(직접원가)만 빼는 구조라 영업이익이 아닌 매출이익이 정확한 용어. 인건비 원가 계산이 등급별 MM수량×내부단가로 되어있음을 코드로 재확인. 실제 함수 실행으로 네 가지 변경사항 전부 결과물에 반영됐는지 확인 완료. -->
+<!-- TIS-VERSION: 20260728-051 -->
+<!-- v20260728-051 변경사항: 매입 블록이 다른 항목 유형과 완전히 동일하게 동작하는지 전수 점검, 3가지 발견해 수정. (1) 헤더 중앙정렬 - 공용 CSS(.it th)를 그대로 상속받아 이미 정상이었음(computed style로 확인). (2) 행 추가(ROW_TPL) 누락 - 매입 블록만 표준 행추가 템플릿이 등록 안 되어 fallback(첫 행 복제) 경로를 타고 있었음, 다른 블록과 동일한 표준 경로로 등록해 통일. (3) 열너비 조절 - 매입금액 열이 다른 블록의 금액 열(제안금액 등)과 달리 조절 가능 목록에서 안 빠져있어서 동작이 미묘하게 달랐음, 동일한 고정(조절불가) 목록에 추가해 통일. 셀 병합은 이미 범용 로직이라 별도 수정 없이 정상 동작 확인(실제 qt_doMerge 호출로 재현). 단, 원가분석 표시 로직이 병합된(숨겨진) 셀의 값을 빈 값으로 읽어 편집화면과 다르게 보이는 문제 발견·수정 - 병합으로 가려진 행은 바로 위 병합 셀의 값을 이어받도록 캐리포워드 처리(합계 금액 자체는 병합 여부와 무관하게 처음부터 정확했음, 실제 병합 시나리오로 재현·검증 완료). 접속모드(관리자/담당자/게스트)별 읽기전용 잠금은 기존에 이미 범용(타입 무관) 로직이라 매입 블록도 자동으로 동일하게 적용됨을 코드로 확인. -->
+<!-- TIS-VERSION: 20260728-050 -->
+<!-- v20260728-050 변경사항: 견적서관리에 원가분석 기능 신설. (1) 항목 블록에 "매입"(구분/품목/수량/단위/매입금액 5필드) 신설 - 내부 원가관리 전용, 고객 견적서(PDF·인쇄 미리보기·화면 미리보기·합계 3곳)에서는 완전히 제외되도록 처리. (2) 원가분석 계산 엔진(qt_getCostAnalysis) 신설 - 인건비는 인건비 행의 등급×수량을 단가 기본값의 "내부단가" 기준으로 자동 계산해 원가 산출, 매입은 항목별 집계, 특별할인 반영, 예상이익/이익률까지 계산. 실제 숫자로 계산 정확성 검증 완료(원가 12,000,000 vs 청구 20,000,000, 매입 3,000,000, 할인 1,000,000 → 최종 19,000,000/총원가 15,000,000/이익 4,000,000(21.05%) 손계산과 정확히 일치). (3) 최종검토 탭에 원가분석 화면(qt_renderCostAnalysis) 및 "견적검토 PDF"(qt_buildReviewPdf, 문서제목: 프로젝트명_견적번호_견적검토) 신설 - 기존 고객용 견적서 PDF와 동일한 미리보기·인쇄 구조 재사용, 원가분석 페이지를 이어붙임. (4) 검증 중 치명적 버그 발견·수정: 견적 저장 시 블록 타입 매핑에 "매입"이 빠져있어 저장 후 재오픈하면 배지가 "기타"로 바뀌며 매입 제외 로직이 무력화되던 문제 - 저장→재오픈 전체 사이클을 실제 실행으로 재검증해 더 이상 원가정보가 새지 않음을 확인. (5) 기존 5개 블록 타입(인건비/라이선스/유지보수/상품/기타/특별할인) 전부 회귀 테스트 통과. -->
+<!-- TIS-VERSION: 20260728-049 -->
+<!-- v20260728-049 변경사항: (1) "등급/소비자단가/제안단가" 헤더가 중앙정렬 안 되던 원인 발견 - 전역 CSS에 table th,td{text-align:left !important} 규칙이 있어서 인라인 중앙정렬을 덮어쓰고 있었음. 단가표의 모든 정렬 지정에 !important를 추가해 확실히 이기도록 수정. (2) 내부단가가 다른 구분처럼 소비자단가/제안단가 두 칸으로 나뉘어 있던 것을 단일 "금액" 한 칸으로 수정 - 내부단가는 원가 하나뿐이라 두 값으로 나눌 개념이 아님. 헤더 colspan, colgroup, 입력창 개수 전부 카테고리별로 다르게 처리하도록 렌더 로직 수정, 실제 실행으로 값 저장·재로드까지 정상 동작 확인. -->
 <!-- TIS-VERSION: 20260728-048 -->
 <!-- v20260728-048 변경사항: 견적서관리 "단가·기본값 설정"을 완전히 재설계. (1) 기존 TAK/관계사/대외 3개로 고정되어 있던 단가 구분을 관리자가 자유롭게 이름 변경·추가·삭제할 수 있는 구조로 전환, 맨 앞에 "내부단가" 카테고리 신설(삭제 불가 고정, 이름은 변경 가능) - 원가분석 기반 데이터. 등급(특급/고급/중급/초급)도 동일하게 이름 변경·추가·삭제 가능하도록 확장. (2) 카테고리는 key(내부 식별자, 고정)와 label(표시 문구, 가변)을 분리해 이름을 바꿔도 기존 저장된 단가 데이터가 100% 보존되도록 설계 - 등급은 이름변경 시 데이터를 새 이름으로 이관하는 방식으로 보존. 실제 함수 실행으로 이름변경/추가/삭제 전 과정에서 데이터 유실이 없음을 검증 완료. (3) 권한 구조 변경 - 예전엔 아무나 단가를 수정할 수 있었는데, 이제 전체 단가(내부단가 포함)는 관리자만 편집 가능, 담당자는 내부단가를 포함한 모든 값을 열람은 가능하되 수정은 불가(읽기 전용 렌더링). 담당자가 본인 정보(연락처 등)만 저장할 때 단가 데이터가 실수로 0으로 덮어써지는 치명적 버그를 검증 과정에서 발견해 즉시 수정. (4) 견적서 작성 화면(인건비 행)에 하드코딩되어 4곳에 흩어져 있던 등급/단가기준 드롭다운을 전부 동적 생성 함수로 통일 - 내부단가는 "고객 청구 금액"이 아니므로 이 드롭다운에서는 자동 제외(설정 화면에서만 관리). (5) 표 헤더 전체 중앙정렬, 대기업 제품 스타일의 미니멀한 인라인 편집 UI 적용. -->
 <!-- TIS-VERSION: 20260728-047 -->
@@ -22494,7 +22508,7 @@ function qtAddBlock(type,savedData){
     ma:{badge:'유지보수(MA)',bc:'#ECFDF5',tc:'#065F46',
       body:'<div style="overflow-x:auto;"><table class="qt-it" style="table-layout:fixed;width:100%;"><colgroup><col style="width:68px"><col><col style="width:52px"><col style="width:85px"><col style="width:72px"><col style="width:85px"><col style="width:28px"></colgroup><thead><tr><th class="L">구분</th><th class="L">품목</th><th>개월</th><th style="text-align:right;">구축금액</th><th>요율</th><th style="text-align:right;">제안금액</th><th></th></tr></thead><tbody id="qt-tbmaBC"><tr><td class="L"><input class="qt-ii" style="text-align:center;" placeholder="구분"></td><td class="L"><textarea class="qt-ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="품목명 입력"></textarea></td><td><input class="qt-ii" style="text-align:center;" placeholder="12" onchange="qt_calcMA(this)"></td><td style="text-align:right;"><input class="qt-ii" style="text-align:right;" placeholder="0" onchange="qt_calcMA(this)"></td><td><div style="display:flex;align-items:center;justify-content:center;"><input class="qt-ii" style="text-align:center;flex:1;" placeholder="15" onchange="qt_calcMA(this)"><span style="font-size:11px;flex-shrink:0;margin-left:2px;">%</span></div></td><td class="qt-ma-propose" style="text-align:right;">—</td><td><button class="qt-del-btn" onclick="this.closest(\'tr\').remove();qtCalcTotal()">×</button></td></tr></tbody></table></div><span class="qt-add-r" onclick="qtAddCommonRow(\'qt-tbmaBC\')">＋ 행 추가</span>'},
     product:{badge:'상품',bc:'#F0FDF4',tc:'#166534',
-      body:'<div style="overflow-x:auto;"><table class="qt-it" style="table-layout:fixed;width:100%;"><colgroup><col style="width:60px"><col><col style="width:40px"><col style="width:34px"><col style="width:90px"><col style="width:90px"><col style="width:28px"></colgroup><thead><tr><th class="L">구분</th><th class="L">품목</th><th>수량</th><th>단위</th><th>제안단가</th><th>제안금액</th><th></th></tr></thead><tbody id="qt-tbprodBC"><tr><td class="L"><input class="ii" style="text-align:center;" placeholder="구분"></td><td class="L"><textarea class="ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="품목명 입력"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="1" oninput="qt_calcProduct(this)"></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="개"></td><td style="text-align:right;"><input class="ii" style="text-align:right;" placeholder="0" oninput="qt_calcProduct(this)"></td><td class="prod-propose" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcProduct(this)"></td><td style="width:32px;text-align:center;padding:2px;"><button class="del-btn" onclick="qt_delRow(this)">×</button></td></tr></tbody></table></div><span class="qt-add-r" onclick="qtAddCommonRow(\'qt-tbprodBC\')">＋ 행 추가</span>'},
+      body:'<div style="overflow-x:auto;"><table class="qt-it" style="table-layout:fixed;width:100%;"><colgroup><col style="width:60px"><col><col style="width:40px"><col style="width:34px"><col style="width:90px"><col style="width:90px"><col style="width:28px"></colgroup><thead><tr><th class="L">구분</th><th class="L">품목</th><th>수량</th><th>단위</th><th>제안단가</th><th>제안금액</th><th></th></tr></thead><tbody id="qt-tbprodBC"><tr><td class="L"><input class="ii" style="text-align:center;" placeholder="구분"></td><td class="L"><textarea class="ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="품목명 입력"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="1" oninput="qt_calcProduct(this)"></td><td style="text-align:center;"><input class="ii" style="text-align:center !important;" placeholder="개"></td><td style="text-align:right;"><input class="ii" style="text-align:right;" placeholder="0" oninput="qt_calcProduct(this)"></td><td class="prod-propose" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcProduct(this)"></td><td style="width:32px;text-align:center;padding:2px;"><button class="del-btn" onclick="qt_delRow(this)">×</button></td></tr></tbody></table></div><span class="qt-add-r" onclick="qtAddCommonRow(\'qt-tbprodBC\')">＋ 행 추가</span>'},
     custom:{badge:'기타',bc:'#F8FAFC',tc:'#475569',body:qtGetCustomBody(bc)},
     discount:{badge:'특별 할인',bc:'#FFF7ED',tc:'#DC2626',body:'<div class="qt-disc-blk"><div style="font-weight:700;color:#D97706;font-size:11px;margin-bottom:8px;">특별 할인</div><div style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;color:#64748B;width:100px;">할인 금액</span><input class="qt-disc-fi" placeholder="예: 15,600,000" oninput="qtCalcDiscount(this)" style="padding:5px 8px;border:1px solid #FED7AA;border-radius:5px;font-size:11px;color:#1E293B;outline:none;background:#fff;font-family:inherit;flex:1;max-width:180px;"><span style="font-size:11px;color:#64748B;">원</span><span class="qt-disc-result" style="font-size:13px;font-weight:800;color:#DC2626;margin-left:10px;">0원</span></div></div>'}
   };
@@ -23265,6 +23279,7 @@ function qtRenderPreview(){
         <button class="add-blk-btn" onclick="qt_addBlock('mm')">＋ 인건비</button>
         <button class="add-blk-btn" onclick="qt_addBlock('lic')">＋ 라이선스(상품)</button>
         <button class="add-blk-btn" onclick="qt_addBlock('ma')">＋ 유지보수(MA)</button>
+        <button class="add-blk-btn" onclick="qt_addBlock('purchase')" title="내부 원가관리 전용 - 고객 견적서에는 표시되지 않습니다" style="border-color:#FCA5A5;color:#991B1B;">🔒 ＋ 매입</button>
         <button class="add-blk-btn" onclick="qt_addBlock('custom')">＋ 기타</button>
         <button class="add-blk-btn disc-btn" onclick="qt_addBlock('discount')">특별 할인</button>
       </div>
@@ -23300,16 +23315,14 @@ function qtRenderPreview(){
     <div class="fg"><label class="flbl">내부 메모 <span style="font-weight:400;color:var(--sub);">(PDF 미출력)</span></label><textarea class="fta" rows="3" id="internalMemo" style="min-height:74px;" placeholder="내부 협의사항 기록"></textarea></div>
     </div>
     <div id="t4" style="padding:16px 20px;display:none;">
-      <div style="background:#F8FAFC;border:1px solid var(--border);border-radius:var(--r);padding:16px;text-align:center;color:var(--sub);font-size:12px;">
-        견적 항목을 입력한 후 최종 검토 탭에서 전체 내용을 확인하세요.<br>
-        <button class="btn btn-pri" style="margin-top:12px;" onclick="qt_renderPreview()">🔍 미리보기 생성</button>
-      </div>
+      <div id="reviewHeaderArea"></div>
+      <div id="costAnalysisArea" style="margin-top:16px;"></div>
       <div id="previewArea" style="margin-top:16px;"></div>
     </div>
   </div>
   <div style="padding:0 20px;border-top:1px solid #E2E8F0;display:flex;justify-content:space-between;align-items:center;background:#fff;">
     <div style="display:flex;gap:7px;align-items:center;"><button class="btn btn-sec btn-sm" id="draftBtn" onclick="qt_saveCurrentQuote(true)">임시저장</button><button class="btn btn-sm" id="deleteBtn" style="display:none;background:#DC2626;color:#fff;" onclick="qt_confirmDelete()">삭제</button></div>
-    <div style="display:flex;gap:7px;"><button class="btn btn-sec" onclick="qt_closeModal()">취소</button><button class="btn btn-sec" onclick="qt_openPdf()">PDF 미리보기</button><button class="btn btn-pri" id="saveQtBtn" onclick="qt_saveCurrentQuote()">저장</button></div>
+    <div style="display:flex;gap:7px;"><button class="btn btn-sec" onclick="qt_closeModal()">취소</button><button class="btn btn-sec" onclick="qt_openPdf()">PDF 미리보기</button><button class="btn btn-sec" onclick="qt_openReviewPdf()" title="원가분석 포함 - 내부 전용 문서" style="border-color:#FCA5A5;color:#991B1B;">🔒 견적검토 PDF</button><button class="btn btn-pri" id="saveQtBtn" onclick="qt_saveCurrentQuote()">저장</button></div>
   </div>
 </div>
 </div>
@@ -23413,10 +23426,11 @@ function qt_getCustomBody(bc){
 
 
 var ROW_TPL={
-  'tbmm': '<td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="투입 인력 역할"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="1.0" oninput="qt_calcMM(this)"></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="MM"></td><td style="text-align:center;"><select class="isel" style="width:100%;" onchange="qt_calcMM(this)">'+qt_gradeOptionsHtml(null,true)+'</select></td><td style="text-align:center;"><select class="isel src-sel" style="width:100%;" onchange="qt_calcMM(this)">'+qt_catOptionsHtml(null,true)+'</select></td><td class="gc" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td class="gca" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td class="gp" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td class="gpa" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td><button class="del-btn" onclick="qt_delRow(this)">×</button></td>',
+  'tbmm': '<td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="투입 인력 역할"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center !important;" placeholder="1.0" oninput="qt_calcMM(this)"></td><td style="text-align:center;"><input class="ii" style="text-align:center !important;" placeholder="MM"></td><td style="text-align:center;"><select class="isel" style="width:100%;text-align:center !important;text-align-last:center !important;" onchange="qt_calcMM(this)">'+qt_gradeOptionsHtml(null,true)+'</select></td><td style="text-align:center;"><select class="isel src-sel" style="width:100%;text-align:center !important;text-align-last:center !important;" onchange="qt_calcMM(this)">'+qt_catOptionsHtml(null,true)+'</select></td><td class="gc" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td class="gca" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td class="gp" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td class="gpa" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td><button class="del-btn" onclick="qt_delRow(this)">×</button></td>',
   'tblic': '<td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="품목명 입력"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="1" oninput="qt_calcLic(this)"></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="식"></td><td style="text-align:right;"><input class="ii" style="text-align:right;" placeholder="0" oninput="qt_calcLic(this)"></td><td class="lic-consumer" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcLic(this)"></td><td style="text-align:right;"><input class="ii" style="text-align:right;" placeholder="0" oninput="qt_calcLic(this)"></td><td class="lic-propose" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcLic(this)"></td><td><button class="del-btn" onclick="qt_delRow(this)">×</button></td>',
   'tbma': '<td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="품목명 입력"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="12" oninput="qt_calcMA(this)"></td><td style="text-align:right;"><input class="ii" style="text-align:right;" placeholder="0" oninput="qt_calcMA(this)"></td><td style="text-align:center;padding:2px 4px;"><div style="display:flex;align-items:center;justify-content:center;"><input class="ii" style="text-align:center;flex:1;" placeholder="15" oninput="qt_calcMA(this)"><span style="font-size:11px;color:var(--text);flex-shrink:0;margin-left:2px;">%</span></div></td><td class="ma-propose" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMA(this)"></td><td><button class="del-btn" onclick="qt_delRow(this)">×</button></td>',
-  'tbprod': '<td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="품목명 입력"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="1" oninput="qt_calcProduct(this)"></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="개"></td><td style="text-align:right;"><input class="ii" style="text-align:right;" placeholder="0" oninput="qt_calcProduct(this)"></td><td class="prod-propose" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcProduct(this)"></td><td><button class="del-btn" onclick="qt_delRow(this)">×</button></td>',
+  'tbprod': '<td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="품목명 입력"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="1" oninput="qt_calcProduct(this)"></td><td style="text-align:center;"><input class="ii" style="text-align:center !important;" placeholder="개"></td><td style="text-align:right;"><input class="ii" style="text-align:right;" placeholder="0" oninput="qt_calcProduct(this)"></td><td class="prod-propose" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcProduct(this)"></td><td><button class="del-btn" onclick="qt_delRow(this)">×</button></td>',
+  'tbpur': '<td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="품목명 입력"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center !important;" placeholder="1"></td><td style="text-align:center;"><input class="ii" style="text-align:center !important;" placeholder="개"></td><td style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_fmtAmtInput(this)"></td><td><button class="del-btn" onclick="qt_delRow(this)">×</button></td>',
 };
 
 // ── 기타 블록 동적 헤더 ──
@@ -23795,6 +23809,7 @@ function qt_calcTotal(){
   document.querySelectorAll('.ib').forEach(function(blk){
     var badge=blk.querySelector('.ib-badge');
     if(badge&&badge.textContent.trim()==='특별 할인') return;
+    if(badge&&badge.textContent.trim()==='매입') return; // 내부 원가관리 전용 - 고객 견적 합계에서 제외
     blk.querySelectorAll('tbody tr:not(.tr-sub):not(.tr-disc)').forEach(function(tr){
       var tds=tr.querySelectorAll('td');
       if(tds.length<2) return;
@@ -23858,6 +23873,7 @@ function qt_getPdfData(){
   document.querySelectorAll('.ib').forEach(function(blk){
     var badge=blk.querySelector('.ib-badge');
     if(badge&&badge.textContent.trim()==='특별 할인') return;
+    if(badge&&badge.textContent.trim()==='매입') return; // 내부 원가관리 전용 - 고객 견적서 합계에서 제외
     blk.querySelectorAll('tbody tr').forEach(function(tr){
       var tds=tr.querySelectorAll('td');
       if(tds.length<2) return;
@@ -24251,6 +24267,12 @@ function qt_calcProduct(el){
   qt_calcTotal();
 }
 
+// 매입(procurement) 금액 입력 - 계산식 없이 콤마 포맷만 (고객 견적 합계에는 포함되지 않음)
+function qt_fmtAmtInput(el){
+  var v=qt_parseN(el.value);
+  if(v>0) qt_applyNumFormat(el, qt_fmtN(v));
+}
+
 // MA 계산
 function qt_calcMA(el){
   var tr=el.closest('tr'); if(!tr) return;
@@ -24349,7 +24371,7 @@ function qt_initColResize(){
     var cg=tbl.querySelector('colgroup');
     if(!cg){ cg=document.createElement('colgroup'); tbl.insertBefore(cg, tbl.firstChild); }
     while(cg.children.length<ths.length){ cg.appendChild(document.createElement('col')); }
-    var AMT_FIX=['소비자단가','소비자가','공급단가','공급가','제안단가','제안금액','판매단가','판매금액','구축금액'];
+    var AMT_FIX=['소비자단가','소비자가','공급단가','공급가','제안단가','제안금액','판매단가','판매금액','구축금액','매입금액'];
     ths.forEach(function(th,idx){
       var _t=(th.textContent||'').replace('\u2059','').trim();
       var _hasInp=!!th.querySelector('input'); // 기타 유형: 헤더가 input이라 텍스트가 비어 보임
@@ -24503,13 +24525,15 @@ function qt_addBlock(type,skipInit){
 
   var cfgs={
     mm:{badge:'인건비',bc:'#EDE9FE',tc:'#5B21B6',
-      body:'<div class="it-wrap" style="overflow-x:auto;"><table class="it" style="table-layout:fixed;min-width:760px;width:100%;"><colgroup><col style="width:72px"><col style="min-width:160px"><col style="width:40px"><col style="width:44px"><col style="width:56px"><col style="width:56px"><col style="width:78px"><col style="width:78px"><col style="width:78px"><col style="width:78px"><col style="width:28px"></colgroup><thead><tr><th class="L">구분</th><th class="L">투입 인력 역할</th><th>수량</th><th>단위</th><th>등급</th><th>단가기준</th><th>소비자단가</th><th>소비자가</th><th>제안단가</th><th>제안금액</th><th></th></tr></thead><tbody id="tbmmQT_BC"><tr><td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" placeholder="역할 및 업무 범위" rows="1" style="resize:none;overflow:hidden;width:100%;"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="1.0" oninput="qt_calcMM(this)"></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="MM"></td><td style="text-align:center;"><select class="isel" style="width:100%;" onchange="qt_calcMM(this)">'+qt_gradeOptionsHtml(null,true)+'</select></td><td style="text-align:center;"><select class="isel src-sel" style="width:100%;" onchange="qt_calcMM(this)">'+qt_catOptionsHtml(null,true)+'</select></td><td class="gc" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td class="gca" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td class="gp" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td class="gpa" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td style="width:32px;text-align:center;padding:2px;"><button class="del-btn" onclick="qt_delRow(this)">×</button></td></tr></tbody></table></div><span class="add-r" onclick="qt_addMMRow(\'tbmmQT_BC\')">＋ 행 추가</span>'},
+      body:'<div class="it-wrap" style="overflow-x:auto;"><table class="it" style="table-layout:fixed;min-width:760px;width:100%;"><colgroup><col style="width:72px"><col style="min-width:160px"><col style="width:40px"><col style="width:44px"><col style="width:56px"><col style="width:56px"><col style="width:78px"><col style="width:78px"><col style="width:78px"><col style="width:78px"><col style="width:28px"></colgroup><thead><tr><th class="L">구분</th><th class="L">투입 인력 역할</th><th>수량</th><th>단위</th><th>등급</th><th>단가기준</th><th>소비자단가</th><th>소비자가</th><th>제안단가</th><th>제안금액</th><th></th></tr></thead><tbody id="tbmmQT_BC"><tr><td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" placeholder="역할 및 업무 범위" rows="1" style="resize:none;overflow:hidden;width:100%;"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center !important;" placeholder="1.0" oninput="qt_calcMM(this)"></td><td style="text-align:center;"><input class="ii" style="text-align:center !important;" placeholder="MM"></td><td style="text-align:center;"><select class="isel" style="width:100%;text-align:center !important;text-align-last:center !important;" onchange="qt_calcMM(this)">'+qt_gradeOptionsHtml(null,true)+'</select></td><td style="text-align:center;"><select class="isel src-sel" style="width:100%;text-align:center !important;text-align-last:center !important;" onchange="qt_calcMM(this)">'+qt_catOptionsHtml(null,true)+'</select></td><td class="gc" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td class="gca" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td class="gp" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td class="gpa" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMM(this)"></td><td style="width:32px;text-align:center;padding:2px;"><button class="del-btn" onclick="qt_delRow(this)">×</button></td></tr></tbody></table></div><span class="add-r" onclick="qt_addMMRow(\'tbmmQT_BC\')">＋ 행 추가</span>'},
     lic:{badge:'라이선스(상품)',bc:'#FFF7ED',tc:'#C2410C',
       body:'<div class="it-wrap"><table class="it" style="table-layout:fixed;width:100%;"><colgroup><col style="width:72px"><col><col style="width:40px"><col style="width:44px"><col style="width:78px"><col style="width:78px"><col style="width:78px"><col style="width:78px"><col style="width:28px"></colgroup><thead><tr><th class="L">구분</th><th class="L">품목</th><th>수량</th><th>단위</th><th>소비자단가</th><th>소비자가</th><th>제안단가</th><th>제안금액</th><th></th></tr></thead><tbody id="tblicQT_BC"><tr><td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" placeholder="품목명 입력" rows="1" style="resize:none;overflow:hidden;width:100%;"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="1" oninput="qt_calcLic(this)"></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="식"></td><td style="text-align:right;"><input class="ii" style="text-align:right;" placeholder="0" oninput="qt_calcLic(this)"></td><td class="lic-consumer" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcLic(this)"></td><td style="text-align:right;"><input class="ii" style="text-align:right;" placeholder="0" oninput="qt_calcLic(this)"></td><td class="lic-propose" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcLic(this)"></td><td style="width:32px;text-align:center;padding:2px;"><button class="del-btn" onclick="qt_delRow(this)">×</button></td></tr></tbody></table></div><span class="add-r" onclick="qt_addCommonRow(\'tblicQT_BC\')">＋ 행 추가</span>'},
     ma:{badge:'유지보수(MA)',bc:'#ECFDF5',tc:'#065F46',
       body:'<div class="it-wrap"><table class="it" style="table-layout:fixed;width:100%;"><colgroup><col style="width:72px"><col><col style="width:52px"><col style="width:90px"><col style="width:72px"><col style="width:90px"><col style="width:28px"></colgroup><thead><tr><th class="L">구분</th><th class="L">품목</th><th style="text-align:center;">개월</th><th style="text-align:right;">구축금액</th><th style="text-align:center;">요율</th><th style="text-align:right;">제안금액</th><th></th></tr></thead><tbody id="tbmaQT_BC"><tr><td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" placeholder="품목명 입력" rows="1" style="resize:none;overflow:hidden;width:100%;"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="12" oninput="qt_calcMA(this)"></td><td style="text-align:right;"><input class="ii" style="text-align:right;" placeholder="0" oninput="qt_calcMA(this)"></td><td style="text-align:center;padding:2px 4px;"><div style="display:flex;align-items:center;justify-content:center;"><input class="ii" style="text-align:center;flex:1;" placeholder="15" oninput="qt_calcMA(this)"><span style="font-size:11px;color:var(--text);flex-shrink:0;margin-left:2px;">%</span></div></td><td class="ma-propose" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMA(this)"></td><td><button class="del-btn" onclick="qt_delRow(this)">×</button></td></tr></tbody></table></div><span class="add-r" onclick="qt_addCommonRow(\'tbmaQT_BC\')">＋ 행 추가</span>'},
     product:{badge:'상품',bc:'#F0FDF4',tc:'#166534',
-      body:'<div class="it-wrap"><table class="it" style="table-layout:fixed;width:100%;"><colgroup><col style="width:72px"><col><col style="width:40px"><col style="width:44px"><col style="width:90px"><col style="width:90px"><col style="width:28px"></colgroup><thead><tr><th class="L">구분</th><th class="L">품목</th><th>수량</th><th>단위</th><th>제안단가</th><th>제안금액</th><th></th></tr></thead><tbody id="tbprodQT_BC"><tr><td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" placeholder="품목명 입력" rows="1" style="resize:none;overflow:hidden;width:100%;"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="1" oninput="qt_calcProduct(this)"></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="개"></td><td style="text-align:right;"><input class="ii" style="text-align:right;" placeholder="0" oninput="qt_calcProduct(this)"></td><td class="prod-propose" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcProduct(this)"></td><td style="width:32px;text-align:center;padding:2px;"><button class="del-btn" onclick="qt_delRow(this)">×</button></td></tr></tbody></table></div><span class="add-r" onclick="qt_addCommonRow(\'tbprodQT_BC\')">＋ 행 추가</span>'},
+      body:'<div class="it-wrap"><table class="it" style="table-layout:fixed;width:100%;"><colgroup><col style="width:72px"><col><col style="width:40px"><col style="width:44px"><col style="width:90px"><col style="width:90px"><col style="width:28px"></colgroup><thead><tr><th class="L">구분</th><th class="L">품목</th><th>수량</th><th>단위</th><th>제안단가</th><th>제안금액</th><th></th></tr></thead><tbody id="tbprodQT_BC"><tr><td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" placeholder="품목명 입력" rows="1" style="resize:none;overflow:hidden;width:100%;"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="1" oninput="qt_calcProduct(this)"></td><td style="text-align:center;"><input class="ii" style="text-align:center !important;" placeholder="개"></td><td style="text-align:right;"><input class="ii" style="text-align:right;" placeholder="0" oninput="qt_calcProduct(this)"></td><td class="prod-propose" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcProduct(this)"></td><td style="width:32px;text-align:center;padding:2px;"><button class="del-btn" onclick="qt_delRow(this)">×</button></td></tr></tbody></table></div><span class="add-r" onclick="qt_addCommonRow(\'tbprodQT_BC\')">＋ 행 추가</span>'},
+    purchase:{badge:'매입',bc:'#FEF2F2',tc:'#991B1B',
+      body:'<div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;padding:6px 10px;margin-bottom:8px;font-size:10.5px;color:#92400E;">🔒 내부 원가관리 전용 항목입니다 — 견적서 PDF·고객 미리보기에는 절대 표시되지 않고, 최종검토(원가분석)에서만 집계됩니다.</div><div class="it-wrap"><table class="it" style="table-layout:fixed;width:100%;"><colgroup><col style="width:72px"><col><col style="width:52px"><col style="width:52px"><col style="width:96px"><col style="width:28px"></colgroup><thead><tr><th class="L">구분</th><th class="L">품목</th><th>수량</th><th>단위</th><th>매입금액</th><th></th></tr></thead><tbody id="tbpurQT_BC"><tr><td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" placeholder="품목명 입력" rows="1" style="resize:none;overflow:hidden;width:100%;"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center !important;" placeholder="1"></td><td style="text-align:center;"><input class="ii" style="text-align:center !important;" placeholder="개"></td><td style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_fmtAmtInput(this)"></td><td style="width:32px;text-align:center;padding:2px;"><button class="del-btn" onclick="qt_delRow(this)">×</button></td></tr></tbody></table></div><span class="add-r" onclick="qt_addCommonRow(\'tbpurQT_BC\')">＋ 행 추가</span>'},
     custom:{badge:'기타',bc:'#F8FAFC',tc:'#475569',body:qt_getCustomBody(QT_BC)},
     discount:{badge:'특별 할인',bc:'#FFF7ED',tc:'var(--red)',body:'<div class="disc-blk"><div class="disc-blk-t">특별 할인</div><div class="disc-row"><input class="disc-lbl-inp" value="할인 금액" placeholder="할인 항목명 (예: 장기계약 특별할인)" title="PDF·최종검토에 표시될 문구입니다"><input class="disc-fi" placeholder="예: 15,600,000" oninput="qt_calcDiscount(this)" style="max-width:180px;"><span style="font-size:11px;color:var(--muted);">원</span><span class="disc-result" style="margin-left:10px;">0원</span></div></div>'}
   };
@@ -24630,6 +24654,132 @@ function qt_openPdf(type,quoteId){
   } catch(e) { alert('PDF 오류: ' + e.message); }
 }
 function qt_closePdf(){var ov=document.getElementById('pdfOv');if(ov)ov.style.display='none';}
+
+// ── 견적검토 PDF (원가분석 포함, 내부 전용) ──
+function qt_reviewPdfFileName(q){
+  q=q||{};
+  var proj=(q.proj||'').trim().replace(/[\\/:*?"<>|\r\n\t]/g,'_').replace(/\s+/g,' ');
+  if(proj.length>60) proj=proj.slice(0,60).trim();
+  var parts=[];
+  if(proj) parts.push(proj);
+  var id=(q.id||'').trim().replace(/[\\/:*?"<>|\r\n\t]/g,'_');
+  if(id) parts.push(id);
+  parts.push('견적검토');
+  return parts.join('_')+'.pdf';
+}
+// 원가분석 섹션을 PDF/인쇄 안전한(테이블 기반) 스타일로 별도 렌더 - 화면용 qt_renderCostAnalysis와 별개
+function qt_buildCostAnalysisPdfSection(){
+  var A=qt_getCostAnalysis();
+  var BC='#CBD5E1';
+  var thS='padding:6px 8px;border:1px solid rgba(255,255,255,.28);background-color:#7A1F1F !important;color:#fff !important;font-size:9px;font-weight:700;text-align:center !important;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact;';
+  var tdS='padding:5px 7px;border:1px solid '+BC+';font-size:8.5px;color:#000;text-align:center;vertical-align:middle;';
+  var tdL='padding:5px 7px;border:1px solid '+BC+';font-size:8.5px;color:#000;text-align:left;vertical-align:middle;';
+  var tdR='padding:5px 7px;border:1px solid '+BC+';font-size:8.5px;color:#000;text-align:right;vertical-align:middle;';
+
+  var h='<div style="page-break-before:always;padding-top:6px;">';
+  h+='<div style="display:flex;align-items:center;gap:8px;margin:0 0 12px;padding-bottom:8px;border-bottom:2px solid #7A1F1F;">';
+  h+='<span style="font-size:14px;font-weight:800;color:#7A1F1F;">🔒 원가분석 (내부 전용)</span>';
+  h+='<span style="font-size:9px;color:#991B1B;">이 페이지는 고객 제출용 견적서가 아닙니다</span>';
+  h+='</div>';
+
+  // 핵심 지표
+  h+='<table style="width:100%;border-collapse:collapse;margin-bottom:14px;table-layout:fixed;"><tr>';
+  [['최종 청구금액',A.finalAmt,'#1D4ED8'],['총 원가(인건비원가+매입)',A.totalCost,'#991B1B'],['매출이익',A.profit,A.profit>=0?'#059669':'#DC2626'],['이익률',A.marginPct.toFixed(1)+'%',A.marginPct>=30?'#059669':(A.marginPct>=10?'#D97706':'#DC2626')]].forEach(function(m){
+    h+='<td style="width:25%;padding:4px;"><div style="border:1px solid '+BC+';border-radius:6px;padding:10px;text-align:center;">'
+      +'<div style="font-size:8px;color:#64748B;margin-bottom:4px;">'+m[0]+'</div>'
+      +'<div style="font-size:13px;font-weight:800;color:'+m[2]+';">'+(typeof m[1]==='number'?_qtWon(m[1]):m[1])+'</div></div></td>';
+  });
+  h+='</tr></table>';
+
+  // 금액 구성
+  h+='<div style="font-size:10px;font-weight:700;color:#334155;margin:10px 0 6px;">금액 구성</div>';
+  h+='<table style="width:100%;border-collapse:collapse;margin-bottom:14px;">';
+  h+='<tr><td style="'+tdL+'">견적 인건비 (청구 기준)</td><td style="'+tdR+'">'+_qtWon(A.laborQuoted)+'</td></tr>';
+  h+='<tr><td style="'+tdL+'">기타 항목 (라이선스·유지보수·상품·기타)</td><td style="'+tdR+'">'+_qtWon(A.otherPropose)+'</td></tr>';
+  if(A.discAmt>0) h+='<tr><td style="'+tdL+'">특별할인'+(A.discLabel?' ('+A.discLabel.replace(/</g,'&lt;')+')':'')+'</td><td style="'+tdR+';color:#DC2626;">'+_qtWon(A.discAmt)+'</td></tr>';
+  h+='<tr><td style="'+tdL+';font-weight:800;background:#EFF6FF;">최종 청구금액</td><td style="'+tdR+';font-weight:800;color:#1D4ED8;background:#EFF6FF;">'+_qtWon(A.finalAmt)+'</td></tr>';
+  h+='</table>';
+
+  // 인건비 상세
+  if(A.laborRows.length){
+    h+='<div style="font-size:10px;font-weight:700;color:#334155;margin:10px 0 6px;">인건비 — 내부단가 vs 견적단가</div>';
+    h+='<table style="width:100%;border-collapse:collapse;margin-bottom:14px;table-layout:fixed;">';
+    h+='<colgroup><col><col style="width:60px"><col style="width:44px"><col style="width:90px"><col style="width:90px"></colgroup>';
+    h+='<tr><th style="'+thS+'text-align:left !important;">역할</th><th style="'+thS+'">등급</th><th style="'+thS+'">MM</th><th style="'+thS+'">내부단가</th><th style="'+thS+'">견적단가</th></tr>';
+    A.laborRows.forEach(function(r){
+      h+='<tr><td style="'+tdL+'">'+r.role.replace(/</g,'&lt;')+'</td><td style="'+tdS+'">'+r.grade.replace(/</g,'&lt;')+'</td><td style="'+tdS+'">'+r.qty+'</td><td style="'+tdR+'">'+_qtWon(r.cost)+'</td><td style="'+tdR+'">'+_qtWon(r.quoted)+'</td></tr>';
+    });
+    h+='<tr><td colspan="3" style="'+tdL+';font-weight:800;">합계</td><td style="'+tdR+';font-weight:800;">'+_qtWon(A.laborCostInternal)+'</td><td style="'+tdR+';font-weight:800;">'+_qtWon(A.laborQuoted)+'</td></tr>';
+    h+='</table>';
+  }
+
+  // 매입 상세
+  h+='<div style="font-size:10px;font-weight:700;color:#334155;margin:10px 0 6px;">매입 항목 상세 ('+A.purchaseItems.length+'건)</div>';
+  if(!A.purchaseItems.length){
+    h+='<div style="font-size:9px;color:#94A3B8;padding:8px 0;">등록된 매입 항목이 없습니다.</div>';
+  } else {
+    h+='<table style="width:100%;border-collapse:collapse;table-layout:fixed;">';
+    h+='<colgroup><col style="width:80px"><col><col style="width:50px"><col style="width:50px"><col style="width:90px"></colgroup>';
+    h+='<tr><th style="'+thS+'text-align:left !important;">구분</th><th style="'+thS+'text-align:left !important;">품목</th><th style="'+thS+'">수량</th><th style="'+thS+'">단위</th><th style="'+thS+'">매입금액</th></tr>';
+    A.purchaseItems.forEach(function(p){
+      h+='<tr><td style="'+tdL+'">'+(p.cat||'-').replace(/</g,'&lt;')+'</td><td style="'+tdL+'">'+p.item.replace(/</g,'&lt;')+'</td><td style="'+tdS+'">'+(p.qty||'-')+'</td><td style="'+tdS+'">'+(p.unit||'-')+'</td><td style="'+tdR+'">'+_qtWon(p.amount)+'</td></tr>';
+    });
+    h+='<tr><td colspan="4" style="'+tdL+';font-weight:800;">합계</td><td style="'+tdR+';font-weight:800;">'+_qtWon(A.purchaseTotal)+'</td></tr>';
+    h+='</table>';
+  }
+  h+='</div>';
+  return h;
+}
+function qt_buildReviewPdf(){
+  // 기존 고객용 견적서 레이아웃(qt_buildDevPdf)을 그대로 첫 페이지로 재사용하고,
+  // 그 뒤에 원가분석(내부 전용) 페이지를 이어붙인다.
+  var baseHtml=qt_buildDevPdf();
+  return baseHtml+qt_buildCostAnalysisPdfSection();
+}
+function qt_openReviewPdf(){
+  try{
+    var d=qt_getPdfData();
+    var _pdfRep=SESSION_REP.name, _rfTitle='';
+    var _refId=(window._qt_current_mode==='edit')?window._qt_editing_id:null;
+    if(_refId){ var _q3=QUOTES.find(function(x){return x.id===_refId;}); if(_q3&&_q3.rep) _pdfRep=_q3.rep; }
+    if(!_pdfRep){
+      var _rfv=((document.getElementById('repNameField')||{}).value||'').trim();
+      if(_rfv){ var _rfp=_rfv.split(/\s+/); _pdfRep=_rfp[0]; if(_rfp.length>1) _rfTitle=_rfp.slice(1).join(' '); }
+    }
+    d.repName=_pdfRep;
+    d.repTitle=(typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[_pdfRep])||(_pdfRep===SESSION_REP.name?SESSION_REP.title:'')||_rfTitle;
+    d.repEmail=(typeof authCfg!=='undefined'&&authCfg.repEmails&&authCfg.repEmails[_pdfRep])||(_pdfRep===SESSION_REP.name?SESSION_REP.email:'');
+    d.repPhone=(QT_SETTINGS.phones&&QT_SETTINGS.phones[_pdfRep])||(_pdfRep===SESSION_REP.name?SESSION_REP.phone:'');
+    window.PDF_DATA=d;
+    window.PDF_DISC_AMT=d.discAmt;
+    var _q={client:d.client,id:d.no,proj:d.proj};
+    window._qt_pdf_q=_q;
+    var fname=qt_reviewPdfFileName(_q);
+    var _fnEl=document.getElementById('pdfFname'); if(_fnEl) _fnEl.textContent=fname;
+    var _pdfHtml=qt_buildReviewPdf();
+    document.getElementById('pdfContent').innerHTML=_pdfHtml;
+    var _fr=document.getElementById('qtPdfFrame');
+    if(_fr){
+      var _css=(document.getElementById('qtPdfCss')||{}).textContent||'';
+      var _doc=_fr.contentDocument||_fr.contentWindow.document;
+      _doc.open();
+      // 문서 제목(=인쇄/저장 시 기본 파일명): 프로젝트명 + 견적번호 + 견적검토
+      var _docTitle=fname.replace(/\.pdf$/i,'');
+      var _titleEsc=_docTitle.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      _doc.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+_titleEsc+'</title><style>'+_css+'</style></head><body><div id="pdfOv"><div class="pdf-page">'+_pdfHtml+'</div></div></body></html>');
+      _doc.close();
+      setTimeout(function(){
+        try{
+          var _pg=_doc.querySelector('.pdf-page');
+          qt_renderMergeOverlays(_pg||_doc.body);
+          var h=_doc.querySelector('.pdf-page').scrollHeight;
+          _fr.style.height=Math.max(h+20,1143)+'px';
+        }catch(e){}
+      },80);
+    }
+    var ov=document.getElementById('pdfOv');if(ov){ov.style.display='flex';}
+  }catch(e){ alert('견적검토 PDF 오류: '+e.message); }
+}
 
 
 function qt_numToKor(n){
@@ -24832,7 +24982,11 @@ function qt_buildDevPdf(){
   var tdL='padding:5px 7px;border:1px solid '+BC+';font-size:8.5px;color:#000;text-align:left;vertical-align:middle;';
   var tdR='padding:5px 7px;border:1px solid '+BC+';font-size:8.5px;color:#000;text-align:right;vertical-align:middle;';
 
-  var allIbs=Array.from(document.querySelectorAll('#blockArea .ib'));
+  var allIbs=Array.from(document.querySelectorAll('#blockArea .ib')).filter(function(b){
+    // 매입 블록은 내부 원가관리 전용 - 고객 PDF에는 어떤 경우에도 노출되면 안 됨
+    var bd=b.querySelector('.ib-badge');
+    return !(bd&&bd.textContent.trim()==='매입');
+  });
   // 데이터 블록 수 (할인 블록·열 없는 블록 제외) — 1개면 소계 생략, 2개↑면 소계 ①②+합계 합산표기
   var dataBlockCount=allIbs.filter(function(b){
     var bd=b.querySelector('.ib-badge');
@@ -25451,6 +25605,14 @@ function qt_switchTab(el,id){
       });
     },30);
   }
+  // 최종검토 진입: 버튼을 눌러야만 보이던 것을 탭 클릭 즉시 자동 렌더링되도록
+  if(id==='t4'){
+    setTimeout(function(){
+      if(typeof qt_renderReviewHeader==='function') qt_renderReviewHeader();
+      if(typeof qt_renderCostAnalysis==='function') qt_renderCostAnalysis();
+      if(typeof qt_renderPreview==='function') qt_renderPreview();
+    },30);
+  }
   document.querySelectorAll('.mtab').forEach(function(t){t.classList.remove('on');});
   ['t1','t2','t3','t4'].forEach(function(tid){
     var el2=document.getElementById(tid);
@@ -25546,7 +25708,7 @@ document.addEventListener('keydown',function(e){
   if(wm&&wm.style.display!=='none'){qt_closeModal();return;}
 });
 
-function qt_renderPreview(){
+function qt_renderReviewHeader(){
   var proj=document.getElementById('projectName')?document.getElementById('projectName').value:'';
   var client=document.getElementById('clientName')?document.getElementById('clientName').value:'';
   var dateEl=document.getElementById('quoteDate');
@@ -25561,7 +25723,7 @@ function qt_renderPreview(){
 
   var html='<div style="font-size:12px;line-height:1.8;background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:20px;">';
   html+='<div style="font-size:15px;font-weight:700;color:#0F172A;border-bottom:2px solid #2563EB;padding-bottom:8px;margin-bottom:14px;">📋 견적서 최종 검토</div>';
-  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;margin-bottom:14px;font-size:12px;">';
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;font-size:12px;">';
   // 배치: [고객사|참조] [프로젝트명|견적일] [견적번호|유효기간] — 2열 3행
   var _ccVal=(document.getElementById('ccName')||{}).value||'';
   html+='<div><span style="color:#64748B;">고객사</span><br><b>'+client+'</b></div>';
@@ -25578,7 +25740,12 @@ function qt_renderPreview(){
     try{ var _b=document.getElementById('maMonthsBadge'); var _m=_b&&_b.textContent.match(/(\d+)/); _t4mm=_m?(' ('+_m[1]+'개월)'):''; }catch(e){}
     html+='<div><span style="color:#64748B;">계약기간</span><br><b>'+_t4ms.replace(/-/g,'.')+' ~ '+_t4me.replace(/-/g,'.')+_t4mm+'</b></div>';
   }
-  html+='</div>';
+  html+='</div></div>';
+  var el=document.getElementById('reviewHeaderArea');
+  if(el) el.innerHTML=html;
+}
+function qt_renderPreview(){
+  var html='<div style="font-size:12px;line-height:1.8;background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:20px;">';
 
   // 각 블록 테이블
   document.querySelectorAll('#blockArea .ib').forEach(function(ib){
@@ -25600,6 +25767,7 @@ function qt_renderPreview(){
       }
       return;
     }
+    if(badgeTxt==='매입') return; // 내부 원가관리 전용 - 이 미리보기(고객용)에는 노출하지 않음
 
     html+='<div style="margin-bottom:12px;">';
     html+='<div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:4px;display:flex;align-items:center;gap:6px;">';
@@ -25675,6 +25843,203 @@ function qt_renderPreview(){
 
   html+='</div>';
   document.getElementById('previewArea').innerHTML=html;
+}
+
+// ══════════ 원가분석 (내부 전용) ══════════
+// 화면(DOM)의 현재 입력값을 기준으로 실시간 집계한다 - 저장 여부와 무관하게 항상 최신 상태 반영
+function qt_getCostAnalysis(){
+  var laborCostInternal=0; // 인건비: 내부단가 기준 원가
+  var laborQuoted=0;       // 인건비: 실제 견적서에 청구되는 금액
+  var laborRows=[];        // 인건비 행별 상세 (역할/등급/수량/원가/청구가)
+  var purchaseTotal=0;
+  var purchaseItems=[];    // {cat,item,qty,unit,amount}
+  var otherPropose=0;      // 인건비·매입·할인 제외한 나머지 블록(라이선스/MA/상품/기타) 청구합계
+
+  document.querySelectorAll('#blockArea .ib').forEach(function(blk){
+    var badge=blk.querySelector('.ib-badge');
+    var badgeTxt=badge?badge.textContent.trim():'';
+    if(badgeTxt==='특별 할인') return;
+
+    if(badgeTxt==='매입'){
+      var _carryCat='', _carryItem='', _carryQty='', _carryUnit='';
+      blk.querySelectorAll('tbody tr').forEach(function(tr){
+        var tds=tr.querySelectorAll('td');
+        if(tds.length<5) return;
+        var catInp=tds[0].querySelector('textarea');
+        var itemInp=tds[1].querySelector('textarea');
+        var qtyInp=tds[2].querySelector('input');
+        var unitInp=tds[3].querySelector('input');
+        var amtInp=tds[4].querySelector('input');
+        // ⚠ 셀 병합(rowspan)으로 이 행의 구분/품목/수량/단위 칸이 display:none으로 숨겨진 경우,
+        //   실제 값은 비어있지 않고 바로 위에서 병합된 셀의 값을 그대로 물려받아야 화면에서
+        //   보이는 병합 모습과 원가분석 표시가 일치한다(합계 금액 자체는 병합 여부와 무관하게
+        //   항상 정확 - 매입금액은 병합 대상이 아니라 행마다 실제 입력값을 그대로 더함).
+        var cat=(tds[0].style.display==='none')?_carryCat:(catInp&&catInp.value||'').trim();
+        var item=(tds[1].style.display==='none')?_carryItem:(itemInp&&itemInp.value||'').trim();
+        var qty=(tds[2].style.display==='none')?_carryQty:(qtyInp&&qtyInp.value||'').trim();
+        var unit=(tds[3].style.display==='none')?_carryUnit:(unitInp&&unitInp.value||'').trim();
+        _carryCat=cat; _carryItem=item; _carryQty=qty; _carryUnit=unit;
+        var amt=qt_parseN(amtInp?amtInp.value:'0');
+        if(!item&&!amt) return; // 빈 행은 집계에서 제외
+        purchaseTotal+=amt;
+        purchaseItems.push({
+          cat:cat, item:item||'(품목 미입력)', qty:qty, unit:unit, amount:amt
+        });
+      });
+      return;
+    }
+
+    if(badgeTxt==='인건비'){
+      blk.querySelectorAll('tbody tr').forEach(function(tr){
+        var roleInp=tr.querySelectorAll('textarea')[1]; // [0]=구분, [1]=역할
+        var role=(roleInp&&roleInp.value||'').trim();
+        var gradeSel=tr.querySelector('select.isel:not(.src-sel)');
+        var grade=gradeSel?gradeSel.value:'';
+        var inps=tr.querySelectorAll('input'); // [0]=수량,[1]=단위X(텍스트라 input이지만 숫자아님),... 실제로 단위는 input이지만 숫자 파싱 대상 아님
+        var qty=qt_parseN(inps[0]?inps[0].value:'')||0;
+        var gpaTd=tr.querySelector('.gpa');
+        var gpaInp=gpaTd?gpaTd.querySelector('input'):null;
+        var quoted=qt_parseN(gpaInp?gpaInp.value:'0');
+        if(!role&&!qty&&!quoted) return; // 빈 행 스킵
+        laborQuoted+=quoted;
+        var rowCost=0;
+        if(grade&&qty>0){
+          var rate=qt_getGradeRates(grade,'internal');
+          rowCost=(rate.c||0)*qty;
+        }
+        laborCostInternal+=rowCost;
+        laborRows.push({role:role||'(역할 미입력)', grade:grade||'-', qty:qty, cost:rowCost, quoted:quoted});
+      });
+      return;
+    }
+
+    // 라이선스/유지보수(MA)/상품/기타 - 청구금액만 합산 (원가 추적은 매입 블록에서 별도 관리)
+    blk.querySelectorAll('tbody tr:not(.tr-sub):not(.tr-disc)').forEach(function(tr){
+      var tds=tr.querySelectorAll('td');
+      if(tds.length<2) return;
+      var lastTd=tds[tds.length-1];
+      var isDelBtn=lastTd&&(lastTd.querySelector('.del-btn')||lastTd.style.width==='32px'||(lastTd.textContent||'').trim()==='');
+      var amtTd=isDelBtn?tds[tds.length-2]:tds[tds.length-1];
+      var inp=amtTd?amtTd.querySelector('input, textarea'):null;
+      var txt=inp?inp.value:(amtTd?amtTd.textContent:'');
+      var v=parseFloat((txt||'').replace(/,/g,'').replace(/[^0-9.]/g,''))||0;
+      otherPropose+=v;
+    });
+  });
+
+  var totalPropose=laborQuoted+otherPropose; // 매입 제외, 할인 전 총 청구금액
+  var discInp=document.querySelector('.disc-blk .disc-fi');
+  var discAmt=discInp?qt_parseN(discInp.value):0;
+  var discLabel='';
+  var discLblInp=document.querySelector('.disc-lbl-inp');
+  if(discLblInp&&(discLblInp.value||'').trim()) discLabel=discLblInp.value.trim();
+  var finalAmt=totalPropose-discAmt;
+
+  var totalCost=laborCostInternal+purchaseTotal;
+  var profit=finalAmt-totalCost;
+  var marginPct=finalAmt>0?(profit/finalAmt*100):0;
+
+  return {
+    totalPropose:totalPropose, otherPropose:otherPropose,
+    discAmt:discAmt, discLabel:discLabel, finalAmt:finalAmt,
+    laborCostInternal:laborCostInternal, laborQuoted:laborQuoted, laborRows:laborRows,
+    purchaseTotal:purchaseTotal, purchaseItems:purchaseItems,
+    totalCost:totalCost, profit:profit, marginPct:marginPct
+  };
+}
+
+function _qtWon(n){ return '₩ '+Math.round(n||0).toLocaleString(); }
+
+function qt_renderCostAnalysis(){
+  var area=document.getElementById('costAnalysisArea');
+  if(!area) return;
+  var A=qt_getCostAnalysis();
+  var profitColor=A.profit>=0?'#059669':'#DC2626';
+  var marginColor=A.marginPct>=30?'#059669':(A.marginPct>=10?'#D97706':'#DC2626');
+
+  var html='<div style="border-top:2px dashed #E2E8F0;margin-top:24px;padding-top:20px;">';
+  html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">';
+  html+='<span style="font-size:13px;font-weight:800;color:#0F172A;">🔒 원가분석</span>';
+  html+='<span style="font-size:10.5px;font-weight:600;color:#94A3B8;background:#F1F5F9;padding:2px 8px;border-radius:10px;">내부 전용 · 고객 견적서에는 표시되지 않습니다</span>';
+  html+='</div>';
+
+  // 핵심 지표 카드 4개
+  html+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">';
+  html+='<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:12px 14px;"><div style="font-size:10.5px;color:#1D4ED8;font-weight:700;margin-bottom:4px;">최종 청구금액</div><div style="font-size:16px;font-weight:800;color:#1D4ED8;">'+_qtWon(A.finalAmt)+'</div></div>';
+  html+='<div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:12px 14px;"><div style="font-size:10.5px;color:#991B1B;font-weight:700;margin-bottom:4px;">총 원가 (인건비원가+매입)</div><div style="font-size:16px;font-weight:800;color:#991B1B;">'+_qtWon(A.totalCost)+'</div></div>';
+  html+='<div style="background:'+(A.profit>=0?'#ECFDF5':'#FEF2F2')+';border:1px solid '+(A.profit>=0?'#A7F3D0':'#FECACA')+';border-radius:10px;padding:12px 14px;"><div style="font-size:10.5px;color:'+profitColor+';font-weight:700;margin-bottom:4px;">매출이익</div><div style="font-size:16px;font-weight:800;color:'+profitColor+';">'+_qtWon(A.profit)+'</div></div>';
+  html+='<div style="background:#F8FAFC;border:1px solid var(--border);border-radius:10px;padding:12px 14px;"><div style="font-size:10.5px;color:#475569;font-weight:700;margin-bottom:4px;">이익률</div><div style="font-size:16px;font-weight:800;color:'+marginColor+';">'+A.marginPct.toFixed(1)+'%</div></div>';
+  html+='</div>';
+
+  // 금액 구성 표
+  html+='<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:14px;">';
+  html+='<div style="font-size:11.5px;font-weight:700;color:#334155;margin-bottom:10px;">금액 구성</div>';
+  html+='<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+  function _row(label,val,opts){
+    opts=opts||{};
+    return '<tr><td style="padding:6px 4px;color:'+(opts.color||'#475569')+';'+(opts.bold?'font-weight:700;':'')+'">'+label+'</td>'
+      +'<td style="padding:6px 4px;text-align:right;color:'+(opts.color||'#0F172A')+';'+(opts.bold?'font-weight:800;':'font-weight:600;')+'border-bottom:'+(opts.noBorder?'none':'1px solid #F1F5F9')+';">'+_qtWon(Math.abs(val))+'</td></tr>';
+  }
+  html+=_row('견적 인건비 (청구 기준)', A.laborQuoted);
+  html+=_row('기타 항목 (라이선스·유지보수·상품·기타)', A.otherPropose);
+  if(A.discAmt>0) html+=_row('특별할인'+(A.discLabel?' ('+A.discLabel.replace(/</g,'&lt;')+')':''), A.discAmt, {neg:true,color:'#DC2626'});
+  html+='<tr><td colspan="2" style="padding:2px 0;"><div style="border-top:1px solid #E2E8F0;"></div></td></tr>';
+  html+=_row('최종 청구금액', A.finalAmt, {bold:true,color:'#1D4ED8',noBorder:true});
+  html+='</table></div>';
+
+  // 인건비 원가 vs 청구가 비교
+  if(A.laborRows.length){
+    html+='<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:14px;">';
+    html+='<div style="font-size:11.5px;font-weight:700;color:#334155;margin-bottom:10px;">인건비 — 내부단가 vs 견적단가</div>';
+    html+='<table style="width:100%;border-collapse:collapse;font-size:11.5px;">';
+    html+='<thead><tr style="background:#F8FAFC;">'
+      +'<th style="padding:6px 8px;text-align:left;font-weight:700;color:#64748B;font-size:10.5px;border-bottom:1px solid var(--border);">역할</th>'
+      +'<th style="padding:6px 8px;text-align:center;font-weight:700;color:#64748B;font-size:10.5px;border-bottom:1px solid var(--border);">등급</th>'
+      +'<th style="padding:6px 8px;text-align:center;font-weight:700;color:#64748B;font-size:10.5px;border-bottom:1px solid var(--border);">MM</th>'
+      +'<th style="padding:6px 8px;text-align:right;font-weight:700;color:#991B1B;font-size:10.5px;border-bottom:1px solid var(--border);">내부단가</th>'
+      +'<th style="padding:6px 8px;text-align:right;font-weight:700;color:#1D4ED8;font-size:10.5px;border-bottom:1px solid var(--border);">견적단가</th>'
+      +'</tr></thead><tbody>';
+    A.laborRows.forEach(function(r){
+      html+='<tr><td style="padding:6px 8px;border-bottom:1px solid #F8FAFC;">'+r.role.replace(/</g,'&lt;')+'</td>'
+        +'<td style="padding:6px 8px;text-align:center;border-bottom:1px solid #F8FAFC;">'+r.grade.replace(/</g,'&lt;')+'</td>'
+        +'<td style="padding:6px 8px;text-align:center;border-bottom:1px solid #F8FAFC;">'+r.qty+'</td>'
+        +'<td style="padding:6px 8px;text-align:right;color:#991B1B;border-bottom:1px solid #F8FAFC;">'+_qtWon(r.cost)+'</td>'
+        +'<td style="padding:6px 8px;text-align:right;color:#1D4ED8;border-bottom:1px solid #F8FAFC;">'+_qtWon(r.quoted)+'</td></tr>';
+    });
+    html+='<tr><td colspan="3" style="padding:7px 8px;font-weight:700;color:#334155;">합계</td>'
+      +'<td style="padding:7px 8px;text-align:right;font-weight:800;color:#991B1B;">'+_qtWon(A.laborCostInternal)+'</td>'
+      +'<td style="padding:7px 8px;text-align:right;font-weight:800;color:#1D4ED8;">'+_qtWon(A.laborQuoted)+'</td></tr>';
+    html+='</tbody></table></div>';
+  }
+
+  // 매입 항목 상세
+  html+='<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;">';
+  html+='<div style="font-size:11.5px;font-weight:700;color:#334155;margin-bottom:10px;">매입 항목 상세 <span style="font-weight:600;color:#94A3B8;">('+A.purchaseItems.length+'건)</span></div>';
+  if(!A.purchaseItems.length){
+    html+='<div style="text-align:center;color:#94A3B8;font-size:11.5px;padding:14px 0;">등록된 매입 항목이 없습니다.</div>';
+  } else {
+    html+='<table style="width:100%;border-collapse:collapse;font-size:11.5px;">';
+    html+='<thead><tr style="background:#F8FAFC;">'
+      +'<th style="padding:6px 8px;text-align:left;font-weight:700;color:#64748B;font-size:10.5px;border-bottom:1px solid var(--border);">구분</th>'
+      +'<th style="padding:6px 8px;text-align:left;font-weight:700;color:#64748B;font-size:10.5px;border-bottom:1px solid var(--border);">품목</th>'
+      +'<th style="padding:6px 8px;text-align:center;font-weight:700;color:#64748B;font-size:10.5px;border-bottom:1px solid var(--border);">수량</th>'
+      +'<th style="padding:6px 8px;text-align:center;font-weight:700;color:#64748B;font-size:10.5px;border-bottom:1px solid var(--border);">단위</th>'
+      +'<th style="padding:6px 8px;text-align:right;font-weight:700;color:#991B1B;font-size:10.5px;border-bottom:1px solid var(--border);">매입금액</th>'
+      +'</tr></thead><tbody>';
+    A.purchaseItems.forEach(function(p){
+      html+='<tr><td style="padding:6px 8px;border-bottom:1px solid #F8FAFC;">'+(p.cat||'-').replace(/</g,'&lt;')+'</td>'
+        +'<td style="padding:6px 8px;border-bottom:1px solid #F8FAFC;">'+p.item.replace(/</g,'&lt;')+'</td>'
+        +'<td style="padding:6px 8px;text-align:center;border-bottom:1px solid #F8FAFC;">'+(p.qty||'-')+'</td>'
+        +'<td style="padding:6px 8px;text-align:center;border-bottom:1px solid #F8FAFC;">'+(p.unit||'-')+'</td>'
+        +'<td style="padding:6px 8px;text-align:right;color:#991B1B;font-weight:600;border-bottom:1px solid #F8FAFC;">'+_qtWon(p.amount)+'</td></tr>';
+    });
+    html+='<tr><td colspan="4" style="padding:7px 8px;font-weight:700;color:#334155;">합계</td>'
+      +'<td style="padding:7px 8px;text-align:right;font-weight:800;color:#991B1B;">'+_qtWon(A.purchaseTotal)+'</td></tr>';
+    html+='</tbody></table>';
+  }
+  html+='</div></div>';
+
+  area.innerHTML=html;
 }
 
 function qt_savePdf(){
@@ -25890,28 +26255,36 @@ function qt_renderPriceTable(){
   if(noteEl) noteEl.textContent=isAdmin?'':'열람 전용 · 변경은 관리자만 가능';
 
   var cats=QT_PRICE_CATS, grades=QT_PRICE_GRADES;
+  // ⚠ 내부단가는 "소비자단가/제안단가" 두 값으로 나눌 개념이 아니라 원가 하나뿐이므로 1칸,
+  //   나머지 구분(TAK/관계사/대외 등)은 기존처럼 소비자단가+제안단가 2칸으로 구성한다.
+  function catSpan(cat){ return cat.key==='internal'?1:2; }
 
   // 헤더 1행: 카테고리 라벨 (중앙정렬), 관리자면 편집 가능한 인풋 + 삭제버튼, 맨 끝에 +추가
-  var catColors=['#EFF6FF|#1D4ED8|#BFDBFE','#ECFDF5|#065F46|#6EE7B7','#FFFBEB|#92400E|#FCD34D','#FDF2F8|#9D174D|#FBCFE8','#F5F3FF|#6D28D9|#DDD6FE','#F0FDFA|#0F766E|#99F6E4'];
+  var catColors=['#F5F3FF|#6D28D9|#DDD6FE','#EFF6FF|#1D4ED8|#BFDBFE','#ECFDF5|#065F46|#6EE7B7','#FFFBEB|#92400E|#FCD34D','#FDF2F8|#9D174D|#FBCFE8','#F0FDFA|#0F766E|#99F6E4'];
   var head1='<th style="padding:0;border:none;"></th>'+cats.map(function(cat,ci){
     var col=catColors[ci%catColors.length].split('|');
     var lockBadge=cat.locked?'<span title="고정 카테고리 (삭제 불가)" style="margin-left:3px;opacity:.6;">🔒</span>':'';
     var labelHtml=isAdmin
-      ? '<input value="'+_qtEsc(cat.label)+'" onchange="qt_renamePriceCat(\''+_qtEsc(cat.key)+'\',this.value)" style="width:100%;max-width:76px;text-align:center;background:transparent;border:1px solid transparent;border-radius:5px;font-size:11px;font-weight:700;color:'+col[1]+';padding:2px 4px;font-family:inherit;" onfocus="this.style.borderColor=\'#CBD5E1\';this.style.background=\'#fff\';" onblur="this.style.borderColor=\'transparent\';this.style.background=\'transparent\';">'
+      ? '<input value="'+_qtEsc(cat.label)+'" onchange="qt_renamePriceCat(\''+_qtEsc(cat.key)+'\',this.value)" style="width:100%;max-width:76px;text-align:center !important;background:transparent;border:1px solid transparent;border-radius:5px;font-size:11px;font-weight:700;color:'+col[1]+';padding:2px 4px;font-family:inherit;" onfocus="this.style.borderColor=\'#CBD5E1\';this.style.background=\'#fff\';" onblur="this.style.borderColor=\'transparent\';this.style.background=\'transparent\';">'
       : '<span style="font-weight:700;color:'+col[1]+';">'+_qtEsc(cat.label)+'</span>';
     var delBtn=(isAdmin&&!cat.locked)
       ? '<button type="button" title="이 구분 삭제" onclick="qt_removePriceCat(\''+_qtEsc(cat.key)+'\')" style="border:none;background:none;color:'+col[1]+';opacity:.55;cursor:pointer;font-size:12px;line-height:1;margin-left:4px;padding:0;">×</button>'
       : '';
-    return '<th colspan="2" style="padding:8px 6px;text-align:center;font-size:11px;font-weight:700;color:'+col[1]+';background:'+col[0]+';border-radius:6px 6px 0 0;border-bottom:2px solid '+col[2]+';'+(ci>0?'border-left:4px solid #fff;':'')+'"><div style="display:flex;align-items:center;justify-content:center;gap:2px;">'+labelHtml+lockBadge+delBtn+'</div></th>';
+    return '<th colspan="'+catSpan(cat)+'" style="padding:8px 6px;text-align:center !important;font-size:11px;font-weight:700;color:'+col[1]+';background:'+col[0]+';border-radius:6px 6px 0 0;border-bottom:2px solid '+col[2]+';'+(ci>0?'border-left:4px solid #fff;':'')+'"><div style="display:flex;align-items:center;justify-content:center;gap:2px;">'+labelHtml+lockBadge+delBtn+'</div></th>';
   }).join('')
   + (isAdmin?'<th style="padding:0;border:none;vertical-align:middle;"><button type="button" title="구분 추가" onclick="qt_addPriceCat()" style="width:24px;height:24px;border-radius:6px;border:1px dashed #CBD5E1;background:#F8FAFC;color:#64748B;cursor:pointer;font-size:13px;line-height:1;">＋</button></th>':'');
 
-  // 헤더 2행: 등급 / 소비자단가 / 제안단가 (중앙정렬)
-  var head2='<th style="padding:7px 8px;text-align:center;font-size:10px;font-weight:600;color:var(--sub);border-bottom:1px solid var(--border);">등급</th>'
+  // 헤더 2행: 등급 / 소비자단가 / 제안단가 (내부단가는 단일 "금액" 한 칸) - 전부 중앙정렬
+  var head2='<th style="padding:7px 8px;text-align:center !important;font-size:10px;font-weight:600;color:var(--sub);border-bottom:1px solid var(--border);">등급</th>'
     + cats.map(function(cat,ci){
-      var isLast=ci===cats.length-1;
-      return '<th style="padding:7px 8px;text-align:center;font-size:10px;font-weight:600;color:var(--sub);border-bottom:1px solid var(--border);">소비자단가</th>'
-        +'<th style="padding:7px 8px;text-align:center;font-size:10px;font-weight:600;color:var(--sub);border-bottom:1px solid var(--border);'+(isLast?'':'border-right:2px solid var(--border);')+'">제안단가</th>';
+      var isLastCat=ci===cats.length-1;
+      var rBorder=isLastCat?'':'border-right:2px solid var(--border);';
+      var baseTh='padding:7px 8px;text-align:center !important;font-size:10px;font-weight:600;color:var(--sub);border-bottom:1px solid var(--border);';
+      if(cat.key==='internal'){
+        return '<th style="'+baseTh+rBorder+'">금액</th>';
+      }
+      return '<th style="'+baseTh+'">소비자단가</th>'
+        +'<th style="'+baseTh+rBorder+'">제안단가</th>';
     }).join('')
     + (isAdmin?'<th style="padding:0;border:none;"></th>':'');
 
@@ -25920,32 +26293,37 @@ function qt_renderPriceTable(){
     var isLastRow=gi===grades.length-1;
     var bb=isLastRow?'':'border-bottom:1px solid var(--border2);';
     var gradeLabelHtml=isAdmin
-      ? '<input value="'+_qtEsc(g)+'" onchange="qt_renamePriceGrade('+gi+',this.value)" style="width:100%;text-align:center;font-weight:700;color:var(--navy);font-size:11px;background:transparent;border:1px solid transparent;border-radius:5px;padding:2px 4px;font-family:inherit;" onfocus="this.style.borderColor=\'#CBD5E1\';this.style.background=\'#fff\';" onblur="this.style.borderColor=\'transparent\';this.style.background=\'transparent\';">'
+      ? '<input value="'+_qtEsc(g)+'" onchange="qt_renamePriceGrade('+gi+',this.value)" style="width:100%;text-align:center !important;font-weight:700;color:var(--navy);font-size:11px;background:transparent;border:1px solid transparent;border-radius:5px;padding:2px 4px;font-family:inherit;" onfocus="this.style.borderColor=\'#CBD5E1\';this.style.background=\'#fff\';" onblur="this.style.borderColor=\'transparent\';this.style.background=\'transparent\';">'
       : '<span style="font-weight:700;color:var(--navy);">'+_qtEsc(g)+'</span>';
     var cells=cats.map(function(cat,ci){
       var v=(QT_GRADES[g]&&QT_GRADES[g][cat.key])||{c:0,p:0};
       var isLastCat=ci===cats.length-1;
+      var rBorder=isLastCat?'':'border-right:2px solid var(--border);';
       var inputOrText=function(id,val){
         return isAdmin
-          ? '<input class="ri" id="'+id+'" value="'+_qtEsc(val?val.toLocaleString():'')+'" style="width:100%;text-align:center;">'
-          : '<span style="display:block;text-align:center;color:var(--text);">'+_qtEsc(val?val.toLocaleString():'0')+'</span>';
+          ? '<input class="ri" id="'+id+'" value="'+_qtEsc(val?val.toLocaleString():'')+'" style="width:100%;text-align:center !important;">'
+          : '<span style="display:block;text-align:center !important;color:var(--text);">'+_qtEsc(val?val.toLocaleString():'0')+'</span>';
       };
+      if(cat.key==='internal'){
+        // 내부단가는 단일 값(c 필드 하나만 사용) - 소비자/제안 구분 없음
+        return '<td style="padding:5px 6px;'+bb+rBorder+'">'+inputOrText('price-'+cat.key+'-s-'+gi, v.c)+'</td>';
+      }
       return '<td style="padding:5px 6px;'+bb+'">'+inputOrText('price-'+cat.key+'-s-'+gi, v.c)+'</td>'
-        +'<td style="padding:5px 6px;'+bb+(isLastCat?'':'border-right:2px solid var(--border);')+'">'+inputOrText('price-'+cat.key+'-p-'+gi, v.p)+'</td>';
+        +'<td style="padding:5px 6px;'+bb+rBorder+'">'+inputOrText('price-'+cat.key+'-p-'+gi, v.p)+'</td>';
     }).join('');
     var rowDelBtn=(isAdmin&&grades.length>1)
-      ? '<td style="padding:5px 4px;text-align:center;'+bb+'"><button type="button" title="이 등급 삭제" onclick="qt_removePriceGrade('+gi+')" style="border:none;background:none;color:#94A3B8;cursor:pointer;font-size:12px;line-height:1;padding:0;">×</button></td>'
+      ? '<td style="padding:5px 4px;text-align:center !important;'+bb+'"><button type="button" title="이 등급 삭제" onclick="qt_removePriceGrade('+gi+')" style="border:none;background:none;color:#94A3B8;cursor:pointer;font-size:12px;line-height:1;padding:0;">×</button></td>'
       : (isAdmin?'<td style="'+bb+'"></td>':'');
-    return '<tr><td style="padding:7px 8px;text-align:center;'+bb+'">'+gradeLabelHtml+'</td>'+cells+rowDelBtn+'</tr>';
+    return '<tr><td style="padding:7px 8px;text-align:center !important;'+bb+'">'+gradeLabelHtml+'</td>'+cells+rowDelBtn+'</tr>';
   }).join('');
 
-  var colCount=1+cats.length*2+(isAdmin?1:0);
+  var colCount=1+cats.reduce(function(sum,c){return sum+catSpan(c);},0)+(isAdmin?1:0);
   var footerRow=isAdmin
-    ? '<tr><td colspan="'+colCount+'" style="padding:8px 4px 2px;text-align:center;"><button type="button" onclick="qt_addPriceGrade()" style="padding:5px 12px;border-radius:7px;border:1px dashed #CBD5E1;background:#F8FAFC;color:#64748B;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;">＋ 등급 추가</button></td></tr>'
+    ? '<tr><td colspan="'+colCount+'" style="padding:8px 4px 2px;text-align:center !important;"><button type="button" onclick="qt_addPriceGrade()" style="padding:5px 12px;border-radius:7px;border:1px dashed #CBD5E1;background:#F8FAFC;color:#64748B;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;">＋ 등급 추가</button></td></tr>'
     : '';
 
   wrap.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed;">'
-    +'<colgroup><col style="width:52px">'+cats.map(function(){return '<col><col>';}).join('')+(isAdmin?'<col style="width:26px">':'')+'</colgroup>'
+    +'<colgroup><col style="width:52px">'+cats.map(function(c){return catSpan(c)===1?'<col>':'<col><col>';}).join('')+(isAdmin?'<col style="width:26px">':'')+'</colgroup>'
     +'<thead><tr>'+head1+'</tr><tr style="background:#F8FAFC;">'+head2+'</tr></thead>'
     +'<tbody>'+bodyRows+footerRow+'</tbody>'
     +'</table>';
@@ -26201,7 +26579,7 @@ function qt_saveCurrentQuote(isDraft){
   var blocks=[];
   document.querySelectorAll('.block-area .ib').forEach(function(blk){
     var badge=blk.querySelector('.ib-badge');
-    var typeKey={인건비:'mm','라이선스(상품)':'lic','유지보수(MA)':'ma','상품':'product','특별 할인':'discount','기타':'custom'}[(badge&&badge.textContent.trim())||'']||'custom';
+    var typeKey={인건비:'mm','라이선스(상품)':'lic','유지보수(MA)':'ma','상품':'product',매입:'purchase','특별 할인':'discount','기타':'custom'}[(badge&&badge.textContent.trim())||'']||'custom';
     blocks.push({type:typeKey,html:blk.querySelector('.ib-body').innerHTML});
   });
 
