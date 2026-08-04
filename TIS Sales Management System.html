@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-060 -->
+<!-- v20260728-060 변경사항: 원가분석 표 정렬/폰트가 스크린샷 지적대로 여전히 엉망이었던 진짜 근본 원인 발견·수정. 전역 CSS에 table td{font-size:13px !important; color:#1E293B !important}, table th,td{text-align:left !important} 두 규칙이 있어서, v059까지 !important 없이 지정한 정렬·폰트크기·강조색이 전부 무력화되어 실제로는(computed style 기준) 헤더/금액 전부 왼쪽정렬·13px·기본색으로 렌더링되고 있었음(소스 코드 문자열만 확인하고 실제 계산된 스타일은 검증 안 한 것이 실수였음, 이번엔 getComputedStyle로 직접 확인). 인건비/매입 표의 모든 정렬·폰트크기·강조색 지정에 !important 적용해 완전히 해결. 추가로: (1) 역할/구분/품목 텍스트가 잘려보이던 것 - ellipsis 처리를 제거해 전체 텍스트가 보이도록 함. (2) 역할 열 폭을 34%→42%로 확대. (3) 헤더는 예외 없이 전부 중앙정렬(역할/구분/품목 헤더 포함, 그 아래 데이터만 좌측정렬). (4) 기타(사용자정의) 블록에서 헤더명을 다른 유형의 표준 명칭(구분/품목/역할/수량/단위/제안금액 등)과 동일하게 입력하면 그 유형과 동일한 폭·정렬을 자동으로 맞춰주도록 개선 - 표준 명칭이 아닌 자유 입력은 기존 방식 그대로 유지. 실제 computedStyle로 헤더 10개 전수 중앙정렬, 금액 우측정렬, 폰트 11px 통일, 역할 전체텍스트 노출, 강조색 정상 적용, 커스텀 헤더 자동매칭까지 전부 재확인. 기존 블록 회귀 없음, 유형변경 모달 동작 이상없음도 재확인. -->
 <!-- TIS-VERSION: 20260728-059 -->
 <!-- v20260728-059 변경사항: 원가분석 화면의 폰트 크기를 견적항목 실제 표와 완전히 통일. 비교 결과 표 본문(11.5px→11px), 핵심지표 큰 숫자(16px→18px), 라벨(10.5px→11px), 금액구성 행(12px→11px)에서 미묘한 불일치가 있었음 - 전부 실제 견적항목 표(헤더 10.5px/본문 11px)와 최종 제안금액 박스(숫자 18px) 기준에 맞춤. PDF판은 애초에 고객용 견적서 PDF와 동일한 값(헤더9px/본문8.5px)을 쓰고 있어 이미 일치했음(재확인 완료). 실제 렌더링 결과에서 헤더/본문/강조숫자 폰트 크기 전부 기준값과 일치, 계산 정확성도 리팩터링 영향 없음을 확인. -->
 <!-- TIS-VERSION: 20260728-058 -->
@@ -23476,10 +23478,59 @@ function qt_addCustomHeader(btn){
   if(typeof qt_initColResize==='function') try{ qt_initColResize(); }catch(e){}
 }
 
+// 기타(사용자정의) 열 헤더가 다른 유형에서 쓰는 표준 명칭과 같으면, 그 유형과 동일한
+// 폭·정렬을 자동으로 맞춰준다. 표준 명칭이 아니면 기본값(가변폭·좌측정렬) 그대로 둔다.
+var QT_CUST_COL_CONV={
+  '구분':{width:'12%',dataAlign:'center'},
+  '품목':{width:'26%',dataAlign:'left'},
+  '투입 인력 역할':{width:'26%',dataAlign:'left'},
+  '투입인력역할':{width:'26%',dataAlign:'left'},
+  '역할':{width:'26%',dataAlign:'left'},
+  '수량':{width:'8%',dataAlign:'center'},
+  '단위':{width:'8%',dataAlign:'center'},
+  '등급':{width:'8%',dataAlign:'center'},
+  '단가기준':{width:'10%',dataAlign:'center'},
+  '소비자단가':{width:'13%',dataAlign:'right'},
+  '소비자가':{width:'13%',dataAlign:'right'},
+  '제안단가':{width:'13%',dataAlign:'right'},
+  '제안금액':{width:'13%',dataAlign:'right'},
+  '매입금액':{width:'14%',dataAlign:'right'}
+};
 function qt_updateCustHeader(inp, colIdx){
   var blk=inp.closest('.ib');
   var th=blk.querySelector('thead tr th[data-col="'+colIdx+'"]');
-  if(th) th.textContent=inp.value||('헤더'+colIdx);
+  var name=(inp.value||'').trim();
+  if(th) th.textContent=name||('헤더'+colIdx);
+  var conv=QT_CUST_COL_CONV[name];
+  var tbl=blk.querySelector('table.cust-tbl');
+  if(th){
+    if(conv){
+      th.style.width=conv.width;
+      th.style.minWidth='0';
+    } else {
+      th.style.width='';
+      th.style.minWidth='80px';
+    }
+  }
+  // 해당 열의 데이터 셀 정렬도 함께 맞춤 (표준 명칭일 때만; 자유 입력이면 기존 좌측정렬 유지)
+  if(tbl){
+    var bodyTds=tbl.querySelectorAll('tbody tr');
+    bodyTds.forEach(function(tr){
+      var td=tr.children[colIdx];
+      if(!td) return;
+      var ta=td.querySelector('textarea');
+      if(!ta) return;
+      if(conv){
+        // ⚠ style.textAlign='left !important'처럼 문자열로 붙이면 브라우저가 무시하므로
+        //   반드시 setProperty의 3번째 인자로 !important를 지정해야 실제로 적용됨
+        ta.style.setProperty('text-align', conv.dataAlign, 'important');
+        ta.classList.toggle('L', conv.dataAlign==='left');
+      } else {
+        ta.style.removeProperty('text-align');
+        ta.classList.add('L');
+      }
+    });
+  }
 }
 
 function qt_removeCustCol(btn, colIdx){
@@ -26029,34 +26080,42 @@ function qt_renderCostAnalysis(){
   html+=_row('최종 청구금액', A.finalAmt, {bold:true,color:'#1D4ED8',noBorder:true});
   html+='</div>';
 
-  // 공용 표 스타일 - 원가분석 안의 모든 표가 동일한 규칙을 쓰도록 통일
-  //  · 헤더는 전부 중앙정렬(PDF/견적항목 표와 동일한 규칙)
-  //  · 텍스트형 데이터 칸(역할/구분/품목)만 좌측정렬, 짧은 값(등급/MM/수량/단위)은 중앙, 금액은 우측
-  var thC='padding:7px 8px;text-align:center;font-weight:700;color:#64748B;font-size:10.5px;background:#F8FAFC;border-bottom:1px solid var(--border);';
+  // ⚠ 전역 CSS에 table th,td{text-align:left !important}가 있어서, !important 없이 쓴 정렬은
+  //   전부 무력화되어 실제로는 왼쪽정렬로 렌더링되고 있었음(계산된 스타일로 직접 확인해서 발견).
+  //   이 표에서 쓰는 모든 정렬 지정에 반드시 !important를 붙인다.
+  //   요청대로 헤더는 예외 없이 전부 중앙정렬(역할/구분/품목 헤더 포함), 본문 데이터만
+  //   텍스트형=좌측/짧은값=중앙/금액=우측으로 구분한다. 폰트는 "금액 구성"과 동일한 11px.
+  var thC='padding:7px 8px;text-align:center !important;font-weight:700;color:#64748B;font-size:10.5px;background:#F8FAFC;border-bottom:1px solid var(--border);';
+  // ⚠ 전역 CSS에 table td{font-size:13px !important; color:#1E293B !important}도 있어서,
+  //   font-size/color까지 !important 없이는 전부 강제로 13px/기본색으로 되돌아가고 있었음
+  //   (computed style로 직접 확인해서 발견). 폰트 크기와 강조색 지정에도 !important 적용.
+  var tdL='padding:6px 8px;text-align:left !important;font-size:11px !important;border-bottom:1px solid #F8FAFC;word-break:break-word;';
+  var tdC='padding:6px 8px;text-align:center !important;font-size:11px !important;border-bottom:1px solid #F8FAFC;';
+  var tdR='padding:6px 8px;text-align:right !important;font-size:11px !important;border-bottom:1px solid #F8FAFC;';
 
   // 인건비 원가 vs 청구가 비교
   if(A.laborRows.length){
     html+='<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:14px;">';
     html+='<div style="font-size:11.5px;font-weight:700;color:#334155;margin-bottom:10px;">인건비 — 내부단가 vs 견적단가</div>';
-    html+='<table style="width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed;">';
-    html+='<colgroup><col style="width:34%"><col style="width:12%"><col style="width:10%"><col style="width:22%"><col style="width:22%"></colgroup>';
+    html+='<table style="width:100%;border-collapse:collapse;table-layout:fixed;">';
+    html+='<colgroup><col style="width:42%"><col style="width:10%"><col style="width:8%"><col style="width:20%"><col style="width:20%"></colgroup>';
     html+='<thead><tr>'
-      +'<th style="'+thC+'text-align:left;">역할</th>'
+      +'<th style="'+thC+'">역할</th>'
       +'<th style="'+thC+'">등급</th>'
       +'<th style="'+thC+'">MM</th>'
-      +'<th style="'+thC+'color:#991B1B;">내부단가</th>'
-      +'<th style="'+thC+'color:#1D4ED8;">견적단가</th>'
+      +'<th style="'+thC+'color:#991B1B !important;">내부단가</th>'
+      +'<th style="'+thC+'color:#1D4ED8 !important;">견적단가</th>'
       +'</tr></thead><tbody>';
     A.laborRows.forEach(function(r){
-      html+='<tr><td style="padding:6px 8px;border-bottom:1px solid #F8FAFC;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+r.role.replace(/</g,'&lt;')+'</td>'
-        +'<td style="padding:6px 8px;text-align:center;border-bottom:1px solid #F8FAFC;">'+r.grade.replace(/</g,'&lt;')+'</td>'
-        +'<td style="padding:6px 8px;text-align:center;border-bottom:1px solid #F8FAFC;">'+r.qty+'</td>'
-        +'<td style="padding:6px 8px;text-align:right;color:#991B1B;border-bottom:1px solid #F8FAFC;">'+_qtWon(r.cost)+'</td>'
-        +'<td style="padding:6px 8px;text-align:right;color:#1D4ED8;border-bottom:1px solid #F8FAFC;">'+_qtWon(r.quoted)+'</td></tr>';
+      html+='<tr><td style="'+tdL+'">'+r.role.replace(/</g,'&lt;')+'</td>'
+        +'<td style="'+tdC+'">'+r.grade.replace(/</g,'&lt;')+'</td>'
+        +'<td style="'+tdC+'">'+r.qty+'</td>'
+        +'<td style="'+tdR+'color:#991B1B !important;">'+_qtWon(r.cost)+'</td>'
+        +'<td style="'+tdR+'color:#1D4ED8 !important;">'+_qtWon(r.quoted)+'</td></tr>';
     });
-    html+='<tr><td colspan="3" style="padding:7px 8px;font-weight:700;color:#334155;">합계</td>'
-      +'<td style="padding:7px 8px;text-align:right;font-weight:800;color:#991B1B;">'+_qtWon(A.laborCostInternal)+'</td>'
-      +'<td style="padding:7px 8px;text-align:right;font-weight:800;color:#1D4ED8;">'+_qtWon(A.laborQuoted)+'</td></tr>';
+    html+='<tr><td colspan="3" style="padding:7px 8px;font-size:11px !important;font-weight:700;color:#334155 !important;">합계</td>'
+      +'<td style="padding:7px 8px;text-align:right !important;font-size:11px !important;font-weight:800;color:#991B1B !important;">'+_qtWon(A.laborCostInternal)+'</td>'
+      +'<td style="padding:7px 8px;text-align:right !important;font-size:11px !important;font-weight:800;color:#1D4ED8 !important;">'+_qtWon(A.laborQuoted)+'</td></tr>';
     html+='</tbody></table></div>';
   }
 
@@ -26064,26 +26123,26 @@ function qt_renderCostAnalysis(){
   html+='<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:14px;">';
   html+='<div style="font-size:11.5px;font-weight:700;color:#334155;margin-bottom:10px;">매입 항목 상세 <span style="font-weight:600;color:#94A3B8;">('+A.purchaseItems.length+'건)</span></div>';
   if(!A.purchaseItems.length){
-    html+='<div style="text-align:center;color:#94A3B8;font-size:11.5px;padding:14px 0;">등록된 매입 항목이 없습니다.</div>';
+    html+='<div style="text-align:center;color:#94A3B8;font-size:11px;padding:14px 0;">등록된 매입 항목이 없습니다.</div>';
   } else {
-    html+='<table style="width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed;">';
-    html+='<colgroup><col style="width:18%"><col style="width:34%"><col style="width:12%"><col style="width:12%"><col style="width:24%"></colgroup>';
+    html+='<table style="width:100%;border-collapse:collapse;table-layout:fixed;">';
+    html+='<colgroup><col style="width:16%"><col style="width:38%"><col style="width:10%"><col style="width:10%"><col style="width:26%"></colgroup>';
     html+='<thead><tr>'
-      +'<th style="'+thC+'text-align:left;">구분</th>'
-      +'<th style="'+thC+'text-align:left;">품목</th>'
+      +'<th style="'+thC+'">구분</th>'
+      +'<th style="'+thC+'">품목</th>'
       +'<th style="'+thC+'">수량</th>'
       +'<th style="'+thC+'">단위</th>'
-      +'<th style="'+thC+'color:#991B1B;">매입금액</th>'
+      +'<th style="'+thC+'color:#991B1B !important;">매입금액</th>'
       +'</tr></thead><tbody>';
     A.purchaseItems.forEach(function(p){
-      html+='<tr><td style="padding:6px 8px;border-bottom:1px solid #F8FAFC;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(p.cat||'-').replace(/</g,'&lt;')+'</td>'
-        +'<td style="padding:6px 8px;border-bottom:1px solid #F8FAFC;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+p.item.replace(/</g,'&lt;')+'</td>'
-        +'<td style="padding:6px 8px;text-align:center;border-bottom:1px solid #F8FAFC;">'+(p.qty||'-')+'</td>'
-        +'<td style="padding:6px 8px;text-align:center;border-bottom:1px solid #F8FAFC;">'+(p.unit||'-')+'</td>'
-        +'<td style="padding:6px 8px;text-align:right;color:#991B1B;font-weight:600;border-bottom:1px solid #F8FAFC;">'+_qtWon(p.amount)+'</td></tr>';
+      html+='<tr><td style="'+tdL+'">'+(p.cat||'-').replace(/</g,'&lt;')+'</td>'
+        +'<td style="'+tdL+'">'+p.item.replace(/</g,'&lt;')+'</td>'
+        +'<td style="'+tdC+'">'+(p.qty||'-')+'</td>'
+        +'<td style="'+tdC+'">'+(p.unit||'-')+'</td>'
+        +'<td style="'+tdR+'color:#991B1B !important;font-weight:600;">'+_qtWon(p.amount)+'</td></tr>';
     });
-    html+='<tr><td colspan="4" style="padding:7px 8px;font-weight:700;color:#334155;">합계</td>'
-      +'<td style="padding:7px 8px;text-align:right;font-weight:800;color:#991B1B;">'+_qtWon(A.purchaseTotal)+'</td></tr>';
+    html+='<tr><td colspan="4" style="padding:7px 8px;font-size:11px !important;font-weight:700;color:#334155 !important;">합계</td>'
+      +'<td style="padding:7px 8px;text-align:right !important;font-size:11px !important;font-weight:800;color:#991B1B !important;">'+_qtWon(A.purchaseTotal)+'</td></tr>';
     html+='</tbody></table>';
   }
   html+='</div></div>';
