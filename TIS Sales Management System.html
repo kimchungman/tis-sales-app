@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-071 -->
+<!-- v20260728-071 변경사항: 견적서 검토요청·검토이력 기능 신설. (1) 모달 하단 버튼 순서를 검토요청→견적검토PDF→PDF미리보기→저장→취소로 재배치, 검토요청 버튼 신설. (2) 검토요청 팝업 - 받는사람은 접속 담당자의 소속팀 팀원만 표시(팀장 우선정렬), 지정인 칩 추가로 팀 외/외부 인원도 함께 발송 가능, 담당자 의견 입력(줄바꿈 포함 메일에 그대로 반영, white-space CSS 대신 명시적 &lt;br&gt; 변환으로 아웃룩 등 메일클라이언트 호환성 확보), ESC로 팝업 닫기. 발송 시 Graph API 메일 발송 + 관리자설정 발송이력에 "검토요청" 유형으로 기록. (3) ⑤ 검토이력 탭 신설 - 발송이력 목록 + 댓글 스레드(답변 대상 지정 가능). 새 댓글 등록 시 담당자(견적 작성자)에게, 답변 시 원댓글 작성자에게 알림메일 자동 발송(자기 자신에게는 발송 안 함). 탭에 안읽음 표시(빨간 닷) - 새 이벤트(발송/댓글) 발생 시 담당자별로 표시되고, 탭을 열면 즉시 사라짐(담당자별 최종열람시각 저장). (4) 저장 안정성 - 검토요청/댓글 데이터는 견적 저장 로직에 전혀 관여하지 않는 별도 필드(reviewSendLog/reviewComments/reviewLastSeen)로 두어, 기존 저장(Object.assign) 흐름이 자동으로 보존하도록 설계 - 실제 일반 저장 후에도 데이터 유지 확인. 무거운 폼 재저장 대신 가벼운 qt_spSaveAll만 사용해 견적 상태(초안 등)를 건드리지 않음. (5) 검증 중 실제 버그 발견·수정 - 소속팀 조회가 TEAMS 배열을 우선 신뢰하다 보니 TEAMS와 TEAM_REPS가 어긋나면(팀은 있는데 목록엔 없는 경우) 소속팀을 못 찾던 취약점을 TEAM_REPS 키 기준으로 강화. 자기 자신이 남긴 댓글로 자신의 탭에 닷이 잠깐 뜨는 부작용도 발견해 자동 읽음처리로 개선. 실제 실행으로 소속팀 필터링, 발송+이력기록, 댓글→담당자 알림, 답변→원댓글작성자 알림, 자기자신 예외, 안읽음 닷 표시/해제, 저장 후 데이터 보존까지 전부 확인. 기존 블록타입/병합삭제/이력연결/내부인건비/원가분석 회귀 없음도 재확인. 참고: 메일 안 "앱에서 확인하기" 링크로 특정 견적을 자동으로 여는 딥링크 처리는 이번 범위에 포함 안 됨(추후 별도 작업 필요). -->
 <!-- TIS-VERSION: 20260728-070 -->
 <!-- v20260728-070 변경사항: 최종검토 원가분석의 내부인건비 하위목록 표시 개선 - 등급이 원래도 표시는 되고 있었지만 "홍길동 차장 (중급 3MM)"처럼 괄호 속에 묻혀 눈에 잘 안 띄었음. 부서/이름/직급과 동일한 구분자(·)로 나란히 놓아 "개발1팀 · 홍길동 차장 · 중급 (3MM)"처럼 등급이 명확히 구분되도록 수정, MM은 수량이라 괄호로 유지. 화면판·PDF판 둘 다 적용, 실제 렌더링 결과로 확인. 기존 블록 회귀 없음 확인. -->
 <!-- TIS-VERSION: 20260728-069 -->
@@ -23217,7 +23219,7 @@ function qtRenderPreview(){
   <div style="padding:0 20px;border-bottom:1px solid #E2E8F0;display:flex;align-items:center;justify-content:space-between;gap:10px;">
     <div><div style="font-size:14px;font-weight:700;color:#0F172A;" id="mTtl">견적서 작성</div><div style="font-size:11px;color:#94A3B8;margin-top:1px;" id="mSub">새 견적서를 작성합니다</div></div>
     <div style="display:flex;align-items:center;gap:8px;">
-      <div class="mtabs"><div class="mtab on" onclick="qt_switchTab(this,'t1')">① 기본정보</div><div class="mtab" onclick="qt_switchTab(this,'t2')">② 견적항목</div><div class="mtab" onclick="qt_switchTab(this,'t3')">③ 조건·비고</div><div class="mtab" onclick="qt_switchTab(this,'t4')">④ 최종검토</div></div>
+      <div class="mtabs"><div class="mtab on" onclick="qt_switchTab(this,'t1')">① 기본정보</div><div class="mtab" onclick="qt_switchTab(this,'t2')">② 견적항목</div><div class="mtab" onclick="qt_switchTab(this,'t3')">③ 조건·비고</div><div class="mtab" onclick="qt_switchTab(this,'t4')">④ 최종검토</div><div class="mtab" onclick="qt_switchTab(this,'t5')" style="position:relative;">⑤ 검토이력<span id="qtReviewDot" style="display:none;position:absolute;top:2px;right:2px;width:6px;height:6px;border-radius:50%;background:#DC2626;"></span></div></div>
       <div class="close-x" onclick="qt_closeModal()">✕</div>
     </div>
   </div>
@@ -23350,12 +23352,48 @@ function qtRenderPreview(){
       <div id="costAnalysisArea" style="margin-top:16px;"></div>
       <div id="previewArea" style="margin-top:16px;"></div>
     </div>
+    <div id="t5" style="padding:16px 20px;display:none;">
+      <div id="reviewHistoryArea"></div>
+    </div>
   </div>
   <div style="padding:0 20px;border-top:1px solid #E2E8F0;display:flex;justify-content:space-between;align-items:center;background:#fff;">
     <div style="display:flex;gap:7px;align-items:center;"><button class="btn btn-sec btn-sm" id="draftBtn" onclick="qt_saveCurrentQuote(true)">임시저장</button><button class="btn btn-sm" id="deleteBtn" style="display:none;background:#DC2626;color:#fff;" onclick="qt_confirmDelete()">삭제</button></div>
-    <div style="display:flex;gap:7px;"><button class="btn btn-sec" onclick="qt_closeModal()">취소</button><button class="btn btn-sec" onclick="qt_openPdf()">PDF 미리보기</button><button class="btn btn-sec" onclick="qt_openReviewPdf()" title="원가분석 포함 - 내부 전용 문서" style="border-color:#FCA5A5;color:#991B1B;display:inline-flex;align-items:center;gap:4px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> 견적검토 PDF</button><button class="btn btn-pri" id="saveQtBtn" onclick="qt_saveCurrentQuote()">저장</button></div>
+    <div style="display:flex;gap:7px;"><button class="btn btn-sec" id="reviewReqBtn" onclick="qt_openReviewRequestPop()" style="border-color:#93C5FD;color:#1D4ED8;background:#EFF6FF;display:inline-flex;align-items:center;gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M4 4h16v12H5.17L4 17.17V4z"></path></svg> 검토요청</button><button class="btn btn-sec" onclick="qt_openReviewPdf()" title="원가분석 포함 - 내부 전용 문서" style="border-color:#FCA5A5;color:#991B1B;display:inline-flex;align-items:center;gap:4px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> 견적검토 PDF</button><button class="btn btn-sec" onclick="qt_openPdf()">PDF 미리보기</button><button class="btn btn-pri" id="saveQtBtn" onclick="qt_saveCurrentQuote()">저장</button><button class="btn btn-sec" onclick="qt_closeModal()">취소</button></div>
   </div>
 </div>
+</div>
+
+<!-- 검토요청 팝업 -->
+<div id="reviewReqPop" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:100001;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#fff;border-radius:14px;max-width:440px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;">
+    <div style="padding:18px 20px 14px;border-bottom:1px solid #E2E8F0;">
+      <div style="font-size:14px;font-weight:800;display:flex;align-items:center;gap:6px;">📨 견적서 검토요청</div>
+      <div style="font-size:11px;color:#64748B;margin-top:4px;">선택한 담당자에게 검토를 요청하는 메일이 발송됩니다</div>
+    </div>
+    <div style="padding:18px 20px;max-height:60vh;overflow-y:auto;">
+      <div style="margin-bottom:16px;">
+        <label style="font-size:11.5px;font-weight:700;color:#0F172A;margin-bottom:7px;display:block;">받는 사람<span style="color:#DC2626;margin-left:2px;">*</span></label>
+        <select id="reviewRecvSel" style="width:100%;border:1px solid #E2E8F0;border-radius:8px;padding:9px 11px;font-size:12px;font-family:inherit;color:#0F172A;"></select>
+        <div id="reviewRecvHint" style="font-size:10px;color:#94A3B8;margin-top:5px;"></div>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="font-size:11.5px;font-weight:700;color:#0F172A;margin-bottom:7px;display:block;">지정인 추가 <span style="font-weight:500;color:#94A3B8;">(선택, 다른 팀·외부 인원도 함께 발송)</span></label>
+        <div class="chip-box" id="reviewChipBox" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;"></div>
+        <div style="display:flex;gap:6px;margin-top:8px;">
+          <input type="text" id="reviewChipInput" placeholder="이름 또는 이메일 입력 후 Enter" style="flex:1;border:1px solid #E2E8F0;border-radius:7px;padding:7px 10px;font-size:11.5px;font-family:inherit;" onkeydown="if(event.key==='Enter'){event.preventDefault();qt_reviewAddChip();}">
+          <button type="button" onclick="qt_reviewAddChip()" style="border:1px solid #E2E8F0;background:#F8FAFC;border-radius:7px;padding:0 12px;font-size:11px;font-weight:700;color:#64748B;cursor:pointer;font-family:inherit;">추가</button>
+        </div>
+      </div>
+      <div>
+        <label style="font-size:11.5px;font-weight:700;color:#0F172A;margin-bottom:7px;display:block;">담당자 의견</label>
+        <textarea id="reviewOpinionTa" placeholder="예: 계약기간 및 특별할인 적용 관련해서 검토 부탁드립니다." maxlength="500" style="width:100%;border:1px solid #E2E8F0;border-radius:8px;padding:9px 11px;font-size:12px;font-family:inherit;color:#0F172A;resize:vertical;min-height:80px;line-height:1.5;"></textarea>
+      </div>
+    </div>
+    <div style="padding:14px 20px;border-top:1px solid #E2E8F0;display:flex;justify-content:flex-end;gap:7px;">
+      <button type="button" class="btn btn-sec" onclick="qt_closeReviewRequestPop()">취소</button>
+      <button type="button" class="btn btn-pri" id="reviewSendBtn" onclick="qt_sendReviewRequest()">발송</button>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ 견적서 관리 모달 끝 ═══ -->
@@ -25675,6 +25713,14 @@ function _qt_fillModalFromData(q,mode){
     qt_normalizeAlign(); // 금액 열 우측 정렬 보정
   }
   setTimeout(function(){ qt_calcTotal(); if(typeof qt_renderBlkNav==='function') qt_renderBlkNav(); },100);
+  // 검토요청/검토이력 - 저장된 적 없는 신규 견적(mode!=='edit'&&'ver')은 아직 quoteId가 없어 비활성화,
+  // 기존 견적은 안읽은 이벤트가 있으면 탭에 빨간 닷 표시
+  setTimeout(function(){
+    var canReview=(mode==='edit'||mode==='ver');
+    var btn=document.getElementById('reviewReqBtn');
+    if(btn){ btn.disabled=!canReview; btn.style.opacity=canReview?'1':'.45'; btn.style.pointerEvents=canReview?'':'none'; btn.title=canReview?'':'견적을 먼저 저장한 후 이용할 수 있습니다.'; }
+    if(typeof qt_updateReviewDot==='function') qt_updateReviewDot();
+  },60);
 }
 // 기본정보 필수값 검증: 미입력 필드에 하이라이트 + 첫 필드 포커스
 function qt_validateBasicInfo(){
@@ -25831,8 +25877,15 @@ function qt_switchTab(el,id){
       if(typeof qt_renderPreview==='function') qt_renderPreview();
     },30);
   }
+  // 검토이력 진입: 자동 렌더링 + 읽음 처리(닷 제거)
+  if(id==='t5'){
+    setTimeout(function(){
+      if(typeof qt_renderReviewHistoryTab==='function') qt_renderReviewHistoryTab();
+      if(typeof qt_markReviewSeen==='function') qt_markReviewSeen();
+    },30);
+  }
   document.querySelectorAll('.mtab').forEach(function(t){t.classList.remove('on');});
-  ['t1','t2','t3','t4'].forEach(function(tid){
+  ['t1','t2','t3','t4','t5'].forEach(function(tid){
     var el2=document.getElementById(tid);
     if(el2) el2.style.display='none';
   });
@@ -25842,6 +25895,324 @@ function qt_switchTab(el,id){
 }
 function qt_closeModal(){
   document.getElementById('writeModal').style.display='none';
+}
+
+// ══════════ 견적서 검토요청 · 검토이력 ══════════
+// ⚠ 신규 기능이므로 기존 견적 저장 로직(qt_saveCurrentQuote)의 폼 전체 재작성을 타지 않고,
+//   가벼운 qt_spSaveAll()만 재사용해 견적 상태(초안/저장됨 등)를 절대 건드리지 않는다.
+//   reviewSendLog/reviewComments/reviewLastSeen은 quoteData에 전혀 안 쓰이므로, 나중에
+//   폼으로 정식 저장해도 Object.assign이 그대로 보존한다(검증 완료).
+function _qtMyTeamName(rep){
+  rep=rep||(typeof session!=='undefined'&&session&&session.rep);
+  if(!rep||typeof TEAM_REPS==='undefined') return null;
+  // ⚠ TEAMS 배열을 우선 신뢰하면, TEAMS와 TEAM_REPS가 어긋난 경우(팀은 TEAM_REPS에
+  //   있는데 TEAMS 목록엔 빠진 경우 등) 소속팀을 못 찾는 취약점이 있어서, TEAM_REPS의
+  //   키 목록을 항상 우선 사용하도록 강화(TEAM_REPS이 실제 소속 정보의 원천이므로).
+  var teams=Object.keys(TEAM_REPS);
+  for(var i=0;i<teams.length;i++){
+    if((TEAM_REPS[teams[i]]||[]).indexOf(rep)>=0) return teams[i];
+  }
+  return null;
+}
+function qt_reviewRecipientOptions(){
+  var me=(typeof session!=='undefined'&&session&&session.rep)||'';
+  var team=_qtMyTeamName(me);
+  var members=team?(TEAM_REPS[team]||[]).filter(function(r){return r!==me;}):[];
+  members.sort(function(a,b){
+    var aL=(typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[a]==='팀장')?0:1;
+    var bL=(typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[b]==='팀장')?0:1;
+    return aL-bL;
+  });
+  return members.map(function(r){
+    return {name:r, email:(typeof _ntRepEmail==='function'?_ntRepEmail(r):''), isLeader:(typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[r]==='팀장')};
+  });
+}
+function qt_getCurrentQuoteObj(){
+  var qid=window._qt_editing_id;
+  if(!qid||typeof QUOTES==='undefined') return null;
+  return QUOTES.find(function(q){return q.id===qid;})||null;
+}
+function _qtEnsureReviewFields(q){
+  if(!q) return;
+  if(!Array.isArray(q.reviewSendLog)) q.reviewSendLog=[];
+  if(!Array.isArray(q.reviewComments)) q.reviewComments=[];
+  if(!q.reviewLastSeen||typeof q.reviewLastSeen!=='object') q.reviewLastSeen={};
+}
+function _qtFmtDT(iso){
+  if(!iso) return '';
+  try{
+    var d=new Date(iso);
+    var p=function(n){return (n<10?'0':'')+n;};
+    return d.getFullYear()+'.'+p(d.getMonth()+1)+'.'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes());
+  }catch(e){ return ''; }
+}
+function qt_hasUnreadReview(q){
+  if(!q) return false;
+  _qtEnsureReviewFields(q);
+  var events=[].concat(
+    q.reviewSendLog.map(function(x){return x.sentAt;}),
+    q.reviewComments.map(function(x){return x.createdAt;})
+  ).filter(Boolean);
+  if(!events.length) return false;
+  var latest=events.reduce(function(a,b){return (new Date(a))>(new Date(b))?a:b;});
+  var me=(typeof session!=='undefined'&&session&&session.rep)||'';
+  var seen=q.reviewLastSeen&&q.reviewLastSeen[me];
+  if(!seen) return true;
+  return new Date(latest)>new Date(seen);
+}
+function qt_updateReviewDot(){
+  var dot=document.getElementById('qtReviewDot');
+  if(!dot) return;
+  var q=qt_getCurrentQuoteObj();
+  dot.style.display=qt_hasUnreadReview(q)?'block':'none';
+}
+function qt_markReviewSeen(){
+  var q=qt_getCurrentQuoteObj();
+  if(!q) return;
+  _qtEnsureReviewFields(q);
+  var me=(typeof session!=='undefined'&&session&&session.rep)||'';
+  if(!me) return;
+  q.reviewLastSeen[me]=new Date().toISOString();
+  var dot=document.getElementById('qtReviewDot');
+  if(dot) dot.style.display='none';
+  if(typeof qt_spSaveAll==='function') qt_spSaveAll();
+}
+
+// ── 검토요청 팝업 ──
+window._qtReviewChips=[];
+function qt_openReviewRequestPop(){
+  if(!window._qt_editing_id){
+    if(typeof showToast==='function') showToast('견적을 먼저 저장한 후 이용할 수 있습니다.','warn');
+    return;
+  }
+  var opts=qt_reviewRecipientOptions();
+  var sel=document.getElementById('reviewRecvSel');
+  if(!opts.length){
+    sel.innerHTML='<option value="">소속 팀에 다른 담당자가 없습니다</option>';
+  } else {
+    sel.innerHTML=opts.map(function(o){
+      return '<option value="'+_qtEsc(o.name)+'">'+_qtEsc(o.name)+(o.isLeader?' (팀장)':'')+'</option>';
+    }).join('');
+  }
+  var team=_qtMyTeamName();
+  var hint=document.getElementById('reviewRecvHint');
+  hint.textContent=opts.length?('소속 팀('+team+') 팀원만 표시됩니다. 기본으로 팀장이 선택되어 있습니다.'):'소속 팀에 다른 담당자가 없습니다. 아래 지정인 추가로 발송해 주세요.';
+  window._qtReviewChips=[];
+  qt_reviewRenderChips();
+  var ta=document.getElementById('reviewOpinionTa'); if(ta) ta.value='';
+  document.getElementById('reviewReqPop').style.display='flex';
+}
+function qt_closeReviewRequestPop(){
+  document.getElementById('reviewReqPop').style.display='none';
+}
+document.addEventListener('keydown', function(e){
+  if(e.key==='Escape'){
+    var pop=document.getElementById('reviewReqPop');
+    if(pop && pop.style.display==='flex') qt_closeReviewRequestPop();
+  }
+});
+function qt_reviewAddChip(){
+  var inp=document.getElementById('reviewChipInput');
+  var v=(inp.value||'').trim();
+  if(!v) return;
+  if(window._qtReviewChips.indexOf(v)<0) window._qtReviewChips.push(v);
+  inp.value='';
+  qt_reviewRenderChips();
+}
+function qt_reviewRemoveChip(idx){
+  window._qtReviewChips.splice(idx,1);
+  qt_reviewRenderChips();
+}
+function qt_reviewRenderChips(){
+  var box=document.getElementById('reviewChipBox');
+  if(!box) return;
+  box.innerHTML=(window._qtReviewChips||[]).map(function(c,i){
+    return '<span style="display:flex;align-items:center;gap:5px;background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;border-radius:14px;padding:4px 6px 4px 10px;font-size:11px;font-weight:600;">'+_qtEsc(c)+'<span onclick="qt_reviewRemoveChip('+i+')" style="cursor:pointer;color:#93C5FD;font-weight:800;padding:0 2px;">×</span></span>';
+  }).join('');
+}
+async function qt_sendReviewRequest(){
+  var q=qt_getCurrentQuoteObj();
+  if(!q){ if(typeof showToast==='function') showToast('견적을 먼저 저장해 주세요.','warn'); return; }
+  var sel=document.getElementById('reviewRecvSel');
+  var recvName=sel?sel.value:'';
+  var recvEmail=recvName?(typeof _ntRepEmail==='function'?_ntRepEmail(recvName):''):'';
+  var extraChips=(window._qtReviewChips||[]).slice();
+  var toList=[], toNames=[];
+  if(recvEmail){ toList.push(recvEmail); toNames.push(recvName); }
+  var ccList=[];
+  extraChips.forEach(function(c){
+    if(c.indexOf('@')>0) ccList.push(c);
+    else { var em=(typeof _ntRepEmail==='function'?_ntRepEmail(c):''); if(em) ccList.push(em); }
+  });
+  if(!toList.length&&!ccList.length){
+    if(typeof showToast==='function') showToast('받는 사람을 선택하거나 지정인을 추가해 주세요.','warn');
+    return;
+  }
+  var opinion=(document.getElementById('reviewOpinionTa').value||'').trim();
+  var btn=document.getElementById('reviewSendBtn');
+  if(btn){ btn.disabled=true; btn.textContent='발송 중...'; }
+
+  var proj=q.proj||'', client=q.client||q.recv||'', qno=q.id||'';
+  var myName=(typeof session!=='undefined'&&session&&session.rep)||'';
+  var myTitle=(typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[myName])||'';
+  var appUrl=''; try{ appUrl=location.href.split('?')[0]; }catch(e){}
+  var link=appUrl+'?openQuote='+encodeURIComponent(qno);
+
+  var html=(typeof _mailBrandHeader==='function')?_mailBrandHeader():'';
+  var esc=(typeof _wkMailEsc==='function')?_wkMailEsc:function(s){return String(s==null?'':s);};
+  html+='<div style="padding:24px;font-family:\'Malgun Gothic\',sans-serif;">';
+  html+='<p style="font-size:13px;color:#0F172A;">안녕하세요, '+esc(myName)+(myTitle?' '+esc(myTitle):'')+'입니다.<br>아래 견적서 검토를 요청드립니다.</p>';
+  if(opinion){
+    html+='<div style="background:#EFF6FF;border-left:3px solid #2563EB;padding:12px 14px;margin:14px 0;border-radius:0 8px 8px 0;">'
+      +'<div style="font-size:11px;font-weight:700;color:#1D4ED8;margin-bottom:4px;">담당자 의견</div>'
+      +'<div style="font-size:12.5px;color:#334155;">'+esc(opinion).replace(/\n/g,'<br>')+'</div></div>';
+  }
+  html+='<div style="background:#F8FAFC;border-radius:8px;padding:14px 16px;margin-top:10px;font-size:12.5px;">'
+    +'<div style="display:flex;justify-content:space-between;padding:3px 0;"><span style="color:#64748B;">고객사</span><span>'+esc(client)+'</span></div>'
+    +'<div style="display:flex;justify-content:space-between;padding:3px 0;"><span style="color:#64748B;">견적번호</span><span>'+esc(qno)+'</span></div></div>';
+  html+='<a href="'+link+'" style="display:inline-block;margin-top:16px;background:#2563EB;color:#fff;padding:10px 18px;border-radius:8px;font-size:12.5px;font-weight:700;text-decoration:none;">앱에서 견적서 확인하기 →</a>';
+  html+='</div>';
+
+  var finalTo=toList.length?toList:[ccList[0]];
+  var finalCc=toList.length?ccList:ccList.slice(1);
+  var targetDesc=(toNames.concat(extraChips)).join(', ')||'-';
+  var subject='[TIS영업관리] 견적서 검토 요청 - '+proj;
+
+  var ok=true;
+  try{
+    ok=await _graphSendMail(finalTo, finalCc, subject, html, {type:'검토요청', targetDesc:targetDesc});
+  }catch(e){ ok=false; }
+  if(btn){ btn.disabled=false; btn.textContent='발송'; }
+  if(!ok){
+    if(typeof showToast==='function') showToast('❌ 발송에 실패했습니다. 잠시 후 다시 시도해주세요.','warn');
+    return;
+  }
+  _qtEnsureReviewFields(q);
+  q.reviewSendLog.push({
+    id:'rs'+Date.now(), to:toNames, cc:extraChips, opinion:opinion,
+    sentBy:myName, sentAt:new Date().toISOString()
+  });
+  if(typeof qt_spSaveAll==='function') await qt_spSaveAll();
+  qt_closeReviewRequestPop();
+  if(typeof showToast==='function') showToast('✅ '+(toNames[0]||extraChips[0])+' 님에게 검토요청 메일을 발송했습니다.');
+  if(typeof qt_renderReviewHistoryTab==='function') qt_renderReviewHistoryTab();
+  qt_updateReviewDot();
+}
+
+// ── 검토이력 탭 (발송이력 + 댓글) ──
+function _qtReviewNotifyTarget(q, replyToId, authorName){
+  if(replyToId){
+    var parent=(q.reviewComments||[]).find(function(c){return c.id===replyToId;});
+    if(parent && parent.author && parent.author!==authorName) return parent.author;
+    return null; // 자기 댓글에 스스로 답변한 경우 알림 대상 없음
+  }
+  if(q.rep && q.rep!==authorName) return q.rep;
+  return null;
+}
+function qt_renderReviewHistoryTab(){
+  var area=document.getElementById('reviewHistoryArea');
+  if(!area) return;
+  var q=qt_getCurrentQuoteObj();
+  if(!q){
+    area.innerHTML='<div style="text-align:center;color:#94A3B8;padding:40px 0;font-size:12px;">견적을 먼저 저장하면 검토이력을 사용할 수 있습니다.</div>';
+    return;
+  }
+  _qtEnsureReviewFields(q);
+
+  var html='<div style="font-size:12px;font-weight:800;color:#0F172A;margin-bottom:10px;">📨 검토요청 발송이력</div>';
+  if(!q.reviewSendLog.length){
+    html+='<div style="border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center;color:#94A3B8;font-size:11.5px;margin-bottom:22px;">아직 발송 내역이 없습니다.</div>';
+  } else {
+    html+='<div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:22px;">';
+    q.reviewSendLog.slice().reverse().forEach(function(r){
+      var toTxt=(r.to||[]).join(', ')||'(지정인만 발송)';
+      var ccTxt=(r.cc&&r.cc.length)?(' · 참조: '+r.cc.join(', ')):'';
+      html+='<div style="padding:10px 14px;border-bottom:1px solid #F1F5F9;font-size:11.5px;">'
+        +'<div style="font-weight:700;">'+_qtEsc(toTxt)+'에게 발송'+_qtEsc(ccTxt)+'</div>'
+        +'<div style="color:#94A3B8;font-size:10.5px;margin-top:2px;">'+_qtFmtDT(r.sentAt)+' · '+_qtEsc(r.sentBy||'')+'</div>'
+        +(r.opinion?'<div style="color:#64748B;font-size:10.5px;margin-top:5px;background:#F8FAFC;padding:6px 9px;border-radius:6px;white-space:pre-line;">'+_qtEscBr(r.opinion)+'</div>':'')
+        +'</div>';
+    });
+    html+='</div>';
+  }
+
+  html+='<div style="font-size:12px;font-weight:800;color:#0F172A;margin-bottom:10px;">💬 코멘트</div>';
+  html+='<div style="border:1px solid var(--border);border-radius:10px;padding:14px;">';
+  if(!q.reviewComments.length){
+    html+='<div style="text-align:center;color:#94A3B8;font-size:11.5px;padding:10px 0;">등록된 코멘트가 없습니다.</div>';
+  } else {
+    var byId={}; q.reviewComments.forEach(function(c){byId[c.id]=c;});
+    q.reviewComments.forEach(function(c){
+      var parent=c.replyToId?byId[c.replyToId]:null;
+      html+='<div style="display:flex;gap:10px;margin-bottom:14px;">'
+        +'<div style="width:30px;height:30px;border-radius:50%;background:#0F172A;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">'+_qtEsc((c.author||'?').slice(0,1))+'</div>'
+        +'<div style="flex:1;">'
+        +'<div style="display:flex;align-items:baseline;gap:6px;"><span style="font-size:11.5px;font-weight:700;">'+_qtEsc(c.author||'')+'</span><span style="font-size:10px;color:#94A3B8;">'+_qtFmtDT(c.createdAt)+'</span></div>'
+        +'<div style="font-size:12px;color:#0F172A;margin-top:3px;line-height:1.6;white-space:pre-line;">'+_qtEscBr(c.text||'')+'</div>'
+        +(parent?'<div style="font-size:10px;color:#2563EB;margin-top:4px;">↳ '+_qtEsc(parent.author||'')+' 님 댓글에 대한 답변</div>':'')
+        +'<span onclick="qt_setReplyTarget(\''+c.id+'\',\''+_qtEsc(c.author||'').replace(/'/g,"\\'")+'\')" style="display:inline-block;margin-top:5px;font-size:10px;font-weight:700;color:#64748B;cursor:pointer;">↩ 답변</span>'
+        +'</div></div>';
+    });
+  }
+  html+='</div>';
+  html+='<div id="qtReplyBanner" style="display:none;align-items:center;justify-content:space-between;background:#EFF6FF;border-radius:7px;padding:6px 10px;margin-top:14px;font-size:10.5px;color:#1D4ED8;"><span id="qtReplyBannerTxt"></span><span onclick="qt_clearReplyTarget()" style="cursor:pointer;font-weight:800;">×</span></div>';
+  html+='<div style="display:flex;gap:8px;margin-top:8px;">'
+    +'<textarea id="qtCmtInput" placeholder="댓글을 입력하세요..." style="flex:1;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:11.5px;font-family:inherit;resize:none;min-height:38px;"></textarea>'
+    +'<button onclick="qt_submitReviewComment()" style="background:#2563EB;color:#fff;border:none;border-radius:8px;padding:0 16px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;">등록</button></div>'
+    +'<div style="font-size:10px;color:#94A3B8;margin-top:6px;">💡 댓글이 달리면 담당자(견적 작성자)에게 알림·메일이 발송되고, 답변하면 원댓글 작성자에게 다시 알림·메일이 발송됩니다.</div>';
+
+  area.innerHTML=html;
+}
+window._qtReplyTo=null;
+function qt_setReplyTarget(commentId, authorName){
+  window._qtReplyTo=commentId;
+  var banner=document.getElementById('qtReplyBanner');
+  var txt=document.getElementById('qtReplyBannerTxt');
+  if(banner&&txt){ txt.textContent=authorName+' 님 댓글에 답변 작성 중'; banner.style.display='flex'; }
+  var ta=document.getElementById('qtCmtInput'); if(ta) ta.focus();
+}
+function qt_clearReplyTarget(){
+  window._qtReplyTo=null;
+  var banner=document.getElementById('qtReplyBanner');
+  if(banner) banner.style.display='none';
+}
+function qt_submitReviewComment(){
+  var rid=window._qtReplyTo;
+  qt_clearReplyTarget();
+  qt_addReviewComment(rid);
+}
+async function qt_addReviewComment(replyToId){
+  var q=qt_getCurrentQuoteObj();
+  if(!q) return;
+  var ta=document.getElementById('qtCmtInput');
+  var text=(ta?ta.value:'').trim();
+  if(!text) return;
+  _qtEnsureReviewFields(q);
+  var me=(typeof session!=='undefined'&&session&&session.rep)||'';
+  var newC={id:'rc'+Date.now(), author:me, authorEmail:(typeof _ntRepEmail==='function'?_ntRepEmail(me):''), text:text, createdAt:new Date().toISOString(), replyToId:replyToId||null};
+  q.reviewComments.push(newC);
+  if(ta) ta.value='';
+  qt_renderReviewHistoryTab();
+  if(typeof qt_markReviewSeen==='function') qt_markReviewSeen(); // 방금 직접 작성했으므로 본인 기준으로는 이미 읽은 상태로 처리
+  if(typeof qt_spSaveAll==='function') await qt_spSaveAll();
+
+  var target=_qtReviewNotifyTarget(q, replyToId, me);
+  if(target){
+    var targetEmail=(typeof _ntRepEmail==='function'?_ntRepEmail(target):'');
+    if(targetEmail){
+      var esc2=(typeof _wkMailEsc==='function')?_wkMailEsc:function(s){return String(s==null?'':s);};
+      var html2=(typeof _mailBrandHeader==='function')?_mailBrandHeader():'';
+      html2+='<div style="padding:24px;font-family:\'Malgun Gothic\',sans-serif;">';
+      html2+='<p style="font-size:13px;color:#0F172A;">'+esc2(me)+'님이 견적서 "'+esc2(q.proj||'')+'"에 '+(replyToId?'답변을':'코멘트를')+' 남겼습니다.</p>';
+      html2+='<div style="background:#F8FAFC;border-radius:8px;padding:12px 14px;margin-top:10px;font-size:12.5px;">'+esc2(text).replace(/\n/g,'<br>')+'</div>';
+      var appUrl2=''; try{ appUrl2=location.href.split('?')[0]; }catch(e){}
+      html2+='<a href="'+appUrl2+'?openQuote='+encodeURIComponent(q.id)+'" style="display:inline-block;margin-top:16px;background:#2563EB;color:#fff;padding:10px 18px;border-radius:8px;font-size:12.5px;font-weight:700;text-decoration:none;">앱에서 확인하기 →</a></div>';
+      try{
+        await _graphSendMail([targetEmail], [], '[TIS영업관리] 견적서 코멘트 알림 - '+(q.proj||''), html2, {type:'검토코멘트', targetDesc:target, skipLog:true});
+      }catch(e){}
+    }
+  }
+  if(typeof showToast==='function') showToast(target?('🔔 '+target+' 님에게 알림을 보냈습니다.'):'댓글이 등록되었습니다.');
 }
 function qt_closeSetting(){
   document.getElementById('settingModal').classList.add('hidden');
