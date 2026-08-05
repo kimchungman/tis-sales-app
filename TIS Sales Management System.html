@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-083 -->
+<!-- v20260728-083 변경사항: 실사용 중 발견된 치명적 근본 원인 수정 - _spLoadItem이 SharePoint 리스트 전체(실사례 7600+건)를 페이지네이션하며 클라이언트에서 Title로 찾는 방식이었는데, 리스트가 커질수록(70페이지 이상) 페이지 하나만 네트워크 오류(ERR_CONNECTION_RESET 등, 실제 콘솔에서 확인됨)로 실패해도 _spFetchAll이 그때까지 모은 것만 조용히 반환(catch(e){break;})하고 _spLoadItem도 그 결과를 그대로 swallow해서 "진짜 데이터 없음"과 "조회 실패"를 구분 못한 채 null을 돌려주고 있었음. 저장 직전 "서버 최신 확인" 단계가 이 함수를 쓰기 때문에, 이 조회가 조용히 실패하면 최악의 경우 다른 담당자의 데이터가 반영 안 된 채로 저장이 그냥 진행될 위험이 있었음(다른 담당자가 등록한 견적이 안 보이는 문제의 유력한 근본 원인). 서버측 필터(Title 조건)로 필요한 항목만 직접 요청하도록 재작성 - 수천 건짜리 리스트를 훑을 필요 자체를 없애 요청 1~2번으로 끝나 훨씬 빠르고 안정적이며, 실패 시엔 더 이상 swallow하지 않고 에러를 그대로 던져 호출부(대부분 이미 try/catch로 대비됨, 2곳은 안전장치 추가)가 "조회 실패"를 명확히 구분하도록 함. _spFetchAll도 페이지 실패 시 최소한 콘솔 경고를 남기도록 개선. 실제 실행으로 필터링된 조회/정상 not-found/네트워크실패시 에러 전파/qt_spSaveAll의 정상 경고 감지/분할저장 로드까지 전부 확인, 기존 기능 회귀 없음 확인. -->
 <!-- TIS-VERSION: 20260728-082 -->
 <!-- v20260728-082 변경사항: 동기화 진단 도구(qt_diagSync) 강화 - "서버엔 있는데 화면엔 안 보이는" 항목에 대해 삭제기록(tombstone) 시각을 서버/이 기기 양쪽 다 조회해서, 삭제 처리 때문에 걸러진 것인지(원인 명확) 아니면 원인불명(추가 확인 필요)인지 바로 구분해서 보여주도록 개선. 실제 삭제기록 있는 시나리오로 "서버 삭제기록이 더 최신(삭제된 것으로 처리됨)"이 정확히 표시되는 것 확인. -->
 <!-- TIS-VERSION: 20260728-081 -->
@@ -12617,7 +12619,13 @@ async function _spFetchAll(url) {
       if(!res || !res.value) break;
       allItems = allItems.concat(res.value);
       nextUrl = res['odata.nextLink'] || res['@odata.nextLink'] || null;
-    } catch(e) { break; }
+    } catch(e) {
+      // ⚠ 예전엔 여기서 완전히 조용히 break해서, 페이지 하나만 네트워크 오류로 실패해도
+      //   이미 모은 것만 마치 전체인 것처럼 반환하고 있었음(호출부는 실패 여부를 알 방법이
+      //   없었음). 적어도 콘솔에 명확히 남겨서 디버깅 시 "일부만 가져온 것"임을 알 수 있게 함.
+      console.warn('[_spFetchAll] 페이지 조회 중 오류 발생 - 지금까지 모은 '+allItems.length+'건만 반환됨(불완전할 수 있음)', e);
+      break;
+    }
   }
   return { value: allItems };
 }
@@ -13141,32 +13149,43 @@ async function _spSaveItem(dtype, dkey, payload, _retry) {
 // ── 아이템 로드 ─────────
 async function _spLoadItem(dtype, dkey) {
   if (!window._isSPReady) return null;
-  try {
-    var _ldkey = (typeof _sanitizeDKey==='function') ? _sanitizeDKey(dkey) : dkey;
-    var _ltitle = dtype + '_' + _ldkey;
-    const qUrl = _lUrl() + '?$select=Id,Title,Payload&$top=500';
-    const res  = await _spFetchAll(qUrl);
-    const items2 = (res && res.value) || [];
-    // 분할 저장 인덱스 확인
-    var _idxItem = items2.find(function(i){ return i.Title === _ltitle + '_idx'; });
-    if(_idxItem){
-      try{
-        var _idx = JSON.parse(_idxItem.Payload||'{}');
-        var _parts = _idx._parts||0;
-        var _fullStr = '';
-        for(var _ci=0; _ci<_parts; _ci++){
-          var _partItem = items2.find(function(i){ return i.Title === _ltitle + '_part' + _ci; });
-          if(_partItem){ _fullStr += JSON.parse(_partItem.Payload||'{}')._chunk||''; }
-        }
-        return _fullStr ? JSON.parse(_fullStr) : null;
-      }catch(e){ console.warn('[spLoadItem] 분할 로드 실패', e); }
+  var _ldkey = (typeof _sanitizeDKey==='function') ? _sanitizeDKey(dkey) : dkey;
+  var _ltitle = dtype + '_' + _ldkey;
+  var _esc = function(s){ return String(s).replace(/'/g,"''"); };
+  // ⚠ 치명적 버그였음(실사용 중 확인): 예전엔 리스트 전체(수천 건, 확인된 사례로는 7600+건)를
+  //   $skiptoken으로 페이지네이션하며 전부 가져온 뒤 Title을 클라이언트에서 찾는 방식이었음.
+  //   리스트가 커질수록 페이지 수가 늘어나고(70페이지 이상), 그중 단 한 페이지라도 네트워크
+  //   오류(ERR_CONNECTION_RESET 등)로 실패하면 _spFetchAll이 그때까지 모은 것만 조용히
+  //   반환(catch(e){break;})하고, _spLoadItem도 그 결과를 그대로 swallow해서 "진짜 데이터
+  //   없음"과 "조회 실패"를 구분 못한 채 null을 돌려주고 있었음. 저장 직전 "서버 최신 확인"
+  //   단계가 바로 이 함수를 쓰기 때문에, 이 조회가 조용히 실패하면 최악의 경우 다른 담당자의
+  //   데이터가 반영 안 된 채로 저장이 그냥 진행될 위험까지 있었음.
+  //   서버측 필터(Title 조건)로 필요한 항목만 직접 요청하도록 바꿔서 수천 건짜리 리스트를
+  //   훑을 필요 자체를 없애고(요청 1~2번으로 끝남 - 훨씬 빠르고 안정적), 실패하면 이제
+  //   swallow하지 않고 그대로 에러를 던져 호출부가 "조회 실패"를 명확히 구분할 수 있게 한다.
+  var qUrl = _lUrl() + "?$select=Id,Title,Payload&$filter=(Title eq '" + _esc(_ltitle) + "') or (Title eq '" + _esc(_ltitle) + "_idx')&$top=5";
+  const res = await _spFetch(qUrl);
+  const items2 = (res && res.value) || [];
+  var _idxItem = items2.find(function(i){ return i.Title === _ltitle + '_idx'; });
+  if(_idxItem){
+    var _idx = JSON.parse(_idxItem.Payload||'{}');
+    var _parts = _idx._parts||0;
+    if(_parts>0){
+      var partsUrl = _lUrl() + "?$select=Id,Title,Payload&$filter=startswith(Title,'" + _esc(_ltitle+'_part') + "')&$top=" + (_parts+5);
+      const partsRes = await _spFetch(partsUrl);
+      const partItems = (partsRes && partsRes.value) || [];
+      var _fullStr = '';
+      for(var _ci=0; _ci<_parts; _ci++){
+        var _partItem = partItems.find(function(i){ return i.Title === _ltitle + '_part' + _ci; });
+        if(_partItem){ _fullStr += JSON.parse(_partItem.Payload||'{}')._chunk||''; }
+      }
+      return _fullStr ? JSON.parse(_fullStr) : null;
     }
-    // 일반 단일 아이템
-    const item = items2.find(function(i){ return i.Title === _ltitle; });
-    if(!item) return null;
-    var _pl = item.Payload || item.payload || null;
-    return _pl ? JSON.parse(_pl) : null;
-  } catch (e) { return null; }
+  }
+  const item = items2.find(function(i){ return i.Title === _ltitle; });
+  if(!item) return null;
+  var _pl = item.Payload || item.payload || null;
+  return _pl ? JSON.parse(_pl) : null;
 }
 
 async function _spLoadTeamSnap(team, date) {
@@ -13578,7 +13597,7 @@ async function _spCleanupOldKeys(){
 }
 
 async function _spLoadSettings() {
-  const cfg = await _spLoadItem('settings', 'global');
+  const cfg = await _spLoadItem('settings', 'global').catch(function(){ return null; });
   if (!cfg) return;
 
   // 테마
@@ -13825,7 +13844,7 @@ function _renderHL() {
 async function _loadHistDate(date) {
   appConfirm(date + ' 데이터를 불러오시겠습니까?', async function(){
   if (window._isSPReady) {
-    const snap = await _spLoadItem('snapshot', date);
+    const snap = await _spLoadItem('snapshot', date).catch(function(){ return null; });
     if (!snap) { showToast('해당 날짜 데이터 없음', 'warn'); return; }
     _applySnap(snap, date);
   } else {
