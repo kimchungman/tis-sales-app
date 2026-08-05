@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-080 -->
+<!-- v20260728-080 변경사항: 검토요청 메일 링크에 캐시무력화 파라미터(&_v=타임스탬프) 추가. 메일 앱 내장 인앱 브라우저(웹뷰)는 평소 쓰는 브라우저와 캐시가 완전히 분리되어 있어서, 평소 브라우저에서 강력 새로고침해도 그쪽엔 전혀 영향을 안 주는 문제가 있었음(일반 접속은 v79인데 메일 링크로 열면 여전히 v78이 뜨던 원인 - 결국 인앱 브라우저가 옛 버전을 캐시해둔 채 그걸 실행한 결과로 v079의 로그인-대기 수정도 적용이 안 됐던 것). 매번 바뀌는 값을 링크에 붙여 어떤 브라우저/웹뷰로 열든 캐시된 옛 버전이 아니라 서버 최신 파일을 강제로 받아오도록 함. 실제 발송 함수로 링크에 파라미터가 정상 포함되고 openQuote 파싱도 그대로 정상 동작하는 것 확인, 기존 기능 회귀 없음도 재확인. -->
 <!-- TIS-VERSION: 20260728-079 -->
 <!-- v20260728-079 변경사항: 딥링크 순서 버그 발견·수정 - 로그인 화면이 아직 떠 있는 동안 SharePoint 연결이 백그라운드로 먼저 끝날 수 있는 구조(로그인창을 안 막으려고 의도된 설계)라서, 그 시점에 바로 견적서 모달을 열어버려 로그인 화면 위에 모달만 떠 있는 것처럼 보이고 모달을 닫으면 그제서야 로그인 화면이 드러나던 문제. session이 실제로 채워질 때(로그인 진짜 완료 시점, session.role이 locked가 아니게 되는 시점)까지 먼저 폴링 대기한 뒤에 견적서를 열도록 수정(최대 5분 대기). 실제로 로그인 전엔 모달이 절대 안 열리고 로그인 완료 시점에 정확히 열리는 것, 일반 접속(파라미터 없음)은 여전히 영향 없는 것(0.5ms 즉시 종료) 모두 재현·확인 완료. -->
 <!-- TIS-VERSION: 20260728-078 -->
@@ -26145,7 +26147,13 @@ async function qt_sendReviewRequest(){
   var myName=(typeof session!=='undefined'&&session&&session.rep)||'';
   var myTitle=(typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[myName])||'';
   var appUrl=''; try{ appUrl=location.href.split('?')[0]; }catch(e){}
-  var link=appUrl+'?openQuote='+encodeURIComponent(qno);
+  // ⚠ 메일을 여는 브라우저(특히 메일 앱 내장 인앱 브라우저/웹뷰)는 평소 쓰는 브라우저와
+  //   캐시가 완전히 분리되어 있어서, 평소 브라우저에서 새로고침해도 전혀 영향을 안 준다.
+  //   그 결과 인앱 브라우저가 옛 버전을 캐시해둔 채로 계속 그걸 보여줄 수 있음(로그인 전에
+  //   견적서가 먼저 뜨는 것처럼 보였던 것도 결국 옛 버전 코드가 실행된 결과였을 가능성이 큼).
+  //   링크에 매번 바뀌는 값(현재 시각)을 붙여 캐시를 무력화 - 어떤 브라우저/웹뷰로 열든
+  //   "새 URL"로 인식해 캐시된 옛 버전이 아니라 서버의 최신 파일을 받아오게 강제한다.
+  var link=appUrl+'?openQuote='+encodeURIComponent(qno)+'&_v='+Date.now();
 
   var html=(typeof _mailBrandHeader==='function')?_mailBrandHeader():'';
   var esc=(typeof _wkMailEsc==='function')?_wkMailEsc:function(s){return String(s==null?'':s);};
