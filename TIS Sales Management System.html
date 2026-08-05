@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-064 -->
+<!-- v20260728-064 변경사항: 원가분석 관련 영역의 자물쇠 이모지(🔒)를 앱 전반에서 쓰는 얇은 선(stroke) 스타일 SVG 아이콘으로 통일 - 매입 추가 버튼, 견적검토 PDF 버튼, 매입 블록 내부 경고 배너, 원가분석 헤더(화면·PDF 둘 다), 단가설정 내부단가 고정 카테고리 배지까지 총 6곳 전부 교체. 재사용 가능한 _qtLockSvg() 헬퍼 함수 신설. 실제 렌더링 결과에서 이모지 잔존 없음, SVG 정상 삽입 6곳 전수 확인, 계산 정확성 회귀 없음 확인. -->
+<!-- TIS-VERSION: 20260728-063 -->
+<!-- v20260728-063 변경사항: 원가분석 디자인 최종 반영(시안 v3 승인 반영). (1) 핵심지표를 색배경 박스 4개 나열 방식에서 박스/배경 없이 숫자·라벨만 두는 미니멀한 방식(상단 구분선+카드 사이 세로선만)으로 변경. (2) 매출/원가를 좌우 분할 레이아웃으로 전환, 각 컬럼 상단(헤더 영역)에 총계를 고정 배치해 세부 항목 줄 수가 서로 달라도 두 총계 위치가 항상 일치하도록 함. (3) 매출/원가 라벨 폰트 11.5px→13px로 확대. (4) 회색 라벨류가 PC에서 흐릿하다는 피드백 반영해 짙은 톤(#1E293B)으로 전환, 정말 부차적인 정보(매입 세부항목)만 옅은 회색 유지. (5) 특별할인 금액 앞 '－' 기호 제거(색상만으로 차감 의미 전달). 화면판·PDF판 동일하게 적용(PDF는 인쇄 안정성을 위해 좌우분할을 table 기반으로 구현). 실제 실행으로 계산 정확성·기존 블록 회귀·이력 연결 전부 재확인. -->
+<!-- TIS-VERSION: 20260728-062 -->
+<!-- v20260728-062 변경사항: (1) 치명적 버그 2건 발견·수정 - 견적을 그냥 "수정"만 해도 이력(parentId) 연결이 끊겨 새 견적처럼 보이던 문제: quoteData 기본값에 parentId:null이 박혀있어 edit 모드에서 Object.assign으로 기존 항목을 덮어쓸 때 이미 재견적으로 연결되어 있던 항목(round2 이상)의 parentId까지 리셋되고 있었음 - edit 모드에서는 기존 parentId/round/createdAt을 보존하도록 수정. 추가로 발견한 구조적 문제: 재견적이 "직전 차수"를 parentId로 저장해서 3차수 이상 연쇄되면 그룹이 끊기던 것도 항상 최초 원본(root)을 가리키도록 통일해 함께 해결 - round1→2→3 전부 하나의 이력 그룹으로 정상 확인. (2) 최종검토 원가분석 전면 개편 - 인건비/매입/금액구성 3개로 나뉜 표를 표 태그 없는 단일 매출→원가 흐름형 레이아웃으로 통합, 인건비 역할별 나열 제거하고 내부단가/견적단가 합계만 표시, 매입은 원가 섹션 안에 자연스러운 하위 목록으로 포함, 모든 섹션 헤더 색상 검정(#0F172A) 통일, "최종 청구금액"→"최종 견적금액" 명칭 변경(화면·PDF 둘 다). 실제 실행으로 이력 연결·계산 정확성·헤더색상·레이아웃 전부 재확인, 기존 블록 타입 회귀 없음도 확인. -->
+<!-- TIS-VERSION: 20260728-061 -->
+<!-- v20260728-061 변경사항: (1) 치명적 버그 발견·수정 - 저장된 견적서를 열어 셀 병합(구분/역할 등)이 있는 상태에서 행 추가·삭제를 하면 테이블이 깨져 보이던 진짜 원인 발견. qt_delRow가 병합(rowspan)을 소유한 행을 그냥 지워버려서, 병합됐던 나머지 행의 셀이 display:none인 채로 영원히 안 보이게 남는 버그였음 - 이 함수는 전체 블록 타입(인건비/라이선스/유지보수/상품/매입/기타) 공용이라 특정 유형에 국한되지 않고 전부 영향받고 있었음. 삭제하는 행이 병합 소유주면 다음 행으로 소유권과 값을 이전하고, 숨겨진 멤버 행을 삭제하면 위쪽 진짜 소유주의 rowspan을 줄이도록 수정. 2행/3행 병합, 첫행/중간행 삭제, 인건비·라이선스·매입 등 여러 유형에서 실제 재현·검증 완료. (2) 항목 블록 추가 버튼에서 매입 위치를 맨 오른쪽 특별할인 옆으로 이동. (3) 인건비 역할·매입 구분/품목 등 여러 줄(Enter) 입력 텍스트가 원가분석(화면·PDF)에서 줄바꿈이 사라지던 문제 발견·수정 - 실제 견적서 PDF는 이미 개행을 <br>로 변환하는 처리가 있었는데 원가분석 쪽엔 빠져있었음, 동일한 방식으로 통일(_qtEscBr 헬퍼 신설). 실제 개행 포함 텍스트로 화면·PDF 양쪽 다 정상 변환 확인. -->
 <!-- TIS-VERSION: 20260728-060 -->
 <!-- v20260728-060 변경사항: 원가분석 표 정렬/폰트가 스크린샷 지적대로 여전히 엉망이었던 진짜 근본 원인 발견·수정. 전역 CSS에 table td{font-size:13px !important; color:#1E293B !important}, table th,td{text-align:left !important} 두 규칙이 있어서, v059까지 !important 없이 지정한 정렬·폰트크기·강조색이 전부 무력화되어 실제로는(computed style 기준) 헤더/금액 전부 왼쪽정렬·13px·기본색으로 렌더링되고 있었음(소스 코드 문자열만 확인하고 실제 계산된 스타일은 검증 안 한 것이 실수였음, 이번엔 getComputedStyle로 직접 확인). 인건비/매입 표의 모든 정렬·폰트크기·강조색 지정에 !important 적용해 완전히 해결. 추가로: (1) 역할/구분/품목 텍스트가 잘려보이던 것 - ellipsis 처리를 제거해 전체 텍스트가 보이도록 함. (2) 역할 열 폭을 34%→42%로 확대. (3) 헤더는 예외 없이 전부 중앙정렬(역할/구분/품목 헤더 포함, 그 아래 데이터만 좌측정렬). (4) 기타(사용자정의) 블록에서 헤더명을 다른 유형의 표준 명칭(구분/품목/역할/수량/단위/제안금액 등)과 동일하게 입력하면 그 유형과 동일한 폭·정렬을 자동으로 맞춰주도록 개선 - 표준 명칭이 아닌 자유 입력은 기존 방식 그대로 유지. 실제 computedStyle로 헤더 10개 전수 중앙정렬, 금액 우측정렬, 폰트 11px 통일, 역할 전체텍스트 노출, 강조색 정상 적용, 커스텀 헤더 자동매칭까지 전부 재확인. 기존 블록 회귀 없음, 유형변경 모달 동작 이상없음도 재확인. -->
 <!-- TIS-VERSION: 20260728-059 -->
@@ -23289,8 +23297,8 @@ function qtRenderPreview(){
         <button class="add-blk-btn" onclick="qt_addBlock('mm')">＋ 인건비</button>
         <button class="add-blk-btn" onclick="qt_addBlock('lic')">＋ 라이선스(상품)</button>
         <button class="add-blk-btn" onclick="qt_addBlock('ma')">＋ 유지보수(MA)</button>
-        <button class="add-blk-btn" onclick="qt_addBlock('purchase')" title="내부 원가관리 전용 - 고객 견적서에는 표시되지 않습니다" style="border-color:#FCA5A5;color:#991B1B;">🔒 ＋ 매입</button>
         <button class="add-blk-btn" onclick="qt_addBlock('custom')">＋ 기타</button>
+        <button class="add-blk-btn" onclick="qt_addBlock('purchase')" title="내부 원가관리 전용 - 고객 견적서에는 표시되지 않습니다" style="border-color:#FCA5A5;color:#991B1B;display:inline-flex;align-items:center;gap:4px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> ＋ 매입</button>
         <button class="add-blk-btn disc-btn" onclick="qt_addBlock('discount')">특별 할인</button>
       </div>
     </div>
@@ -23332,7 +23340,7 @@ function qtRenderPreview(){
   </div>
   <div style="padding:0 20px;border-top:1px solid #E2E8F0;display:flex;justify-content:space-between;align-items:center;background:#fff;">
     <div style="display:flex;gap:7px;align-items:center;"><button class="btn btn-sec btn-sm" id="draftBtn" onclick="qt_saveCurrentQuote(true)">임시저장</button><button class="btn btn-sm" id="deleteBtn" style="display:none;background:#DC2626;color:#fff;" onclick="qt_confirmDelete()">삭제</button></div>
-    <div style="display:flex;gap:7px;"><button class="btn btn-sec" onclick="qt_closeModal()">취소</button><button class="btn btn-sec" onclick="qt_openPdf()">PDF 미리보기</button><button class="btn btn-sec" onclick="qt_openReviewPdf()" title="원가분석 포함 - 내부 전용 문서" style="border-color:#FCA5A5;color:#991B1B;">🔒 견적검토 PDF</button><button class="btn btn-pri" id="saveQtBtn" onclick="qt_saveCurrentQuote()">저장</button></div>
+    <div style="display:flex;gap:7px;"><button class="btn btn-sec" onclick="qt_closeModal()">취소</button><button class="btn btn-sec" onclick="qt_openPdf()">PDF 미리보기</button><button class="btn btn-sec" onclick="qt_openReviewPdf()" title="원가분석 포함 - 내부 전용 문서" style="border-color:#FCA5A5;color:#991B1B;display:inline-flex;align-items:center;gap:4px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> 견적검토 PDF</button><button class="btn btn-pri" id="saveQtBtn" onclick="qt_saveCurrentQuote()">저장</button></div>
   </div>
 </div>
 </div>
@@ -24039,7 +24047,45 @@ function qt_selType(el,t){
 }
 // 모달
 
-function qt_delRow(btn){btn.closest('tr').remove();}
+function qt_delRow(btn){
+  var tr=btn.closest('tr');
+  var tbody=tr.closest('tbody');
+  if(!tbody){ tr.remove(); return; }
+  var allRows=Array.from(tbody.querySelectorAll('tr'));
+  var rowIdx=allRows.indexOf(tr);
+  // ⚠ 병합(rowspan)을 소유한 행을 그냥 지워버리면, 병합됐던 나머지 행의 셀이 display:none인 채로
+  //   영원히 안 보이게 남아 테이블이 깨져 보이는 치명적 버그였음(전체 블록 타입 공용 함수라
+  //   인건비뿐 아니라 라이선스/유지보수/상품/매입/기타 전부 동일하게 영향받고 있었음).
+  //   삭제하는 행이 rowspan>1인 셀을 갖고 있으면 병합 소유권을 바로 다음 행으로 이전하고,
+  //   삭제하는 행 자체가 숨겨진 멤버 행이면 위쪽에서 진짜 소유주를 찾아 rowspan을 하나 줄인다.
+  var tds=Array.from(tr.querySelectorAll('td'));
+  tds.forEach(function(td, colIdx){
+    if(td.rowSpan && td.rowSpan>1){
+      var span=td.rowSpan;
+      var nextRow=allRows[rowIdx+1];
+      var nextTd=nextRow?nextRow.querySelectorAll('td')[colIdx]:null;
+      if(nextTd && nextTd.style.display==='none'){
+        // 값 이전 후 다음 행 셀을 새 소유주로 승격
+        var srcCtl=td.querySelector('textarea,input,select');
+        var dstCtl=nextTd.querySelector('textarea,input,select');
+        if(srcCtl && dstCtl) dstCtl.value=srcCtl.value;
+        nextTd.style.display='';
+        if(span-1>1){ nextTd.rowSpan=span-1; } else { nextTd.removeAttribute('rowspan'); }
+      }
+    } else if(td.style.display==='none'){
+      // 숨겨진 멤버 행 - 위로 거슬러 올라가며 진짜 소유주를 찾아 rowspan을 하나 줄인다
+      for(var i=rowIdx-1;i>=0;i--){
+        var ownerTd=allRows[i].querySelectorAll('td')[colIdx];
+        if(ownerTd && ownerTd.rowSpan>1 && ownerTd.style.display!=='none'){
+          ownerTd.rowSpan=ownerTd.rowSpan-1;
+          if(ownerTd.rowSpan<=1) ownerTd.removeAttribute('rowspan');
+          break;
+        }
+      }
+    }
+  });
+  tr.remove();
+}
 function qt_rmBlk(id){var b=document.getElementById(id);if(b)b.remove();qt_updateBlockNumbers();if(typeof qt_calcTotal==='function')qt_calcTotal();}
 
 // MM 단가 (기본값은 상단 QT_GRADES 등급우선 스키마 단일 정의 사용 — 평면 재대입 제거)
@@ -24623,7 +24669,7 @@ function qt_addBlock(type,skipInit){
     product:{badge:'상품',bc:'#F0FDF4',tc:'#166534',
       body:'<div class="it-wrap"><table class="it" style="table-layout:fixed;width:100%;"><colgroup><col style="width:72px"><col><col style="width:40px"><col style="width:44px"><col style="width:90px"><col style="width:90px"><col style="width:28px"></colgroup><thead><tr><th class="L">구분</th><th class="L">품목</th><th>수량</th><th>단위</th><th>제안단가</th><th>제안금액</th><th></th></tr></thead><tbody id="tbprodQT_BC"><tr><td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" placeholder="품목명 입력" rows="1" style="resize:none;overflow:hidden;width:100%;"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="1" oninput="qt_calcProduct(this)"></td><td style="text-align:center;"><input class="ii" style="text-align:center !important;" placeholder="개"></td><td style="text-align:right;"><input class="ii" style="text-align:right;" placeholder="0" oninput="qt_calcProduct(this)"></td><td class="prod-propose" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcProduct(this)"></td><td style="width:32px;text-align:center;padding:2px;"><button class="del-btn" onclick="qt_delRow(this)">×</button></td></tr></tbody></table></div><span class="add-r" onclick="qt_addCommonRow(\'tbprodQT_BC\')">＋ 행 추가</span>'},
     purchase:{badge:'매입',bc:'#FEF2F2',tc:'#991B1B',
-      body:'<div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;padding:6px 10px;margin-bottom:8px;font-size:10.5px;color:#92400E;">🔒 내부 원가관리 전용 항목입니다 — 견적서 PDF·고객 미리보기에는 절대 표시되지 않고, 최종검토(원가분석)에서만 집계됩니다.</div><div class="it-wrap"><table class="it" style="table-layout:fixed;width:100%;"><colgroup><col style="width:72px"><col><col style="width:52px"><col style="width:52px"><col style="width:96px"><col style="width:28px"></colgroup><thead><tr><th class="L">구분</th><th class="L">품목</th><th>수량</th><th>단위</th><th>매입금액</th><th></th></tr></thead><tbody id="tbpurQT_BC"><tr><td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" placeholder="품목명 입력" rows="1" style="resize:none;overflow:hidden;width:100%;"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center !important;" placeholder="1"></td><td style="text-align:center;"><input class="ii" style="text-align:center !important;" placeholder="개"></td><td style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_fmtAmtInput(this)"></td><td style="width:32px;text-align:center;padding:2px;"><button class="del-btn" onclick="qt_delRow(this)">×</button></td></tr></tbody></table></div><span class="add-r" onclick="qt_addCommonRow(\'tbpurQT_BC\')">＋ 행 추가</span>'},
+      body:'<div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;padding:6px 10px;margin-bottom:8px;font-size:10.5px;color:#92400E;display:flex;align-items:center;gap:5px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> 내부 원가관리 전용 항목입니다 — 견적서 PDF·고객 미리보기에는 절대 표시되지 않고, 최종검토(원가분석)에서만 집계됩니다.</div><div class="it-wrap"><table class="it" style="table-layout:fixed;width:100%;"><colgroup><col style="width:72px"><col><col style="width:52px"><col style="width:52px"><col style="width:96px"><col style="width:28px"></colgroup><thead><tr><th class="L">구분</th><th class="L">품목</th><th>수량</th><th>단위</th><th>매입금액</th><th></th></tr></thead><tbody id="tbpurQT_BC"><tr><td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" placeholder="품목명 입력" rows="1" style="resize:none;overflow:hidden;width:100%;"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center !important;" placeholder="1"></td><td style="text-align:center;"><input class="ii" style="text-align:center !important;" placeholder="개"></td><td style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_fmtAmtInput(this)"></td><td style="width:32px;text-align:center;padding:2px;"><button class="del-btn" onclick="qt_delRow(this)">×</button></td></tr></tbody></table></div><span class="add-r" onclick="qt_addCommonRow(\'tbpurQT_BC\')">＋ 행 추가</span>'},
     custom:{badge:'기타',bc:'#F8FAFC',tc:'#475569',body:qt_getCustomBody(QT_BC)},
     discount:{badge:'특별 할인',bc:'#FFF7ED',tc:'var(--red)',body:'<div class="disc-blk"><div class="disc-blk-t">특별 할인</div><div class="disc-row"><input class="disc-lbl-inp" value="할인 금액" placeholder="할인 항목명 (예: 장기계약 특별할인)" title="PDF·최종검토에 표시될 문구입니다"><input class="disc-fi" placeholder="예: 15,600,000" oninput="qt_calcDiscount(this)" style="max-width:180px;"><span style="font-size:11px;color:var(--muted);">원</span><span class="disc-result" style="margin-left:10px;">0원</span></div></div>'}
   };
@@ -24761,65 +24807,63 @@ function qt_reviewPdfFileName(q){
 function qt_buildCostAnalysisPdfSection(){
   var A=qt_getCostAnalysis();
   var BC='#CBD5E1';
-  // ⚠ 예전엔 역할/구분/품목 헤더만 text-align:left로 덮어써서 다른 헤더(등급/MM/금액)와
-  //   정렬이 안 맞았음. 화면판(qt_renderCostAnalysis)과 동일하게 헤더는 전부 중앙정렬로 통일.
-  var thS='padding:6px 8px;border:1px solid rgba(255,255,255,.28);background-color:#7A1F1F !important;color:#fff !important;font-size:9px;font-weight:700;text-align:center !important;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact;';
-  var tdS='padding:5px 7px;border:1px solid '+BC+';font-size:8.5px;color:#000;text-align:center;vertical-align:middle;';
-  var tdL='padding:5px 7px;border:1px solid '+BC+';font-size:8.5px;color:#000;text-align:left;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
-  var tdR='padding:5px 7px;border:1px solid '+BC+';font-size:8.5px;color:#000;text-align:right;vertical-align:middle;';
+  var HEAD='#0F172A';
+  var LABEL='#1E293B';
 
   var h='<div style="page-break-before:always;padding:6px 28px 14px;font-family:\'Malgun Gothic\',\'Apple SD Gothic Neo\',sans-serif;">';
-  h+='<div style="display:flex;align-items:center;gap:8px;margin:0 0 12px;padding-bottom:8px;border-bottom:2px solid #7A1F1F;">';
-  h+='<span style="font-size:14px;font-weight:800;color:#7A1F1F;">🔒 원가분석 (내부 전용)</span>';
+  h+='<div style="display:flex;align-items:center;gap:8px;margin:0 0 14px;padding-bottom:8px;border-bottom:2px solid #0F172A;">';
+  h+='<span style="font-size:14px;font-weight:800;color:'+HEAD+';display:inline-flex;align-items:center;gap:6px;">'+_qtLockSvg(15,HEAD)+' 원가분석 (내부 전용)</span>';
   h+='<span style="font-size:9px;color:#991B1B;">이 페이지는 고객 제출용 견적서가 아닙니다</span>';
   h+='</div>';
 
-  // 핵심 지표
-  h+='<table style="width:100%;border-collapse:collapse;margin-bottom:14px;table-layout:fixed;"><tr>';
-  [['최종 청구금액',A.finalAmt,'#1D4ED8'],['총 원가(인건비원가+매입)',A.totalCost,'#991B1B'],['매출이익',A.profit,A.profit>=0?'#059669':'#DC2626'],['이익률',A.marginPct.toFixed(1)+'%',A.marginPct>=30?'#059669':(A.marginPct>=10?'#D97706':'#DC2626')]].forEach(function(m){
-    h+='<td style="width:25%;padding:4px;"><div style="border:1px solid '+BC+';border-radius:6px;padding:10px;text-align:center;">'
-      +'<div style="font-size:8px;color:#64748B;margin-bottom:4px;">'+m[0]+'</div>'
-      +'<div style="font-size:13px;font-weight:800;color:'+m[2]+';">'+(typeof m[1]==='number'?_qtWon(m[1]):m[1])+'</div></div></td>';
+  // ── 핵심 지표: 박스/배경 없이 숫자·라벨만, 세로 구분선만 (화면판과 동일 방향) ──
+  h+='<table style="width:100%;border-collapse:collapse;margin-bottom:16px;table-layout:fixed;border-bottom:1px solid '+BC+';padding-bottom:10px;"><tr>';
+  [['최종 견적금액',A.finalAmt,'#1D4ED8'],['총 원가',A.totalCost,'#991B1B'],['매출이익',A.profit,A.profit>=0?'#059669':'#DC2626'],['이익률',A.marginPct.toFixed(1)+'%',A.marginPct>=30?'#059669':(A.marginPct>=10?'#D97706':'#DC2626')]].forEach(function(m,i){
+    h+='<td style="width:25%;padding:0 10px '+(i>0?'10px':'')+' '+(i>0?'10px':'0')+';'+(i>0?'border-left:1px solid '+BC+';':'')+'vertical-align:top;">'
+      +'<div style="font-size:8.5px;color:'+LABEL+';font-weight:600;margin-bottom:5px;">'+m[0]+'</div>'
+      +'<div style="font-size:14px;font-weight:800;color:'+m[2]+';">'+(typeof m[1]==='number'?_qtWon(m[1]):m[1])+'</div></td>';
   });
   h+='</tr></table>';
 
-  // 금액 구성 - colgroup으로 폭을 고정해 금액이 항상 표 우측 끝에 정확히 붙도록 함
-  h+='<div style="font-size:10px;font-weight:700;color:#334155;margin:10px 0 6px;">금액 구성</div>';
-  h+='<table style="width:100%;border-collapse:collapse;margin-bottom:14px;table-layout:fixed;">';
-  h+='<colgroup><col style="width:65%"><col style="width:35%"></colgroup>';
-  h+='<tr><td style="'+tdL+'">견적 인건비 (청구 기준)</td><td style="'+tdR+'">'+_qtWon(A.laborQuoted)+'</td></tr>';
-  h+='<tr><td style="'+tdL+'">기타 항목 (라이선스·유지보수·상품·기타)</td><td style="'+tdR+'">'+_qtWon(A.otherPropose)+'</td></tr>';
-  if(A.discAmt>0) h+='<tr><td style="'+tdL+'">특별할인'+(A.discLabel?' ('+A.discLabel.replace(/</g,'&lt;')+')':'')+'</td><td style="'+tdR+';color:#DC2626;">'+_qtWon(A.discAmt)+'</td></tr>';
-  h+='<tr><td style="'+tdL+';font-weight:800;background:#EFF6FF;">최종 청구금액</td><td style="'+tdR+';font-weight:800;color:#1D4ED8;background:#EFF6FF;">'+_qtWon(A.finalAmt)+'</td></tr>';
-  h+='</table>';
-
-  // 인건비 상세 - 화면판과 동일한 %기반 colgroup, 헤더 전부 중앙정렬
-  if(A.laborRows.length){
-    h+='<div style="font-size:10px;font-weight:700;color:#334155;margin:10px 0 6px;">인건비 — 내부단가 vs 견적단가</div>';
-    h+='<table style="width:100%;border-collapse:collapse;margin-bottom:14px;table-layout:fixed;">';
-    h+='<colgroup><col style="width:34%"><col style="width:12%"><col style="width:10%"><col style="width:22%"><col style="width:22%"></colgroup>';
-    h+='<tr><th style="'+thS+'">역할</th><th style="'+thS+'">등급</th><th style="'+thS+'">MM</th><th style="'+thS+'">내부단가</th><th style="'+thS+'">견적단가</th></tr>';
-    A.laborRows.forEach(function(r){
-      h+='<tr><td style="'+tdL+'">'+r.role.replace(/</g,'&lt;')+'</td><td style="'+tdS+'">'+r.grade.replace(/</g,'&lt;')+'</td><td style="'+tdS+'">'+r.qty+'</td><td style="'+tdR+'">'+_qtWon(r.cost)+'</td><td style="'+tdR+'">'+_qtWon(r.quoted)+'</td></tr>';
-    });
-    h+='<tr><td colspan="3" style="'+tdL+';font-weight:800;">합계</td><td style="'+tdR+';font-weight:800;">'+_qtWon(A.laborCostInternal)+'</td><td style="'+tdR+';font-weight:800;">'+_qtWon(A.laborQuoted)+'</td></tr>';
-    h+='</table>';
+  // ── 매출/원가 좌우 분할(표 기반 - 인쇄 안정성), 각 컬럼 상단에 총계 고정 ──
+  function _row(label,val,opts){
+    opts=opts||{};
+    var pad=opts.sub?'2px 0 2px 12px':'4px 0';
+    return '<div style="display:flex;justify-content:space-between;padding:'+pad+';">'
+      +'<span style="color:'+(opts.sub?'#64748B':LABEL)+';font-weight:'+(opts.sub?'400':'500')+';font-size:'+(opts.sub?'7.5px':'8.5px')+';">'+(opts.sub?'· ':'')+label+'</span>'
+      +'<span style="color:'+(opts.color||HEAD)+';font-weight:600;font-size:'+(opts.sub?'7.5px':'8.5px')+';">'+_qtWon(Math.abs(val))+'</span></div>';
   }
-
-  // 매입 상세 - 화면판과 동일한 %기반 colgroup, 헤더 전부 중앙정렬
-  h+='<div style="font-size:10px;font-weight:700;color:#334155;margin:10px 0 6px;">매입 항목 상세 ('+A.purchaseItems.length+'건)</div>';
-  if(!A.purchaseItems.length){
-    h+='<div style="font-size:9px;color:#94A3B8;padding:8px 0;">등록된 매입 항목이 없습니다.</div>';
-  } else {
-    h+='<table style="width:100%;border-collapse:collapse;table-layout:fixed;">';
-    h+='<colgroup><col style="width:18%"><col style="width:34%"><col style="width:12%"><col style="width:12%"><col style="width:24%"></colgroup>';
-    h+='<tr><th style="'+thS+'">구분</th><th style="'+thS+'">품목</th><th style="'+thS+'">수량</th><th style="'+thS+'">단위</th><th style="'+thS+'">매입금액</th></tr>';
+  function _colHead(title,total,color){
+    return '<div style="padding:10px 12px;border-bottom:1px solid '+BC+';">'
+      +'<div style="font-size:9.5px;font-weight:700;color:'+LABEL+';margin-bottom:3px;">'+title+'</div>'
+      +'<div style="font-size:13px;font-weight:800;color:'+color+';">'+_qtWon(total)+'</div></div>';
+  }
+  h+='<table style="width:100%;border-collapse:separate;border-spacing:7px 0;table-layout:fixed;"><tr>';
+  // 매출 컬럼
+  h+='<td style="width:50%;border:1px solid '+BC+';border-radius:8px;vertical-align:top;padding:0;">';
+  h+=_colHead('매출', A.finalAmt, '#1D4ED8');
+  h+='<div style="padding:8px 12px 10px;">';
+  h+=_row('인건비 (견적단가 기준)', A.laborQuoted);
+  h+=_row('기타 항목 (라이선스·유지보수·상품·기타)', A.otherPropose);
+  if(A.discAmt>0) h+=_row('특별할인'+(A.discLabel?' ('+A.discLabel.replace(/</g,'&lt;')+')':''), A.discAmt, {color:'#DC2626'});
+  h+='</div></td>';
+  // 원가 컬럼
+  h+='<td style="width:50%;border:1px solid '+BC+';border-radius:8px;vertical-align:top;padding:0;">';
+  h+=_colHead('원가', A.totalCost, '#991B1B');
+  h+='<div style="padding:8px 12px 10px;">';
+  h+=_row('인건비 (내부단가 기준)', A.laborCostInternal, {color:'#991B1B'});
+  h+=_row('매입', A.purchaseTotal, {color:'#991B1B'});
+  if(A.purchaseItems.length){
     A.purchaseItems.forEach(function(p){
-      h+='<tr><td style="'+tdL+'">'+(p.cat||'-').replace(/</g,'&lt;')+'</td><td style="'+tdL+'">'+p.item.replace(/</g,'&lt;')+'</td><td style="'+tdS+'">'+(p.qty||'-')+'</td><td style="'+tdS+'">'+(p.unit||'-')+'</td><td style="'+tdR+'">'+_qtWon(p.amount)+'</td></tr>';
+      var lbl=(p.cat?_qtEsc(p.cat)+' · ':'')+_qtEscBr(p.item)+((p.qty||p.unit)?' ('+_qtEsc(p.qty||'')+(p.unit?' '+_qtEsc(p.unit):'')+')':'');
+      h+=_row(lbl, p.amount, {sub:true,color:'#991B1B'});
     });
-    h+='<tr><td colspan="4" style="'+tdL+';font-weight:800;">합계</td><td style="'+tdR+';font-weight:800;">'+_qtWon(A.purchaseTotal)+'</td></tr>';
-    h+='</table>';
+  } else {
+    h+='<div style="padding:2px 0 2px 12px;font-size:7.5px;color:#64748B;">· 등록된 매입 항목 없음</div>';
   }
+  h+='</div></td>';
+  h+='</tr></table>';
+
   h+='</div>';
   return h;
 }
@@ -26049,102 +26093,67 @@ function qt_renderCostAnalysis(){
   var A=qt_getCostAnalysis();
   var profitColor=A.profit>=0?'#059669':'#DC2626';
   var marginColor=A.marginPct>=30?'#059669':(A.marginPct>=10?'#D97706':'#DC2626');
+  var HEAD='#0F172A';
+  var LABEL='#1E293B'; // 요청: 회색이 PC에서 흐릿해 보인다는 피드백 반영 - 라벨류를 짙은 톤으로
 
   var html='<div style="border-top:2px dashed #E2E8F0;margin-top:24px;padding-top:20px;">';
-  html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">';
-  html+='<span style="font-size:13px;font-weight:800;color:#0F172A;">🔒 원가분석</span>';
+  html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">';
+  html+='<span style="font-size:13px;font-weight:800;color:'+HEAD+';display:inline-flex;align-items:center;gap:6px;">'+_qtLockSvg(14,HEAD)+' 원가분석</span>';
   html+='<span style="font-size:10.5px;font-weight:600;color:#94A3B8;background:#F1F5F9;padding:2px 8px;border-radius:10px;">내부 전용 · 고객 견적서에는 표시되지 않습니다</span>';
   html+='</div>';
 
-  // 핵심 지표 카드 4개
-  html+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">';
-  html+='<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:12px 14px;"><div style="font-size:11px;color:#1D4ED8;font-weight:700;margin-bottom:4px;">최종 청구금액</div><div style="font-size:18px;font-weight:800;color:#1D4ED8;">'+_qtWon(A.finalAmt)+'</div></div>';
-  html+='<div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:12px 14px;"><div style="font-size:11px;color:#991B1B;font-weight:700;margin-bottom:4px;">총 원가 (인건비원가+매입)</div><div style="font-size:18px;font-weight:800;color:#991B1B;">'+_qtWon(A.totalCost)+'</div></div>';
-  html+='<div style="background:'+(A.profit>=0?'#ECFDF5':'#FEF2F2')+';border:1px solid '+(A.profit>=0?'#A7F3D0':'#FECACA')+';border-radius:10px;padding:12px 14px;"><div style="font-size:11px;color:'+profitColor+';font-weight:700;margin-bottom:4px;">매출이익</div><div style="font-size:18px;font-weight:800;color:'+profitColor+';">'+_qtWon(A.profit)+'</div></div>';
-  html+='<div style="background:#F8FAFC;border:1px solid var(--border);border-radius:10px;padding:12px 14px;"><div style="font-size:11px;color:#475569;font-weight:700;margin-bottom:4px;">이익률</div><div style="font-size:18px;font-weight:800;color:'+marginColor+';">'+A.marginPct.toFixed(1)+'%</div></div>';
+  // ── 핵심 지표: 박스/배경 없이 숫자·라벨만, 상단 구분선 + 카드 사이 세로선만 ──
+  html+='<div style="display:flex;padding:2px 0 20px;margin-bottom:18px;border-bottom:1px solid var(--border);">';
+  [
+    ['최종 견적금액', A.finalAmt, '#1D4ED8', true],
+    ['총 원가', A.totalCost, '#991B1B', false],
+    ['매출이익', A.profit, profitColor, false],
+    ['이익률', A.marginPct.toFixed(1)+'%', marginColor, false]
+  ].forEach(function(m,i){
+    html+='<div style="flex:1;padding:0 16px;'+(i>0?'border-left:1px solid var(--border);':'padding-left:0;')+'">'
+      +'<div style="font-size:11px;color:'+LABEL+';font-weight:600;margin-bottom:6px;">'+m[0]+'</div>'
+      +'<div style="font-size:19px;font-weight:800;color:'+m[2]+';letter-spacing:-.01em;">'+(typeof m[1]==='number'?_qtWon(m[1]):m[1])+'</div></div>';
+  });
   html+='</div>';
 
-  // 금액 구성 - flex 행으로 구성해 숫자가 항상 카드 우측 끝에 정확히 붙도록 함(표의 auto-layout 폭 쏠림 문제 회피)
-  html+='<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:14px;">';
-  html+='<div style="font-size:11.5px;font-weight:700;color:#334155;margin-bottom:10px;">금액 구성</div>';
+  // ── 매출/원가 좌우 분할, 각 컬럼 상단에 총계 고정(세부 줄 수와 무관하게 항상 위치 일치) ──
   function _row(label,val,opts){
     opts=opts||{};
-    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px;'+(opts.noBorder?'':'border-bottom:1px solid #F1F5F9;')+'">'
-      +'<span style="color:'+(opts.color||'#475569')+';'+(opts.bold?'font-weight:700;':'')+'font-size:11px;">'+label+'</span>'
-      +'<span style="color:'+(opts.color||'#0F172A')+';'+(opts.bold?'font-weight:800;':'font-weight:600;')+'font-size:11px;text-align:right;">'+_qtWon(Math.abs(val))+'</span></div>';
+    return '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:'+(opts.sub?'3px 0 3px 14px':'6px 0')+';">'
+      +'<span style="color:'+(opts.sub?'#64748B':LABEL)+';font-size:'+(opts.sub?'10px':'11.5px')+';">'+(opts.sub?'· ':'')+label+'</span>'
+      +'<span style="color:'+(opts.color||HEAD)+';font-weight:'+(opts.sub?'500':'600')+';font-size:'+(opts.sub?'10px':'12px')+';">'+_qtWon(Math.abs(val))+'</span></div>';
   }
-  html+=_row('견적 인건비 (청구 기준)', A.laborQuoted);
+  html+='<div style="display:flex;gap:14px;flex-wrap:wrap;">';
+
+  // 매출 컬럼
+  html+='<div style="flex:1 1 300px;background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden;">';
+  html+='<div style="padding:14px 18px;border-bottom:1px solid var(--border);">'
+    +'<div style="font-size:13px;font-weight:700;color:'+LABEL+';margin-bottom:4px;">매출</div>'
+    +'<div style="font-size:19px;font-weight:800;color:#1D4ED8;">'+_qtWon(A.finalAmt)+'</div></div>';
+  html+='<div style="padding:12px 18px 14px;">';
+  html+=_row('인건비 (견적단가 기준)', A.laborQuoted);
   html+=_row('기타 항목 (라이선스·유지보수·상품·기타)', A.otherPropose);
   if(A.discAmt>0) html+=_row('특별할인'+(A.discLabel?' ('+A.discLabel.replace(/</g,'&lt;')+')':''), A.discAmt, {color:'#DC2626'});
-  html+='<div style="border-top:1px solid #E2E8F0;margin:2px 0;"></div>';
-  html+=_row('최종 청구금액', A.finalAmt, {bold:true,color:'#1D4ED8',noBorder:true});
-  html+='</div>';
+  html+='</div></div>';
 
-  // ⚠ 전역 CSS에 table th,td{text-align:left !important}가 있어서, !important 없이 쓴 정렬은
-  //   전부 무력화되어 실제로는 왼쪽정렬로 렌더링되고 있었음(계산된 스타일로 직접 확인해서 발견).
-  //   이 표에서 쓰는 모든 정렬 지정에 반드시 !important를 붙인다.
-  //   요청대로 헤더는 예외 없이 전부 중앙정렬(역할/구분/품목 헤더 포함), 본문 데이터만
-  //   텍스트형=좌측/짧은값=중앙/금액=우측으로 구분한다. 폰트는 "금액 구성"과 동일한 11px.
-  var thC='padding:7px 8px;text-align:center !important;font-weight:700;color:#64748B;font-size:10.5px;background:#F8FAFC;border-bottom:1px solid var(--border);';
-  // ⚠ 전역 CSS에 table td{font-size:13px !important; color:#1E293B !important}도 있어서,
-  //   font-size/color까지 !important 없이는 전부 강제로 13px/기본색으로 되돌아가고 있었음
-  //   (computed style로 직접 확인해서 발견). 폰트 크기와 강조색 지정에도 !important 적용.
-  var tdL='padding:6px 8px;text-align:left !important;font-size:11px !important;border-bottom:1px solid #F8FAFC;word-break:break-word;';
-  var tdC='padding:6px 8px;text-align:center !important;font-size:11px !important;border-bottom:1px solid #F8FAFC;';
-  var tdR='padding:6px 8px;text-align:right !important;font-size:11px !important;border-bottom:1px solid #F8FAFC;';
-
-  // 인건비 원가 vs 청구가 비교
-  if(A.laborRows.length){
-    html+='<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:14px;">';
-    html+='<div style="font-size:11.5px;font-weight:700;color:#334155;margin-bottom:10px;">인건비 — 내부단가 vs 견적단가</div>';
-    html+='<table style="width:100%;border-collapse:collapse;table-layout:fixed;">';
-    html+='<colgroup><col style="width:42%"><col style="width:10%"><col style="width:8%"><col style="width:20%"><col style="width:20%"></colgroup>';
-    html+='<thead><tr>'
-      +'<th style="'+thC+'">역할</th>'
-      +'<th style="'+thC+'">등급</th>'
-      +'<th style="'+thC+'">MM</th>'
-      +'<th style="'+thC+'color:#991B1B !important;">내부단가</th>'
-      +'<th style="'+thC+'color:#1D4ED8 !important;">견적단가</th>'
-      +'</tr></thead><tbody>';
-    A.laborRows.forEach(function(r){
-      html+='<tr><td style="'+tdL+'">'+r.role.replace(/</g,'&lt;')+'</td>'
-        +'<td style="'+tdC+'">'+r.grade.replace(/</g,'&lt;')+'</td>'
-        +'<td style="'+tdC+'">'+r.qty+'</td>'
-        +'<td style="'+tdR+'color:#991B1B !important;">'+_qtWon(r.cost)+'</td>'
-        +'<td style="'+tdR+'color:#1D4ED8 !important;">'+_qtWon(r.quoted)+'</td></tr>';
-    });
-    html+='<tr><td colspan="3" style="padding:7px 8px;font-size:11px !important;font-weight:700;color:#334155 !important;">합계</td>'
-      +'<td style="padding:7px 8px;text-align:right !important;font-size:11px !important;font-weight:800;color:#991B1B !important;">'+_qtWon(A.laborCostInternal)+'</td>'
-      +'<td style="padding:7px 8px;text-align:right !important;font-size:11px !important;font-weight:800;color:#1D4ED8 !important;">'+_qtWon(A.laborQuoted)+'</td></tr>';
-    html+='</tbody></table></div>';
-  }
-
-  // 매입 항목 상세 - 위 인건비 표와 동일한 규칙(고정폭 colgroup + 헤더 중앙정렬)으로 통일
-  html+='<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:14px;">';
-  html+='<div style="font-size:11.5px;font-weight:700;color:#334155;margin-bottom:10px;">매입 항목 상세 <span style="font-weight:600;color:#94A3B8;">('+A.purchaseItems.length+'건)</span></div>';
-  if(!A.purchaseItems.length){
-    html+='<div style="text-align:center;color:#94A3B8;font-size:11px;padding:14px 0;">등록된 매입 항목이 없습니다.</div>';
-  } else {
-    html+='<table style="width:100%;border-collapse:collapse;table-layout:fixed;">';
-    html+='<colgroup><col style="width:16%"><col style="width:38%"><col style="width:10%"><col style="width:10%"><col style="width:26%"></colgroup>';
-    html+='<thead><tr>'
-      +'<th style="'+thC+'">구분</th>'
-      +'<th style="'+thC+'">품목</th>'
-      +'<th style="'+thC+'">수량</th>'
-      +'<th style="'+thC+'">단위</th>'
-      +'<th style="'+thC+'color:#991B1B !important;">매입금액</th>'
-      +'</tr></thead><tbody>';
+  // 원가 컬럼
+  html+='<div style="flex:1 1 300px;background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden;">';
+  html+='<div style="padding:14px 18px;border-bottom:1px solid var(--border);">'
+    +'<div style="font-size:13px;font-weight:700;color:'+LABEL+';margin-bottom:4px;">원가</div>'
+    +'<div style="font-size:19px;font-weight:800;color:#991B1B;">'+_qtWon(A.totalCost)+'</div></div>';
+  html+='<div style="padding:12px 18px 14px;">';
+  html+=_row('인건비 (내부단가 기준)', A.laborCostInternal, {color:'#991B1B'});
+  html+=_row('매입', A.purchaseTotal, {color:'#991B1B'});
+  if(A.purchaseItems.length){
     A.purchaseItems.forEach(function(p){
-      html+='<tr><td style="'+tdL+'">'+(p.cat||'-').replace(/</g,'&lt;')+'</td>'
-        +'<td style="'+tdL+'">'+p.item.replace(/</g,'&lt;')+'</td>'
-        +'<td style="'+tdC+'">'+(p.qty||'-')+'</td>'
-        +'<td style="'+tdC+'">'+(p.unit||'-')+'</td>'
-        +'<td style="'+tdR+'color:#991B1B !important;font-weight:600;">'+_qtWon(p.amount)+'</td></tr>';
+      var lbl=(p.cat?_qtEsc(p.cat)+' · ':'')+_qtEscBr(p.item)+((p.qty||p.unit)?' ('+_qtEsc(p.qty||'')+(p.unit?' '+_qtEsc(p.unit):'')+')':'');
+      html+=_row(lbl, p.amount, {sub:true,color:'#991B1B'});
     });
-    html+='<tr><td colspan="4" style="padding:7px 8px;font-size:11px !important;font-weight:700;color:#334155 !important;">합계</td>'
-      +'<td style="padding:7px 8px;text-align:right !important;font-size:11px !important;font-weight:800;color:#991B1B !important;">'+_qtWon(A.purchaseTotal)+'</td></tr>';
-    html+='</tbody></table>';
+  } else {
+    html+='<div style="padding:3px 0 3px 14px;font-size:10px;color:#64748B;">· 등록된 매입 항목 없음</div>';
   }
+  html+='</div></div>';
+
   html+='</div></div>';
 
   area.innerHTML=html;
@@ -26346,9 +26355,20 @@ function qt_fillSettingUI(){
 }
 
 // ══════════ 단가 기본값 표 - 동적 렌더 (카테고리/등급 추가·삭제·이름변경) ══════════
+// 이모지 🔒 대신 앱 전반에 쓰이는 얇은 선(stroke) 스타일과 통일된 SVG 자물쇠 아이콘
+function _qtLockSvg(size, color, extraStyle){
+  size=size||12;
+  color=color||'currentColor';
+  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="'+color+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;flex-shrink:0;'+(extraStyle||'')+'"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>';
+}
 function _qtEsc(s){
   if(s==null) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+// 역할/구분/품목처럼 여러 줄(Enter) 입력이 가능한 텍스트용 - 이스케이프 후 개행을 <br>로 변환.
+// 실제 고객 견적서 PDF(qt_buildDevPdf)에서 이미 쓰던 것과 동일한 방식으로 통일.
+function _qtEscBr(s){
+  return _qtEsc(s).replace(/\n/g,'<br>');
 }
 function _qtIsAdmin(){
   return !!(typeof session!=='undefined'&&session&&session.role==='admin');
@@ -26371,7 +26391,7 @@ function qt_renderPriceTable(){
   var catColors=['#F5F3FF|#6D28D9|#DDD6FE','#EFF6FF|#1D4ED8|#BFDBFE','#ECFDF5|#065F46|#6EE7B7','#FFFBEB|#92400E|#FCD34D','#FDF2F8|#9D174D|#FBCFE8','#F0FDFA|#0F766E|#99F6E4'];
   var head1='<th style="padding:0;border:none;"></th>'+cats.map(function(cat,ci){
     var col=catColors[ci%catColors.length].split('|');
-    var lockBadge=cat.locked?'<span title="고정 카테고리 (삭제 불가)" style="margin-left:3px;opacity:.6;">🔒</span>':'';
+    var lockBadge=cat.locked?'<span title="고정 카테고리 (삭제 불가)" style="margin-left:3px;opacity:.55;display:inline-flex;">'+_qtLockSvg(10,'currentColor')+'</span>':'';
     var labelHtml=isAdmin
       ? '<input value="'+_qtEsc(cat.label)+'" onchange="qt_renamePriceCat(\''+_qtEsc(cat.key)+'\',this.value)" style="width:100%;max-width:76px;text-align:center !important;background:transparent;border:1px solid transparent;border-radius:5px;font-size:11px;font-weight:700;color:'+col[1]+';padding:2px 4px;font-family:inherit;" onfocus="this.style.borderColor=\'#CBD5E1\';this.style.background=\'#fff\';" onblur="this.style.borderColor=\'transparent\';this.style.background=\'transparent\';">'
       : '<span style="font-weight:700;color:'+col[1]+';">'+_qtEsc(cat.label)+'</span>';
@@ -26762,9 +26782,29 @@ function qt_saveCurrentQuote(isDraft){
     modifiedAt:now
   };
 
+  // ⚠ 치명적 버그였음: quoteData에 parentId:null, round:1이 기본값으로 박혀있는데,
+  //   edit 모드에서 Object.assign({}, 기존항목, quoteData)로 병합하면 이 기본값이 그대로
+  //   기존 항목을 덮어써버림. 그 결과 이미 "재견적"으로 만들어져 이력(history)에 연결되어
+  //   있던 항목(round 2 이상)을 그냥 "수정"만 해도 parentId가 null로 리셋되어 이력에서
+  //   떨어져나가 마치 완전히 새로운 견적처럼 보이는 버그였음. edit 모드에서는 반드시
+  //   기존 항목의 parentId/round/createdAt을 그대로 보존한다.
+  if(mode==='edit'&&qid){
+    var _origQ=QUOTES.find(function(x){return x.id===qid;});
+    if(_origQ){
+      quoteData.parentId=_origQ.parentId||null;
+      quoteData.round=_origQ.round||1;
+      quoteData.createdAt=_origQ.createdAt||now;
+    }
+  }
+
   if(mode==='ver'&&qid){
     var parent=QUOTES.find(function(q){return q.id===qid;});
-    quoteData.parentId=qid;
+    // ⚠ 기존엔 parentId가 "바로 직전 차수"를 가리켜서, 3차수 이상 연쇄로 재견적하면
+    //   각 차수가 서로 다른 부모를 가리키게 되어 이력 그룹이 끊기는 구조적 버그가 있었음
+    //   (그룹핑이 qt.parentId||qt.id 로 1단계만 보기 때문). parentId는 항상 체인의
+    //   최초 원본(root)을 가리키도록 통일 - 이러면 그룹핑/삭제/파이프라인 연동 등
+    //   parentId를 쓰는 다른 로직들도 그대로 정상 동작한다.
+    quoteData.parentId=(parent&&parent.parentId)||qid;
     quoteData.round=(parent?parent.round:1)+1;
   }
 
