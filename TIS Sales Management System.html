@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-070 -->
+<!-- v20260728-070 변경사항: 최종검토 원가분석의 내부인건비 하위목록 표시 개선 - 등급이 원래도 표시는 되고 있었지만 "홍길동 차장 (중급 3MM)"처럼 괄호 속에 묻혀 눈에 잘 안 띄었음. 부서/이름/직급과 동일한 구분자(·)로 나란히 놓아 "개발1팀 · 홍길동 차장 · 중급 (3MM)"처럼 등급이 명확히 구분되도록 수정, MM은 수량이라 괄호로 유지. 화면판·PDF판 둘 다 적용, 실제 렌더링 결과로 확인. 기존 블록 회귀 없음 확인. -->
+<!-- TIS-VERSION: 20260728-069 -->
+<!-- v20260728-069 변경사항: 내부인건비 등급 UI를 버튼(pill)에서 드롭다운으로 바꾸면서(v067), 그 전(v066)에 버튼식으로 이미 저장된 견적을 재오픈하면 예전 구조 그대로 남아 등급을 못 읽어(select를 찾는 코드라) 원가 계산에서 등급이 빠지던 문제 발견·수정. qt_migrateLegacyBlocks에 내부인건비 전용 마이그레이션 추가 - 재오픈 시 예전 버튼(pill) 구조를 감지하면 선택돼 있던 등급 값을 그대로 보존한 채 최신 드롭다운 구조로 자동 변환. 실제로 v066 스타일 저장 데이터를 재현해 재오픈 → pill 잔존 없음, 드롭다운 전환, 선택 등급(중급) 보존, 원가분석 정상 집계(9,600,000)까지 확인. 기존 블록 회귀 없음도 재확인. -->
 <!-- TIS-VERSION: 20260728-068 -->
 <!-- v20260728-068 변경사항: 견적 유형 변경 확인모달이 첫 변경 때만 뜨고 그 다음부터는 안 뜨던 버그 수정. 원인 - "손으로 수정했는지"(dirty 플래그)로 모달 표시 여부를 판단했는데, "교체 적용"을 누르는 순간 dirty가 false로 리셋되어버려서 바로 이어서 유형을 또 바꾸면 조건란에 내용이 가득한데도(방금 새 유형 기본값으로 채워진 상태) 모달 없이 그냥 덮어써지고 있었음. dirty 플래그 대신 "지금 조건란(지급조건/일반조건/기타조건)에 실제로 내용이 있는지"를 매번 직접 확인하도록 변경 - 몇 번째 변경이든 내용이 있으면 항상 확인받고, 완전히 비어있을 때만 모달 없이 바로 적용. 1차/2차/3차 연속 유형변경과 조건 비어있을 때의 회귀까지 실제 클릭 이벤트로 전부 재현·검증 완료. -->
 <!-- TIS-VERSION: 20260728-067 -->
@@ -24651,6 +24655,26 @@ function qt_migrateLegacyBlocks(){
       td.replaceChild(ta, inp);
       if(typeof qt_autoH==='function') qt_autoH(ta);
     });
+    // (3) 내부인건비 등급: 예전(v066) 버튼(pill) 방식으로 저장된 데이터를 지금(v067+)의
+    //   드롭다운 방식으로 자동 변환한다. 안 하면 예전 pill 구조 그대로 남아서 등급을 읽지
+    //   못해(qt_getCostAnalysis/qt_calcIntMM이 select를 찾음) 원가 계산에서 등급이 빠짐.
+    //   선택돼 있던 등급 값은 그대로 새 드롭다운에 이어준다.
+    document.querySelectorAll('#blockArea tbody[id^="tbintmm"] tr').forEach(function(tr){
+      var tds=tr.querySelectorAll('td');
+      if(tds.length<7) return;
+      var gradeTd=tds[3];
+      if(!gradeTd || gradeTd.querySelector('select')) return; // 이미 최신 형식
+      var pillWrap=gradeTd.querySelector('.intmm-grade-pills');
+      if(!pillWrap) return;
+      var selectedGrade=pillWrap.getAttribute('data-sel')||'';
+      gradeTd.innerHTML='';
+      var sel=document.createElement('select');
+      sel.className='isel';
+      sel.setAttribute('style','width:100%;text-align:center !important;text-align-last:center !important;');
+      sel.setAttribute('onchange','qt_calcIntMM(this)');
+      sel.innerHTML=(typeof qt_gradeOptionsHtml==='function')?qt_gradeOptionsHtml(selectedGrade||null, !selectedGrade):'';
+      gradeTd.appendChild(sel);
+    });
   }catch(e){ console.warn('[견적] 기존 견적 형식 업그레이드 중 문제', e); }
 }
 function qt_dedupeBlockIds(){
@@ -24900,7 +24924,7 @@ function qt_buildCostAnalysisPdfSection(){
   h+=_row('인건비 ('+(A.usingActual?'실투입 내부단가 기준':'내부단가 기준 견적공수 추정치')+')', A.laborCostInternal, {color:'#991B1B'});
   if(A.usingActual){
     A.intmmRows.forEach(function(r){
-      var lbl=(r.dept?_qtEsc(r.dept)+' · ':'')+_qtEscBr(r.person)+(r.pos?' '+_qtEsc(r.pos):'')+(r.grade&&r.grade!=='-'?' ('+_qtEsc(r.grade)+' '+r.mm+'MM)':'');
+      var lbl=(r.dept?_qtEsc(r.dept)+' · ':'')+_qtEscBr(r.person)+(r.pos?' '+_qtEsc(r.pos):'')+(r.grade&&r.grade!=='-'?' · '+_qtEsc(r.grade):'')+(r.mm?' ('+r.mm+'MM)':'');
       h+=_row(lbl, r.cost, {sub:true,color:'#991B1B'});
     });
   }
@@ -26239,7 +26263,7 @@ function qt_renderCostAnalysis(){
   html+=_row('인건비 ('+(A.usingActual?'실투입 내부단가 기준':'내부단가 기준 견적공수 추정치')+')', A.laborCostInternal, {color:'#991B1B'});
   if(A.usingActual){
     A.intmmRows.forEach(function(r){
-      var lbl=(r.dept?_qtEsc(r.dept)+' · ':'')+_qtEscBr(r.person)+(r.pos?' '+_qtEsc(r.pos):'')+(r.grade&&r.grade!=='-'?' ('+_qtEsc(r.grade)+' '+r.mm+'MM)':'');
+      var lbl=(r.dept?_qtEsc(r.dept)+' · ':'')+_qtEscBr(r.person)+(r.pos?' '+_qtEsc(r.pos):'')+(r.grade&&r.grade!=='-'?' · '+_qtEsc(r.grade):'')+(r.mm?' ('+r.mm+'MM)':'');
       html+=_row(lbl, r.cost, {sub:true,color:'#991B1B'});
     });
   }
