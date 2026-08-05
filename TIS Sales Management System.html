@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-065 -->
+<!-- v20260728-065 변경사항: 치명적 버그 발견·수정 - 견적서 PDF에서 셀을 병합한 경우(구분/역할 등) Enter로 입력한 줄바꿈이 사라지던 진짜 원인 발견. 병합된 셀은 html2canvas 렌더링 문제 회피를 위해 원래 셀 텍스트를 숨기고 별도의 절대배치 오버레이(qt_renderMergeOverlays)로 다시 그리는 구조인데, 이 오버레이가 span.textContent로 텍스트를 옮기고 있었음 - textContent는 텍스트 노드만 모으고 <br> 같은 엘리먼트는 그냥 버리기 때문에, 줄바꿈이 <br>로 변환된 상태였던 텍스트가 오버레이로 옮겨지는 순간 통째로 사라져 한 줄로 뭉개지고 있었음. 병합 안 된 일반 셀은 이 오버레이 경로를 안 타서 멀쩡했던 것. span.innerHTML로 옮기도록 수정해 <br> 태그가 그대로 보존되도록 함. 직접 함수 호출로 병합 셀 오버레이에 <br>이 정상 포함되는 것 확인, 인건비/라이선스/유지보수/상품/기타 5개 유형 전부(병합 없는 경우)와 저장→재오픈 사이클도 재확인해 회귀 없음 확인. -->
 <!-- TIS-VERSION: 20260728-064 -->
 <!-- v20260728-064 변경사항: 원가분석 관련 영역의 자물쇠 이모지(🔒)를 앱 전반에서 쓰는 얇은 선(stroke) 스타일 SVG 아이콘으로 통일 - 매입 추가 버튼, 견적검토 PDF 버튼, 매입 블록 내부 경고 배너, 원가분석 헤더(화면·PDF 둘 다), 단가설정 내부단가 고정 카테고리 배지까지 총 6곳 전부 교체. 재사용 가능한 _qtLockSvg() 헬퍼 함수 신설. 실제 렌더링 결과에서 이모지 잔존 없음, SVG 정상 삽입 6곳 전수 확인, 계산 정확성 회귀 없음 확인. -->
 <!-- TIS-VERSION: 20260728-063 -->
@@ -25068,7 +25070,11 @@ function qt_renderMergeOverlays(root){
         +'display:flex;align-items:center;justify-content:'+jc+';text-align:'+al+';'
         +'font-size:8.5px;color:#000;padding:5px 6px;'
         +'white-space:pre-line;word-break:break-all;pointer-events:none;';
-      ov.textContent=span.textContent;
+      // ⚠ 치명적 버그였음: textContent로 읽으면 span 안의 <br>(Enter 줄바꿈 변환 결과)가
+      //   완전히 사라짐(textContent는 텍스트 노드만 모으고 <br> 같은 엘리먼트는 버림) -
+      //   병합 안 된 일반 셀은 멀쩡한데 병합된 셀만 여러 줄 입력이 한 줄로 뭉개지는 원인이었음.
+      //   innerHTML로 옮겨야 <br> 태그가 그대로 보존되어 줄바꿈이 유지된다.
+      ov.innerHTML=span.innerHTML;
       root.appendChild(ov);
     });
   }catch(e){ console.warn('[PDF] 병합 셀 오버레이 렌더 실패',e); }
