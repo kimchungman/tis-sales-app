@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-066 -->
+<!-- v20260728-066 변경사항: 원가분석 정확도 개선 - "내부인건비" 블록 신설. 예전엔 인건비 원가를 견적공수(청구용 MM)로 계산하고 있어서 실제 원가와 다를 수 있었음. 매입 왼쪽 위치에 동일한 빨간 테두리+자물쇠 경고로 신설, 필드: 부서/투입인력/직급/등급(클릭형 버튼)/투입M/M/내부단가(등급 선택 시 단가설정 기준 자동채움)/내부원가(자동계산). 매입과 동일하게 고객 견적서 PDF·미리보기·합계에서는 완전히 제외되고 견적검토 PDF·원가분석에서만 집계됨. 계산 로직: 내부인건비 데이터가 입력되어 있으면 실투입 기준으로, 없으면 기존처럼 견적공수 기준 추정치로 자동 폴백(화면에 "실투입 내부단가 기준" / "내부단가 기준 견적공수 추정치"로 구분 표시). 행추가/셀병합/저장·재오픈 전부 매입과 동일한 안정성 확보(ROW_TPL 등록, qt_delRow 병합소유권 이전 로직 재사용, 저장 타입매핑 추가). 헤더 중앙정렬·금액 우측정렬·폰트/열너비 다른 유형과 통일. 실제 실행으로 등급버튼 자동단가채움, 원가 자동계산, 폴백/실투입 전환, 고객측 완전제외, 행추가/병합삭제/저장재오픈 전 과정, 기존 블록 회귀 없음까지 전부 확인 완료. -->
 <!-- TIS-VERSION: 20260728-065 -->
 <!-- v20260728-065 변경사항: 치명적 버그 발견·수정 - 견적서 PDF에서 셀을 병합한 경우(구분/역할 등) Enter로 입력한 줄바꿈이 사라지던 진짜 원인 발견. 병합된 셀은 html2canvas 렌더링 문제 회피를 위해 원래 셀 텍스트를 숨기고 별도의 절대배치 오버레이(qt_renderMergeOverlays)로 다시 그리는 구조인데, 이 오버레이가 span.textContent로 텍스트를 옮기고 있었음 - textContent는 텍스트 노드만 모으고 <br> 같은 엘리먼트는 그냥 버리기 때문에, 줄바꿈이 <br>로 변환된 상태였던 텍스트가 오버레이로 옮겨지는 순간 통째로 사라져 한 줄로 뭉개지고 있었음. 병합 안 된 일반 셀은 이 오버레이 경로를 안 타서 멀쩡했던 것. span.innerHTML로 옮기도록 수정해 <br> 태그가 그대로 보존되도록 함. 직접 함수 호출로 병합 셀 오버레이에 <br>이 정상 포함되는 것 확인, 인건비/라이선스/유지보수/상품/기타 5개 유형 전부(병합 없는 경우)와 저장→재오픈 사이클도 재확인해 회귀 없음 확인. -->
 <!-- TIS-VERSION: 20260728-064 -->
@@ -23300,6 +23302,7 @@ function qtRenderPreview(){
         <button class="add-blk-btn" onclick="qt_addBlock('lic')">＋ 라이선스(상품)</button>
         <button class="add-blk-btn" onclick="qt_addBlock('ma')">＋ 유지보수(MA)</button>
         <button class="add-blk-btn" onclick="qt_addBlock('custom')">＋ 기타</button>
+        <button class="add-blk-btn" onclick="qt_addBlock('intmm')" title="내부 원가관리 전용 - 실제 투입 공수 기준, 고객 견적서에는 표시되지 않습니다" style="border-color:#FCA5A5;color:#991B1B;display:inline-flex;align-items:center;gap:4px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> ＋ 내부인건비</button>
         <button class="add-blk-btn" onclick="qt_addBlock('purchase')" title="내부 원가관리 전용 - 고객 견적서에는 표시되지 않습니다" style="border-color:#FCA5A5;color:#991B1B;display:inline-flex;align-items:center;gap:4px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> ＋ 매입</button>
         <button class="add-blk-btn disc-btn" onclick="qt_addBlock('discount')">특별 할인</button>
       </div>
@@ -23451,6 +23454,7 @@ var ROW_TPL={
   'tbma': '<td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="품목명 입력"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="12" oninput="qt_calcMA(this)"></td><td style="text-align:right;"><input class="ii" style="text-align:right;" placeholder="0" oninput="qt_calcMA(this)"></td><td style="text-align:center;padding:2px 4px;"><div style="display:flex;align-items:center;justify-content:center;"><input class="ii" style="text-align:center;flex:1;" placeholder="15" oninput="qt_calcMA(this)"><span style="font-size:11px;color:var(--text);flex-shrink:0;margin-left:2px;">%</span></div></td><td class="ma-propose" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMA(this)"></td><td><button class="del-btn" onclick="qt_delRow(this)">×</button></td>',
   'tbprod': '<td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="품목명 입력"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="1" oninput="qt_calcProduct(this)"></td><td style="text-align:center;"><input class="ii" style="text-align:center !important;" placeholder="개"></td><td style="text-align:right;"><input class="ii" style="text-align:right;" placeholder="0" oninput="qt_calcProduct(this)"></td><td class="prod-propose" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcProduct(this)"></td><td><button class="del-btn" onclick="qt_delRow(this)">×</button></td>',
   'tbpur': '<td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="품목명 입력"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center !important;" placeholder="1"></td><td style="text-align:center;"><input class="ii" style="text-align:center !important;" placeholder="개"></td><td style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_fmtAmtInput(this)"></td><td><button class="del-btn" onclick="qt_delRow(this)">×</button></td>',
+  'tbintmm': '<td class="L"><textarea class="ii" placeholder="부서" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" rows="1" style="resize:none;overflow:hidden;width:100%;" placeholder="투입인력 이름"></textarea></td><td style="text-align:center;"><textarea class="ii" placeholder="직급" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td style="text-align:center;padding:4px 3px;"></td><td style="text-align:center;"><input class="ii" style="text-align:center !important;" placeholder="1.0" oninput="qt_calcIntMM(this)"></td><td style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcIntMM(this)"></td><td class="intmm-cost" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" readonly></td><td><button class="del-btn" onclick="qt_delRow(this)">×</button></td>',
 };
 
 // ── 기타 블록 동적 헤더 ──
@@ -23879,6 +23883,7 @@ function qt_calcTotal(){
     var badge=blk.querySelector('.ib-badge');
     if(badge&&badge.textContent.trim()==='특별 할인') return;
     if(badge&&badge.textContent.trim()==='매입') return; // 내부 원가관리 전용 - 고객 견적 합계에서 제외
+    if(badge&&badge.textContent.trim()==='내부인건비') return; // 내부 원가관리 전용 - 고객 견적 합계에서 제외
     blk.querySelectorAll('tbody tr:not(.tr-sub):not(.tr-disc)').forEach(function(tr){
       var tds=tr.querySelectorAll('td');
       if(tds.length<2) return;
@@ -23943,6 +23948,7 @@ function qt_getPdfData(){
     var badge=blk.querySelector('.ib-badge');
     if(badge&&badge.textContent.trim()==='특별 할인') return;
     if(badge&&badge.textContent.trim()==='매입') return; // 내부 원가관리 전용 - 고객 견적서 합계에서 제외
+    if(badge&&badge.textContent.trim()==='내부인건비') return; // 내부 원가관리 전용 - 고객 견적서 합계에서 제외
     blk.querySelectorAll('tbody tr').forEach(function(tr){
       var tds=tr.querySelectorAll('td');
       if(tds.length<2) return;
@@ -24231,6 +24237,49 @@ function qt_getGradeRates(gradeName, src){
   };
 }
 // 견적서 작성 화면(인건비 행)의 등급/단가기준 드롭다운을 동적 카테고리 목록에서 생성
+// 내부인건비 블록의 등급 선택 - 드롭다운 대신 클릭형 버튼(pill)으로 구성
+function qt_intmmGradeButtonsHtml(selectedGrade){
+  var grades=(typeof QT_PRICE_GRADES!=='undefined'&&QT_PRICE_GRADES.length)?QT_PRICE_GRADES:['특급','고급','중급','초급'];
+  return '<div class="intmm-grade-pills" data-sel="'+_qtEsc(selectedGrade||'')+'" style="display:flex;gap:2px;flex-wrap:wrap;justify-content:center;">'
+    + grades.map(function(g){
+        var sel=(g===selectedGrade);
+        return '<button type="button" class="intmm-grade-pill" data-grade="'+_qtEsc(g)+'" onclick="qt_selIntmmGrade(this)" style="background:'+(sel?'#991B1B':'#fff')+';color:'+(sel?'#fff':'#64748B')+';border:1px solid '+(sel?'#991B1B':'#E2E8F0')+';border-radius:4px;padding:2px 6px;font-size:9px;font-weight:600;cursor:pointer;font-family:inherit;line-height:1.5;">'+_qtEsc(g)+'</button>';
+      }).join('')
+    +'</div>';
+}
+function qt_selIntmmGrade(btn){
+  var wrap=btn.closest('.intmm-grade-pills');
+  if(!wrap) return;
+  var grade=btn.getAttribute('data-grade');
+  wrap.setAttribute('data-sel', grade);
+  wrap.querySelectorAll('.intmm-grade-pill').forEach(function(b){
+    var isSel=(b===btn);
+    b.style.background=isSel?'#991B1B':'#fff';
+    b.style.color=isSel?'#fff':'#64748B';
+    b.style.borderColor=isSel?'#991B1B':'#E2E8F0';
+  });
+  qt_calcIntMM(btn);
+}
+// 투입M/M × 내부단가 = 내부원가 자동계산, 등급 선택 시 단가 기본값 자동 반영
+function qt_calcIntMM(el){
+  var tr=el.closest('tr'); if(!tr) return;
+  var tds=tr.querySelectorAll('td');
+  var gradeWrap=tr.querySelector('.intmm-grade-pills');
+  var grade=gradeWrap?gradeWrap.getAttribute('data-sel'):'';
+  var mmInp=tds[4]?tds[4].querySelector('input'):null;
+  var rateInp=tds[5]?tds[5].querySelector('input'):null;
+  var costTd=tds[6]||null;
+  // 등급을 새로 클릭한 경우(el이 등급 버튼)에만 단가를 설정값 기준으로 새로 채움
+  if(el.classList&&el.classList.contains('intmm-grade-pill')&&grade){
+    var rate=(typeof QT_GRADES!=='undefined'&&QT_GRADES[grade]&&QT_GRADES[grade].internal&&QT_GRADES[grade].internal.c)||0;
+    if(rateInp){ rateInp.value=rate?rate.toLocaleString():''; }
+  }
+  if(rateInp&&el===rateInp){ var v=qt_parseN(rateInp.value); if(v>0) qt_applyNumFormat(rateInp,qt_fmtN(v)); }
+  var mm=qt_parseN(mmInp?mmInp.value:'0');
+  var rate2=qt_parseN(rateInp?rateInp.value:'0');
+  if(costTd) qt_setAmtCell(costTd, el, mm*rate2);
+}
+
 function qt_gradeOptionsHtml(selectedGrade, includeEmpty){
   var grades=(typeof QT_PRICE_GRADES!=='undefined'&&QT_PRICE_GRADES.length)?QT_PRICE_GRADES:['특급','고급','중급','초급'];
   var h=includeEmpty?'<option value="" selected hidden>등급</option>':'';
@@ -24486,6 +24535,11 @@ function qt_addCommonRow(tbid){
       var _hadEmptyC=/hidden/.test(_cs.innerHTML);
       _cs.innerHTML=qt_catOptionsHtml(null,_hadEmptyC);
     }
+    // 내부인건비 행: 등급 버튼(pill)을 현재 설정 등급 목록 기준으로 새로 채움 (ROW_TPL엔 빈 칸으로 남겨둠)
+    if(t.id.indexOf('tbintmm')===0 && typeof qt_intmmGradeButtonsHtml==='function'){
+      var _gradeTd=tr.querySelectorAll('td')[3];
+      if(_gradeTd) _gradeTd.innerHTML=qt_intmmGradeButtonsHtml();
+    }
   }catch(e){ console.warn('[행추가] 드롭다운 갱신 실패:', e.message); }
   t.appendChild(tr);
   // 인건비 새 행: 기본 선택(중급/TAK) 기준 금액 즉시 계산
@@ -24509,7 +24563,7 @@ function qt_initColResize(){
     var cg=tbl.querySelector('colgroup');
     if(!cg){ cg=document.createElement('colgroup'); tbl.insertBefore(cg, tbl.firstChild); }
     while(cg.children.length<ths.length){ cg.appendChild(document.createElement('col')); }
-    var AMT_FIX=['소비자단가','소비자가','공급단가','공급가','제안단가','제안금액','판매단가','판매금액','구축금액','매입금액'];
+    var AMT_FIX=['소비자단가','소비자가','공급단가','공급가','제안단가','제안금액','판매단가','판매금액','구축금액','매입금액','내부단가','내부원가'];
     ths.forEach(function(th,idx){
       var _t=(th.textContent||'').replace('\u2059','').trim();
       var _hasInp=!!th.querySelector('input'); // 기타 유형: 헤더가 input이라 텍스트가 비어 보임
@@ -24670,6 +24724,8 @@ function qt_addBlock(type,skipInit){
       body:'<div class="it-wrap"><table class="it" style="table-layout:fixed;width:100%;"><colgroup><col style="width:72px"><col><col style="width:52px"><col style="width:90px"><col style="width:72px"><col style="width:90px"><col style="width:28px"></colgroup><thead><tr><th class="L">구분</th><th class="L">품목</th><th style="text-align:center;">개월</th><th style="text-align:right;">구축금액</th><th style="text-align:center;">요율</th><th style="text-align:right;">제안금액</th><th></th></tr></thead><tbody id="tbmaQT_BC"><tr><td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" placeholder="품목명 입력" rows="1" style="resize:none;overflow:hidden;width:100%;"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="12" oninput="qt_calcMA(this)"></td><td style="text-align:right;"><input class="ii" style="text-align:right;" placeholder="0" oninput="qt_calcMA(this)"></td><td style="text-align:center;padding:2px 4px;"><div style="display:flex;align-items:center;justify-content:center;"><input class="ii" style="text-align:center;flex:1;" placeholder="15" oninput="qt_calcMA(this)"><span style="font-size:11px;color:var(--text);flex-shrink:0;margin-left:2px;">%</span></div></td><td class="ma-propose" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcMA(this)"></td><td><button class="del-btn" onclick="qt_delRow(this)">×</button></td></tr></tbody></table></div><span class="add-r" onclick="qt_addCommonRow(\'tbmaQT_BC\')">＋ 행 추가</span>'},
     product:{badge:'상품',bc:'#F0FDF4',tc:'#166534',
       body:'<div class="it-wrap"><table class="it" style="table-layout:fixed;width:100%;"><colgroup><col style="width:72px"><col><col style="width:40px"><col style="width:44px"><col style="width:90px"><col style="width:90px"><col style="width:28px"></colgroup><thead><tr><th class="L">구분</th><th class="L">품목</th><th>수량</th><th>단위</th><th>제안단가</th><th>제안금액</th><th></th></tr></thead><tbody id="tbprodQT_BC"><tr><td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" placeholder="품목명 입력" rows="1" style="resize:none;overflow:hidden;width:100%;"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center;" placeholder="1" oninput="qt_calcProduct(this)"></td><td style="text-align:center;"><input class="ii" style="text-align:center !important;" placeholder="개"></td><td style="text-align:right;"><input class="ii" style="text-align:right;" placeholder="0" oninput="qt_calcProduct(this)"></td><td class="prod-propose" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcProduct(this)"></td><td style="width:32px;text-align:center;padding:2px;"><button class="del-btn" onclick="qt_delRow(this)">×</button></td></tr></tbody></table></div><span class="add-r" onclick="qt_addCommonRow(\'tbprodQT_BC\')">＋ 행 추가</span>'},
+    intmm:{badge:'내부인건비',bc:'#FEF2F2',tc:'#991B1B',
+      body:'<div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;padding:6px 10px;margin-bottom:8px;font-size:10.5px;color:#92400E;display:flex;align-items:center;gap:5px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> 내부 원가관리 전용 항목입니다 — 실제 투입 공수 기준 인건비 원가를 관리합니다. 견적서 PDF·고객 미리보기에는 절대 표시되지 않고, 최종검토(원가분석)에서만 집계됩니다.</div><div class="it-wrap" style="overflow-x:auto;"><table class="it" style="table-layout:fixed;min-width:620px;width:100%;"><colgroup><col style="width:64px"><col style="min-width:110px"><col style="width:56px"><col style="width:150px"><col style="width:56px"><col style="width:88px"><col style="width:88px"><col style="width:28px"></colgroup><thead><tr><th class="L">부서</th><th class="L">투입인력</th><th>직급</th><th>등급</th><th>투입M/M</th><th>내부단가</th><th>내부원가</th><th></th></tr></thead><tbody id="tbintmmQT_BC"><tr><td class="L"><textarea class="ii" placeholder="부서" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" placeholder="투입인력 이름" rows="1" style="resize:none;overflow:hidden;width:100%;"></textarea></td><td style="text-align:center;"><textarea class="ii" placeholder="직급" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td style="text-align:center;padding:4px 3px;">'+qt_intmmGradeButtonsHtml()+'</td><td style="text-align:center;"><input class="ii" style="text-align:center !important;" placeholder="1.0" oninput="qt_calcIntMM(this)"></td><td style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_calcIntMM(this)"></td><td class="intmm-cost" style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" readonly></td><td style="width:32px;text-align:center;padding:2px;"><button class="del-btn" onclick="qt_delRow(this)">×</button></td></tr></tbody></table></div><span class="add-r" onclick="qt_addCommonRow(\'tbintmmQT_BC\')">＋ 행 추가</span>'},
     purchase:{badge:'매입',bc:'#FEF2F2',tc:'#991B1B',
       body:'<div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;padding:6px 10px;margin-bottom:8px;font-size:10.5px;color:#92400E;display:flex;align-items:center;gap:5px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> 내부 원가관리 전용 항목입니다 — 견적서 PDF·고객 미리보기에는 절대 표시되지 않고, 최종검토(원가분석)에서만 집계됩니다.</div><div class="it-wrap"><table class="it" style="table-layout:fixed;width:100%;"><colgroup><col style="width:72px"><col><col style="width:52px"><col style="width:52px"><col style="width:96px"><col style="width:28px"></colgroup><thead><tr><th class="L">구분</th><th class="L">품목</th><th>수량</th><th>단위</th><th>매입금액</th><th></th></tr></thead><tbody id="tbpurQT_BC"><tr><td class="L"><textarea class="ii" placeholder="구분" rows="1" style="resize:none;overflow:hidden;width:100%;text-align:center;"></textarea></td><td class="L"><textarea class="ii L" placeholder="품목명 입력" rows="1" style="resize:none;overflow:hidden;width:100%;"></textarea></td><td style="text-align:center;"><input class="ii" style="text-align:center !important;" placeholder="1"></td><td style="text-align:center;"><input class="ii" style="text-align:center !important;" placeholder="개"></td><td style="text-align:right;padding:2px;"><input class="ii amt-inp" style="text-align:right;width:100%;" placeholder="0" oninput="qt_fmtAmtInput(this)"></td><td style="width:32px;text-align:center;padding:2px;"><button class="del-btn" onclick="qt_delRow(this)">×</button></td></tr></tbody></table></div><span class="add-r" onclick="qt_addCommonRow(\'tbpurQT_BC\')">＋ 행 추가</span>'},
     custom:{badge:'기타',bc:'#F8FAFC',tc:'#475569',body:qt_getCustomBody(QT_BC)},
@@ -24853,7 +24909,13 @@ function qt_buildCostAnalysisPdfSection(){
   h+='<td style="width:50%;border:1px solid '+BC+';border-radius:8px;vertical-align:top;padding:0;">';
   h+=_colHead('원가', A.totalCost, '#991B1B');
   h+='<div style="padding:8px 12px 10px;">';
-  h+=_row('인건비 (내부단가 기준)', A.laborCostInternal, {color:'#991B1B'});
+  h+=_row('인건비 ('+(A.usingActual?'실투입 내부단가 기준':'내부단가 기준 견적공수 추정치')+')', A.laborCostInternal, {color:'#991B1B'});
+  if(A.usingActual){
+    A.intmmRows.forEach(function(r){
+      var lbl=(r.dept?_qtEsc(r.dept)+' · ':'')+_qtEscBr(r.person)+(r.pos?' '+_qtEsc(r.pos):'')+(r.grade&&r.grade!=='-'?' ('+_qtEsc(r.grade)+' '+r.mm+'MM)':'');
+      h+=_row(lbl, r.cost, {sub:true,color:'#991B1B'});
+    });
+  }
   h+=_row('매입', A.purchaseTotal, {color:'#991B1B'});
   if(A.purchaseItems.length){
     A.purchaseItems.forEach(function(p){
@@ -25126,9 +25188,10 @@ function qt_buildDevPdf(){
   var tdR='padding:5px 7px;border:1px solid '+BC+';font-size:8.5px;color:#000;text-align:right;vertical-align:middle;';
 
   var allIbs=Array.from(document.querySelectorAll('#blockArea .ib')).filter(function(b){
-    // 매입 블록은 내부 원가관리 전용 - 고객 PDF에는 어떤 경우에도 노출되면 안 됨
+    // 매입/내부인건비 블록은 내부 원가관리 전용 - 고객 PDF에는 어떤 경우에도 노출되면 안 됨
     var bd=b.querySelector('.ib-badge');
-    return !(bd&&bd.textContent.trim()==='매입');
+    var bt=bd?bd.textContent.trim():'';
+    return !(bt==='매입'||bt==='내부인건비');
   });
   // 데이터 블록 수 (할인 블록·열 없는 블록 제외) — 1개면 소계 생략, 2개↑면 소계 ①②+합계 합산표기
   var dataBlockCount=allIbs.filter(function(b){
@@ -25911,6 +25974,7 @@ function qt_renderPreview(){
       return;
     }
     if(badgeTxt==='매입') return; // 내부 원가관리 전용 - 이 미리보기(고객용)에는 노출하지 않음
+    if(badgeTxt==='내부인건비') return; // 내부 원가관리 전용 - 이 미리보기(고객용)에는 노출하지 않음
 
     html+='<div style="margin-bottom:12px;">';
     html+='<div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:4px;display:flex;align-items:center;gap:6px;">';
@@ -25991,12 +26055,14 @@ function qt_renderPreview(){
 // ══════════ 원가분석 (내부 전용) ══════════
 // 화면(DOM)의 현재 입력값을 기준으로 실시간 집계한다 - 저장 여부와 무관하게 항상 최신 상태 반영
 function qt_getCostAnalysis(){
-  var laborCostInternal=0; // 인건비: 내부단가 기준 원가
-  var laborQuoted=0;       // 인건비: 실제 견적서에 청구되는 금액
-  var laborRows=[];        // 인건비 행별 상세 (역할/등급/수량/원가/청구가)
+  var laborCostQuotedEst=0; // 견적공수(청구용 MM) 기준 추정 원가 - 내부인건비 미입력 시 폴백용
+  var laborCostActual=0;    // 실제 투입공수 기준 원가 - 내부인건비 블록에서 집계
+  var laborQuoted=0;        // 인건비: 실제 견적서에 청구되는 금액
+  var laborRows=[];         // 인건비(견적) 행별 상세 - 현재 화면엔 미표시, 필요시 확장용으로 유지
+  var intmmRows=[];         // 내부인건비(실투입) 행별 상세 {dept,person,pos,grade,mm,rate,cost}
   var purchaseTotal=0;
   var purchaseItems=[];    // {cat,item,qty,unit,amount}
-  var otherPropose=0;      // 인건비·매입·할인 제외한 나머지 블록(라이선스/MA/상품/기타) 청구합계
+  var otherPropose=0;      // 인건비·매입·내부인건비·할인 제외한 나머지 블록 청구합계
 
   document.querySelectorAll('#blockArea .ib').forEach(function(blk){
     var badge=blk.querySelector('.ib-badge');
@@ -26032,6 +26098,33 @@ function qt_getCostAnalysis(){
       return;
     }
 
+    if(badgeTxt==='내부인건비'){
+      var _carryDept='';
+      blk.querySelectorAll('tbody tr').forEach(function(tr){
+        var tds=tr.querySelectorAll('td');
+        if(tds.length<7) return;
+        var deptInp=tds[0].querySelector('textarea');
+        var personInp=tds[1].querySelector('textarea');
+        var posInp=tds[2].querySelector('textarea');
+        var gradeWrap=tds[3].querySelector('.intmm-grade-pills');
+        var grade=gradeWrap?(gradeWrap.getAttribute('data-sel')||''):'';
+        var mmInp=tds[4].querySelector('input');
+        var rateInp=tds[5].querySelector('input');
+        var costInp=tds[6].querySelector('input');
+        var dept=(tds[0].style.display==='none')?_carryDept:(deptInp&&deptInp.value||'').trim();
+        _carryDept=dept;
+        var person=(personInp&&personInp.value||'').trim();
+        var pos=(posInp&&posInp.value||'').trim();
+        var mm=qt_parseN(mmInp?mmInp.value:'');
+        var rate=qt_parseN(rateInp?rateInp.value:'');
+        var cost=qt_parseN(costInp?costInp.value:'')||(mm*rate);
+        if(!person&&!mm&&!cost) return; // 빈 행은 집계에서 제외
+        laborCostActual+=cost;
+        intmmRows.push({dept:dept, person:person||'(이름 미입력)', pos:pos, grade:grade||'-', mm:mm, rate:rate, cost:cost});
+      });
+      return;
+    }
+
     if(badgeTxt==='인건비'){
       blk.querySelectorAll('tbody tr').forEach(function(tr){
         var roleInp=tr.querySelectorAll('textarea')[1]; // [0]=구분, [1]=역할
@@ -26050,13 +26143,13 @@ function qt_getCostAnalysis(){
           var rate=qt_getGradeRates(grade,'internal');
           rowCost=(rate.c||0)*qty;
         }
-        laborCostInternal+=rowCost;
+        laborCostQuotedEst+=rowCost;
         laborRows.push({role:role||'(역할 미입력)', grade:grade||'-', qty:qty, cost:rowCost, quoted:quoted});
       });
       return;
     }
 
-    // 라이선스/유지보수(MA)/상품/기타 - 청구금액만 합산 (원가 추적은 매입 블록에서 별도 관리)
+    // 라이선스/유지보수(MA)/상품/기타 - 청구금액만 합산 (원가 추적은 매입·내부인건비 블록에서 별도 관리)
     blk.querySelectorAll('tbody tr:not(.tr-sub):not(.tr-disc)').forEach(function(tr){
       var tds=tr.querySelectorAll('td');
       if(tds.length<2) return;
@@ -26070,7 +26163,13 @@ function qt_getCostAnalysis(){
     });
   });
 
-  var totalPropose=laborQuoted+otherPropose; // 매입 제외, 할인 전 총 청구금액
+  // ⚠ 실제 투입(내부인건비) 데이터가 있으면 그걸로 인건비 원가를 계산하고,
+  //   아직 입력 전이면(견적만 나간 단계) 견적공수 기준 추정치로 대신 보여준다.
+  //   isEstimate로 화면에서 "추정치"임을 구분 표시할 수 있게 한다.
+  var usingActual=intmmRows.length>0;
+  var laborCostInternal=usingActual?laborCostActual:laborCostQuotedEst;
+
+  var totalPropose=laborQuoted+otherPropose; // 매입/내부인건비 제외, 할인 전 총 청구금액
   var discInp=document.querySelector('.disc-blk .disc-fi');
   var discAmt=discInp?qt_parseN(discInp.value):0;
   var discLabel='';
@@ -26086,6 +26185,7 @@ function qt_getCostAnalysis(){
     totalPropose:totalPropose, otherPropose:otherPropose,
     discAmt:discAmt, discLabel:discLabel, finalAmt:finalAmt,
     laborCostInternal:laborCostInternal, laborQuoted:laborQuoted, laborRows:laborRows,
+    laborCostActual:laborCostActual, laborCostQuotedEst:laborCostQuotedEst, usingActual:usingActual, intmmRows:intmmRows,
     purchaseTotal:purchaseTotal, purchaseItems:purchaseItems,
     totalCost:totalCost, profit:profit, marginPct:marginPct
   };
@@ -26148,7 +26248,13 @@ function qt_renderCostAnalysis(){
     +'<div style="font-size:13px;font-weight:700;color:'+LABEL+';margin-bottom:4px;">원가</div>'
     +'<div style="font-size:19px;font-weight:800;color:#991B1B;">'+_qtWon(A.totalCost)+'</div></div>';
   html+='<div style="padding:12px 18px 14px;">';
-  html+=_row('인건비 (내부단가 기준)', A.laborCostInternal, {color:'#991B1B'});
+  html+=_row('인건비 ('+(A.usingActual?'실투입 내부단가 기준':'내부단가 기준 견적공수 추정치')+')', A.laborCostInternal, {color:'#991B1B'});
+  if(A.usingActual){
+    A.intmmRows.forEach(function(r){
+      var lbl=(r.dept?_qtEsc(r.dept)+' · ':'')+_qtEscBr(r.person)+(r.pos?' '+_qtEsc(r.pos):'')+(r.grade&&r.grade!=='-'?' ('+_qtEsc(r.grade)+' '+r.mm+'MM)':'');
+      html+=_row(lbl, r.cost, {sub:true,color:'#991B1B'});
+    });
+  }
   html+=_row('매입', A.purchaseTotal, {color:'#991B1B'});
   if(A.purchaseItems.length){
     A.purchaseItems.forEach(function(p){
@@ -26751,7 +26857,7 @@ function qt_saveCurrentQuote(isDraft){
   var blocks=[];
   document.querySelectorAll('.block-area .ib').forEach(function(blk){
     var badge=blk.querySelector('.ib-badge');
-    var typeKey={인건비:'mm','라이선스(상품)':'lic','유지보수(MA)':'ma','상품':'product',매입:'purchase','특별 할인':'discount','기타':'custom'}[(badge&&badge.textContent.trim())||'']||'custom';
+    var typeKey={인건비:'mm','라이선스(상품)':'lic','유지보수(MA)':'ma','상품':'product',매입:'purchase',내부인건비:'intmm','특별 할인':'discount','기타':'custom'}[(badge&&badge.textContent.trim())||'']||'custom';
     blocks.push({type:typeKey,html:blk.querySelector('.ib-body').innerHTML});
   });
 
