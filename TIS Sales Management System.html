@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-079 -->
+<!-- v20260728-079 변경사항: 딥링크 순서 버그 발견·수정 - 로그인 화면이 아직 떠 있는 동안 SharePoint 연결이 백그라운드로 먼저 끝날 수 있는 구조(로그인창을 안 막으려고 의도된 설계)라서, 그 시점에 바로 견적서 모달을 열어버려 로그인 화면 위에 모달만 떠 있는 것처럼 보이고 모달을 닫으면 그제서야 로그인 화면이 드러나던 문제. session이 실제로 채워질 때(로그인 진짜 완료 시점, session.role이 locked가 아니게 되는 시점)까지 먼저 폴링 대기한 뒤에 견적서를 열도록 수정(최대 5분 대기). 실제로 로그인 전엔 모달이 절대 안 열리고 로그인 완료 시점에 정확히 열리는 것, 일반 접속(파라미터 없음)은 여전히 영향 없는 것(0.5ms 즉시 종료) 모두 재현·확인 완료. -->
 <!-- TIS-VERSION: 20260728-078 -->
 <!-- v20260728-078 변경사항: 검토요청 메일 딥링크 개선. (1) 속도 - 예전엔 대시보드/방문기록/주간회의 등 딥링크와 무관한 다른 무거운 데이터가 전부 로드된 뒤에야 시작해서 체감상 한참 걸렸음. SP 연결 직후(무거운 로드들 이전)로 훅 위치를 옮기고, 막연한 폴링 대신 견적서 데이터를 직접 한 번 fetch하도록 재구성해 훨씬 빠르고 확실하게 열리도록 개선. (2) 이동 탭을 검토이력(t5)에서 최종검토(t4)로 수정. 실제 실행으로 이미 로컬에 있는 경우 즉시 열리고 최종검토 탭에 정확히 안착하는 것 확인, 기존 저장 반응성·블록 회귀 없음도 재확인. -->
 <!-- TIS-VERSION: 20260728-077 -->
@@ -25930,8 +25932,6 @@ function qt_checkDeepLink(){
     // 재진입/새로고침 시 계속 자동으로 열리는 것을 막기 위해 URL에서 파라미터 제거
     try{ history.replaceState(null,'',location.pathname+location.hash); }catch(e){}
 
-    if(typeof showPage==='function') showPage('quotation');
-
     function _openAndGoT4(){
       qt_openModal('edit', qid);
       setTimeout(function(){
@@ -25939,30 +25939,45 @@ function qt_checkDeepLink(){
         if(t4&&typeof qt_switchTab==='function') qt_switchTab(t4,'t4');
       },200);
     }
-    (async function(){
-      // ⚠ 예전엔 막연히 QUOTES가 채워지길 폴링(0.5초 간격 최대 4초)만 하고 있었는데,
-      //   이 딥링크가 직접 견적서 데이터를 한 번 가져오도록(await) 바꿔서 훨씬 빠르고
-      //   확실하게 열리도록 개선. 이미 로컬에 있으면 그 즉시(대기 없이) 바로 연다.
-      var q=(typeof QUOTES!=='undefined'?QUOTES:[]).find(function(x){return x.id===qid;});
-      if(q){ _openAndGoT4(); return; }
-      if(typeof qt_spFetchQuotes==='function'){
-        try{ await qt_spFetchQuotes(); }catch(e){}
-      }
-      q=(typeof QUOTES!=='undefined'?QUOTES:[]).find(function(x){return x.id===qid;});
-      if(q){ _openAndGoT4(); return; }
-      // 그래도 못 찾았으면 짧은 간격으로 몇 번 더 재확인(로그인 직후라 인증/세션 초기화가
-      // 막 끝나는 시점과 겹칠 수 있어 약간의 여유만 둠)
-      var tries=0;
-      (function waitAndOpen(){
-        tries++;
-        var q2=(typeof QUOTES!=='undefined'?QUOTES:[]).find(function(x){return x.id===qid;});
-        if(q2){ _openAndGoT4(); return; }
-        if(tries>=6){
-          if(typeof showToast==='function') showToast('⚠️ 해당 견적서를 찾을 수 없습니다. 삭제되었거나 접근 권한이 없을 수 있어요.','warn');
-          return;
+    function _proceedAfterLogin(){
+      if(typeof showPage==='function') showPage('quotation');
+      (async function(){
+        // 예전엔 막연히 QUOTES가 채워지길 폴링만 하고 있었는데, 이 딥링크가 직접 견적서
+        // 데이터를 한 번 가져오도록(await) 바꿔서 훨씬 빠르고 확실하게 열리도록 개선.
+        // 이미 로컬에 있으면 그 즉시(대기 없이) 바로 연다.
+        var q=(typeof QUOTES!=='undefined'?QUOTES:[]).find(function(x){return x.id===qid;});
+        if(q){ _openAndGoT4(); return; }
+        if(typeof qt_spFetchQuotes==='function'){
+          try{ await qt_spFetchQuotes(); }catch(e){}
         }
-        setTimeout(waitAndOpen,300);
+        q=(typeof QUOTES!=='undefined'?QUOTES:[]).find(function(x){return x.id===qid;});
+        if(q){ _openAndGoT4(); return; }
+        var tries=0;
+        (function waitAndOpen(){
+          tries++;
+          var q2=(typeof QUOTES!=='undefined'?QUOTES:[]).find(function(x){return x.id===qid;});
+          if(q2){ _openAndGoT4(); return; }
+          if(tries>=6){
+            if(typeof showToast==='function') showToast('⚠️ 해당 견적서를 찾을 수 없습니다. 삭제되었거나 접근 권한이 없을 수 있어요.','warn');
+            return;
+          }
+          setTimeout(waitAndOpen,300);
+        })();
       })();
+    }
+    // ⚠ 치명적 순서 버그였음: SP 연결(_isSPReady)은 "로그인 화면이 아직 떠 있는 동안"
+    //   백그라운드로 먼저 끝날 수 있는 구조라(로그인창을 안 막으려고 일부러 그렇게 설계됨),
+    //   그 시점에 바로 견적서 모달을 열면 아직 안 사라진 로그인 화면 위에 모달만 떠 있는
+    //   상태가 됨 - 모달을 닫으면 그제서야 로그인 화면이 드러나는 것처럼 보였던 원인.
+    //   session이 실제로 채워질 때(사용자가 진짜로 로그인을 완료한 시점)까지 먼저 기다린 뒤에
+    //   견적서를 연다. 로그인에 시간이 걸릴 수 있으므로 넉넉하게(최대 5분) 기다린다.
+    var loginTries=0;
+    (function waitLogin(){
+      var loggedIn=(typeof session!=='undefined'&&session&&session.role&&session.role!=='locked');
+      if(loggedIn){ _proceedAfterLogin(); return; }
+      loginTries++;
+      if(loginTries>=1500) return; // 200ms×1500=5분, 그 이상은 포기(사용자가 아예 로그인을 안 하는 상황)
+      setTimeout(waitLogin,200);
     })();
   }catch(e){ console.warn('[딥링크]',e); }
 }
