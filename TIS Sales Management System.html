@@ -6,6 +6,8 @@
 <!-- TIS-VERSION: 20260728-094 -->
 <!-- v20260728-094 변경사항: (1) 원가분석 요약지표 순서를 요청대로 최종견적금액/총원가(왼쪽 묶음) → 매출이익/이익률(오른쪽 묶음)로 변경, 화면·PDF 동일 적용. (2) 치명적 버그 수정 - 검토이력 탭의 빨간 닷이 읽어도 계속 남아있던 문제. 읽음 처리 주체를 session.rep으로만 식별했는데 관리자로 로그인하면 rep이 null이라(session={role:admin,rep:null}) if(!me) return으로 빠져나가 읽음 기록이 아예 저장되지 않고 있었음. 관리자·게스트처럼 rep이 없는 경우까지 안정적으로 식별하는 공용 함수(_qtSeenKey)를 만들어 읽음 판정과 저장이 항상 동일한 키를 쓰도록 통일. 추가로 서버/클라이언트 시각 차이로 이벤트 시각이 읽은 시각보다 미세하게 미래로 잡히면 방금 읽었는데도 계속 안읽음으로 남는 문제도 함께 방어(읽음 시각을 현재 시각과 표시된 이벤트 중 최신 시각 중 더 나중 것으로 기록). 주체를 식별할 수 없는 경우엔 닷을 아예 띄우지 않아 계속 켜져있는 상황을 원천 차단. 관리자/담당자 각 관점에서 읽음→꺼짐, 새 댓글→다시 켜짐, 이벤트 없음→안 뜸까지 전부 실제 실행으로 검증. -->
 <!-- TIS-VERSION: 20260728-093 -->
+<!-- v20260728-095 변경사항: 요청 6건 전수 확인·수정. (1) 접속현황(탑바 팝업) 숨김 담당자 노출 버그 - REPS_ALL을 TEAM_REPS에서 숨김 필터 없이 그대로 구성해 접속자/미접속자 목록 모두에 숨긴 담당자가 노출되고 있었음(접점기록과 동일 패턴의 누락), _visibleReps 적용해 수정. (2) PDF 하단 회사명 옆 팀명 자동연동 추가 - 실제 담당자 소속팀을 조회(_getRepActualTeam)해 표시(v072에서 하드코딩 발견 후 제거했던 필드를 이번엔 올바르게 연동). (3) 주간회의 요약카드 만료임박 계약이 "계약 주요 현황"과 다른 기준(30일, 관리기간 미고려)을 써서 숫자가 불일치하던 문제 - 60일 기준+관리기간(하자보수 등) 연장 반영 로직을 완전히 동일하게 통일. (4) 견적서 발신 필드 자동입력 안 되던 치명적 버그 - 존재하지도 않는 QT_SETTINGS.sender(실제 저장 함수도 존재하지 않는 id="qt-sender"를 참조해 항상 빈값)를 읽고 있었음, 실제 설정 저장 필드인 QT_SETTINGS.coName으로 수정. (5) 견적번호 자동생성을 요청대로 담당자 이름 기반에서 작성자 이메일 앞 2글자(대문자) 기반으로 변경 - 이메일 획득 실패 시에만 이름 기반으로 폴백. (6) 담당자 필드 자동입력 - 관리자 로그인 시 session.rep이 null이라 항상 비어있던 근본 원인을 확인, 관리자 전용 담당자 선택 select를 신설(담당자 로그인은 기존과 동일하게 자동입력 유지, 관리자는 숨김 필터 적용된 전체 담당자 중 직접 선택, 수정 모드는 원 담당자가 기본 선택됨). 6개 항목 전부 실제 실행으로 재현·수정·검증 완료(캐시 이슈로 오탐 있었던 접속현황 테스트도 정밀 재검증으로 정상 확인), 기존 블록 회귀 없음도 재확인. -->
+<!-- TIS-VERSION: 20260728-093 -->
 <!-- v20260728-093 변경사항: 원가분석 요약지표 A안의 시각적 구분 보완. v090에서 구조는 2묶음(최종견적금액+매출이익 / 총원가+이익률)으로 정확히 바뀌었으나, 두 묶음 사이가 빈 공간(gap)뿐이라 화면상으로는 여전히 4개가 한 줄로 쭉 있는 것처럼 보여 기존과 차이가 느껴지지 않는다는 피드백. 아래 매출/원가 카드와 동일하게 각 묶음에 옅은 배경(#F8FAFC)과 테두리·라운드를 적용해 "왼쪽 묶음↔매출 카드, 오른쪽 묶음↔원가 카드"의 짝이 한눈에 들어오도록 함. 실제 DOM 렌더링으로 두 묶음이 아래 카드와 동일한 시각 구조를 갖는 것 확인. -->
 <!-- TIS-VERSION: 20260728-092 -->
 <!-- v20260728-092 변경사항: 주간회의 상단 요약카드의 "오픈 이슈" 카운트가 담당자가 주간회의에 등록 지정한 이슈만 세도록 수정. 같은 함수 안에서 고객사 실적은 cl.wk===true(주간회의 포함 체크)로 정확히 거르고, 바로 아래 실제 주간회의 이슈 목록도 i.wk!==true면 제외하는데, 유독 이 카운트만 조건이 빠져 있어서 지정하지 않은 이슈까지 전부 세고 있었음 - 목록에는 안 보이는 이슈가 상단 숫자에는 잡히는 불일치 상태였음(예: 지정 2건인데 카운트는 4건). 실제 목록과 동일한 기준으로 통일. 소스에서 수정된 조건을 그대로 추출해 검증(수정 전 4건 → 수정 후 2건, 완료 상태 제외도 정상). 참고로 계약(신규계약/만료임박)은 주간회의 어디에서도 wk 조건으로 거르는 곳이 없어 일관성 문제가 없으므로 그대로 두었음. 기존 기능 회귀 없음 재확인. -->
@@ -10847,7 +10849,13 @@ function updateAccessDisplay(){
   var today = _kstNow.toISOString().split('T')[0];
   var REPS_ALL = [];
   if(typeof TEAM_REPS!=='undefined'){
-    Object.keys(TEAM_REPS).forEach(function(t){ REPS_ALL=REPS_ALL.concat(TEAM_REPS[t]||[]); });
+    // ⚠ 예전엔 TEAM_REPS를 숨김 필터 없이 그대로 모아서, 관리자가 숨김 처리한 담당자도
+    //   접속자/미접속자 목록에 계속 노출되고 있었음(접점기록에서 고친 것과 동일한 누락).
+    //   다른 메뉴와 동일하게 _visibleReps를 거쳐 숨김 담당자를 제외한다.
+    Object.keys(TEAM_REPS).forEach(function(t){
+      var _reps=(typeof _visibleReps==='function')?_visibleReps(TEAM_REPS[t]||[]):(TEAM_REPS[t]||[]);
+      REPS_ALL=REPS_ALL.concat(_reps);
+    });
   }
 
   // _accessLogData에서 오늘 데이터 추출 (동일인 최신만)
@@ -21113,8 +21121,25 @@ function _wkRenderKPI(){
     cts.forEach(function(ct){
       totalContracts++;
       if(ct.status==='종료') return;
+      // ⚠ 예전엔 이 카운트만 30일 기준을 쓰고, 관리기간(하자보수 등) 연장이나 이미 만료됐지만
+      //   종료 처리 안 된 계약을 고려하지 않아서, "계약 주요 현황"(60일 기준 + 관리기간 반영)과
+      //   숫자가 서로 다르게 나오고 있었음. 그 섹션(_wkRenderContractList)과 완전히 동일한
+      //   계산 로직으로 통일한다.
       var ed=ct.endDate?new Date(ct.endDate):null;
-      if(ed){var diff=Math.round((ed-today)/86400000);if(diff>=0&&diff<=30)expiringSoon++;}
+      if(ed&&!isNaN(ed.getTime())){
+        var diff=Math.round((ed-today)/86400000);
+        var _mgtType=ct.managementType||'', _mgtEnd=ct.managementEndDate||'';
+        if(_mgtEnd&&_mgtType&&_mgtType!=='해당없음'){
+          var md=new Date(_mgtEnd);
+          if(!isNaN(md.getTime())){
+            md.setHours(0,0,0,0);
+            var mdiff=Math.round((md-today)/86400000);
+            if(diff<0&&mdiff>=diff) diff=mdiff;
+            else if(mdiff<diff) diff=mdiff;
+          }
+        }
+        if(diff<=60) expiringSoon++;
+      }
       var sd=ct.startDate?new Date(ct.startDate):null;
       if(sd&&sd.getFullYear()===curY&&sd.getMonth()===generalMM) newContracts++;
     });
@@ -23459,7 +23484,7 @@ function qtRenderPreview(){
         <div class="fg"><label class="flbl">수신 (고객사명 귀중) <span style="color:var(--red);">*</span></label><div style="position:relative;"><input class="fi" id="toName" oninput="qt_syncClientFromRecv(this)" autocomplete="off"><div id="toNameDrop" style="display:none;"></div></div></div>
         <div class="fg"><label class="flbl">참조 <span style="color:var(--red);">*</span></label><input class="fi" id="ccName"></div>
         <div class="fg"><label class="flbl">발신</label><input class="fi" id="fromName" value="회사명(주)"></div>
-        <div class="fg"><label class="flbl">담당자 (자동입력)</label><input class="fi fi-ro" id="repNameField" value="" readonly></div>
+        <div class="fg"><label class="flbl">담당자 (자동입력)</label><input class="fi fi-ro" id="repNameField" value="" readonly><select class="fi" id="repNameSelect" style="display:none;" onchange="qt_onRepSelectChange()"></select></div>
       </div>
     </div>
     <div class="fs">
@@ -24100,8 +24125,13 @@ function qt_nameInitials(name){
   return (out||'XX').slice(0,2);
 }
 function qt_genQuoteNo(){
-  var rep=SESSION_REP.name||'';
-  var initials=qt_nameInitials(rep);
+  // ⚠ 예전엔 담당자 "이름"에서 로마자 이니셜을 뽑았는데, 이것도 SESSION_REP.name(→session.rep)에
+  //   의존해서 관리자 로그인 시(session.rep이 null) 이니셜이 항상 'XX'로 나오고 있었음.
+  //   요청대로 작성자 이메일 주소 맨 앞 두 글자(대문자)를 기준으로 변경 - SESSION_REP.email은
+  //   등록된 이메일이 없어도 MSAL 로그인 계정으로 폴백하는 경로가 있어 관리자도 정상 생성됨.
+  var email=SESSION_REP.email||'';
+  var initials=email ? email.replace(/[^A-Za-z]/g,'').slice(0,2).toUpperCase() : '';
+  if(initials.length<2) initials=qt_nameInitials(SESSION_REP.name||''); // 이메일을 못 얻은 경우에만 이름 기반으로 폴백
   var now=new Date();
   var yy=String(now.getFullYear()).slice(2);
   var mm=String(now.getMonth()+1).padStart(2,'0');
@@ -25691,12 +25721,49 @@ function qt_buildDevPdf(){
   // ── 푸터 ──
   h+='<div style="margin-top:14px;padding-top:8px;border-top:1.5px solid #1E293B;text-align:center;font-size:8.5px;color:#000;">';
   var _ftContact=[]; if(phone)_ftContact.push('Mobile : '+phone); if(_rEm)_ftContact.push('E-mail : '+_rEm);
-  h+=senderVal+(_rNm?(' &nbsp;'+_rNm+(_rTt?' '+_rTt:'')):'')+(_ftContact.length?' &nbsp;('+_ftContact.join(' / ')+')':'');
+  // 회사명 옆 팀명은 실제 담당자 소속팀을 조회해 자동 연동 (하드코딩 아님)
+  var _rTeam=(_rNm&&typeof _getRepActualTeam==='function')?_getRepActualTeam(_rNm):'';
+  h+=senderVal+(_rTeam?' '+_rTeam:'')+(_rNm?(' &nbsp;'+_rNm+(_rTt?' '+_rTt:'')):'')+(_ftContact.length?' &nbsp;('+_ftContact.join(' / ')+')':'');
   h+='</div>';
   h+='</div>';
   return h;
 }
 
+// 담당자 필드 - 담당자 로그인은 자동입력(읽기전용), 관리자 로그인은 select로 직접 선택
+function qt_setupRepField(presetRep, presetTitle){
+  var input=document.getElementById('repNameField');
+  var sel=document.getElementById('repNameSelect');
+  if(!input||!sel) return;
+  var isAdmin=(typeof session!=='undefined'&&session&&session.role==='admin');
+  if(!isAdmin){
+    input.style.display=''; sel.style.display='none';
+    input.value=presetRep!=null?(presetRep+(presetTitle?' '+presetTitle:'')):(SESSION_REP.name+(SESSION_REP.title?' '+SESSION_REP.title:''));
+    return;
+  }
+  // 관리자: 소속팀 숨김 필터를 거친 전체 담당자 목록으로 select 구성
+  var allReps=[];
+  if(typeof TEAM_REPS!=='undefined'){
+    Object.keys(TEAM_REPS).forEach(function(t){
+      var _r=(typeof _visibleReps==='function')?_visibleReps(TEAM_REPS[t]||[]):(TEAM_REPS[t]||[]);
+      _r.forEach(function(r){ if(allReps.indexOf(r)<0) allReps.push(r); });
+    });
+  }
+  var target=presetRep&&allReps.indexOf(presetRep)>=0?presetRep:'';
+  sel.innerHTML='<option value="">담당자 선택</option>'+allReps.map(function(r){
+    var t=(typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[r])||'';
+    return '<option value="'+r.replace(/"/g,'&quot;')+'"'+(r===target?' selected':'')+'>'+r+(t?' '+t:'')+'</option>';
+  }).join('');
+  input.style.display='none'; sel.style.display='';
+  qt_onRepSelectChange();
+}
+function qt_onRepSelectChange(){
+  var sel=document.getElementById('repNameSelect');
+  var input=document.getElementById('repNameField');
+  if(!sel||!input) return;
+  var rep=sel.value;
+  var t=rep?((typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[rep])||''):'';
+  input.value=rep?(rep+(t?' '+t:'')):''; // 저장/조회 로직이 그대로 이 값을 읽으므로 동기화만 하면 됨
+}
 function qt_openModal(mode,quoteId){
   window._qt_current_mode=mode||'new';
   window._qt_editing_id=quoteId||null;
@@ -25808,7 +25875,7 @@ function qt_openModal(mode,quoteId){
     ['toName','ccName','projectName','clientName','changeSummary','internalMemo'].forEach(function(id){
       var el=document.getElementById(id); if(el) el.value='';
     });
-    var _fr=document.getElementById('fromName'); if(_fr) _fr.value=(QT_SETTINGS.sender||'회사명(주)');
+    var _fr=document.getElementById('fromName'); if(_fr) _fr.value=(QT_SETTINGS.coName||'회사명(주)');
     var _ts=document.getElementById('quoteType'); if(_ts) _ts.value='dev';
     var _ms=document.getElementById('maStart'); if(_ms) _ms.value='';
     var _me=document.getElementById('maEnd'); if(_me) _me.value='';
@@ -25827,8 +25894,10 @@ function qt_openModal(mode,quoteId){
     // 새 견적: 자동생성 번호 + 오늘 날짜
     var _noEl=document.getElementById('quoteNo');
     if(_noEl) _noEl.value=qt_genQuoteNo();
+// 담당자 필드 - 담당자 로그인은 자동입력(읽기전용), 관리자 로그인은 select로 직접 선택
+
     var _repF=document.getElementById('repNameField');
-    if(_repF) _repF.value=SESSION_REP.name+(SESSION_REP.title?' '+SESSION_REP.title:'');
+    qt_setupRepField(); // 새 견적: 담당자=본인 자동입력, 관리자=선택 요구
     var _dtEl=document.getElementById('quoteDate');
     if(_dtEl) _dtEl.value=new Date().toISOString().slice(0,10);
     // 유형 카드 하이라이트 초기화 (개발 선택 상태로)
@@ -25863,15 +25932,13 @@ function _qt_fillModalFromData(q,mode){
     window._qtCondDirty=true; // 저장된 조건 보호 (유형 재변경 시 confirm)
     qt_bindCondDirty();
   })();
-  // 담당자칸: edit=견적의 원 담당자 / copy·ver=접속자 본인 (새 명의)
+  // 담당자칸: edit=견적의 원 담당자 / copy·ver=접속자 본인 (새 명의) - 관리자는 select로 직접 선택
   (function(){
-    var rf=document.getElementById('repNameField');
-    if(!rf) return;
     if(isEdit && q.rep){
       var _t=(typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[q.rep])||'';
-      rf.value=q.rep+(_t?' '+_t:'');
+      qt_setupRepField(q.rep,_t);
     } else {
-      rf.value=SESSION_REP.name+(SESSION_REP.title?' '+SESSION_REP.title:'');
+      qt_setupRepField();
     }
   })();
   // 유효기간 복원 (30/60 = select, 그 외 = 직접입력)
