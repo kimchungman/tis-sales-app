@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-095 -->
+<!-- v20260728-095 변경사항: 접속이력에서 같은 사람이 "활동=불일치"와 "접속=정상" 두 줄로 나뉘어 보이던 문제의 원인 발견·수정. "활동" 기록을 남기는 _touchLastActive가 MS계정 값을 window._msAccount에서 가져오고 있었는데, 이 변수는 앱 전체 어디에도 정의된 적이 없어(오타 또는 옛 코드 잔재) 항상 비어있었고, 그 결과 폴백으로 담당자 "이름"이 MS계정 자리에 들어가고 있었음 - 접속이력 MS계정 열에 이메일 대신 이름이 찍히고 이메일 대조에서 ⚠️불일치 경고까지 뜨던 직접 원인. 앱의 다른 곳(_recordAccessLog 호출부)과 동일하게 MSAL 계정(getAllAccounts()[0].username)에서 실제 계정을 얻도록 통일하고, 계정을 확정할 수 없으면 이름으로 폴백하지 않고 아예 기록을 건너뛰도록 함(잘못된 값이 남는 것 방지). 함께 요청받은 게스트 접속기록 저장도 재검증 완료 - SP 연결 전이면 대기열에 보관했다가 연결 즉시 정상 저장되고 isGuest 플래그도 정확히 기록됨. 활동기록 MS계정이 실제 이메일로 저장되는 것, 계정 미확정 시 기록을 남기지 않는 것까지 실제 실행으로 확인. -->
+<!-- TIS-VERSION: 20260728-094 -->
+<!-- v20260728-094 변경사항: (1) 원가분석 요약지표 순서를 요청대로 최종견적금액/총원가(왼쪽 묶음) → 매출이익/이익률(오른쪽 묶음)로 변경, 화면·PDF 동일 적용. (2) 치명적 버그 수정 - 검토이력 탭의 빨간 닷이 읽어도 계속 남아있던 문제. 읽음 처리 주체를 session.rep으로만 식별했는데 관리자로 로그인하면 rep이 null이라(session={role:admin,rep:null}) if(!me) return으로 빠져나가 읽음 기록이 아예 저장되지 않고 있었음. 관리자·게스트처럼 rep이 없는 경우까지 안정적으로 식별하는 공용 함수(_qtSeenKey)를 만들어 읽음 판정과 저장이 항상 동일한 키를 쓰도록 통일. 추가로 서버/클라이언트 시각 차이로 이벤트 시각이 읽은 시각보다 미세하게 미래로 잡히면 방금 읽었는데도 계속 안읽음으로 남는 문제도 함께 방어(읽음 시각을 현재 시각과 표시된 이벤트 중 최신 시각 중 더 나중 것으로 기록). 주체를 식별할 수 없는 경우엔 닷을 아예 띄우지 않아 계속 켜져있는 상황을 원천 차단. 관리자/담당자 각 관점에서 읽음→꺼짐, 새 댓글→다시 켜짐, 이벤트 없음→안 뜸까지 전부 실제 실행으로 검증. -->
+<!-- TIS-VERSION: 20260728-093 -->
+<!-- v20260728-093 변경사항: 원가분석 요약지표 A안의 시각적 구분 보완. v090에서 구조는 2묶음(최종견적금액+매출이익 / 총원가+이익률)으로 정확히 바뀌었으나, 두 묶음 사이가 빈 공간(gap)뿐이라 화면상으로는 여전히 4개가 한 줄로 쭉 있는 것처럼 보여 기존과 차이가 느껴지지 않는다는 피드백. 아래 매출/원가 카드와 동일하게 각 묶음에 옅은 배경(#F8FAFC)과 테두리·라운드를 적용해 "왼쪽 묶음↔매출 카드, 오른쪽 묶음↔원가 카드"의 짝이 한눈에 들어오도록 함. 실제 DOM 렌더링으로 두 묶음이 아래 카드와 동일한 시각 구조를 갖는 것 확인. -->
 <!-- TIS-VERSION: 20260728-092 -->
 <!-- v20260728-092 변경사항: 주간회의 상단 요약카드의 "오픈 이슈" 카운트가 담당자가 주간회의에 등록 지정한 이슈만 세도록 수정. 같은 함수 안에서 고객사 실적은 cl.wk===true(주간회의 포함 체크)로 정확히 거르고, 바로 아래 실제 주간회의 이슈 목록도 i.wk!==true면 제외하는데, 유독 이 카운트만 조건이 빠져 있어서 지정하지 않은 이슈까지 전부 세고 있었음 - 목록에는 안 보이는 이슈가 상단 숫자에는 잡히는 불일치 상태였음(예: 지정 2건인데 카운트는 4건). 실제 목록과 동일한 기준으로 통일. 소스에서 수정된 조건을 그대로 추출해 검증(수정 전 4건 → 수정 후 2건, 완료 상태 제외도 정상). 참고로 계약(신규계약/만료임박)은 주간회의 어디에서도 wk 조건으로 거르는 곳이 없어 일관성 문제가 없으므로 그대로 두었음. 기존 기능 회귀 없음 재확인. -->
 <!-- TIS-VERSION: 20260728-091 -->
@@ -13982,7 +13988,18 @@ async function _touchLastActive(){
     if(now-_lastActiveSentAt < 10*60*1000) return; // 10분 스로틀 (SP 부하 방지)
     _lastActiveSentAt=now;
     var who=(session.rep||session.guestName||'');
-    var acc=(window._msAccount||session.email||who||'unknown');
+    // ⚠ 예전엔 window._msAccount를 참조했는데 이 변수는 앱 어디에도 정의된 적이 없어서
+    //   (오타 또는 옛 코드의 잔재) 항상 비어있었고, 그 결과 담당자 "이름"이 MS계정 자리에
+    //   들어가 접속이력 MS계정 열에 이메일 대신 이름이 찍히고, 이메일 대조에서 "불일치"
+    //   경고까지 뜨고 있었음(같은 사람이 '활동'=불일치 / '접속'=정상 두 줄로 보이던 원인).
+    //   앱의 다른 곳(_recordAccessLog 호출부)과 동일하게 MSAL 계정에서 실제 계정을 얻고,
+    //   못 얻으면 이름으로 폴백하지 않는다(잘못된 값이 기록되느니 미상이 낫다).
+    var acc='';
+    try{
+      if(window._msalApp){ var _a=window._msalApp.getAllAccounts(); acc=(_a&&_a.length>0)?_a[0].username:''; }
+    }catch(e){}
+    if(!acc) acc=(session.email||'');
+    if(!acc) return; // 계정을 확정할 수 없으면 잘못된 기록을 남기지 않고 건너뜀
     var d=new Date();
     await _spSaveItem('accessLog','active_'+d.toISOString().split('T')[0]+'_'+acc, {
       msAccount:acc, selectedRep:who,
@@ -25118,8 +25135,8 @@ function qt_buildCostAnalysisPdfSection(){
     return s+'</tr></table></td>';
   }
   h+='<table style="width:100%;border-collapse:separate;border-spacing:7px 0;table-layout:fixed;margin-bottom:10px;"><tr>';
-  h+=_metricCellPair([['최종 견적금액',A.finalAmt,'#1D4ED8'],['매출이익',A.profit,A.profit>=0?'#059669':'#DC2626']]);
-  h+=_metricCellPair([['총 원가',A.totalCost,'#991B1B'],['이익률',A.marginPct.toFixed(1)+'%',A.marginPct>=30?'#059669':(A.marginPct>=10?'#D97706':'#DC2626')]]);
+  h+=_metricCellPair([['최종 견적금액',A.finalAmt,'#1D4ED8'],['총 원가',A.totalCost,'#991B1B']]);
+  h+=_metricCellPair([['매출이익',A.profit,A.profit>=0?'#059669':'#DC2626'],['이익률',A.marginPct.toFixed(1)+'%',A.marginPct>=30?'#059669':(A.marginPct>=10?'#D97706':'#DC2626')]]);
   h+='</tr></table>';
   h+='<div style="border-bottom:1px solid '+BC+';margin:0 0 14px;"></div>';
 
@@ -26198,6 +26215,17 @@ function _qtFmtDT(iso){
     return d.getFullYear()+'.'+p(d.getMonth()+1)+'.'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes());
   }catch(e){ return ''; }
 }
+// ⚠ 읽음 처리 주체를 session.rep으로만 식별했는데, 관리자로 로그인하면 session.rep이
+//   null이라(session={role:'admin',rep:null}) 읽음 기록이 저장되지 않아 검토이력 탭을
+//   열어도 빨간 닷이 계속 남아있었음. 관리자·게스트처럼 rep이 없는 경우까지 안정적으로
+//   식별하도록 공용 함수로 분리해 읽음 판정과 저장이 항상 동일한 키를 쓰게 한다.
+function _qtSeenKey(){
+  if(typeof session==='undefined'||!session) return '';
+  if(session.rep) return session.rep;
+  if(session.role==='admin') return '__admin__';
+  if(session.role==='guest') return '__guest_'+((session.guestName||'').trim()||'anon');
+  return '';
+}
 function qt_hasUnreadReview(q){
   if(!q) return false;
   _qtEnsureReviewFields(q);
@@ -26207,7 +26235,8 @@ function qt_hasUnreadReview(q){
   ).filter(Boolean);
   if(!events.length) return false;
   var latest=events.reduce(function(a,b){return (new Date(a))>(new Date(b))?a:b;});
-  var me=(typeof session!=='undefined'&&session&&session.rep)||'';
+  var me=_qtSeenKey();
+  if(!me) return false; // 주체를 식별할 수 없으면 닷을 띄우지 않음(계속 켜져있는 것 방지)
   var seen=q.reviewLastSeen&&q.reviewLastSeen[me];
   if(!seen) return true;
   return new Date(latest)>new Date(seen);
@@ -26222,11 +26251,22 @@ function qt_markReviewSeen(){
   var q=qt_getCurrentQuoteObj();
   if(!q) return;
   _qtEnsureReviewFields(q);
-  var me=(typeof session!=='undefined'&&session&&session.rep)||'';
-  if(!me) return;
-  q.reviewLastSeen[me]=new Date().toISOString();
+  var me=_qtSeenKey();
   var dot=document.getElementById('qtReviewDot');
-  if(dot) dot.style.display='none';
+  if(dot) dot.style.display='none'; // 주체 식별 여부와 무관하게 화면상으론 즉시 끔
+  if(!me) return;
+  // ⚠ 단순히 "지금 시각"만 기록하면, 서버/클라이언트 시각 차이나 시간대 문제로 이벤트
+  //   시각이 읽은 시각보다 미세하게 미래로 잡힐 경우 방금 읽었는데도 계속 안읽음으로
+  //   남아 닷이 안 꺼짐. 지금 화면에 실제로 표시된 이벤트 중 가장 최신 시각도 함께 고려해
+  //   (둘 중 더 나중 것으로 기록) 지금 본 것은 확실히 읽은 것으로 처리한다.
+  var nowIso=new Date().toISOString();
+  var evs=[].concat(
+    q.reviewSendLog.map(function(x){return x.sentAt;}),
+    q.reviewComments.map(function(x){return x.createdAt;})
+  ).filter(Boolean);
+  var mark=nowIso;
+  evs.forEach(function(t){ try{ if(new Date(t)>new Date(mark)) mark=t; }catch(e){} });
+  q.reviewLastSeen[me]=mark;
   if(typeof qt_spSaveAll==='function') qt_spSaveAll();
 }
 
@@ -26863,19 +26903,22 @@ function qt_renderCostAnalysis(){
   //   오른쪽 묶음은 원가 카드 위에 정확히 얹히도록 맞춤 - 화면이 좁아질 때도 위·아래가
   //   같은 지점에서 함께 쌓여 모바일에서도 어긋나지 않는다.
   function _metricPair(items){
-    var s='<div style="flex:1 1 300px;display:flex;">';
+    // ⚠ 구조상으론 2묶음인데 사이가 빈 공간(gap)뿐이라 4개가 한 줄로 쭉 있는 것처럼 보여
+    //   기존과 차이가 안 느껴졌음. 아래 매출/원가 카드와 동일하게 옅은 배경·테두리를 줘서
+    //   "왼쪽 묶음↔매출 카드, 오른쪽 묶음↔원가 카드"의 짝이 한눈에 들어오도록 함.
+    var s='<div style="flex:1 1 300px;display:flex;background:#F8FAFC;border:1px solid var(--border);border-radius:12px;padding:14px 0;">';
     items.forEach(function(m,i){
-      s+='<div style="flex:1;padding:0 18px;'+(i>0?'border-left:1px solid var(--border);':'padding-left:0;')+'">'
+      s+='<div style="flex:1;padding:0 18px;'+(i>0?'border-left:1px solid var(--border);':'')+'">'
         +'<div style="font-size:11px;color:'+LABEL+';font-weight:600;margin-bottom:6px;">'+m[0]+'</div>'
         +'<div style="font-size:19px;font-weight:800;color:'+m[2]+';letter-spacing:-.01em;">'+(typeof m[1]==='number'?_qtWon(m[1]):m[1])+'</div></div>';
     });
     return s+'</div>';
   }
   html+='<div style="display:flex;gap:14px;flex-wrap:wrap;padding:2px 0 0;">';
-  html+=_metricPair([['최종 견적금액', A.finalAmt, '#1D4ED8'], ['매출이익', A.profit, profitColor]]);
-  html+=_metricPair([['총 원가', A.totalCost, '#991B1B'], ['이익률', A.marginPct.toFixed(1)+'%', marginColor]]);
+  html+=_metricPair([['최종 견적금액', A.finalAmt, '#1D4ED8'], ['총 원가', A.totalCost, '#991B1B']]);
+  html+=_metricPair([['매출이익', A.profit, profitColor], ['이익률', A.marginPct.toFixed(1)+'%', marginColor]]);
   html+='</div>';
-  html+='<div style="border-bottom:1px solid var(--border);margin:18px 0 16px;"></div>';
+  html+='<div style="height:16px;"></div>';
 
   // ── 매출/원가 좌우 분할, 각 컬럼 상단에 총계 고정(세부 줄 수와 무관하게 항상 위치 일치) ──
   // 요청: 유형별(매출/원가) 총금액은 검정, 세부항목 금액은 진한 회색으로 통일
