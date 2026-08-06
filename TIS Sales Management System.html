@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-096 -->
+<!-- v20260728-096 변경사항: 주간회의 요약카드 "만료 임박" 문구 수정 - v095에서 계산 로직은 계약 주요 현황과 동일하게 60일 기준으로 통일했는데, 카드 하단 문구는 "D-30 이내"로 그대로 남아있어 실제 집계 기준과 화면 문구가 불일치했음. "D-60 이내"로 수정. 계약관리 탭의 별도 D-30 필터 버튼(다른 기능, 만료임박 카드와 무관)은 그대로 유지. -->
 <!-- TIS-VERSION: 20260728-095 -->
 <!-- v20260728-095 변경사항: 접속이력에서 같은 사람이 "활동=불일치"와 "접속=정상" 두 줄로 나뉘어 보이던 문제의 원인 발견·수정. "활동" 기록을 남기는 _touchLastActive가 MS계정 값을 window._msAccount에서 가져오고 있었는데, 이 변수는 앱 전체 어디에도 정의된 적이 없어(오타 또는 옛 코드 잔재) 항상 비어있었고, 그 결과 폴백으로 담당자 "이름"이 MS계정 자리에 들어가고 있었음 - 접속이력 MS계정 열에 이메일 대신 이름이 찍히고 이메일 대조에서 ⚠️불일치 경고까지 뜨던 직접 원인. 앱의 다른 곳(_recordAccessLog 호출부)과 동일하게 MSAL 계정(getAllAccounts()[0].username)에서 실제 계정을 얻도록 통일하고, 계정을 확정할 수 없으면 이름으로 폴백하지 않고 아예 기록을 건너뛰도록 함(잘못된 값이 남는 것 방지). 함께 요청받은 게스트 접속기록 저장도 재검증 완료 - SP 연결 전이면 대기열에 보관했다가 연결 즉시 정상 저장되고 isGuest 플래그도 정확히 기록됨. 활동기록 MS계정이 실제 이메일로 저장되는 것, 계정 미확정 시 기록을 남기지 않는 것까지 실제 실행으로 확인. -->
 <!-- TIS-VERSION: 20260728-094 -->
@@ -21186,7 +21188,7 @@ function _wkRenderKPI(){
   H+='<div style="background:#FAEEDA;border:1px solid #EAD5A8;'+card3+'">';
   H+='<div style="'+LBL+'color:#854F0B;">만료 임박</div>';
   H+='<div style="font-size:24px;font-weight:700;color:#BA7517;">'+expiringSoon+'<span style="font-size:12px;font-weight:400;color:#BA7517;opacity:.7;margin-left:2px;">건</span></div>';
-  H+='<div style="font-size:11px;color:#854F0B;margin-top:4px;font-weight:500;">D-30 이내</div>';
+  H+='<div style="font-size:11px;color:#854F0B;margin-top:4px;font-weight:500;">D-60 이내</div>';
   H+='</div>';
 
   H+='<div style="background:#EEEDFE;border:1px solid #CECBF6;'+card3+'">';
