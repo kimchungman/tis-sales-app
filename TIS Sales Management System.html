@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-116 -->
+<!-- v20260728-116 변경사항: 요청 3건 반영. (1) 최종검토 매출 섹션 개별 인건비 라인에서 역할 정보 제거, 원가 섹션과 동일하게 등급+MM만 표시(예: "고급 (2MM)"). (2) 매출 섹션의 총계 라벨을 "총 공수"에서 "총 견적공수"로 변경(원가 섹션의 "총 투입공수"와 구분되게). (3) 요약카드 "매출이익"을 "영업이익"으로 변경(화면·PDF 둘 다). 실제 실행으로 세 가지 전부 정상 반영 확인, 기존 원가분석 계산 회귀 없음 재확인. -->
+<!-- TIS-VERSION: 20260728-115 -->
+<!-- v20260728-115 변경사항: 검토이력 닷이 읽어도 다시 뜨는 문제의 진짜 근본원인 발견·수정 - 견적 병합(_qtMerge)은 modifiedAt 기준으로 "수정시각이 더 최신인 쪽이 객체 전체를 통째로 승리"하는 방식인데, 읽음처리(reviewLastSeen)·댓글 등록/수정/삭제·발송이력 기록 5곳 전부 해당 필드만 바꾸고 modifiedAt은 안 건드리고 있었음. 그 결과 "진짜 수정"으로 인식이 안 돼서, 다른 사람이 그 사이 무엇이든 저장하면(또는 그냥 저장 전 서버 최신 확인 단계에서) 방금 한 읽음처리·댓글이 조용히 통째로 덮어써질 수 있었음 - 재현 테스트로 실제 확인됨. 5곳 모두 자기 자신을 수정할 때 q.modifiedAt도 함께 최신 시각으로 갱신하도록 수정. 실제로 "내 읽음처리 저장 vs 서버의 더 예전 버전" 병합 시나리오를 재현해 이제 정상적으로 승리하는 것 확인, 검토요청 발송/댓글 등록·수정·삭제/닷 표시·해제/모달 재오픈 후 닷 유지까지 전체 기능 회귀 없음 재확인. -->
 <!-- TIS-VERSION: 20260728-114 -->
 <!-- v20260728-114 변경사항: 매출 섹션에도 원가 섹션과 동일하게 인건비 개별 행(역할·등급·공수) + 총 공수 표시 추가. 확인해보니 이미 laborRows라는 행별 상세 데이터가 준비되어 있었음(코드 주석에 "현재 화면엔 미표시, 필요시 확장용으로 유지"라고 남아있었음) - 원가 섹션과 완전히 동일한 패턴(총계 먼저, 그 아래 개별 행)으로 화면·PDF 양쪽에 적용. 인건비 행이 1개뿐이면 총계와 중복이라 2개 이상일 때만 총 공수 표시. 실제 실행(PM 2MM+개발 3MM)으로 "총 공수 5MM"과 역할별 개별 행이 정확히 표시되는 것 확인, 기존 원가분석 계산 회귀 없음 재확인. -->
 <!-- TIS-VERSION: 20260728-113 -->
@@ -25484,7 +25488,7 @@ function qt_buildCostAnalysisPdfSection(){
   }
   h+='<table style="width:100%;border-collapse:separate;border-spacing:7px 0;table-layout:fixed;margin-bottom:10px;"><tr>';
   h+=_metricCellPair([['최종 견적금액',A.finalAmt,'#1D4ED8'],['총 원가',A.totalCost,'#991B1B']]);
-  h+=_metricCellPair([['매출이익',A.profit,A.profit>=0?'#059669':'#DC2626'],['이익률',A.marginPct.toFixed(1)+'%',A.marginPct>=30?'#059669':(A.marginPct>=10?'#D97706':'#DC2626')]]);
+  h+=_metricCellPair([['영업이익',A.profit,A.profit>=0?'#059669':'#DC2626'],['이익률',A.marginPct.toFixed(1)+'%',A.marginPct>=30?'#059669':(A.marginPct>=10?'#D97706':'#DC2626')]]);
   h+='</tr></table>';
   h+='<div style="border-bottom:1px solid '+BC+';margin:0 0 14px;"></div>';
 
@@ -25514,10 +25518,10 @@ function qt_buildCostAnalysisPdfSection(){
   if(A.laborRows && A.laborRows.length){
     var _totalQMM2=A.laborRows.reduce(function(s,r){return s+(parseFloat(r.qty)||0);},0);
     if(A.laborRows.length>1){
-      h+=_row('총 공수', 0, {sub:true, color:'#0F172A', rawText:'<b>'+(_totalQMM2%1===0?_totalQMM2:_totalQMM2.toFixed(1))+'MM</b>'});
+      h+=_row('총 견적공수', 0, {sub:true, color:'#0F172A', rawText:'<b>'+(_totalQMM2%1===0?_totalQMM2:_totalQMM2.toFixed(1))+'MM</b>'});
     }
     A.laborRows.forEach(function(r){
-      var lbl=_qtEscBr(r.role)+(r.grade&&r.grade!=='-'?' · '+_qtEsc(r.grade):'')+(r.qty?' ('+r.qty+'MM)':'');
+      var lbl=(r.grade&&r.grade!=='-'?_qtEsc(r.grade):'(등급 미입력)')+(r.qty?' ('+r.qty+'MM)':'');
       h+=_row(lbl, r.quoted, {sub:true,color:ITEM_COLOR});
     });
   }
@@ -26734,6 +26738,11 @@ function qt_markReviewSeen(){
   var mark=nowIso;
   evs.forEach(function(t){ try{ if(new Date(t)>new Date(mark)) mark=t; }catch(e){} });
   q.reviewLastSeen[me]=mark;
+  // ⚠ 치명적 버그였음 - 견적 병합은 modifiedAt 기준으로 객체 전체를 통째로 교체하는데,
+  //   여기서 reviewLastSeen만 바꾸고 modifiedAt은 안 건드리면 "진짜 수정"으로 인식이 안 돼서
+  //   다른 사람이 그 사이 뭔가 저장하면 이 읽음처리가 조용히 통째로 덮어써질 수 있었음
+  //   (검토이력 닷이 읽었는데도 다시 뜨는 문제의 근본 원인). modifiedAt도 함께 갱신한다.
+  q.modifiedAt=new Date().toISOString();
   if(typeof qt_spSaveAll==='function') qt_spSaveAll();
 }
 
@@ -26872,6 +26881,7 @@ async function qt_sendReviewRequest(){
     id:'rs'+Date.now(), to:toNames, cc:extraChips, opinion:opinion,
     sentBy:myName, sentAt:new Date().toISOString()
   });
+  q.modifiedAt=new Date().toISOString(); // 병합 시 이 저장이 다른 세션에 덮어써지지 않도록
   if(typeof qt_spSaveAll==='function') await qt_spSaveAll();
   qt_closeReviewRequestPop();
   if(typeof showToast==='function') showToast('✅ '+(toNames[0]||extraChips[0])+' 님에게 검토요청 메일을 발송했습니다.');
@@ -26994,6 +27004,7 @@ async function qt_saveReviewCommentEdit(cid){
   if(newText!==c.text){
     c.text=newText;
     c.editedAt=new Date().toISOString();
+    q.modifiedAt=new Date().toISOString(); // 병합 시 이 저장이 다른 세션에 덮어써지지 않도록
     if(typeof qt_spSaveAll==='function') await qt_spSaveAll();
   }
   qt_renderReviewHistoryTab();
@@ -27006,6 +27017,7 @@ function qt_deleteReviewComment(cid){
   if(c.author!==(SESSION_REP.name||'')){ if(typeof showToast==='function') showToast('본인이 작성한 댓글만 삭제할 수 있습니다.','warn'); return; }
   appConfirm('이 댓글을 삭제하시겠습니까?\n삭제된 댓글은 복구할 수 없습니다.', async function(){
     q.reviewComments=q.reviewComments.filter(function(x){return x.id!==cid;});
+    q.modifiedAt=new Date().toISOString(); // 병합 시 이 저장이 다른 세션에 덮어써지지 않도록
     qt_renderReviewHistoryTab();
     if(typeof qt_spSaveAll==='function') await qt_spSaveAll();
     if(typeof showToast==='function') showToast('댓글이 삭제되었습니다.','warn');
@@ -27024,6 +27036,7 @@ async function qt_addReviewComment(replyToId){
   var meEmail=SESSION_REP.email||(typeof _ntRepEmail==='function'?_ntRepEmail(me):'');
   var newC={id:'rc'+Date.now(), author:me, authorEmail:meEmail, text:text, createdAt:new Date().toISOString(), replyToId:replyToId||null};
   q.reviewComments.push(newC);
+  q.modifiedAt=new Date().toISOString(); // 병합 시 이 저장이 다른 세션에 덮어써지지 않도록
   if(ta) ta.value='';
   qt_renderReviewHistoryTab();
   if(typeof qt_markReviewSeen==='function') qt_markReviewSeen(); // 방금 직접 작성했으므로 본인 기준으로는 이미 읽은 상태로 처리
@@ -27443,7 +27456,7 @@ function qt_renderCostAnalysis(){
   }
   html+='<div style="display:flex;gap:14px;flex-wrap:wrap;padding:2px 0 0;">';
   html+=_metricPair([['최종 견적금액', A.finalAmt, '#1D4ED8'], ['총 원가', A.totalCost, '#991B1B']]);
-  html+=_metricPair([['매출이익', A.profit, profitColor], ['이익률', A.marginPct.toFixed(1)+'%', marginColor]]);
+  html+=_metricPair([['영업이익', A.profit, profitColor], ['이익률', A.marginPct.toFixed(1)+'%', marginColor]]);
   html+='</div>';
   html+='<div style="height:16px;"></div>';
 
@@ -27470,10 +27483,10 @@ function qt_renderCostAnalysis(){
   if(A.laborRows && A.laborRows.length){
     var _totalQMM=A.laborRows.reduce(function(s,r){return s+(parseFloat(r.qty)||0);},0);
     if(A.laborRows.length>1){
-      html+=_row('총 공수', 0, {sub:true, color:'#0F172A', rawText:'<b>'+(_totalQMM%1===0?_totalQMM:_totalQMM.toFixed(1))+'MM</b>'});
+      html+=_row('총 견적공수', 0, {sub:true, color:'#0F172A', rawText:'<b>'+(_totalQMM%1===0?_totalQMM:_totalQMM.toFixed(1))+'MM</b>'});
     }
     A.laborRows.forEach(function(r){
-      var lbl=_qtEscBr(r.role)+(r.grade&&r.grade!=='-'?' · '+_qtEsc(r.grade):'')+(r.qty?' ('+r.qty+'MM)':'');
+      var lbl=(r.grade&&r.grade!=='-'?_qtEsc(r.grade):'(등급 미입력)')+(r.qty?' ('+r.qty+'MM)':'');
       html+=_row(lbl, r.quoted, {sub:true,color:ITEM_COLOR});
     });
   }
