@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-097 -->
+<!-- v20260728-097 변경사항: 대규모 기능 추가 - 매니저(사업부장 등) 로그인 신설, 검토이력 댓글 수정/삭제, 팀 순서 변경, 검토요청 다중수신자. 배경: 게스트 로그인은 session.rep이 없어 검토이력/주간회의 댓글 작성자 식별이 실패해 댓글이 정상 표시되지 않던 문제(코드 전반에 게스트=읽기전용 차단도 11곳 이상 존재) - 게스트가 아닌 새로운 신분 체계로 해결. (1) 조직관리>영업대표 관리에 "매니저 추가" 신설(authCfg.managers: name/title/email), 로그인화면에 팀선택 없이 바로 로그인되는 버튼으로 노출, 정식 영업대표와 동일한 이메일 대조 검증. session={role:'manager', rep:null, managerName, managerTitle}로 rep을 null 유지해 대시보드 등에 새 탭이 생기지 않게 함. 세션 유효성 검사 3곳(전역 감시함수/_initApp/워치독)에 매니저 인식 추가 안 하면 로그인창이 안 닫히는 문제 있었음(실제 발견해 수정). (2) SESSION_REP getter를 매니저 인식하도록 확장 - 이 덕분에 견적서 발신/담당자/견적번호 자동생성이 매니저에게 별도 코드 없이 자동으로 정상 동작(실제 확인: 이메일 앞2글자 HO로 견적번호 정상 생성). (3) 검토이력 댓글·주간회의 답글의 작성자 식별을 session.rep에서 SESSION_REP/공용 헬퍼로 전환해 매니저 인식(_qtSeenKey/getRepDisplayName/_ntRepEmail/_wkRepEmail 모두 매니저 조회 추가) - 매니저 댓글 작성→담당자 알림, 담당자 답변→매니저 알림, 안읽음 닷까지 실제 실행으로 검증. (4) 접속현황/접속기록에서 매니저가 게스트로 잘못 표시되던 것 수정 - isManager 플래그 도입, 전용 보라색 배지, 이메일 대조 검증까지 별도 처리. (5) 검토이력 댓글에 본인 작성 것만 보이는 수정(인라인 textarea 전환)/삭제 버튼 추가, appConfirm 확인 후 처리 - 타인 댓글 강제 조작 시도는 서버측에서도 재차 차단됨을 실제 확인. (6) 조직관리 팀 목록에 드래그앤드롭 순서변경 추가(메뉴순서변경의 기존 검증된 패턴 재사용). (7) 검토요청 받는사람을 단일 select에서 체크박스 다중선택으로 전환(팀장 기본 체크 유지) - 여러 명 동시 발송·발송이력 기록까지 확인. 작업 중 실수로 삭제됐던 function 선언(closeAuth, async 키워드) 2건도 즉시 발견·복구. 전체 기능 종합 회귀(블록/이력/원가/저장반응성/숨김필터 등) 이상 없음 최종 확인. -->
 <!-- TIS-VERSION: 20260728-096 -->
 <!-- v20260728-096 변경사항: 주간회의 요약카드 "만료 임박" 문구 수정 - v095에서 계산 로직은 계약 주요 현황과 동일하게 60일 기준으로 통일했는데, 카드 하단 문구는 "D-30 이내"로 그대로 남아있어 실제 집계 기준과 화면 문구가 불일치했음. "D-60 이내"로 수정. 계약관리 탭의 별도 D-30 필터 버튼(다른 기능, 만료임박 카드와 무관)은 그대로 유지. -->
 <!-- TIS-VERSION: 20260728-095 -->
@@ -4765,6 +4767,29 @@ window._updateSidebarByRole=function(){
     </div>
       <div class="sec-card">
       <div class="sec-head">
+        <h3>매니저 관리</h3>
+        <span style="font-size:11px;color:var(--muted);">팀 선택 없이 바로 로그인 · 조회 전용(타인 콘텐츠 수정 불가)</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;"><button class="btn btn-primary" onclick="addManager()" style="font-size:11px;padding:5px 10px;">+ 매니저 추가</button></div>
+      </div>
+      <div class="sec-body">
+        <p style="font-size:11px;color:var(--muted);margin:0 0 10px;">사업부장 등 특정 팀에 속하지 않고 전체를 조회·코멘트할 사람을 등록합니다. 로그인 화면에 이름이 바로 버튼으로 뜨고, 등록한 이메일과 접속 계정이 일치해야 접속됩니다.</p>
+        <div style="overflow-x:auto;">
+          <table style="width:100%;font-size:12px;border-collapse:collapse;">
+            <thead>
+              <tr style="background:#F8FAFF;border-bottom:2px solid var(--border);">
+                <th style="width:100px;padding:8px;text-align:left;font-size:11px;color:#64748B;">이름</th>
+                <th style="width:100px;padding:8px;text-align:center;font-size:11px;color:#64748B;">직책</th>
+                <th style="padding:8px;text-align:left;font-size:11px;color:#64748B;">이메일/도메인</th>
+                <th style="width:40px;padding:8px;text-align:center;font-size:11px;color:#64748B;">삭제</th>
+              </tr>
+            </thead>
+            <tbody id="manager-manage-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+      <div class="sec-card">
+      <div class="sec-head">
         <h3>권한 관리</h3>
         <span style="font-size:11px;color:var(--muted);">접속 비밀번호 설정</span>
       </div>
@@ -5425,7 +5450,7 @@ let session = { role: 'locked', rep: null, team: null };
 // 300ms 주기로 감시하여 원인 경로와 무관하게 상태를 자가 치유
 window._sessionValid = function(){
   return session && session.role && session.role!=='locked' &&
-    (session.role==='admin' || session.role==='guest' ||
+    (session.role==='admin' || session.role==='guest' || session.role==='manager' ||
      (session.role==='rep' && session.rep && String(session.rep).trim()));
 };
 window._startSessionWatchdog = function(){
@@ -5461,6 +5486,7 @@ window._startSessionWatchdog = function(){
 };
 let authCfg = { adminPw: '13579',
   chartType: 'combo', guestPw: '', repPws: {}, repPerms: {}, repEmails: {}, repTitles: {}, hiddenReps: [], hiddenTeams: [], cdbHiddenReps: [], teamReps: {'영업팀':[]}, teamColors: {'영업팀':['#1E5FBE','#00A882','#C05000','#7B2FBE']},
+  managers: [], // {name, title, email} - 팀선택 없이 바로 로그인하는 매니저 목록(조직관리>영업대표 관리에서 추가)
   // 이메일 알림 설정 (모두 기본 OFF - 관리자가 검증 후 하나씩 켜는 것을 권장)
   emailNotif: {
     mention:     {on:false, cc:''},
@@ -5685,7 +5711,14 @@ function _ntEsc(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 function _ntRepEmail(rep){
-  return (authCfg.repEmails && authCfg.repEmails[rep]) || '';
+  var e=(authCfg.repEmails && authCfg.repEmails[rep]) || '';
+  if(e) return e;
+  // 매니저는 authCfg.repEmails가 아니라 authCfg.managers 배열에 등록되어 있음
+  if(authCfg.managers){
+    var m=authCfg.managers.find(function(x){return x.name===rep;});
+    if(m && m.email) return m.email;
+  }
+  return '';
 }
 function _ntParseEmailList(str){
   if(!str) return [];
@@ -6432,6 +6465,7 @@ function switchSettingsTab(tab){
   if(tab==='조직관리'){
     if(typeof renderRepManage==='function') setTimeout(renderRepManage,50);
     if(typeof renderGuestAllowList==='function') setTimeout(renderGuestAllowList,60);
+    if(typeof renderManagerManage==='function') setTimeout(renderManagerManage,60);
   }
   if(tab==='알림'){
     // ⚠ 혹시 모를 DOM 타이밍 문제에 대비해 여러 시점에 재시도 (한 번이라도 정상 렌더되면 이후 호출은 그냥 덮어쓸 뿐 무해함)
@@ -6751,7 +6785,7 @@ function initAllTabs() {
 function _initApp(){
   // 세션 없이 앱 초기화 금지 (유령 접속 방지)
   var _sv = (typeof session!=='undefined' && session && session.role && session.role!=='locked' &&
-    (session.role==='admin' || session.role==='guest' || (session.role==='rep' && session.rep && String(session.rep).trim())));
+    (session.role==='admin' || session.role==='guest' || session.role==='manager' || (session.role==='rep' && session.rep && String(session.rep).trim())));
   if(!_sv){
     console.warn('[initApp] 유효 세션 없음(role/rep 누락) - 로그인창 유지');
     window._appInitialized=false;
@@ -9799,12 +9833,91 @@ function renderAuthTeamBtns(){
       <div style="color:#CBD5E1;font-size:16px;">›</div>
     </button>`;
   }).join('');
+  if(typeof renderLoginManagerBtns==='function') renderLoginManagerBtns();
+}
+
+// ── 매니저 바로 로그인 버튼 렌더링 + 클릭 시 이메일 대조 후 즉시 로그인 ──
+function renderLoginManagerBtns(){
+  var area=document.getElementById('auth-manager-area');
+  var container=document.getElementById('auth-manager-btns');
+  if(!area||!container) return;
+  var mgrs=(authCfg.managers||[]).filter(function(m){return m.name;});
+  if(!mgrs.length){ area.style.display='none'; container.innerHTML=''; return; }
+  area.style.display='block';
+  container.innerHTML=mgrs.map(function(m,i){
+    return '<button onclick="selectManager('+i+')" '
+      +'style="width:100%;padding:13px 16px;border:1.5px solid #E2E8F0;border-radius:12px;background:white;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:12px;transition:all 0.15s;" '
+      +'onmouseover="this.style.borderColor=\'#7B2FBE\';this.style.background=\'#7B2FBE0d\';" '
+      +'onmouseout="this.style.borderColor=\'#E2E8F0\';this.style.background=\'white\';">'
+      +'<div style="width:40px;height:40px;border-radius:10px;background:#7B2FBE18;border:1.5px solid #7B2FBE44;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
+      +'<span style="font-size:16px;">👔</span></div>'
+      +'<div style="flex:1;text-align:left;">'
+      +'<div style="font-size:14px;font-weight:700;color:#0A1628;">'+_qtEsc(m.name)+'</div>'
+      +'<div style="font-size:11px;color:#94A3B8;margin-top:1px;">'+(m.title?_qtEsc(m.title):'매니저')+'</div></div>'
+      +'<div style="color:#CBD5E1;font-size:16px;">›</div></button>';
+  }).join('');
+}
+function selectManager(idx){
+  var m=(authCfg.managers||[])[idx];
+  if(!m) return;
+  // ⚠ 정식 영업대표(selectRep)와 완전히 동일한 방식으로 이메일 대조 - 등록된 이메일이
+  //   있으면 현재 MS 로그인 계정과 반드시 일치해야 접속 가능(불일치 시 접속 차단 팝업)
+  var _curEmail='';
+  if(window._msalApp){ var _ac=window._msalApp.getAllAccounts(); if(_ac.length>0) _curEmail=(_ac[0].username||'').toLowerCase().trim(); }
+  var _regEmail=(m.email||'').toLowerCase().trim();
+  if(_regEmail && _curEmail && _curEmail!==_regEmail){
+    _showAccessDenied(m.name, _curEmail);
+    return;
+  }
+  doManagerLogin(m);
+}
+function doManagerLogin(m){
+  // ⚠ 팀 선택·담당자 선택 단계를 건너뛰고 곧장 로그인. session.rep은 null로 유지해서
+  //   REPS/TEAM_REPS에 없는 이름이 대시보드 등에 새로운 담당자 탭으로 나타나지 않게 한다
+  //   (요청사항: "일반 팀과 다르게 모든 메뉴에 매니저 탭이 생성되면 안 됨").
+  session={role:'manager', rep:null, team:null, managerName:m.name, managerTitle:m.title||'', managerEmail:m.email||''};
+  window._intendedVTab=null; window._activeVTab=null;
+  window._cPanelHash={}; window._lastContractHash=null;
+  window._lastBuiltTeam=null; window._inputPageDirty=true;
+  if(typeof activeRep!=='undefined') activeRep=null;
+  // 접속기록 - isGuest=false, isManager=true로 남겨서 게스트/매니저를 구분할 수 있게 함
+  try{
+    var _msAcc=''; if(window._msalApp){ var _a3=window._msalApp.getAllAccounts(); if(_a3.length>0) _msAcc=(_a3[0].username||''); }
+    if(typeof _recordAccessLog==='function') _recordAccessLog(_msAcc||m.email||'', m.name, '접속', false, m.title||'', true);
+  }catch(e){}
+  _showSPLoading(m.name+' SP 연결 중...');
+  (async function _tryManagerConnect(){
+    window._spConnectFn=_tryManagerConnect;
+    try{
+      if(!window._isSPReady&&typeof _initSP==='function'){
+        await Promise.race([
+          _initSP(),
+          new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('연결 시간 초과. 네트워크를 확인해주세요.')); },10000); })
+        ]);
+      }
+      if(!window._isSPReady) throw new Error('SP 연결에 실패했습니다.');
+      closeAuth();
+      _hideSPLoading();
+      _initApp();
+      setTimeout(function(){
+        try{
+          if(session&&session.role&&!window._appInitialized){
+            console.warn('[워치독] 앱 미초기화 감지 - _initApp 재시도');
+            _initApp();
+          }
+        }catch(e){}
+      },3000);
+    }catch(e){
+      _hideSPLoading();
+      showToast('⚠️ '+(e.message||'연결에 실패했습니다.'),'warn');
+    }
+  })();
 }
 
 function closeAuth(){
   // 안전장치: 유효 세션 없이 닫히려 하면 무시 (로그인창 자동 닫힘·담당자 미지정 방지)
   var _ok=(typeof session!=='undefined'&&session&&session.role&&session.role!=='locked'&&
-    (session.role==='admin'||session.role==='guest'||(session.role==='rep'&&session.rep&&String(session.rep).trim())));
+    (session.role==='admin'||session.role==='guest'||session.role==='manager'||(session.role==='rep'&&session.rep&&String(session.rep).trim())));
   if(!_ok){ console.warn('[closeAuth] 유효 세션 없음 - 닫기 취소'); return; }
   var _am=document.getElementById('auth-modal');
   if(_am) _am.style.display='none';
@@ -10343,16 +10456,43 @@ function renderCfgTeams(){
   // 사업부 이름 input 채우기
   const divInput=document.getElementById('cfg-div-name');
   if(divInput&&!divInput.value) divInput.value=divName;
-  container.innerHTML=TEAMS.map(function(team,i){
-    return `<div style="display:flex;gap:8px;align-items:center;padding:8px 12px;background:#F8FAFF;border-radius:10px;border:1px solid #E2E8F0;">
-      <span style="font-size:16px;">${['💼','🏢','🏗️','🔹','🔸','⭐'][i]||'▪'}</span>
-      <input type="text" value="${team}" id="cfg-team-name-${i}"
-        style="flex:1;border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:13px;font-weight:700;font-family:inherit;"
-        placeholder="팀 이름">
-      <button class="btn btn-primary" onclick="saveTeamName(${i})" style="font-size:11px;padding:5px 10px;">저장</button>
-      ${TEAMS.length>1?`<button onclick="deleteTeam(${i})" style="padding:5px 8px;border:1px solid #FCA5A5;border-radius:6px;background:#FFF5F5;color:#EF4444;font-size:11px;cursor:pointer;">삭제</button>`:''}
-    </div>`;
-  }).join('');
+  // ⚠ 팀 순서 변경 - 메뉴순서변경(renderCfgMenuOrder)에서 이미 검증된 드래그앤드롭 패턴을
+  //   그대로 재사용. TEAM_REPS/TEAM_COLORS는 팀 이름을 키로 쓰는 객체라 TEAMS 배열
+  //   순서만 바꾸면 자동으로 따라오므로 별도 재배열이 필요 없다.
+  container.innerHTML='';
+  TEAMS.forEach(function(team,i){
+    var row=document.createElement('div');
+    row.draggable=true;
+    row.dataset.team=team;
+    row.style.cssText='display:flex;gap:8px;align-items:center;padding:8px 12px;background:#F8FAFF;border-radius:10px;border:1px solid #E2E8F0;cursor:grab;user-select:none;';
+    row.innerHTML='<span style="color:#94A3B8;font-size:13px;">⠿</span>'
+      +'<span style="font-size:16px;">'+(['💼','🏢','🏗️','🔹','🔸','⭐'][i]||'▪')+'</span>'
+      +'<input type="text" value="'+team+'" id="cfg-team-name-'+i+'" style="flex:1;border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:13px;font-weight:700;font-family:inherit;" placeholder="팀 이름">'
+      +'<button class="btn btn-primary" onclick="saveTeamName('+i+')" style="font-size:11px;padding:5px 10px;">저장</button>'
+      +(TEAMS.length>1?'<button onclick="deleteTeam('+i+')" style="padding:5px 8px;border:1px solid #FCA5A5;border-radius:6px;background:#FFF5F5;color:#EF4444;font-size:11px;cursor:pointer;">삭제</button>':'');
+    row.addEventListener('dragstart',function(e){ e.dataTransfer.setData('text/plain','TEAM:'+team); row.style.opacity='0.4'; });
+    row.addEventListener('dragend',function(){ row.style.opacity='1'; });
+    row.addEventListener('dragover',function(e){ e.preventDefault(); row.style.background='#EFF6FF'; });
+    row.addEventListener('dragleave',function(){ row.style.background='#F8FAFF'; });
+    row.addEventListener('drop',function(e){
+      e.preventDefault(); row.style.background='#F8FAFF';
+      var data=e.dataTransfer.getData('text/plain');
+      if(data.indexOf('TEAM:')!==0) return;
+      var fromTeam=data.slice(5);
+      if(fromTeam===team) return;
+      var fi=TEAMS.indexOf(fromTeam), ti=TEAMS.indexOf(team);
+      if(fi<0||ti<0) return;
+      TEAMS.splice(fi,1);
+      TEAMS.splice(ti,0,fromTeam);
+      authCfg.teams=TEAMS.slice();
+      saveAuthCfg();
+      renderCfgTeams();
+      if(typeof _renderSidebar==='function') _renderSidebar();
+      if(typeof renderDashboard==='function') renderDashboard();
+      showToast&&showToast('팀 순서가 저장됐습니다.','ok');
+    });
+    container.appendChild(row);
+  });
   updateAddRepButtons();
 }
 
@@ -10890,16 +11030,17 @@ function updateAccessDisplay(){
       // 담당자 판별 + displayKey 정규화 (중복 방지)
       // isGuest 플래그 우선 확인
       var _isGuestEntry = entry.isGuest === true;
-      var _matchedRep = _isGuestEntry ? null : REPS_ALL.find(function(r){
+      var _isManagerEntry = entry.isManager === true;
+      var _matchedRep = (_isGuestEntry||_isManagerEntry) ? null : REPS_ALL.find(function(r){
         return rep === r ||
                rep === (typeof getRepDisplayName==='function' ? getRepDisplayName(r) : r) ||
                rep.startsWith(r+' ');
       });
-      var isRepUser = !_isGuestEntry && rep && !!_matchedRep;
-      var isAdminUser = !_isGuestEntry && (!rep) && msAcc && msAcc !== 'guest';
-      // displayKey: 게스트는 이름, 담당자는 REPS_ALL 기준 정규화
-      var displayKey = _isGuestEntry ? ('guest_'+(rep||msAcc||'unknown')) : (_matchedRep || rep || msAcc || 'unknown');
-      var type = _isGuestEntry ? 'guest' : (isRepUser ? 'rep' : (isAdminUser ? 'admin' : 'guest'));
+      var isRepUser = !_isGuestEntry && !_isManagerEntry && rep && !!_matchedRep;
+      var isAdminUser = !_isGuestEntry && !_isManagerEntry && (!rep) && msAcc && msAcc !== 'guest';
+      // displayKey: 게스트/매니저는 이름, 담당자는 REPS_ALL 기준 정규화
+      var displayKey = _isManagerEntry ? ('mgr_'+(rep||msAcc||'unknown')) : (_isGuestEntry ? ('guest_'+(rep||msAcc||'unknown')) : (_matchedRep || rep || msAcc || 'unknown'));
+      var type = _isManagerEntry ? 'manager' : (_isGuestEntry ? 'guest' : (isRepUser ? 'rep' : (isAdminUser ? 'admin' : 'guest')));
       // ⚠ 예전에는 이 자리에서 title 필드를 아예 만들지 않아서, makeRow가 entry.title을 읽어도
       //   항상 undefined였음 → 등록된 게스트라도 직책이 절대 표시될 수 없었던 근본 원인.
       //   → _renderAccessLog(접속이력 탭)와 동일한 조회 순서로 title을 채운다:
@@ -10961,8 +11102,10 @@ function updateAccessDisplay(){
     //   게스트라는 표시 자체가 사라졌음(강규승 사업부장 → "사업부장"만 보이고 게스트인지 안 보임).
     //   → 담당자와 동일하게 이름 옆에 같은 폰트로 직책을 붙이고, 게스트 배지는 직책 유무와
     //   상관없이 항상 별도로 표시한다.
-    var _dispName = entry.name + (entry.type==='guest' && entry.title ? ' '+entry.title : '');
-    var badge = (entry.type==='guest')
+    var _dispName = entry.name + ((entry.type==='guest'||entry.type==='manager') && entry.title ? ' '+entry.title : '');
+    var badge = (entry.type==='manager')
+      ? '<span style="font-size:10px;color:#7B2FBE;border:1px solid #DDD0F0;border-radius:4px;padding:1px 5px;margin-left:4px;">매니저</span>'
+      : (entry.type==='guest')
       ? '<span style="font-size:10px;color:#94A3B8;border:1px solid #E2E8F0;border-radius:4px;padding:1px 5px;margin-left:4px;">게스트</span>'
       : (entry.type==='admin')
       ? '<span style="font-size:10px;color:#7C3AED;border:1px solid #DDD6FE;border-radius:4px;padding:1px 5px;margin-left:4px;">관리자</span>'
@@ -12355,6 +12498,53 @@ function updateAddRepButtons(){
   }).join('');
 }
 
+function addManager(){
+  const name=prompt('새 매니저 이름을 입력하세요:');
+  if(!name||!name.trim())return;
+  const trimmed=name.trim();
+  if(!authCfg.managers) authCfg.managers=[];
+  if(authCfg.managers.some(function(m){return m.name===trimmed;})){alert('이미 존재하는 이름입니다.');return;}
+  authCfg.managers.push({name:trimmed, title:'', email:''});
+  saveAuthCfg();
+  renderManagerManage();
+  if(typeof renderLoginManagerBtns==='function') renderLoginManagerBtns();
+  alert('✅ '+trimmed+' 매니저가 추가되었습니다! 직책·이메일을 입력해주세요.');
+}
+function saveManagerField(idx, field, value){
+  if(!authCfg.managers||!authCfg.managers[idx]) return;
+  authCfg.managers[idx][field]=(value||'').trim();
+  saveAuthCfg();
+  if(typeof renderLoginManagerBtns==='function') renderLoginManagerBtns();
+}
+function deleteManager(idx){
+  if(!authCfg.managers||!authCfg.managers[idx]) return;
+  var name=authCfg.managers[idx].name;
+  appConfirm(name+' 매니저를 삭제하시겠습니까?', function(){
+    authCfg.managers.splice(idx,1);
+    saveAuthCfg();
+    renderManagerManage();
+    if(typeof renderLoginManagerBtns==='function') renderLoginManagerBtns();
+    showToast('🗑️ '+name+' 매니저가 삭제되었습니다.','warn');
+  });
+}
+function renderManagerManage(){
+  var tbody=document.getElementById('manager-manage-tbody');
+  if(!tbody) return;
+  var mgrs=authCfg.managers||[];
+  if(!mgrs.length){
+    tbody.innerHTML='<tr><td colspan="4" style="padding:14px;color:#94A3B8;font-size:12px;text-align:center;">등록된 매니저가 없습니다.</td></tr>';
+    return;
+  }
+  tbody.innerHTML=mgrs.map(function(m,i){
+    return '<tr style="border-bottom:1px solid #F1F5F9;">'
+      +'<td style="padding:8px;"><input type="text" value="'+(m.name||'').replace(/"/g,'&quot;')+'" data-idx="'+i+'" onchange="saveManagerField('+i+',\'name\',this.value)" style="width:90px;border:1px solid var(--border);border-radius:6px;padding:4px 7px;font-size:12px;font-weight:600;font-family:inherit;"></td>'
+      +'<td style="padding:8px;text-align:center;"><input type="text" value="'+(m.title||'').replace(/"/g,'&quot;')+'" placeholder="직책" onchange="saveManagerField('+i+',\'title\',this.value)" style="width:80px;border:1px solid var(--border);border-radius:6px;padding:4px 7px;font-size:12px;font-family:inherit;"></td>'
+      +'<td style="padding:8px;"><input type="text" value="'+(m.email||'').replace(/"/g,'&quot;')+'" placeholder="이메일@도메인" onchange="saveManagerField('+i+',\'email\',this.value)" style="width:100%;border:1px solid var(--border);border-radius:6px;padding:4px 7px;font-size:11px;font-family:inherit;"></td>'
+      +'<td style="padding:8px;text-align:center;"><button onclick="deleteManager('+i+')" style="width:26px;height:26px;border-radius:5px;border:1px solid #FCA5A5;background:#FEF2F2;color:#DC2626;cursor:pointer;font-size:14px;line-height:1;">×</button></td>'
+      +'</tr>';
+  }).join('');
+}
+
 function addRep(){
   const name=prompt('새 영업대표 이름을 입력하세요:');
   if(!name||!name.trim())return;
@@ -12579,7 +12769,7 @@ function _setSPStatus(state) {
     if(_authEl2 && _authEl2.style.display==='flex'){
       var _validNow = (typeof window._sessionValid==='function') ? window._sessionValid()
         : (session && session.role && session.role!=='locked' &&
-           (session.role==='admin'||session.role==='guest'||(session.role==='rep'&&session.rep&&String(session.rep).trim())));
+           (session.role==='admin'||session.role==='guest'||session.role==='manager'||(session.role==='rep'&&session.rep&&String(session.rep).trim())));
       if(_validNow && typeof closeAuth==='function') closeAuth();
     }
   }
@@ -12982,6 +13172,11 @@ function getRepDisplayName(rep){
   if(!rep) return rep;
   var titles=(typeof authCfg!=='undefined'&&authCfg.repTitles)||{};
   var t=titles[rep]||'';
+  // 매니저는 repTitles가 아니라 managers 배열에 직책이 있음
+  if(!t && typeof authCfg!=='undefined' && authCfg.managers){
+    var mgr=authCfg.managers.find(function(x){return x.name===rep;});
+    if(mgr && mgr.title) t=mgr.title;
+  }
   if(t) return rep+' '+t;
   // 이미 "이름 직책" 형태이면 그대로 반환 (중복 방지)
   var keys=Object.keys(titles);
@@ -14028,10 +14223,11 @@ async function _recordAccessLog(msAccount, selectedRep, action, isGuest) {
   //   완료되기 전인 경우가 있어, 게스트 접속 이력이 통째로 저장되지 않는 원인이 됐음.
   //   → 연결 전이면 버리지 않고 대기열에 넣어두었다가 연결되면 자동으로 저장한다.
   var _t = arguments[4] || '';
+  var _isManager = arguments[5] || false;
   if (!window._isSPReady) {
     window._pendingAccessLogs = window._pendingAccessLogs || [];
     if (window._pendingAccessLogs.length < 20) {
-      window._pendingAccessLogs.push({m:msAccount, r:selectedRep, a:action, g:isGuest, t:_t});
+      window._pendingAccessLogs.push({m:msAccount, r:selectedRep, a:action, g:isGuest, t:_t, mgr:_isManager});
     }
     if (!window._pendingAccessLogTimer) {
       window._pendingAccessLogTimer = setInterval(function(){
@@ -14041,7 +14237,7 @@ async function _recordAccessLog(msAccount, selectedRep, action, isGuest) {
         var q = window._pendingAccessLogs || [];
         window._pendingAccessLogs = [];
         q.forEach(function(x){
-          try { _recordAccessLog(x.m, x.r, x.a, x.g, x.t); } catch(e) {}
+          try { _recordAccessLog(x.m, x.r, x.a, x.g, x.t, x.mgr); } catch(e) {}
         });
       }, 1000);
       // 연결이 끝내 안 되면 60초 후 대기열 정리 (무한 대기 방지)
@@ -14067,6 +14263,7 @@ async function _recordAccessLog(msAccount, selectedRep, action, isGuest) {
       title:       _t,
       action:      action      || '접속',
       isGuest:     isGuest     || false,
+      isManager:   _isManager  || false,
       timestamp:   now.toISOString()
     };
     // ⚠ 예전엔 키가 (날짜_계정_밀리초)라서 "접속할 때마다 SharePoint에 새 항목이 하나씩
@@ -14105,7 +14302,7 @@ async function _recordAccessLog(msAccount, selectedRep, action, isGuest) {
             var q = window._pendingAccessLogs || [];
             window._pendingAccessLogs = [];
             q.forEach(function(x){
-              try { _recordAccessLog(x.m, x.r, x.a, x.g, x.t); } catch(e) {}
+              try { _recordAccessLog(x.m, x.r, x.a, x.g, x.t, x.mgr); } catch(e) {}
             });
           }, 3000);
         }
@@ -14228,8 +14425,9 @@ function _renderAccessLog() {
       + (function(){
           var _aR=[];
           if(typeof TEAM_REPS!=='undefined') Object.keys(TEAM_REPS).forEach(function(t){(TEAM_REPS[t]||[]).forEach(function(r){_aR.push(r);});});
-          // isGuest 플래그 우선, 없으면 TEAM_REPS 미등록 여부로 판단
-          var _iG = log.isGuest === true || (log.selectedRep && _aR.length>0 && _aR.indexOf(log.selectedRep)<0);
+          var _iMgr = log.isManager === true;
+          // isGuest 플래그 우선, 없으면 TEAM_REPS 미등록 여부로 판단 (매니저는 게스트 아님)
+          var _iG = !_iMgr && (log.isGuest === true || (log.selectedRep && _aR.length>0 && _aR.indexOf(log.selectedRep)<0));
           var _gDispName = _safeRepDisplayName(log.selectedRep)||'-';
           // 게스트도 등록 담당자 직책을 함께 표시 (이름 + 직책 + 게스트)
           // 직책 조회 순서: ①기록에 저장된 값 → ②등록 담당자 직책표 → ③게스트 허용목록(MS계정 이메일로 대조)
@@ -14251,6 +14449,11 @@ function _renderAccessLog() {
                })()
             || '';
           if(_gTitle && _gDispName.indexOf(_gTitle)<0) _gDispName = _gDispName+' '+_gTitle;
+          if(_iMgr){
+            var _mgrEmail=(function(){ var mg=(authCfg.managers||[]).find(function(x){return x.name===log.selectedRep;}); return mg?(mg.email||'').toLowerCase():''; })();
+            var _mgrOk = !_mgrEmail ? true : (log.msAccount||'').toLowerCase()===_mgrEmail;
+            return '<span style="display:inline-flex;align-items:center;gap:5px;"><span style="font-weight:700;color:'+(_mgrOk?'#7B2FBE':'#DA1E28')+';">👔 '+_gDispName+'</span><span style="font-size:10px;font-weight:700;color:#7B2FBE;background:rgba(123,47,190,0.12);border:1px solid rgba(123,47,190,0.35);border-radius:20px;padding:1px 8px;">매니저</span>'+(_mgrOk?'':' <span style="font-size:10px;color:#DA1E28;">⚠️불일치</span>')+'</span>';
+          }
           if(_iG) return '<span style="display:inline-flex;align-items:center;gap:5px;"><span style="font-weight:700;color:#4f7fff;">&#128065; '+_gDispName+'</span><span style="font-size:10px;font-weight:700;color:#4f7fff;background:rgba(79,127,255,0.12);border:1px solid rgba(79,127,255,0.35);border-radius:20px;padding:1px 8px;">게스트</span></span>';
           var _dispName = _safeRepDisplayName(log.selectedRep)||'-';
           return '<span style="font-weight:600;color:'+(isSame?'#198038':'#DA1E28')+'">'+ _dispName +'</span>'+(isSame?'':' <span style="font-size:10px;color:#DA1E28;">⚠️불일치</span>');
@@ -14308,6 +14511,10 @@ function _renderAccessLog() {
       <div id="auth-s0">
         <div class="auth-step-label auth-div-title">팀 선택</div>
         <div id="auth-team-btns" style="display:flex;flex-direction:column;gap:8px;"></div>
+        <div id="auth-manager-area" style="display:none;">
+          <div class="auth-divider"><span>매니저</span></div>
+          <div id="auth-manager-btns" style="display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
         <div class="auth-divider"><span>또는</span></div>
         <div style="display:flex;flex-direction:column;gap:7px;">
           <button onclick="goGuestStep()" style="width:100%;padding:10px 14px;border:1.5px solid #E2E8F0;border-radius:9px;background:#F8FAFC;color:#6B7FA3;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:all 0.15s;" onmouseover="this.style.borderColor='#94A3B8'" onmouseout="this.style.borderColor='#E2E8F0'">
@@ -19259,7 +19466,7 @@ async function _wkCreateReplyNotif(entry, replyRep){
   var _replyRep=replyRep||'';
   if(!_entryRep||_entryRep===_replyRep) return; // 자신 답변 제외
   var target=entry.rep;
-  var myRep=session&&session.rep||'';
+  var myRep=SESSION_REP.name||'';
   var notif={
     id:_wkGenId(), type:'reply', read:false,
     title:'회의록에 답변이 등록되었습니다',
@@ -20997,8 +21204,11 @@ async function _wkLogSubmitReply(entryId){
   }
   var entry=entries.find(function(e){return e.id===entryId;});
   if(!entry) return;
-  var myRep=typeof session!=='undefined'&&session?session.rep:'';
-  var myName=typeof session!=='undefined'&&session?(session.role==='admin'?'관리자':(_wkDisplayName(myRep)||myRep||'')):'' ;
+  // ⚠ 매니저는 session.rep이 없어서(REPS/TEAM_REPS에 안 들어가는 설계) 예전 방식으로는
+  //   답글 작성자가 빈 이름으로 저장되고 있었음. SESSION_REP으로 통일해 매니저 이름도
+  //   정상 인식되도록 함(견적서 검토이력 댓글과 동일한 원리).
+  var myRep=SESSION_REP.name||'';
+  var myName=(typeof session!=='undefined'&&session&&session.role==='admin')?'관리자':(SESSION_REP.title?(myRep+' '+SESSION_REP.title):(_wkDisplayName(myRep)||myRep||''));
   var now=new Date();
   var timeStr=(now.getMonth()+1)+'/'+now.getDate()+' '+(now.getHours()<10?'0':'')+now.getHours()+':'+(now.getMinutes()<10?'0':'')+now.getMinutes();
   if(!entry.replies) entry.replies=[];
@@ -21976,7 +22186,13 @@ function _wkEsc(s){
 
 // ── 이메일 알림 공용 헬퍼 ──
 function _wkRepEmail(rep){
-  return (typeof authCfg!=='undefined'&&authCfg.repEmails&&authCfg.repEmails[rep])||'';
+  var e=(typeof authCfg!=='undefined'&&authCfg.repEmails&&authCfg.repEmails[rep])||'';
+  if(e) return e;
+  if(typeof authCfg!=='undefined' && authCfg.managers){
+    var mgr=authCfg.managers.find(function(x){return x.name===rep;});
+    if(mgr && mgr.email) return mgr.email;
+  }
+  return '';
 }
 // 관리자설정에 콤마/줄바꿈으로 입력한 참조(CC) 문자열을 이메일 배열로 파싱
 function _wkParseCcList(str){
@@ -23598,7 +23814,7 @@ function qtRenderPreview(){
     <div style="padding:18px 20px;max-height:60vh;overflow-y:auto;">
       <div style="margin-bottom:16px;">
         <label style="font-size:11.5px;font-weight:700;color:#0F172A;margin-bottom:7px;display:block;">받는 사람<span style="color:#DC2626;margin-left:2px;">*</span></label>
-        <select id="reviewRecvSel" style="width:100%;border:1px solid #E2E8F0;border-radius:8px;padding:9px 11px;font-size:12px;font-family:inherit;color:#0F172A;"></select>
+        <div id="reviewRecvList" style="display:flex;flex-direction:column;gap:4px;max-height:160px;overflow-y:auto;border:1px solid #E2E8F0;border-radius:8px;padding:6px;"></div>
         <div id="reviewRecvHint" style="font-size:10px;color:#94A3B8;margin-top:5px;"></div>
       </div>
       <div style="margin-bottom:16px;">
@@ -23671,9 +23887,24 @@ var window_qt_editing_id = null;
 
 // ── SESSION_REP 호환 레이어 (앱 session → 원본 SESSION_REP 포맷) ──
 var SESSION_REP = {
-  get name(){ return (typeof session!=='undefined'&&session&&session.rep)?session.rep.replace(/[（(【].*$/,'').trim():''; },
-  get title(){ var n=this.name; return (typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[n])||''; },
+  get name(){
+    // ⚠ 매니저는 session.rep이 아니라 session.managerName에 이름이 있음(REPS/TEAM_REPS에
+    //   안 들어가야 대시보드 등에 새 탭이 안 생기므로 일부러 rep을 null로 유지하고 있음).
+    //   여기서 인식하게 해두면 SESSION_REP을 쓰는 모든 기능(견적서 발신/담당자/견적번호
+    //   자동생성 등)이 매니저에게도 별도 수정 없이 자동으로 정상 동작한다.
+    if(typeof session!=='undefined'&&session&&session.role==='manager') return (session.managerName||'').trim();
+    return (typeof session!=='undefined'&&session&&session.rep)?session.rep.replace(/[（(【].*$/,'').trim():'';
+  },
+  get title(){
+    if(typeof session!=='undefined'&&session&&session.role==='manager') return session.managerTitle||'';
+    var n=this.name; return (typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[n])||'';
+  },
   get email(){
+    if(typeof session!=='undefined'&&session&&session.role==='manager'){
+      if(session.managerEmail) return session.managerEmail;
+      try{ if(window._msalApp){ var am=window._msalApp.getAllAccounts(); if(am.length>0) return (am[0].username||'').toLowerCase().trim(); } }catch(e){}
+      return '';
+    }
     var n=this.name;
     var m=(typeof authCfg!=='undefined'&&authCfg.repEmails&&authCfg.repEmails[n])||'';
     if(m) return m;
@@ -26253,7 +26484,7 @@ function _qtMyTeamName(rep){
   return null;
 }
 function qt_reviewRecipientOptions(){
-  var me=(typeof session!=='undefined'&&session&&session.rep)||'';
+  var me=SESSION_REP.name||'';
   var team=_qtMyTeamName(me);
   var members=team?(TEAM_REPS[team]||[]).filter(function(r){return r!==me;}):[];
   members.sort(function(a,b){
@@ -26290,6 +26521,7 @@ function _qtFmtDT(iso){
 //   식별하도록 공용 함수로 분리해 읽음 판정과 저장이 항상 동일한 키를 쓰게 한다.
 function _qtSeenKey(){
   if(typeof session==='undefined'||!session) return '';
+  if(session.role==='manager') return '__mgr_'+((session.managerName||'').trim()||'anon');
   if(session.rep) return session.rep;
   if(session.role==='admin') return '__admin__';
   if(session.role==='guest') return '__guest_'+((session.guestName||'').trim()||'anon');
@@ -26347,12 +26579,16 @@ function qt_openReviewRequestPop(){
     return;
   }
   var opts=qt_reviewRecipientOptions();
-  var sel=document.getElementById('reviewRecvSel');
+  var list=document.getElementById('reviewRecvList');
   if(!opts.length){
-    sel.innerHTML='<option value="">소속 팀에 다른 담당자가 없습니다</option>';
+    list.innerHTML='<div style="padding:8px;font-size:11.5px;color:#94A3B8;text-align:center;">소속 팀에 다른 담당자가 없습니다</div>';
   } else {
-    sel.innerHTML=opts.map(function(o){
-      return '<option value="'+_qtEsc(o.name)+'">'+_qtEsc(o.name)+(o.isLeader?' (팀장)':'')+'</option>';
+    list.innerHTML=opts.map(function(o,i){
+      return '<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px;" onmouseover="this.style.background=\'#F8FAFC\'" onmouseout="this.style.background=\'\'">'
+        +'<input type="checkbox" class="reviewRecvChk" value="'+_qtEsc(o.name)+'"'+(o.isLeader?' checked':'')+' style="width:14px;height:14px;cursor:pointer;">'
+        +'<span style="flex:1;">'+_qtEsc(o.name)+'</span>'
+        +(o.isLeader?'<span style="font-size:9.5px;font-weight:700;color:#1D4ED8;background:#EFF6FF;padding:1px 6px;border-radius:8px;">팀장</span>':'')
+        +'</label>';
     }).join('');
   }
   var team=_qtMyTeamName();
@@ -26394,12 +26630,16 @@ function qt_reviewRenderChips(){
 async function qt_sendReviewRequest(){
   var q=qt_getCurrentQuoteObj();
   if(!q){ if(typeof showToast==='function') showToast('견적을 먼저 저장해 주세요.','warn'); return; }
-  var sel=document.getElementById('reviewRecvSel');
-  var recvName=sel?sel.value:'';
-  var recvEmail=recvName?(typeof _ntRepEmail==='function'?_ntRepEmail(recvName):''):'';
-  var extraChips=(window._qtReviewChips||[]).slice();
+  // ⚠ 예전엔 단일 select라 받는사람을 한 명밖에 못 골랐음. 체크박스 다중선택으로 바꿔
+  //   체크된 항목 전부를 받는사람에 포함시킨다(팀장만 보내고 싶으면 하나만 체크하면 됨,
+  //   기본값은 팀장이 미리 체크되어 있어 예전과 동일한 사용 흐름도 그대로 유지됨).
+  var checked=Array.from(document.querySelectorAll('.reviewRecvChk:checked')).map(function(c){return c.value;});
   var toList=[], toNames=[];
-  if(recvEmail){ toList.push(recvEmail); toNames.push(recvName); }
+  checked.forEach(function(name){
+    var em=(typeof _ntRepEmail==='function'?_ntRepEmail(name):'');
+    if(em){ toList.push(em); toNames.push(name); }
+  });
+  var extraChips=(window._qtReviewChips||[]).slice();
   var ccList=[];
   extraChips.forEach(function(c){
     if(c.indexOf('@')>0) ccList.push(c);
@@ -26414,8 +26654,8 @@ async function qt_sendReviewRequest(){
   if(btn){ btn.disabled=true; btn.textContent='발송 중...'; }
 
   var proj=q.proj||'', client=q.client||q.recv||'', qno=q.id||'', quoteAmt=q.amount||0;
-  var myName=(typeof session!=='undefined'&&session&&session.rep)||'';
-  var myTitle=(typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[myName])||'';
+  var myName=SESSION_REP.name||'';
+  var myTitle=SESSION_REP.title||'';
   var appUrl=''; try{ appUrl=location.href.split('?')[0]; }catch(e){}
   // ⚠ 메일을 여는 브라우저(특히 메일 앱 내장 인앱 브라우저/웹뷰)는 평소 쓰는 브라우저와
   //   캐시가 완전히 분리되어 있어서, 평소 브라우저에서 새로고침해도 전혀 영향을 안 준다.
@@ -26517,16 +26757,21 @@ function qt_renderReviewHistoryTab(){
     html+='<div style="text-align:center;color:#94A3B8;font-size:11.5px;padding:10px 0;">등록된 코멘트가 없습니다.</div>';
   } else {
     var byId={}; q.reviewComments.forEach(function(c){byId[c.id]=c;});
+    var _myName=SESSION_REP.name||'';
     q.reviewComments.forEach(function(c){
       var parent=c.replyToId?byId[c.replyToId]:null;
-      html+='<div style="display:flex;gap:10px;margin-bottom:14px;">'
+      var _isMine=(_myName && c.author===_myName);
+      html+='<div style="display:flex;gap:10px;margin-bottom:14px;" id="qtCmt-'+c.id+'">'
         +'<div style="width:30px;height:30px;border-radius:50%;background:#0F172A;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">'+_qtEsc((c.author||'?').slice(0,1))+'</div>'
         +'<div style="flex:1;">'
-        +'<div style="display:flex;align-items:baseline;gap:6px;"><span style="font-size:11.5px;font-weight:700;">'+_qtEsc(c.author||'')+'</span><span style="font-size:10px;color:#94A3B8;">'+_qtFmtDT(c.createdAt)+'</span></div>'
-        +'<div style="font-size:12px;color:#0F172A;margin-top:3px;line-height:1.6;white-space:pre-line;">'+_qtEscBr(c.text||'')+'</div>'
+        +'<div style="display:flex;align-items:baseline;gap:6px;"><span style="font-size:11.5px;font-weight:700;">'+_qtEsc(c.author||'')+'</span><span style="font-size:10px;color:#94A3B8;">'+_qtFmtDT(c.createdAt)+(c.editedAt?' · 수정됨':'')+'</span></div>'
+        +'<div id="qtCmtBody-'+c.id+'" style="font-size:12px;color:#0F172A;margin-top:3px;line-height:1.6;white-space:pre-line;">'+_qtEscBr(c.text||'')+'</div>'
         +(parent?'<div style="font-size:10px;color:#2563EB;margin-top:4px;">↳ '+_qtEsc(parent.author||'')+' 님 댓글에 대한 답변</div>':'')
-        +'<span onclick="qt_setReplyTarget(\''+c.id+'\',\''+_qtEsc(c.author||'').replace(/'/g,"\\'")+'\')" style="display:inline-block;margin-top:5px;font-size:10px;font-weight:700;color:#64748B;cursor:pointer;">↩ 답변</span>'
-        +'</div></div>';
+        +'<div style="display:flex;gap:10px;margin-top:5px;">'
+        +'<span onclick="qt_setReplyTarget(\''+c.id+'\',\''+_qtEsc(c.author||'').replace(/'/g,"\\'")+'\')" style="font-size:10px;font-weight:700;color:#64748B;cursor:pointer;">↩ 답변</span>'
+        +(_isMine?('<span onclick="qt_editReviewComment(\''+c.id+'\')" style="font-size:10px;font-weight:700;color:#64748B;cursor:pointer;">✎ 수정</span>'
+          +'<span onclick="qt_deleteReviewComment(\''+c.id+'\')" style="font-size:10px;font-weight:700;color:#DC2626;cursor:pointer;">🗑 삭제</span>'):'')
+        +'</div></div></div>';
     });
   }
   html+='</div>';
@@ -26556,6 +26801,51 @@ function qt_submitReviewComment(){
   qt_clearReplyTarget();
   qt_addReviewComment(rid);
 }
+async function qt_editReviewComment(cid){
+  var q=qt_getCurrentQuoteObj();
+  if(!q) return;
+  var c=(q.reviewComments||[]).find(function(x){return x.id===cid;});
+  if(!c) return;
+  // 본인 것만 수정 가능 (화면에 버튼 자체가 본인 것에만 나오지만, 직접 호출 대비 이중 확인)
+  if(c.author!==(SESSION_REP.name||'')){ if(typeof showToast==='function') showToast('본인이 작성한 댓글만 수정할 수 있습니다.','warn'); return; }
+  var body=document.getElementById('qtCmtBody-'+cid);
+  if(!body) return;
+  var orig=c.text||'';
+  body.innerHTML='<textarea id="qtCmtEditTa-'+cid+'" style="width:100%;border:1px solid var(--border);border-radius:7px;padding:7px 9px;font-size:12px;font-family:inherit;resize:vertical;min-height:50px;">'+_qtEsc(orig)+'</textarea>'
+    +'<div style="display:flex;gap:6px;margin-top:6px;">'
+    +'<button onclick="qt_saveReviewCommentEdit(\''+cid+'\')" style="background:#2563EB;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:10.5px;font-weight:700;cursor:pointer;font-family:inherit;">저장</button>'
+    +'<button onclick="qt_renderReviewHistoryTab()" style="background:#F1F5F9;color:#475569;border:none;border-radius:6px;padding:4px 12px;font-size:10.5px;font-weight:700;cursor:pointer;font-family:inherit;">취소</button>'
+    +'</div>';
+  var ta=document.getElementById('qtCmtEditTa-'+cid); if(ta) ta.focus();
+}
+async function qt_saveReviewCommentEdit(cid){
+  var q=qt_getCurrentQuoteObj();
+  if(!q) return;
+  var c=(q.reviewComments||[]).find(function(x){return x.id===cid;});
+  if(!c) return;
+  var ta=document.getElementById('qtCmtEditTa-'+cid);
+  var newText=(ta?ta.value:'').trim();
+  if(!newText) return;
+  if(newText!==c.text){
+    c.text=newText;
+    c.editedAt=new Date().toISOString();
+    if(typeof qt_spSaveAll==='function') await qt_spSaveAll();
+  }
+  qt_renderReviewHistoryTab();
+}
+function qt_deleteReviewComment(cid){
+  var q=qt_getCurrentQuoteObj();
+  if(!q) return;
+  var c=(q.reviewComments||[]).find(function(x){return x.id===cid;});
+  if(!c) return;
+  if(c.author!==(SESSION_REP.name||'')){ if(typeof showToast==='function') showToast('본인이 작성한 댓글만 삭제할 수 있습니다.','warn'); return; }
+  appConfirm('이 댓글을 삭제하시겠습니까?\n삭제된 댓글은 복구할 수 없습니다.', async function(){
+    q.reviewComments=q.reviewComments.filter(function(x){return x.id!==cid;});
+    qt_renderReviewHistoryTab();
+    if(typeof qt_spSaveAll==='function') await qt_spSaveAll();
+    if(typeof showToast==='function') showToast('댓글이 삭제되었습니다.','warn');
+  },{title:'댓글 삭제', icon:'🗑️', okText:'삭제'});
+}
 async function qt_addReviewComment(replyToId){
   var q=qt_getCurrentQuoteObj();
   if(!q) return;
@@ -26563,8 +26853,11 @@ async function qt_addReviewComment(replyToId){
   var text=(ta?ta.value:'').trim();
   if(!text) return;
   _qtEnsureReviewFields(q);
-  var me=(typeof session!=='undefined'&&session&&session.rep)||'';
-  var newC={id:'rc'+Date.now(), author:me, authorEmail:(typeof _ntRepEmail==='function'?_ntRepEmail(me):''), text:text, createdAt:new Date().toISOString(), replyToId:replyToId||null};
+  // ⚠ 매니저는 session.rep이 아니라 SESSION_REP.name(managerName 인식)에서 이름을 가져와야
+  //   댓글 작성자가 정상 식별됨(게스트로 로그인했을 때 댓글이 안 보이던 문제의 근본 해결책).
+  var me=SESSION_REP.name||'';
+  var meEmail=SESSION_REP.email||(typeof _ntRepEmail==='function'?_ntRepEmail(me):'');
+  var newC={id:'rc'+Date.now(), author:me, authorEmail:meEmail, text:text, createdAt:new Date().toISOString(), replyToId:replyToId||null};
   q.reviewComments.push(newC);
   if(ta) ta.value='';
   qt_renderReviewHistoryTab();
