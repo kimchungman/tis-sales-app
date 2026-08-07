@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-110 -->
+<!-- v20260728-110 변경사항: 매니저에 부서 필드 추가, 로그인 버튼 표시 개편 - 요청대로 이름+직책을 위쪽에 크게 합쳐서 표시(예: "김OO 사업부장")하고, 부서(예: "사업개발부")를 아래쪽에 작게 표시(예전에 직책만 작게 표시하던 자리). 관리자설정 매니저 관리 표에 부서 입력칸 추가(authCfg.managers에 dept 필드), 로그인 시 session.managerDept로도 저장. 실제 실행으로 버튼 표시(이름+직책 결합/부서 별도 표시), 관리자설정 입력·저장, 로그인 후 세션 반영까지 전부 확인, 기존 기능 회귀 없음 재확인. -->
+<!-- TIS-VERSION: 20260728-109 -->
+<!-- v20260728-109 변경사항: 로그인화면에서 "매니저" 라벨 완전히 제거(요청에 따름) - 특정 직급을 앱이 임의로 규정하지 않고, 등록 시 입력한 실제 직책(예: "사업개발부 사업부장")이 그대로 버튼에 표시되도록 함. 섹션 구분 타이틀도 없앴고, 직책 미입력 시 폴백으로 뜨던 "매니저" 텍스트도 제거(비어있으면 그냥 이름만 표시). 세션 role 값(session.role='manager')이나 내부 함수명(addManager 등)은 개발 편의를 위한 내부 명칭이라 그대로 유지 - 사용자가 실제로 보는 화면에서만 단어가 사라짐. 실제 렌더링으로 "매니저" 텍스트 완전히 없음, 등록한 직책·이름 정상 표시 확인, 기존 로그인 흐름 회귀 없음 재확인. -->
+<!-- TIS-VERSION: 20260728-108 -->
+<!-- v20260728-108 변경사항: SP 필터를 이미 인덱스가 걸린 DataType 조건만 쓰도록 단순화 - 확인해보니 실제 SharePoint 리스트에 DataKey/DataType/UpdatedAt/수정된날짜는 이미 자동 인덱스가 걸려있었는데 Title은 인덱스 생성 드롭다운에 아예 안 나타나는 상황(리스트 UI 제약으로 추정). OR 조건에 인덱스 없는 필드(Title startswith)가 섞여 있으면 5000건 임계값에서 전체 필터가 막힐 위험이 남으므로, 확실히 인덱스가 걸린 DataType 조건만 남기고 Title 기반 폴백을 제거(_spSyncOtherReps/_loadAccessLog/_spLoadAllVisitLogs/_wkLoadFeed/_wkEnsureFeedCache 총 5곳). 앱이 저장할 때 항상 DataType을 명시적으로 채워 저장하므로 최근 데이터 누락 위험은 낮음. 실제 실행으로 필터절에서 startswith(Title,...) 완전히 제거되고 DataType eq 조건만 남은 것 확인, 기존 기능 회귀 없음 재확인. -->
 <!-- TIS-VERSION: 20260728-107 -->
 <!-- v20260728-107 변경사항: 리스트 전체 훑기(무필터 $top=500) 방식으로 남아있던 자주 호출되는 함수들을 서버측 필터로 전환. _spSyncOtherReps(로그인+10초마다, 최우선순위)는 client_db/contract_data/rep_data 3종을 한 번에 서버측 필터로, _spLoadAllVisitLogs/_loadAccessLog/_wkLoadFeed/_wkEnsureFeedCache는 각각 단일 타입으로 필터, _spLoadVisitLog(특정 담당자 1명)는 이미 서버측 필터가 적용된 _spLoadItem을 그대로 재사용하도록 완전히 단순화. 리스트 크기와 무관하게 항상 가벼운 요청만 하도록 개선. 실제 실행으로 각 함수가 올바른 필터를 사용하는 것, _spLoadVisitLog의 데이터 반영까지 확인(주간회의 2개 함수는 별도 스코프 제약으로 직접 호출 테스트는 안 됐으나 자매 함수와 동일 검증된 패턴 적용). 참고로 관리자 진단/정리 도구(_spDiagnose, _spCleanupOldKeys 등)와 _spLoadHistList/_spLoadToday는 실행 빈도가 낮고, 특히 _spLoadToday는 "SP 인덱스 없는 컬럼에 filter 시 500 에러"라는 기존 주석이 있어 신중하게 그대로 유지 - 이는 SharePoint가 리스트 전체 건수가 5000건을 넘으면 인덱스 안 걸린 컬럼(DataType/Title 등)에 대한 $filter를 거부하는 알려진 제약으로, 지금(700건)은 문제없지만 리스트가 다시 커지면 이번에 추가한 필터들도 동일 제약에 걸릴 수 있음 - 근본 해결은 SharePoint 리스트 설정에서 Title/DataType 컬럼에 인덱스를 걸어두는 것(코드가 아닌 SharePoint 사이트 설정 작업). 기존 기능 회귀 없음 재확인. -->
 <!-- TIS-VERSION: 20260728-106 -->
@@ -4799,6 +4805,7 @@ window._updateSidebarByRole=function(){
               <tr style="background:#F8FAFF;border-bottom:2px solid var(--border);">
                 <th style="width:100px;padding:8px;text-align:left;font-size:11px;color:#64748B;">이름</th>
                 <th style="width:100px;padding:8px;text-align:center;font-size:11px;color:#64748B;">직책</th>
+                <th style="width:110px;padding:8px;text-align:center;font-size:11px;color:#64748B;">부서</th>
                 <th style="padding:8px;text-align:left;font-size:11px;color:#64748B;">이메일/도메인</th>
                 <th style="width:40px;padding:8px;text-align:center;font-size:11px;color:#64748B;">삭제</th>
               </tr>
@@ -9875,8 +9882,8 @@ function renderLoginManagerBtns(){
       +'<div style="width:40px;height:40px;border-radius:10px;background:'+color+'18;border:1.5px solid '+color+'44;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
       +'<span style="font-size:13px;font-weight:800;color:'+color+';">'+_qtEsc(abbr)+'</span></div>'
       +'<div style="flex:1;text-align:left;">'
-      +'<div style="font-size:14px;font-weight:700;color:#0A1628;">'+_qtEsc(m.name)+'</div>'
-      +'<div style="font-size:11px;color:#94A3B8;margin-top:1px;">'+(m.title?_qtEsc(m.title):'매니저')+'</div></div>'
+      +'<div style="font-size:14px;font-weight:700;color:#0A1628;">'+_qtEsc(m.name)+(m.title?' '+_qtEsc(m.title):'')+'</div>'
+      +'<div style="font-size:11px;color:#94A3B8;margin-top:1px;">'+(m.dept?_qtEsc(m.dept):'')+'</div></div>'
       +'<div style="color:#CBD5E1;font-size:16px;">›</div></button>';
   }).join('');
 }
@@ -9898,7 +9905,7 @@ function doManagerLogin(m){
   // ⚠ 팀 선택·담당자 선택 단계를 건너뛰고 곧장 로그인. session.rep은 null로 유지해서
   //   REPS/TEAM_REPS에 없는 이름이 대시보드 등에 새로운 담당자 탭으로 나타나지 않게 한다
   //   (요청사항: "일반 팀과 다르게 모든 메뉴에 매니저 탭이 생성되면 안 됨").
-  session={role:'manager', rep:null, team:null, managerName:m.name, managerTitle:m.title||'', managerEmail:m.email||''};
+  session={role:'manager', rep:null, team:null, managerName:m.name, managerTitle:m.title||'', managerDept:m.dept||'', managerEmail:m.email||''};
   window._intendedVTab=null; window._activeVTab=null;
   window._cPanelHash={}; window._lastContractHash=null;
   window._lastBuiltTeam=null; window._inputPageDirty=true;
@@ -12531,7 +12538,7 @@ function addManager(){
   const trimmed=name.trim();
   if(!authCfg.managers) authCfg.managers=[];
   if(authCfg.managers.some(function(m){return m.name===trimmed;})){appAlert('이미 존재하는 이름입니다.',{danger:true});return;}
-  authCfg.managers.push({name:trimmed, title:'', email:''});
+  authCfg.managers.push({name:trimmed, title:'', dept:'', email:''});
   saveAuthCfg();
   renderManagerManage();
   if(typeof renderLoginManagerBtns==='function') renderLoginManagerBtns();
@@ -12560,13 +12567,14 @@ function renderManagerManage(){
   if(!tbody) return;
   var mgrs=authCfg.managers||[];
   if(!mgrs.length){
-    tbody.innerHTML='<tr><td colspan="4" style="padding:14px;color:#94A3B8;font-size:12px;text-align:center;">등록된 매니저가 없습니다.</td></tr>';
+    tbody.innerHTML='<tr><td colspan="5" style="padding:14px;color:#94A3B8;font-size:12px;text-align:center;">등록된 매니저가 없습니다.</td></tr>';
     return;
   }
   tbody.innerHTML=mgrs.map(function(m,i){
     return '<tr style="border-bottom:1px solid #F1F5F9;">'
       +'<td style="padding:8px;"><input type="text" value="'+(m.name||'').replace(/"/g,'&quot;')+'" data-idx="'+i+'" onchange="saveManagerField('+i+',\'name\',this.value)" style="width:90px;border:1px solid var(--border);border-radius:6px;padding:4px 7px;font-size:12px;font-weight:600;font-family:inherit;"></td>'
       +'<td style="padding:8px;text-align:center;"><input type="text" value="'+(m.title||'').replace(/"/g,'&quot;')+'" placeholder="직책" onchange="saveManagerField('+i+',\'title\',this.value)" style="width:80px;border:1px solid var(--border);border-radius:6px;padding:4px 7px;font-size:12px;font-family:inherit;"></td>'
+      +'<td style="padding:8px;text-align:center;"><input type="text" value="'+(m.dept||'').replace(/"/g,'&quot;')+'" placeholder="부서" onchange="saveManagerField('+i+',\'dept\',this.value)" style="width:95px;border:1px solid var(--border);border-radius:6px;padding:4px 7px;font-size:12px;font-family:inherit;"></td>'
       +'<td style="padding:8px;"><input type="text" value="'+(m.email||'').replace(/"/g,'&quot;')+'" placeholder="이메일@도메인" onchange="saveManagerField('+i+',\'email\',this.value)" style="width:100%;border:1px solid var(--border);border-radius:6px;padding:4px 7px;font-size:11px;font-family:inherit;"></td>'
       +'<td style="padding:8px;text-align:center;"><button onclick="deleteManager('+i+')" style="width:26px;height:26px;border-radius:5px;border:1px solid #FCA5A5;background:#FEF2F2;color:#DC2626;cursor:pointer;font-size:14px;line-height:1;">×</button></td>'
       +'</tr>';
@@ -14402,7 +14410,7 @@ async function _recordAccessLog(msAccount, selectedRep, action, isGuest) {
 async function _loadAccessLog() {
   if (!window._isSPReady) return;
   try {
-    const url = _lUrl() + "?$select=Id,Title,DataType,Payload&$filter=(DataType eq 'accessLog') or startswith(Title,'accessLog_')&$top=500";
+    const url = _lUrl() + "?$select=Id,Title,DataType,Payload&$filter=DataType eq 'accessLog'&$top=500";
     const res = await _spFetchAll(url);
     // ⚠ 접속기록 저장 구조를 "접속마다 새 항목"에서 "날짜별 항목 하나에 모아 담기"로
     //   바꿨으므로(리스트 비대화 방지), 조회도 두 형식을 모두 지원해야 한다.
@@ -14588,7 +14596,6 @@ function _renderAccessLog() {
       </div>
       <div id="auth-s0">
         <div id="auth-manager-area" style="display:none;">
-          <div class="auth-step-label" style="margin-bottom:8px;">매니저</div>
           <div id="auth-manager-btns" style="display:flex;flex-direction:column;gap:8px;"></div>
           <div class="auth-divider"><span>팀 선택</span></div>
         </div>
@@ -15559,7 +15566,7 @@ async function _spLoadVisitLog(rep){
 async function _spLoadAllVisitLogs(){
   if(!window._isSPReady) return;
   try{
-    var qUrl=_lUrl()+"?$select=Id,Title,DataType,DataKey,Payload&$filter=(DataType eq 'visit_log') or startswith(Title,'visit_log_')&$top=500";
+    var qUrl=_lUrl()+"?$select=Id,Title,DataType,DataKey,Payload&$filter=DataType eq 'visit_log'&$top=500";
     var res=await _spFetchAll(qUrl);
     var items=(res&&res.value)||[];
     // visit_log 타입만 처리
@@ -15746,7 +15753,7 @@ async function _spSyncOtherReps(){
     //   (ERR_CONNECTION_RESET)에 걸릴 확률이 올라가는 근본 원인 중 하나였음 - 이 함수는
     //   로그인 시+10초마다 반복 실행되는 가장 빈번한 호출이라 우선적으로 서버측 필터로
     //   전환. 실제 필요한 3종만 직접 요청해 리스트 크기와 무관하게 항상 가벼움.
-    var qUrl = _lUrl()+"?$select=Id,Title,DataType,DataKey,Payload&$filter=(DataType eq 'client_db') or (DataType eq 'contract_data') or (DataType eq 'rep_data') or startswith(Title,'contract_data_') or startswith(Title,'rep_data_')&$top=500";
+    var qUrl = _lUrl()+"?$select=Id,Title,DataType,DataKey,Payload&$filter=(DataType eq 'client_db') or (DataType eq 'contract_data') or (DataType eq 'rep_data')&$top=500";
     var res = await _spFetchAll(qUrl);
     var items = (res&&res.value)||[];
 
@@ -19161,7 +19168,7 @@ async function _wkLoadFeed(weekKey){
       all.sort(function(a,b){ return (a.time||'').localeCompare(b.time||''); });
       return all;
     }
-    var url=_lUrl()+"?$select=Title,DataType,DataKey,Payload&$filter=(DataType eq 'weeklyFeed') or startswith(Title,'weeklyFeed_')&$top=500";
+    var url=_lUrl()+"?$select=Title,DataType,DataKey,Payload&$filter=DataType eq 'weeklyFeed'&$top=500";
     var res=await _spFetchAll(url);
     var _items=((res&&res.value)||[]).filter(function(i){
       return i.DataType==='weeklyFeed'||(i.Title&&i.Title.indexOf('weeklyFeed_')===0);
@@ -20815,7 +20822,7 @@ async function _wkEnsureFeedCache(force){
   if(window._wkFeedCacheLoading) return window._wkFeedCacheLoading;
   window._wkFeedCacheLoading=(async function(){
     try{
-      var url=_lUrl()+"?$select=Title,DataType,DataKey,Payload&$filter=(DataType eq 'weeklyFeed') or startswith(Title,'weeklyFeed_')&$top=500";
+      var url=_lUrl()+"?$select=Title,DataType,DataKey,Payload&$filter=DataType eq 'weeklyFeed'&$top=500";
       var res=await _spFetchAll(url);
       var _items=((res&&res.value)||[]).filter(function(i){
         return i.DataType==='weeklyFeed'||(i.Title&&i.Title.indexOf('weeklyFeed_')===0);
