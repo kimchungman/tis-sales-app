@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-112 -->
+<!-- v20260728-112 변경사항: 검토요청 받는사람 목록 순서 수정 - 매니저가 팀원 목록 뒤에 붙어 맨 아래 나오고 있었음(질문받고 확인해보니 실제로 그랬음), 요청대로 매니저가 목록 맨 위에 오도록 순서 변경. 실제 실행으로 매니저(홍길동)가 첫번째, 팀원(전성현)이 그 다음으로 정확히 나오는 것 확인, 기존 기능 회귀 없음 재확인. -->
+<!-- TIS-VERSION: 20260728-111 -->
+<!-- v20260728-111 변경사항: 검토요청 받는사람 목록에서 "팀장"/"매니저" 배지를 없애고 요청대로 이름+직책으로 통일 표시(예: "전성현 팀장", "홍길동 사업부장"). 일반 담당자 옵션에도 직책(authCfg.repTitles) 정보를 담아 배지 대신 이름 옆에 자연스럽게 표시. 매니저가 검토요청 받는사람 목록에 팀 무관하게 포함되는 기능(v100) 자체는 이미 정상 동작 확인됨(실사용 확인 완료), 이번엔 표시 방식만 개선. 실제 실행으로 배지 완전히 사라지고 이름+직책 형태로 정상 표시되는 것 확인, 기존 기능 회귀 없음 재확인. -->
 <!-- TIS-VERSION: 20260728-110 -->
 <!-- v20260728-110 변경사항: 매니저에 부서 필드 추가, 로그인 버튼 표시 개편 - 요청대로 이름+직책을 위쪽에 크게 합쳐서 표시(예: "김OO 사업부장")하고, 부서(예: "사업개발부")를 아래쪽에 작게 표시(예전에 직책만 작게 표시하던 자리). 관리자설정 매니저 관리 표에 부서 입력칸 추가(authCfg.managers에 dept 필드), 로그인 시 session.managerDept로도 저장. 실제 실행으로 버튼 표시(이름+직책 결합/부서 별도 표시), 관리자설정 입력·저장, 로그인 후 세션 반영까지 전부 확인, 기존 기능 회귀 없음 재확인. -->
 <!-- TIS-VERSION: 20260728-109 -->
@@ -26627,13 +26631,16 @@ function qt_reviewRecipientOptions(){
     return aL-bL;
   });
   var out=members.map(function(r){
-    return {name:r, email:(typeof _ntRepEmail==='function'?_ntRepEmail(r):''), isLeader:(typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[r]==='팀장')};
+    return {name:r, email:(typeof _ntRepEmail==='function'?_ntRepEmail(r):''), title:(typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[r])||'', isLeader:(typeof authCfg!=='undefined'&&authCfg.repTitles&&authCfg.repTitles[r]==='팀장')};
   });
   // ⚠ 매니저는 특정 팀 소속이 아니므로(요청사항: 조회는 전체 가능), 소속 팀 필터와
   //   무관하게 항상 받는사람 목록에 포함시킨다. 본인이 매니저라면 자기 자신은 제외.
+  //   요청대로 목록 맨 위에 오도록 unshift (역순 push 후 전체 뒤집기 방식으로 여러 명이어도 등록 순서 유지)
+  var mgrList=[];
   (authCfg.managers||[]).forEach(function(m){
-    if(m.name && m.name!==me) out.push({name:m.name, email:m.email||'', isLeader:false, isManager:true});
+    if(m.name && m.name!==me) mgrList.push({name:m.name, email:m.email||'', title:m.title||'', isLeader:false, isManager:true});
   });
+  out=mgrList.concat(out);
   return out;
 }
 function qt_getCurrentQuoteObj(){
@@ -26726,9 +26733,7 @@ function qt_openReviewRequestPop(){
     list.innerHTML=opts.map(function(o,i){
       return '<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px;" onmouseover="this.style.background=\'#F8FAFC\'" onmouseout="this.style.background=\'\'">'
         +'<input type="checkbox" class="reviewRecvChk" value="'+_qtEsc(o.name)+'"'+(o.isLeader?' checked':'')+' style="width:14px;height:14px;cursor:pointer;">'
-        +'<span style="flex:1;">'+_qtEsc(o.name)+'</span>'
-        +(o.isLeader?'<span style="font-size:9.5px;font-weight:700;color:#1D4ED8;background:#EFF6FF;padding:1px 6px;border-radius:8px;">팀장</span>':'')
-        +(o.isManager?'<span style="font-size:9.5px;font-weight:700;color:#7B2FBE;background:#F5EEFC;padding:1px 6px;border-radius:8px;">매니저</span>':'')
+        +'<span style="flex:1;">'+_qtEsc(o.name)+(o.title?' <span style="color:#94A3B8;font-weight:500;">'+_qtEsc(o.title)+'</span>':'')+'</span>'
         +'</label>';
     }).join('');
   }
