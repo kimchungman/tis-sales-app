@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- TIS-VERSION: 20260728-114 -->
+<!-- v20260728-114 변경사항: 매출 섹션에도 원가 섹션과 동일하게 인건비 개별 행(역할·등급·공수) + 총 공수 표시 추가. 확인해보니 이미 laborRows라는 행별 상세 데이터가 준비되어 있었음(코드 주석에 "현재 화면엔 미표시, 필요시 확장용으로 유지"라고 남아있었음) - 원가 섹션과 완전히 동일한 패턴(총계 먼저, 그 아래 개별 행)으로 화면·PDF 양쪽에 적용. 인건비 행이 1개뿐이면 총계와 중복이라 2개 이상일 때만 총 공수 표시. 실제 실행(PM 2MM+개발 3MM)으로 "총 공수 5MM"과 역할별 개별 행이 정확히 표시되는 것 확인, 기존 원가분석 계산 회귀 없음 재확인. -->
+<!-- TIS-VERSION: 20260728-113 -->
+<!-- v20260728-113 변경사항: 원가분석 인건비 섹션에 "총 투입공수" 표시 추가 - 개별 공수 라인(각 인력의 MM) 제일 위에, 동일한 정렬 스타일(sub 항목과 같은 flex 구조)로 합계를 보여줌. 화면·PDF 양쪽 다 적용, _row 헬퍼에 rawText 옵션을 추가해 원화 포맷 없이 "X.XMM" 형태로 표시. 인원이 1명뿐이면 개별 라인과 중복되는 정보라 2명 이상일 때만 표시. 실제 실행(2명, 2MM+1.5MM)으로 "총 투입공수 3.5MM"이 개별 라인 바로 위, 정확한 위치에 렌더링되는 것 확인, 기존 원가분석 계산 회귀 없음 재확인. -->
 <!-- TIS-VERSION: 20260728-112 -->
 <!-- v20260728-112 변경사항: 검토요청 받는사람 목록 순서 수정 - 매니저가 팀원 목록 뒤에 붙어 맨 아래 나오고 있었음(질문받고 확인해보니 실제로 그랬음), 요청대로 매니저가 목록 맨 위에 오도록 순서 변경. 실제 실행으로 매니저(홍길동)가 첫번째, 팀원(전성현)이 그 다음으로 정확히 나오는 것 확인, 기존 기능 회귀 없음 재확인. -->
 <!-- TIS-VERSION: 20260728-111 -->
@@ -25491,9 +25495,10 @@ function qt_buildCostAnalysisPdfSection(){
   function _row(label,val,opts){
     opts=opts||{};
     var pad=opts.sub?'2px 0 2px 12px':'4px 0';
+    var _valTxt=opts.rawText!=null ? opts.rawText : _qtWon(Math.abs(val));
     return '<div style="display:flex;justify-content:space-between;padding:'+pad+';">'
       +'<span style="color:'+(opts.sub?'#64748B':LABEL)+';font-weight:'+(opts.sub?'400':'500')+';font-size:'+(opts.sub?'7.5px':'8.5px')+';">'+(opts.sub?'· ':'')+label+'</span>'
-      +'<span style="color:'+(opts.color||ITEM_COLOR)+';font-weight:600;font-size:'+(opts.sub?'7.5px':'8.5px')+';">'+_qtWon(Math.abs(val))+'</span></div>';
+      +'<span style="color:'+(opts.color||ITEM_COLOR)+';font-weight:600;font-size:'+(opts.sub?'7.5px':'8.5px')+';">'+_valTxt+'</span></div>';
   }
   function _colHead(title,total,color){
     return '<div style="padding:10px 12px;border-bottom:1px solid '+BC+';">'
@@ -25506,6 +25511,16 @@ function qt_buildCostAnalysisPdfSection(){
   h+=_colHead('매출', A.finalAmt, TOTAL_COLOR);
   h+='<div style="padding:8px 12px 10px;">';
   h+=_row('인건비 (견적단가 기준)', A.laborQuoted);
+  if(A.laborRows && A.laborRows.length){
+    var _totalQMM2=A.laborRows.reduce(function(s,r){return s+(parseFloat(r.qty)||0);},0);
+    if(A.laborRows.length>1){
+      h+=_row('총 공수', 0, {sub:true, color:'#0F172A', rawText:'<b>'+(_totalQMM2%1===0?_totalQMM2:_totalQMM2.toFixed(1))+'MM</b>'});
+    }
+    A.laborRows.forEach(function(r){
+      var lbl=_qtEscBr(r.role)+(r.grade&&r.grade!=='-'?' · '+_qtEsc(r.grade):'')+(r.qty?' ('+r.qty+'MM)':'');
+      h+=_row(lbl, r.quoted, {sub:true,color:ITEM_COLOR});
+    });
+  }
   h+=_row('기타 항목 (라이선스·유지보수·상품·기타)', A.otherPropose);
   if(A.discAmt>0) h+=_row('특별할인'+(A.discLabel?' ('+A.discLabel.replace(/</g,'&lt;')+')':''), A.discAmt, {color:ITEM_COLOR});
   h+='</div></td>';
@@ -25515,6 +25530,10 @@ function qt_buildCostAnalysisPdfSection(){
   h+='<div style="padding:8px 12px 10px;">';
   h+=_row('인건비 ('+(A.usingActual?'실투입 내부단가 기준':'내부단가 기준 견적공수 추정치')+')', A.laborCostInternal, {color:ITEM_COLOR});
   if(A.usingActual){
+    var _totalMM=A.intmmRows.reduce(function(s,r){return s+(parseFloat(r.mm)||0);},0);
+    if(A.intmmRows.length>1){
+      h+=_row('총 투입공수', 0, {sub:true, color:'#0F172A', rawText:'<b>'+(_totalMM%1===0?_totalMM:_totalMM.toFixed(1))+'MM</b>'});
+    }
     A.intmmRows.forEach(function(r){
       var lbl=(r.dept?_qtEsc(r.dept)+' · ':'')+_qtEscBr(r.person)+(r.pos?' '+_qtEsc(r.pos):'')+(r.grade&&r.grade!=='-'?' · '+_qtEsc(r.grade):'')+(r.mm?' ('+r.mm+'MM)':'');
       h+=_row(lbl, r.cost, {sub:true,color:ITEM_COLOR});
@@ -27434,9 +27453,10 @@ function qt_renderCostAnalysis(){
   var ITEM_COLOR='#334155';
   function _row(label,val,opts){
     opts=opts||{};
+    var _valTxt=opts.rawText!=null ? opts.rawText : _qtWon(Math.abs(val));
     return '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:'+(opts.sub?'3px 0 3px 14px':'6px 0')+';">'
       +'<span style="color:'+(opts.sub?'#64748B':LABEL)+';font-size:'+(opts.sub?'10px':'11.5px')+';">'+(opts.sub?'· ':'')+label+'</span>'
-      +'<span style="color:'+(opts.color||ITEM_COLOR)+';font-weight:'+(opts.sub?'500':'600')+';font-size:'+(opts.sub?'10px':'12px')+';">'+_qtWon(Math.abs(val))+'</span></div>';
+      +'<span style="color:'+(opts.color||ITEM_COLOR)+';font-weight:'+(opts.sub?'500':'600')+';font-size:'+(opts.sub?'10px':'12px')+';">'+_valTxt+'</span></div>';
   }
   html+='<div style="display:flex;gap:14px;flex-wrap:wrap;">';
 
@@ -27447,6 +27467,16 @@ function qt_renderCostAnalysis(){
     +'<div style="font-size:19px;font-weight:800;color:'+TOTAL_COLOR+';">'+_qtWon(A.finalAmt)+'</div></div>';
   html+='<div style="padding:12px 18px 14px;">';
   html+=_row('인건비 (견적단가 기준)', A.laborQuoted);
+  if(A.laborRows && A.laborRows.length){
+    var _totalQMM=A.laborRows.reduce(function(s,r){return s+(parseFloat(r.qty)||0);},0);
+    if(A.laborRows.length>1){
+      html+=_row('총 공수', 0, {sub:true, color:'#0F172A', rawText:'<b>'+(_totalQMM%1===0?_totalQMM:_totalQMM.toFixed(1))+'MM</b>'});
+    }
+    A.laborRows.forEach(function(r){
+      var lbl=_qtEscBr(r.role)+(r.grade&&r.grade!=='-'?' · '+_qtEsc(r.grade):'')+(r.qty?' ('+r.qty+'MM)':'');
+      html+=_row(lbl, r.quoted, {sub:true,color:ITEM_COLOR});
+    });
+  }
   html+=_row('기타 항목 (라이선스·유지보수·상품·기타)', A.otherPropose);
   if(A.discAmt>0) html+=_row('특별할인'+(A.discLabel?' ('+A.discLabel.replace(/</g,'&lt;')+')':''), A.discAmt, {color:ITEM_COLOR});
   html+='</div></div>';
@@ -27459,6 +27489,10 @@ function qt_renderCostAnalysis(){
   html+='<div style="padding:12px 18px 14px;">';
   html+=_row('인건비 ('+(A.usingActual?'실투입 내부단가 기준':'내부단가 기준 견적공수 추정치')+')', A.laborCostInternal, {color:ITEM_COLOR});
   if(A.usingActual){
+    var _totalMM=A.intmmRows.reduce(function(s,r){return s+(parseFloat(r.mm)||0);},0);
+    if(A.intmmRows.length>1){
+      html+=_row('총 투입공수', 0, {sub:true, color:'#0F172A', rawText:'<b>'+(_totalMM%1===0?_totalMM:_totalMM.toFixed(1))+'MM</b>'});
+    }
     A.intmmRows.forEach(function(r){
       var lbl=(r.dept?_qtEsc(r.dept)+' · ':'')+_qtEscBr(r.person)+(r.pos?' '+_qtEsc(r.pos):'')+(r.grade&&r.grade!=='-'?' · '+_qtEsc(r.grade):'')+(r.mm?' ('+r.mm+'MM)':'');
       html+=_row(lbl, r.cost, {sub:true,color:ITEM_COLOR});
